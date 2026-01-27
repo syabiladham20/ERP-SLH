@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{{ 'Edit Daily Log' if log else 'Daily Data Entry' }}</h2>
+
+{% if not houses and not log %}
+  <div class="alert alert-warning">
+    No active flocks found. Please <a href="{{ url_for('manage_flocks') }}">create a flock</a> first.
+  </div>
+{% else %}
+  <form method="POST" enctype="multipart/form-data">
+    <div class="card mb-3">
+      <div class="card-header bg-primary text-white">General Info</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="house_id" class="form-label">House</label>
+          {% if log %}
+            <input type="text" class="form-control" value="{{ houses[0].name }}" disabled>
+            <input type="hidden" name="house_id" value="{{ houses[0].id }}">
+          {% else %}
+            <select class="form-select" id="house_id" name="house_id" required>
+              {% for house in houses %}
+                <option value="{{ house.id }}">{{ house.name }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <label for="date" class="form-label">Date</label>
+          <input type="date" class="form-control" id="date" name="date" required value="{{ log.date if log else date_today }}" {{ 'disabled' if log else '' }}>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-info text-dark">Mortality & Culls</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Mortality Male</label>
+            <input type="number" class="form-control" name="mortality_male" value="{{ log.mortality_male if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Mortality Female</label>
+            <input type="number" class="form-control" name="mortality_female" value="{{ log.mortality_female if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Culls Male</label>
+            <input type="number" class="form-control" name="culls_male" value="{{ log.culls_male if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Culls Female</label>
+            <input type="number" class="form-control" name="culls_female" value="{{ log.culls_female if log else 0 }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-success text-white">Feed</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Feed Program</label>
+          <select class="form-select" name="feed_program">
+            <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
+            <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Male Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Female Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log else 0 }}">
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Feed Cleanup Start</label>
+            <input type="time" class="form-control" name="feed_cleanup_start" value="{{ log.feed_cleanup_start if log else '' }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Feed Cleanup End</label>
+            <input type="time" class="form-control" name="feed_cleanup_end" value="{{ log.feed_cleanup_end if log else '' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-info text-white">Water Readings (Enter Whole Numbers)</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-4 mb-2">
+            <label class="form-label">Reading 1</label>
+            <input type="number" class="form-control" name="water_reading_1" value="{{ log.water_reading_1 if log else 0 }}" onchange="calculateWater()">
+          </div>
+          <div class="col-4 mb-2">
+            <label class="form-label">Reading 2</label>
+            <input type="number" class="form-control" name="water_reading_2" value="{{ log.water_reading_2 if log else 0 }}" onchange="calculateWater()">
+          </div>
+          <div class="col-4 mb-2">
+            <label class="form-label">Reading 3</label>
+            <input type="number" class="form-control" name="water_reading_3" value="{{ log.water_reading_3 if log else 0 }}" onchange="calculateWater()">
+          </div>
+        </div>
+        <small class="text-muted">
+          12h Consumption: <span id="water_12h">0</span> Liters
+        </small>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-warning text-dark">Production</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Eggs Collected</label>
+          <input type="number" class="form-control" name="eggs_collected" value="{{ log.eggs_collected if log else 0 }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Egg Weight (avg)</label>
+          <input type="number" step="0.01" class="form-control" name="egg_weight" value="{{ log.egg_weight if log else 0 }}">
+        </div>
+        <label class="form-label">Cull Eggs</label>
+        <div class="row">
+          <div class="col-3"><input type="number" class="form-control form-control-sm" name="cull_eggs_jumbo" placeholder="Jumbo" value="{{ log.cull_eggs_jumbo if log else '' }}"></div>
+          <div class="col-3"><input type="number" class="form-control form-control-sm" name="cull_eggs_small" placeholder="Small" value="{{ log.cull_eggs_small if log else '' }}"></div>
+          <div class="col-3"><input type="number" class="form-control form-control-sm" name="cull_eggs_abnormal" placeholder="Abnormal" value="{{ log.cull_eggs_abnormal if log else '' }}"></div>
+          <div class="col-3"><input type="number" class="form-control form-control-sm" name="cull_eggs_crack" placeholder="Crack" value="{{ log.cull_eggs_crack if log else '' }}"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-secondary text-white">Body Weight & Uniformity</div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Male BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_male" value="{{ log.body_weight_male if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Female BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_female" value="{{ log.body_weight_female if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Male Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_male" value="{{ log.uniformity_male if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Female Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_female" value="{{ log.uniformity_female if log else 0 }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header bg-dark text-white">Other & Clinical</div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-6">
+            <label class="form-label">Light On</label>
+            <input type="time" class="form-control" name="light_on_time" value="{{ log.light_on_time if log else '' }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Light Off</label>
+            <input type="time" class="form-control" name="light_off_time" value="{{ log.light_off_time if log else '' }}">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Clinical Notes</label>
+          <textarea class="form-control" name="clinical_notes" rows="3">{{ log.clinical_notes if log else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Photo Upload (Post-Mortem)</label>
+          <input type="file" class="form-control" name="photo">
+          {% if log and log.photo_path %}
+            <small class="text-muted">Current photo: {{ log.photo_path }}</small>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 mb-5">{{ 'Update Log' if log else 'Submit Log' }}</button>
+  </form>
+  
+  <script>
+    {% if not log %}
+    // Set default date to today only for new logs
+    document.getElementById('date').valueAsDate = new Date();
+    {% endif %}
+
+    function calculateWater() {
+        // Get values (integers)
+        let r1 = parseFloat(document.getElementsByName('water_reading_1')[0].value) || 0;
+        let r3 = parseFloat(document.getElementsByName('water_reading_3')[0].value) || 0;
+        
+        // Convert to real values (divide by 100)
+        let r1_real = r1 / 100;
+        let r3_real = r3 / 100;
+        
+        // 12h Consumption = (R3 - R1) * 1000 Liters
+        // Wait, unit: meter cubic. 1 m3 = 1000 L.
+        // Formula: (R3 - R1) * 1000.
+        
+        let consumption12h = (r3_real - r1_real) * 1000;
+        document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
+    }
+  </script>
+{% endif %}
+{% endblock %}

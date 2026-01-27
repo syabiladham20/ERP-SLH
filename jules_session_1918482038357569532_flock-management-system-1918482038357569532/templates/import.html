@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Import Existing Data</h2>
+
+<div class="card">
+  <div class="card-body">
+    <p>Upload an Excel file (.xlsx) formatted like the daily data template.</p>
+    <ul>
+      <li>The system will automatically detect the House and Intake Date from the file header.</li>
+      <li>If the House or Flock does not exist, it will be created.</li>
+      <li>Existing daily logs for the same date will be updated.</li>
+    </ul>
+    
+    <form method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="file" class="form-label">Excel File</label>
+        <input class="form-control" type="file" id="file" name="file" accept=".xlsx" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Upload and Import</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

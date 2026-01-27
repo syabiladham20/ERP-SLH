@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Help & Usage Guide</h2>
+
+<div class="accordion" id="helpAccordion">
+  
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingOne">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+        Manage Flocks
+      </button>
+    </h2>
+    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
+      <div class="accordion-body">
+        <ul>
+          <li><strong>Create Flock:</strong> Go to 'Manage Flocks'. Select an existing house or <strong>type a new name</strong> (e.g., VC1) to create one. Enter intake details.</li>
+          <li><strong>Phase:</strong> Use the 'Start Prod' button on the Dashboard to switch a flock from Rearing to Production.</li>
+          <li><strong>Close Flock:</strong> Use the 'Close' button to end a flock cycle. Closed flocks can be viewed in the 'Manage Flocks' history list.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingTwo">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+        Daily Data Entry
+      </button>
+    </h2>
+    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+      <div class="accordion-body">
+        <ul>
+          <li><strong>Feed:</strong> Enter the amount given in <strong>Grams per Bird</strong>.</li>
+          <li><strong>Water:</strong> Enter the 3 meter readings as whole numbers (e.g., 10500 for 105.00). The system calculates consumption based on the difference from the previous day.</li>
+          <li><strong>Edit:</strong> You can correct any entry by going to the Flock History page and clicking 'Edit' next to the log.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="headingThree">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+        Importing Data
+      </button>
+    </h2>
+    <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+      <div class="accordion-body">
+        <p>You can import historical data from Excel files (.xlsx). The file can contain multiple sheets (one for each flock).</p>
+        <p><strong>Requirements:</strong></p>
+        <ul>
+          <li>Header must contain HOUSE, INTAKE DATE, MALE/FEMALE INTAKE in the first 5 rows (Column B).</li>
+          <li>Daily data table must start at Row 10.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

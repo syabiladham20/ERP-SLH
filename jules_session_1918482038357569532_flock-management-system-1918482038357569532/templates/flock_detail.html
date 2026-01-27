@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Flock Details: {{ flock.batch_id }}</h2>
+
+<div class="card mb-4">
+  <div class="card-header">
+    Overview
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
+      <div class="col-md-3"><strong>Status:</strong> {{ flock.status }}</div>
+      <div class="col-md-3"><strong>Phase:</strong> {{ flock.phase }}</div>
+      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date }}</div>
+    </div>
+    <div class="row mt-2">
+      <div class="col-md-3"><strong>Start Population:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
+      <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
+    </div>
+  </div>
+</div>
+
+{% if weekly_data %}
+<h3>Weekly Summary</h3>
+<div class="table-responsive mb-4">
+  <table class="table table-bordered table-sm">
+    <thead class="table-light">
+      <tr>
+        <th>Week</th>
+        <th>Mortality (M/F)</th>
+        <th>Culls (M/F)</th>
+        <th>Eggs</th>
+        <th>Avg BW (M/F)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for w in weekly_data %}
+      <tr>
+        <td>{{ w.week }}</td>
+        <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
+        <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
+        <td>{{ w.eggs }}</td>
+        <td>{{ "%.2f"|format(w.avg_bw_male) }} / {{ "%.2f"|format(w.avg_bw_female) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header">Performance Charts</div>
+  <div class="card-body">
+    <canvas id="performanceChart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('performanceChart').getContext('2d');
+  const chartData = {{ chart_data | tojson }};
+  
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartData.dates,
+      datasets: [
+        {
+          label: 'Egg Production %',
+          data: chartData.egg_prod,
+          borderColor: 'green',
+          yAxisID: 'y'
+        },
+        {
+          label: 'Cum. Mortality Male %',
+          data: chartData.mortality_cum_male,
+          borderColor: 'blue',
+          yAxisID: 'y1'
+        },
+        {
+          label: 'Cum. Mortality Female %',
+          data: chartData.mortality_cum_female,
+          borderColor: 'red',
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      scales: {
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: 'Egg Production %' }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: 'Mortality %' },
+          grid: {
+            drawOnChartArea: false
+          }
+        }
+      }
+    }
+  });
+</script>
+
+<h3>Daily Logs</h3>
+<div class="table-responsive">
+  <table class="table table-striped table-sm">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Mortality (M/F)</th>
+        <th>Feed (M/F)</th>
+        <th>Water (Cal 24h)</th>
+        <th>Eggs</th>
+        <th>BW (M/F)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.date }}</td>
+        <td>{{ log.mortality_male }} / {{ log.mortality_female }}</td>
+        <td>{{ log.feed_male_gp_bird }} / {{ log.feed_female_gp_bird }}</td>
+        <td>{{ "%.2f"|format(log.water_intake_calculated) }} L</td>
+        <td>{{ log.eggs_collected }}</td>
+        <td>{{ log.body_weight_male }} / {{ log.body_weight_female }}</td>
+        <td>
+          <a href="{{ url_for('edit_daily_log', id=log.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
