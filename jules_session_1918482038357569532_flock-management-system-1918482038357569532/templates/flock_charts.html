@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Charts: {{ flock.batch_id }}</h2>
+
+    <div class="filter-controls p-3 mb-4 bg-light rounded">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">View Mode</label>
+                <select id="viewMode" class="form-select">
+                    <option value="monthly">Monthly</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="daily">Daily</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Start Date</label>
+                <input type="date" id="startDate" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">End Date</label>
+                <input type="date" id="endDate" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <button id="applyFilters" class="btn btn-primary w-100">Apply Filter</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div id="chart-depletion-f-egg" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div id="chart-depletion-m" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div id="chart-cull-hatch" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div id="chart-water-feed" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div id="chart-bw-female" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div id="chart-bw-male" class="chart-container border rounded p-2" style="height:400px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Notes/Photos -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Event Details: <span id="modalDate"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="modalNote"></p>
+                <img id="modalImg" src="" class="img-fluid d-none" alt="Event Photo">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script>
+    const flockId = {{ flock.id }};
+    const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+
+    let currentData = null; // Store fetched data
+
+    document.getElementById('applyFilters').addEventListener('click', loadData);
+    document.getElementById('viewMode').addEventListener('change', loadData);
+
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', loadData);
+
+    function loadData() {
+        const mode = document.getElementById('viewMode').value;
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+
+        let url = `/api/chart_data/${flockId}?mode=${mode}`;
+        if (start) url += `&start_date=${start}`;
+        if (end) url += `&end_date=${end}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                currentData = data;
+                renderCharts(data, mode);
+            })
+            .catch(err => console.error("Error loading chart data:", err));
+    }
+
+    function renderCharts(data, mode) {
+        const xValues = data.dates;
+        const metrics = data.metrics;
+
+        // Common Layout Options
+        const commonLayout = {
+            legend: {orientation: 'h', y: -0.2},
+            margin: {t: 40, l: 50, r: 50, b: 50},
+            hovermode: 'closest'
+        };
+
+        // 1. Female Depletion & Egg Production
+        const traceDepF = {
+            x: xValues,
+            y: metrics.mortality_f_pct,
+            name: 'Fem Depletion %',
+            type: 'bar',
+            yaxis: 'y2',
+            marker: {color: 'red', opacity: 0.6}
+        };
+        const traceEgg = {
+            x: xValues,
+            y: metrics.egg_prod_pct,
+            name: 'Egg Prod %',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: {color: 'blue', width: 2}
+        };
+
+        const layout1 = { ...commonLayout,
+            title: 'Female Depletion & Egg Production %',
+            yaxis: {title: 'Egg Production %', range: [0, 100]},
+            yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, 5], showgrid: false}
+        };
+
+        // Event Markers (only in Daily mode)
+        let eventTraces = [];
+        if (mode === 'daily' && data.events.length > 0) {
+             const eventX = data.events.map(e => e.date);
+             // Place marker at top of yaxis2 (Depletion) or just fixed?
+             // Let's place it at y=0 on y2 axis but use a different symbol.
+             // Or better: scatter on yaxis (Egg Prod) at 100%?
+             const eventY = eventX.map(() => 95); // Near top of Egg Prod axis
+
+             const traceEvt = {
+                 x: eventX,
+                 y: eventY,
+                 mode: 'markers',
+                 type: 'scatter',
+                 name: 'Note/Photo',
+                 marker: { symbol: 'star', size: 12, color: 'gold', line: {color: 'black', width: 1} },
+                 text: data.events.map(e => 'Click to view note/photo'),
+                 hoverinfo: 'text'
+             };
+             eventTraces.push(traceEvt);
+        }
+
+        Plotly.newPlot('chart-depletion-f-egg', [traceEgg, traceDepF, ...eventTraces], layout1).then(gd => {
+            gd.removeAllListeners('plotly_click');
+            gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+
+        // 2. Male Depletion
+        const traceDepM = {
+            x: xValues,
+            y: metrics.mortality_m_pct,
+            name: 'Male Depletion %',
+            type: 'bar',
+            marker: {color: 'blue', opacity: 0.6}
+        };
+        Plotly.newPlot('chart-depletion-m', [traceDepM], { ...commonLayout, title: 'Male Depletion %', yaxis: {title: 'Depletion %'} }).then(gd => {
+             gd.removeAllListeners('plotly_click');
+             gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+
+        // 3. Cull & Hatching Egg
+        // Cull Egg % approx calculated as 100 - Hatching? Or from raw? API returned hatch_egg_pct.
+        // Let's infer Cull % as (100 - Hatching) for visualization if needed, or just plot what we have.
+        // User asked for "Cull & Hatching Egg %".
+        // Assuming we want stacked? or lines?
+        const traceHatch = {
+            x: xValues,
+            y: metrics.hatch_egg_pct,
+            name: 'Hatch Egg %',
+            type: 'scatter',
+            mode: 'lines',
+            line: {color: 'green'},
+            yaxis: 'y2'
+        };
+        // Let's calc Cull %
+        const cullPct = metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0);
+        const traceCull = {
+            x: xValues,
+            y: cullPct,
+            name: 'Cull Egg %',
+            type: 'bar',
+            marker: {color: 'orange', opacity: 0.6}
+        };
+        Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
+            ...commonLayout,
+            title: 'Cull & Hatching Egg %',
+            yaxis: {title: 'Cull %', range: [0, 20]},
+            yaxis2: {title: 'Hatching %', overlaying: 'y', side: 'right', range: [80, 100], showgrid: false}
+        }).then(gd => {
+             gd.removeAllListeners('plotly_click');
+             gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+
+        // 4. Water & Feed
+        const traceWater = {
+            x: xValues,
+            y: metrics.water_per_bird,
+            name: 'Water (mL)',
+            type: 'bar',
+            marker: {color: 'cyan', opacity: 0.5}
+        };
+        const traceFeedF = {
+            x: xValues,
+            y: metrics.feed_f,
+            name: 'Feed F (g)',
+            type: 'scatter',
+            mode: 'lines',
+            yaxis: 'y2',
+            line: {color: 'pink'}
+        };
+        const traceFeedM = {
+            x: xValues,
+            y: metrics.feed_m,
+            name: 'Feed M (g)',
+            type: 'scatter',
+            mode: 'lines',
+            yaxis: 'y2',
+            line: {color: 'blue'}
+        };
+        Plotly.newPlot('chart-water-feed', [traceWater, traceFeedF, traceFeedM], {
+            ...commonLayout,
+            title: 'Water & Feed Consumption',
+            yaxis: {title: 'Water (mL/bird)'},
+            yaxis2: {title: 'Feed (g/bird)', overlaying: 'y', side: 'right', showgrid: false}
+        }).then(gd => {
+             gd.removeAllListeners('plotly_click');
+             gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+
+        // 5. BW Female
+        const traceBwF = {
+            x: xValues,
+            y: metrics.bw_f,
+            name: 'BW Female',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: {color: 'pink'}
+        };
+        const traceUniF = {
+            x: xValues,
+            y: metrics.uni_f,
+            name: 'Uniformity %',
+            type: 'bar',
+            yaxis: 'y2',
+            marker: {color: 'purple', opacity: 0.3}
+        };
+        Plotly.newPlot('chart-bw-female', [traceUniF, traceBwF], {
+            ...commonLayout,
+            title: 'Female Body Weight & Uniformity',
+            yaxis: {title: 'Body Weight (g)'},
+            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, 100], showgrid: false}
+        }).then(gd => {
+             gd.removeAllListeners('plotly_click');
+             gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+
+        // 6. BW Male
+        const traceBwM = {
+            x: xValues,
+            y: metrics.bw_m,
+            name: 'BW Male',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: {color: 'blue'}
+        };
+        const traceUniM = {
+            x: xValues,
+            y: metrics.uni_m,
+            name: 'Uniformity %',
+            type: 'bar',
+            yaxis: 'y2',
+            marker: {color: 'purple', opacity: 0.3}
+        };
+        Plotly.newPlot('chart-bw-male', [traceUniM, traceBwM], {
+            ...commonLayout,
+            title: 'Male Body Weight & Uniformity',
+            yaxis: {title: 'Body Weight (g)'},
+            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, 100], showgrid: false}
+        }).then(gd => {
+             gd.removeAllListeners('plotly_click');
+             gd.on('plotly_click', d => handleChartClick(d, mode));
+        });
+    }
+
+    function handleChartClick(data, mode) {
+        if (!data || !data.points) return;
+        const point = data.points[0];
+        const pointIndex = point.pointIndex; // Index in the data array
+
+        // 1. Check Event Marker Click (Daily Mode)
+        if (mode === 'daily' && point.data.name === 'Note/Photo') {
+            const dateClicked = point.x;
+            const evt = currentData.events.find(e => e.date === dateClicked);
+            if (evt) {
+                document.getElementById('modalDate').innerText = evt.date;
+                document.getElementById('modalNote').innerText = evt.note || 'No notes.';
+                const img = document.getElementById('modalImg');
+                if (evt.photo) {
+                    img.src = evt.photo;
+                    img.classList.remove('d-none');
+                } else {
+                    img.classList.add('d-none');
+                }
+                eventModal.show();
+            }
+            return;
+        }
+
+        // 2. Drill Through Logic
+        // Use currentData.ranges[pointIndex] to find start/end dates
+        if ((mode === 'monthly' || mode === 'weekly') && currentData.ranges && currentData.ranges[pointIndex]) {
+            const range = currentData.ranges[pointIndex];
+
+            // Set Date Filter
+            document.getElementById('startDate').value = range.start;
+            document.getElementById('endDate').value = range.end;
+
+            // Switch Mode
+            if (mode === 'monthly') {
+                document.getElementById('viewMode').value = 'weekly';
+            } else if (mode === 'weekly') {
+                document.getElementById('viewMode').value = 'daily';
+            }
+
+            loadData();
+        }
+    }
+</script>
+{% endblock %}

@@ -13,6 +13,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
 
+from flask import send_from_directory
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
 db = SQLAlchemy(app)
 
 class House(db.Model):
@@ -169,6 +175,251 @@ def close_flock(id):
     flash(f'Flock {flock.batch_id} closed.', 'info')
     return redirect(url_for('index'))
 
+@app.route('/api/chart_data/<int:flock_id>')
+def get_chart_data(flock_id):
+    flock = Flock.query.get_or_404(flock_id)
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
+
+    # Pre-calculate stocks for %
+    cum_mort_m = 0
+    cum_mort_f = 0
+    cum_cull_m = 0
+    cum_cull_f = 0
+    start_m = flock.intake_male or 1
+    start_f = flock.intake_female or 1
+
+    all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    data = {
+        'flock_batch': flock.batch_id,
+        'intake_date': flock.intake_date.isoformat(),
+        'dates': [],
+        'weeks': [],
+        'ranges': [], # New: Store {start, end} for each point for drill-down
+        'metrics': {
+            'mortality_f_pct': [], 'mortality_m_pct': [], # Depletion %
+            'culls_f_pct': [], 'culls_m_pct': [],
+            'egg_prod_pct': [], 'hatch_egg_pct': [],
+            'bw_f': [], 'bw_m': [],
+            'uni_f': [], 'uni_m': [],
+            'feed_f': [], 'feed_m': [],
+            'water_per_bird': [],
+        },
+        'events': []
+    }
+
+    weekly_agg = {}
+    monthly_agg = {}
+
+    for log in all_logs:
+        curr_stock_m = start_m - cum_mort_m - cum_cull_m
+        if curr_stock_m <= 0: curr_stock_m = 1
+        curr_stock_f = start_f - cum_mort_f - cum_cull_f
+        if curr_stock_f <= 0: curr_stock_f = 1
+
+        # Calculate Daily Metrics
+        daily_mort_f_pct = ((log.mortality_female + log.culls_female) / curr_stock_f) * 100
+        daily_mort_m_pct = ((log.mortality_male + log.culls_male) / curr_stock_m) * 100
+
+        egg_prod_pct = (log.eggs_collected / curr_stock_f) * 100
+
+        total_cull_eggs = log.cull_eggs_jumbo + log.cull_eggs_small + log.cull_eggs_abnormal + log.cull_eggs_crack
+        hatch_eggs = log.eggs_collected - total_cull_eggs
+        hatch_pct = (hatch_eggs / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+
+        water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
+
+        # Determine if in range
+        in_range = True
+        if start_date_str and log.date < datetime.strptime(start_date_str, '%Y-%m-%d').date(): in_range = False
+        if end_date_str and log.date > datetime.strptime(end_date_str, '%Y-%m-%d').date(): in_range = False
+
+        if mode == 'daily' and in_range:
+            data['dates'].append(log.date.isoformat())
+            data['metrics']['mortality_f_pct'].append(round(daily_mort_f_pct, 2))
+            data['metrics']['mortality_m_pct'].append(round(daily_mort_m_pct, 2))
+            data['metrics']['egg_prod_pct'].append(round(egg_prod_pct, 2))
+            data['metrics']['hatch_egg_pct'].append(round(hatch_pct, 2))
+            data['metrics']['bw_f'].append(log.body_weight_female)
+            data['metrics']['bw_m'].append(log.body_weight_male)
+            data['metrics']['uni_f'].append(log.uniformity_female)
+            data['metrics']['uni_m'].append(log.uniformity_male)
+            data['metrics']['feed_f'].append(log.feed_female_gp_bird)
+            data['metrics']['feed_m'].append(log.feed_male_gp_bird)
+            data['metrics']['water_per_bird'].append(round(water_per_bird_ml, 1))
+
+            if log.photo_path or log.clinical_notes:
+                data['events'].append({
+                    'date': log.date.isoformat(),
+                    'note': log.clinical_notes,
+                    'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+                })
+
+        # Update Cumulatives for next iteration
+        cum_mort_m += log.mortality_male
+        cum_mort_f += log.mortality_female
+        cum_cull_m += log.culls_male
+        cum_cull_f += log.culls_female
+
+        # Aggregate Weekly (Collect regardless of filter to ensure accurate sums within week)
+        days_diff = (log.date - flock.intake_date).days
+        week_num = (days_diff // 7) + 1
+
+        if week_num not in weekly_agg:
+            weekly_agg[week_num] = {
+                'count': 0,
+                'mort_f_sum': 0, 'mort_m_sum': 0,
+                'cull_f_sum': 0, 'cull_m_sum': 0,
+                'eggs_sum': 0, 'hatch_eggs_sum': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0,
+                'bw_m_sum': 0, 'bw_m_count': 0,
+                'uni_f_sum': 0, 'uni_f_count': 0,
+                'uni_m_sum': 0, 'uni_m_count': 0,
+                'feed_f_sum': 0, 'feed_m_sum': 0,
+                'water_vol_sum': 0,
+                'stock_f_start': curr_stock_f, # Approximation for start of week logic if needed
+                'stock_m_start': curr_stock_m,
+                'date_start': log.date,
+                'date_end': log.date
+            }
+
+        w = weekly_agg[week_num]
+        w['count'] += 1
+        w['date_end'] = log.date
+        w['mort_f_sum'] += log.mortality_female
+        w['mort_m_sum'] += log.mortality_male
+        w['cull_f_sum'] += log.culls_female
+        w['cull_m_sum'] += log.culls_male
+        w['eggs_sum'] += log.eggs_collected
+        w['hatch_eggs_sum'] += hatch_eggs
+        w['water_vol_sum'] += log.water_intake_calculated # Liters
+
+        if log.body_weight_female > 0:
+            w['bw_f_sum'] += log.body_weight_female
+            w['bw_f_count'] += 1
+        if log.body_weight_male > 0:
+            w['bw_m_sum'] += log.body_weight_male
+            w['bw_m_count'] += 1
+
+        if log.uniformity_female > 0:
+            w['uni_f_sum'] += log.uniformity_female
+            w['uni_f_count'] += 1
+        if log.uniformity_male > 0:
+            w['uni_m_sum'] += log.uniformity_male
+            w['uni_m_count'] += 1
+
+        w['feed_f_sum'] += log.feed_female_gp_bird
+        w['feed_m_sum'] += log.feed_male_gp_bird
+
+        # Aggregate Monthly
+        month_key = log.date.strftime('%Y-%m')
+        if month_key not in monthly_agg:
+            monthly_agg[month_key] = {
+                'count': 0,
+                'mort_f_sum': 0, 'mort_m_sum': 0,
+                'cull_f_sum': 0, 'cull_m_sum': 0,
+                'eggs_sum': 0, 'hatch_eggs_sum': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0,
+                'bw_m_sum': 0, 'bw_m_count': 0,
+                'uni_f_sum': 0, 'uni_f_count': 0,
+                'uni_m_sum': 0, 'uni_m_count': 0,
+                'feed_f_sum': 0, 'feed_m_sum': 0,
+                'water_vol_sum': 0,
+                'stock_f_start': curr_stock_f,
+                'stock_m_start': curr_stock_m,
+                'date_start': log.date,
+                'date_end': log.date
+            }
+
+        m = monthly_agg[month_key]
+        m['count'] += 1
+        m['date_end'] = log.date # update to max date
+        m['mort_f_sum'] += log.mortality_female
+        m['mort_m_sum'] += log.mortality_male
+        m['cull_f_sum'] += log.culls_female
+        m['cull_m_sum'] += log.culls_male
+        m['eggs_sum'] += log.eggs_collected
+        m['hatch_eggs_sum'] += hatch_eggs
+        m['water_vol_sum'] += log.water_intake_calculated # Liters
+
+        if log.body_weight_female > 0:
+            m['bw_f_sum'] += log.body_weight_female
+            m['bw_f_count'] += 1
+        if log.body_weight_male > 0:
+            m['bw_m_sum'] += log.body_weight_male
+            m['bw_m_count'] += 1
+
+        if log.uniformity_female > 0:
+            m['uni_f_sum'] += log.uniformity_female
+            m['uni_f_count'] += 1
+        if log.uniformity_male > 0:
+            m['uni_m_sum'] += log.uniformity_male
+            m['uni_m_count'] += 1
+
+        m['feed_f_sum'] += log.feed_female_gp_bird
+        m['feed_m_sum'] += log.feed_male_gp_bird
+
+    # Process Aggregates based on Mode
+    agg_data = None
+    if mode == 'weekly':
+        agg_data = weekly_agg
+        label_prefix = "Week "
+    elif mode == 'monthly':
+        agg_data = monthly_agg
+        label_prefix = ""
+
+    if agg_data:
+        sorted_keys = sorted(agg_data.keys())
+        for k in sorted_keys:
+            a = agg_data[k]
+
+            # Filter check
+            if start_date_str and a['date_end'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
+            if end_date_str and a['date_start'] > datetime.strptime(end_date_str, '%Y-%m-%d').date(): continue
+
+            if mode == 'weekly':
+                data['weeks'].append(k)
+
+            data['dates'].append(f"{label_prefix}{k}")
+            data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
+
+            # Calculate Averages/Rates
+            mort_f_pct = ((a['mort_f_sum'] + a['cull_f_sum']) / a['stock_f_start'] * 100) if a['stock_f_start'] > 0 else 0
+            mort_m_pct = ((a['mort_m_sum'] + a['cull_m_sum']) / a['stock_m_start'] * 100) if a['stock_m_start'] > 0 else 0
+
+            avg_stock_f = a['stock_f_start'] - ((a['mort_f_sum'] + a['cull_f_sum']) / 2)
+            egg_prod_pct = (a['eggs_sum'] / (avg_stock_f * a['count'])) * 100 if (avg_stock_f * a['count']) > 0 else 0
+
+            hatch_pct = (a['hatch_eggs_sum'] / a['eggs_sum'] * 100) if a['eggs_sum'] > 0 else 0
+
+            avg_bw_f = a['bw_f_sum'] / a['bw_f_count'] if a['bw_f_count'] > 0 else 0
+            avg_bw_m = a['bw_m_sum'] / a['bw_m_count'] if a['bw_m_count'] > 0 else 0
+            avg_uni_f = a['uni_f_sum'] / a['uni_f_count'] if a['uni_f_count'] > 0 else 0
+            avg_uni_m = a['uni_m_sum'] / a['uni_m_count'] if a['uni_m_count'] > 0 else 0
+
+            avg_feed_f = a['feed_f_sum'] / a['count'] if a['count'] > 0 else 0
+            avg_feed_m = a['feed_m_sum'] / a['count'] if a['count'] > 0 else 0
+
+            avg_stock_total = avg_stock_f + (a['stock_m_start'] - ((a['mort_m_sum'] + a['cull_m_sum'])/2))
+            water_ml_bird = (a['water_vol_sum'] * 1000) / (avg_stock_total * a['count']) if (avg_stock_total * a['count']) > 0 else 0
+
+            data['metrics']['mortality_f_pct'].append(round(mort_f_pct, 2))
+            data['metrics']['mortality_m_pct'].append(round(mort_m_pct, 2))
+            data['metrics']['egg_prod_pct'].append(round(egg_prod_pct, 2))
+            data['metrics']['hatch_egg_pct'].append(round(hatch_pct, 2))
+            data['metrics']['bw_f'].append(round(avg_bw_f, 2))
+            data['metrics']['bw_m'].append(round(avg_bw_m, 2))
+            data['metrics']['uni_f'].append(round(avg_uni_f, 2))
+            data['metrics']['uni_m'].append(round(avg_uni_m, 2))
+            data['metrics']['feed_f'].append(round(avg_feed_f, 2))
+            data['metrics']['feed_m'].append(round(avg_feed_m, 2))
+            data['metrics']['water_per_bird'].append(round(water_ml_bird, 1))
+
+    return data
+
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
 def toggle_phase(id):
     flock = Flock.query.get_or_404(id)
@@ -275,6 +526,11 @@ def view_flock(id):
         chart_data['bw_female'].append(log.body_weight_female)
 
     return render_template('flock_detail.html', flock=flock, logs=list(reversed(logs)), weekly_data=weekly_data, chart_data=chart_data)
+
+@app.route('/flock/<int:id>/charts')
+def flock_charts(id):
+    flock = Flock.query.get_or_404(id)
+    return render_template('flock_charts.html', flock=flock)
 
 @app.route('/daily_log', methods=['GET', 'POST'])
 def daily_log():
