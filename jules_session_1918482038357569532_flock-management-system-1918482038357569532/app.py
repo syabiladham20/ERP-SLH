@@ -42,6 +42,7 @@ class Flock(db.Model):
     
     status = db.Column(db.String(20), default='Active', nullable=False) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
+    production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
     end_date = db.Column(db.Date, nullable=True)
     
     logs = db.relationship('DailyLog', backref='flock', lazy=True)
@@ -52,12 +53,19 @@ class DailyLog(db.Model):
     date = db.Column(db.Date, nullable=False, default=date.today)
     
     # Metrics
-    mortality_male = db.Column(db.Integer, default=0)
+    mortality_male = db.Column(db.Integer, default=0) # Production Mortality
     mortality_female = db.Column(db.Integer, default=0)
     
-    culls_male = db.Column(db.Integer, default=0)
+    mortality_male_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
+    culls_male_hosp = db.Column(db.Integer, default=0) # Hospital Culls
+
+    culls_male = db.Column(db.Integer, default=0) # Production Culls
     culls_female = db.Column(db.Integer, default=0)
     
+    # Transfers
+    males_moved_to_prod = db.Column(db.Integer, default=0)
+    males_moved_to_hosp = db.Column(db.Integer, default=0)
+
     feed_program = db.Column(db.String(50)) # 'Full Feed', 'Skip-a-day'
     # Feed (Grams per Bird)
     feed_male_gp_bird = db.Column(db.Float, default=0.0)
@@ -105,6 +113,15 @@ class DailyLog(db.Model):
         days = (delta - 1) % 7 + 1
         return f"{weeks}.{days}"
 
+class Standard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    week = db.Column(db.Integer, unique=True, nullable=False)
+    std_mortality_male = db.Column(db.Float, default=0.0)
+    std_mortality_female = db.Column(db.Float, default=0.0)
+    std_bw_male = db.Column(db.Float, default=0.0)
+    std_bw_female = db.Column(db.Float, default=0.0)
+    std_egg_prod = db.Column(db.Float, default=0.0)
+
 @app.route('/')
 def index():
     active_flocks = Flock.query.filter_by(status='Active').all()
@@ -117,9 +134,6 @@ def index():
         f.has_log_today = True if log_today else False
 
         # Calculate Cumulative Mortality (Rearing vs Production)
-        # Rearing: Start -> First Egg (Exclusive) or End of Rearing Phase
-        # Production: First Egg (Inclusive) -> Now
-
         logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
 
         rearing_mort_m = 0
@@ -130,35 +144,77 @@ def index():
         prod_start_stock_m = f.intake_male
         prod_start_stock_f = f.intake_female
 
-        # Find start of production (first egg)
-        is_prod = False
+        # Determine Production Start
+        # Priority: Explicit Date -> First Egg -> Manual Phase Switch (Not tracked historically easily)
+        prod_start_date = f.production_start_date
 
-        # We need to track stock as we go to get correct denominator if we want % at start of phase
-        curr_m = f.intake_male
+        # Stock Tracking
+        curr_m_prod = f.intake_male
+        curr_m_hosp = 0
         curr_f = f.intake_female
 
-        for l in logs:
-            # Check for switch to production
-            if not is_prod and l.eggs_collected > 0:
-                is_prod = True
-                prod_start_stock_m = curr_m
-                prod_start_stock_f = curr_f
+        # Flag to indicate if we have reached production phase in the loop
+        in_production = False
 
-            if is_prod:
+        for l in logs:
+            # Check Phase Transition
+            if not in_production:
+                if prod_start_date and l.date >= prod_start_date:
+                    in_production = True
+                    prod_start_stock_m = curr_m_prod # Snapshot at start of prod
+                    prod_start_stock_f = curr_f
+                elif not prod_start_date and l.eggs_collected > 0:
+                     # Fallback: First egg triggers production stats if no date set
+                    in_production = True
+                    prod_start_stock_m = curr_m_prod
+                    prod_start_stock_f = curr_f
+
+            # Cumulative Mortality/Culls calculation
+            if in_production:
                 prod_mort_m += l.mortality_male
                 prod_mort_f += l.mortality_female
             else:
                 rearing_mort_m += l.mortality_male
                 rearing_mort_f += l.mortality_female
 
-            curr_m -= (l.mortality_male + l.culls_male)
+            # Update Stocks
+            # Prod Stock = Previous Prod - Prod Mort - Prod Culls - Moved to Hosp + Moved to Prod
+            # Hosp Stock = Previous Hosp - Hosp Mort - Hosp Culls + Moved to Hosp - Moved to Prod
+
+            mort_m_prod = l.mortality_male
+            mort_m_hosp = l.mortality_male_hosp or 0
+
+            cull_m_prod = l.culls_male
+            cull_m_hosp = l.culls_male_hosp or 0
+
+            moved_to_hosp = l.males_moved_to_hosp or 0
+            moved_to_prod = l.males_moved_to_prod or 0
+
+            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
+            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
+
+            # Ensure no negative stock (safety)
+            if curr_m_prod < 0: curr_m_prod = 0
+            if curr_m_hosp < 0: curr_m_hosp = 0
+
             curr_f -= (l.mortality_female + l.culls_female)
+            if curr_f < 0: curr_f = 0
 
         f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
         f.rearing_mort_f_pct = (rearing_mort_f / f.intake_female * 100) if f.intake_female else 0
 
         f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
         f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
+
+        # Male Ratio (Current)
+        # Ratio = Males in Prod / Females * 100
+        f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
+        f.males_prod_count = curr_m_prod
+        f.males_hosp_count = curr_m_hosp
+
+        # Current Week
+        days_age = (today - f.intake_date).days
+        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
 
     return render_template('index.html', active_flocks=active_flocks)
 
@@ -182,6 +238,12 @@ def manage_flocks():
     if request.method == 'POST':
         house_name = request.form.get('house_name').strip()
         intake_date_str = request.form.get('intake_date')
+
+        prod_start_date_str = request.form.get('production_start_date')
+        prod_start_date = None
+        if prod_start_date_str:
+            prod_start_date = datetime.strptime(prod_start_date_str, '%Y-%m-%d').date()
+
         intake_male = int(request.form.get('intake_male') or 0)
         intake_female = int(request.form.get('intake_female') or 0)
         doa_male = int(request.form.get('doa_male') or 0)
@@ -218,7 +280,8 @@ def manage_flocks():
             intake_male=intake_male,
             intake_female=intake_female,
             doa_male=doa_male,
-            doa_female=doa_female
+            doa_female=doa_female,
+            production_start_date=prod_start_date
         )
         
         db.session.add(new_flock)
@@ -813,8 +876,16 @@ def daily_log():
             date=log_date,
             mortality_male=int(request.form.get('mortality_male') or 0),
             mortality_female=int(request.form.get('mortality_female') or 0),
+
+            mortality_male_hosp=int(request.form.get('mortality_male_hosp') or 0),
+            culls_male_hosp=int(request.form.get('culls_male_hosp') or 0),
+
             culls_male=int(request.form.get('culls_male') or 0),
             culls_female=int(request.form.get('culls_female') or 0),
+
+            males_moved_to_prod=int(request.form.get('males_moved_to_prod') or 0),
+            males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
+
             feed_program=request.form.get('feed_program'),
             
             feed_male_gp_bird=float(request.form.get('feed_male_gp_bird') or 0),
@@ -865,6 +936,16 @@ def edit_daily_log(id):
         # Update fields
         log.mortality_male = int(request.form.get('mortality_male') or 0)
         log.mortality_female = int(request.form.get('mortality_female') or 0)
+
+        log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
+        log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
+
+        log.culls_male = int(request.form.get('culls_male') or 0)
+        log.culls_female = int(request.form.get('culls_female') or 0)
+
+        log.males_moved_to_prod = int(request.form.get('males_moved_to_prod') or 0)
+        log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
+
         log.feed_program = request.form.get('feed_program')
         log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
         log.feed_female_gp_bird = float(request.form.get('feed_female_gp_bird') or 0)
@@ -1014,17 +1095,13 @@ def process_import(file):
             db.session.commit()
             
         # Read Data - STARTING ROW 11 (0-index 10)
-        # We read from header=8 (Row 9), so Row 11 is at index 1 of the df.
-        # But to be cleaner, we can just read ignoring the first 10 rows entirely for the data part,
-        # but we need the header to be correct?
-        # Actually, since we are hardcoding columns by INDEX, we don't care about the header name.
-        # So we can read header=None and skiprows=10.
-        # Row 1 (0) = Row 1 in Excel.
-        # Row 11 in Excel = Index 10 in DataFrame if header=None.
-        # So skiprows=10 means we start reading at Row 11.
+        # User specified: Data starts in Row 11 until Row 500.
+        # Header in Row 9.
+        # If we read header=8 (Row 9), then Row 11 is index 1.
+        # But we use header=None and index logic.
+        # Row 11 is Index 10.
 
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
-        # nrows=490 (From 11 to 500 = 490 rows approx). 500-11+1 = 490.
         
         for index, row in df_data.iterrows():
             # Date is Column 2 (Index 1)

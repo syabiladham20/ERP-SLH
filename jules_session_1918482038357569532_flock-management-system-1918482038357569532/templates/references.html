@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reference Library</h2>
+    <p>Upload documents (PDF, Text) to be used by the Smart Assistant for anomaly detection.</p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label">Document Title</label>
+                        <input type="text" name="title" class="form-control" required placeholder="e.g. Aviagen Management Guide">
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">File</label>
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Upload</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h3>Library</h3>
+    <div class="list-group">
+        {% for ref in refs %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1">{{ ref.title }}</h5>
+                <small class="text-muted">{{ ref.filename }}</small>
+            </div>
+            <a href="{{ url_for('uploaded_file', filename=ref.filename) }}" target="_blank" class="btn btn-sm btn-outline-info">View</a>
+        </div>
+        {% else %}
+        <div class="list-group-item">No references uploaded yet.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
