@@ -121,6 +121,26 @@ class Standard(db.Model):
     std_bw_male = db.Column(db.Float, default=0.0)
     std_bw_female = db.Column(db.Float, default=0.0)
     std_egg_prod = db.Column(db.Float, default=0.0)
+    std_feed_male = db.Column(db.Float, default=0.0)
+    std_feed_female = db.Column(db.Float, default=0.0)
+
+class WeeklyData(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    week = db.Column(db.Integer, nullable=False)
+
+    mortality_male = db.Column(db.Integer, default=0)
+    mortality_female = db.Column(db.Integer, default=0)
+    culls_male = db.Column(db.Integer, default=0)
+    culls_female = db.Column(db.Integer, default=0)
+
+    eggs_collected = db.Column(db.Integer, default=0)
+
+    bw_male = db.Column(db.Float, default=0.0)
+    bw_female = db.Column(db.Float, default=0.0)
+
+    feed_male = db.Column(db.Float, default=0.0) # Total Kg
+    feed_female = db.Column(db.Float, default=0.0) # Total Kg
 
 @app.route('/')
 def index():
@@ -849,8 +869,8 @@ def daily_log():
         if 'photo' in request.files:
             file = request.files['photo']
             if file and file.filename != '':
-                safe_filename = secure_filename(file.filename)
-                filename = f"{flock.batch_id}_{date_str}_{safe_filename}"
+                raw_name = f"{flock.batch_id}_{date_str}_{file.filename}"
+                filename = secure_filename(raw_name)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 photo_path = filepath
@@ -978,8 +998,8 @@ def edit_daily_log(id):
             file = request.files['photo']
             if file and file.filename != '':
                 date_str = log.date.strftime('%y%m%d')
-                safe_filename = secure_filename(file.filename)
-                filename = f"{log.flock.batch_id}_{date_str}_{safe_filename}"
+                raw_name = f"{log.flock.batch_id}_{date_str}_{file.filename}"
+                filename = secure_filename(raw_name)
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 log.photo_path = filepath
@@ -1178,7 +1198,87 @@ def process_import(file):
             log.feed_cleanup_end = get_time(54)
             
             log.clinical_notes = get_str(56)
+
+            # --- Extract Daily Standards ---
+            # Standard Male Feed (22), Female Feed (23)
+            std_feed_m = get_float(22)
+            std_feed_f = get_float(23)
+
+            # Update Standard for this week (using Feed g/bird)
+            delta = (log_date - flock.intake_date).days
+            week_num = (delta // 7) + 1
+
+            if week_num > 0 and (std_feed_m > 0 or std_feed_f > 0):
+                std = Standard.query.filter_by(week=week_num).first()
+                if not std:
+                    std = Standard(week=week_num)
+                    db.session.add(std)
+                if std_feed_m > 0: std.std_feed_male = std_feed_m
+                if std_feed_f > 0: std.std_feed_female = std_feed_f
+
+        db.session.commit()
         
+        # --- WEEKLY DATA IMPORT (Row 508-577) ---
+        # Row 508 is index 507
+        df_weekly = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
+
+        for index, row in df_weekly.iterrows():
+            def get_w_float(idx):
+                if idx >= len(row): return 0.0
+                val = row.iloc[idx]
+                return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
+
+            def get_w_int(idx):
+                if idx >= len(row): return 0
+                val = row.iloc[idx]
+                return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
+
+            week_val = row.iloc[0]
+            if pd.isna(week_val): continue
+            try:
+                week_num = int(week_val)
+            except:
+                continue
+
+            # Store Weekly Data
+            wd = WeeklyData.query.filter_by(flock_id=flock.id, week=week_num).first()
+            if not wd:
+                wd = WeeklyData(flock_id=flock.id, week=week_num)
+                db.session.add(wd)
+
+            wd.mortality_male = get_w_int(2)
+            wd.culls_male = get_w_int(3)
+            wd.mortality_female = get_w_int(4)
+            wd.culls_female = get_w_int(5)
+
+            wd.feed_male = get_w_float(15) # kg
+            wd.feed_female = get_w_float(16) # kg
+
+            wd.eggs_collected = get_w_int(18)
+
+            wd.bw_male = get_w_float(28)
+            wd.bw_female = get_w_float(30)
+
+            # Extract Weekly Standards
+            # Std Mort % (14), Std BW Male (32), Std BW Female (33)
+            std_mort_pct = get_w_float(14)
+            std_bw_m = get_w_float(32)
+            std_bw_f = get_w_float(33)
+
+            # Update Standard Table
+            std = Standard.query.filter_by(week=week_num).first()
+            if not std:
+                std = Standard(week=week_num)
+                db.session.add(std)
+
+            if std_mort_pct > 0:
+                # Excel 0.003 = 0.3%. Store as 0.3
+                std.std_mortality_female = std_mort_pct * 100
+                std.std_mortality_male = std_mort_pct * 100
+
+            if std_bw_m > 0: std.std_bw_male = std_bw_m
+            if std_bw_f > 0: std.std_bw_female = std_bw_f
+
         db.session.commit()
         
         # Recalculate Water
@@ -1192,3 +1292,38 @@ def process_import(file):
                     log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
                     db.session.add(log)
         db.session.commit()
+
+        # Verify Import
+        verify_import_data(flock)
+
+def verify_import_data(flock):
+    # Compare WeeklyData (Imported) with DailyLog Aggregates
+    weekly_records = WeeklyData.query.filter_by(flock_id=flock.id).order_by(WeeklyData.week).all()
+    logs = DailyLog.query.filter_by(flock_id=flock.id).all()
+
+    warnings = []
+
+    # Aggregate Logs by Week
+    agg = {}
+    for log in logs:
+        delta = (log.date - flock.intake_date).days
+        week = (delta // 7) + 1
+        if week not in agg:
+            agg[week] = {'mort_f': 0, 'eggs': 0}
+
+        agg[week]['mort_f'] += log.mortality_female
+        agg[week]['eggs'] += log.eggs_collected
+
+    for wd in weekly_records:
+        if wd.week in agg:
+            calc = agg[wd.week]
+            # Check Mortality Female
+            if abs(calc['mort_f'] - wd.mortality_female) > 1: # Tolerance of 1
+                warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
+
+            # Check Eggs
+            if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
+                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
+
+    if warnings:
+        flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')
