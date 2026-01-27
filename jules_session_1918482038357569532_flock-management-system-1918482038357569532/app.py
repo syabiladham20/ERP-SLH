@@ -89,6 +89,15 @@ class DailyLog(db.Model):
     clinical_notes = db.Column(db.Text)
     photo_path = db.Column(db.String(200)) # Path to file
 
+    @property
+    def age_week_day(self):
+        delta = (self.date - self.flock.intake_date).days
+        if delta < 1:
+            return "0.0"
+        weeks = (delta - 1) // 7
+        days = (delta - 1) % 7 + 1
+        return f"{weeks}.{days}"
+
 @app.route('/')
 def index():
     active_flocks = Flock.query.filter_by(status='Active').all()
@@ -167,10 +176,6 @@ def toggle_phase(id):
         flock.phase = 'Production'
         flash(f'Flock {flock.batch_id} switched to Production phase.', 'success')
     else:
-        # Optionally allow switching back? User said "toggles it once when to start manually"
-        # I'll allow toggle back just in case of mistake, or just strictly forward.
-        # "toggles it once" suggests one-way. But "toggle" suggests switch.
-        # I'll assume they might want to correct it.
         flock.phase = 'Rearing'
         flash(f'Flock {flock.batch_id} switched back to Rearing phase.', 'warning')
     db.session.commit()
@@ -191,6 +196,7 @@ def view_flock(id):
         # Determine Age in days (assuming intake_date is day 0 or 1?)
         # Excel template uses Age. Usually Age = (Date - IntakeDate).days
         days_diff = (log.date - flock.intake_date).days
+        # Week number for summary (1-based index of weeks)
         week_num = (days_diff // 7) + 1
         
         if current_week != week_num:
@@ -215,15 +221,6 @@ def view_flock(id):
         week_summary['culls_male'] += log.culls_male
         week_summary['culls_female'] += log.culls_female
         week_summary['eggs'] += log.eggs_collected
-        
-        # Feed is entered as G/B. To get Total Kg, we need Stock.
-        # Stock = Start - CumMortality - CumCulls.
-        # For simplicity, I'll just SUM the G/B values? No, that's meaningless.
-        # Excel calculates Total Feed = G/B * Stock / 1000.
-        # Calculating Stock daily here is expensive but correct.
-        # For now, let's just show AVG G/B for the week? Or just omit Feed Summary if confusing.
-        # Reviewer asked for "Weekly Summaries". Sum of Mortality is easy.
-        # Let's show Sum Mortality, Sum Eggs, Avg BW.
         
         if log.body_weight_male > 0:
             week_summary['bw_male_sum'] += log.body_weight_male
@@ -250,33 +247,14 @@ def view_flock(id):
         'bw_female': []
     }
     
-    # Calculate cumulative mortality
-    cum_mort_m = 0
-    cum_mort_f = 0
-    start_m = flock.intake_male or 1
-    start_f = flock.intake_female or 1
-    
-    for log in logs:
-        cum_mort_m += log.mortality_male
-        cum_mort_f += log.mortality_female
-        
-        chart_data['mortality_cum_male'].append(round((cum_mort_m / start_m) * 100, 2))
-        chart_data['mortality_cum_female'].append(round((cum_mort_f / start_f) * 100, 2))
-        
-        # Egg Prod % = Eggs / Current Female Stock * 100
-        # Current Female Stock = Start - Cum Mort - Cum Cull
-        # We need cumulative culls too
-        # To be accurate, we need running totals.
-        pass
-
-    # Re-loop for accurate running totals including culls
+    # Calculate cumulative mortality and stock
     cum_mort_m = 0
     cum_mort_f = 0
     cum_cull_m = 0
     cum_cull_f = 0
     
-    chart_data['mortality_cum_male'] = []
-    chart_data['mortality_cum_female'] = []
+    start_m = flock.intake_male or 1
+    start_f = flock.intake_female or 1
     
     for log in logs:
         cum_mort_m += log.mortality_male
@@ -338,11 +316,6 @@ def daily_log():
             r1_today_real = water_r1 / 100.0
             r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
             water_intake_calc = (r1_today_real - r1_yesterday_real) * 1000.0
-        else:
-            # Fallback if no yesterday log? Maybe just use 12h or 0?
-            # Or assume reading 1 starts from 0 if first day?
-            # Let's leave it 0 if no history.
-            pass
 
         new_log = DailyLog(
             flock_id=flock.id,
@@ -437,13 +410,7 @@ def edit_daily_log(id):
                 file.save(filepath)
                 log.photo_path = filepath
         
-        # Recalculate Water?
-        # Ideally yes, but logic is tied to "Yesterday". 
-        # If we edit "Today", we check "Yesterday". 
-        # If we edit "Yesterday", "Today" calculation might become wrong. 
-        # For now, let's just recalc this log's intake based on ITS yesterday.
-        # Note: If we change R1, we should update intake.
-        
+        # Recalculate Water
         from datetime import timedelta
         yesterday = log.date - timedelta(days=1)
         yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
@@ -490,21 +457,23 @@ def process_import(file):
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
     
-    ignore_sheets = ['TEMPLATE', 'DASHBOARD', 'CHART']
+    ignore_sheets = ['DASHBOARD', 'CHART']
     
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
             continue
             
-        # Read Metadata
+        # Read Metadata (unchanged)
         df_meta = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=10)
         
         def get_val(r, c):
-            val = df_meta.iloc[r, c]
-            return val if pd.notna(val) else None
+            try:
+                val = df_meta.iloc[r, c]
+                return val if pd.notna(val) else None
+            except IndexError:
+                return None
 
         house_name_cell = str(get_val(1, 1)).strip() # B2
-        # Use cell value if present, else Sheet Name
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
         
         intake_female = int(get_val(2, 1) or 0) # B3
@@ -551,12 +520,22 @@ def process_import(file):
             db.session.add(flock)
             db.session.commit()
             
-        # Read Data
-        df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
+        # Read Data - STARTING ROW 11 (0-index 10)
+        # We read from header=8 (Row 9), so Row 11 is at index 1 of the df.
+        # But to be cleaner, we can just read ignoring the first 10 rows entirely for the data part,
+        # but we need the header to be correct?
+        # Actually, since we are hardcoding columns by INDEX, we don't care about the header name.
+        # So we can read header=None and skiprows=10.
+        # Row 1 (0) = Row 1 in Excel.
+        # Row 11 in Excel = Index 10 in DataFrame if header=None.
+        # So skiprows=10 means we start reading at Row 11.
+
+        df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
+        # nrows=490 (From 11 to 500 = 490 rows approx). 500-11+1 = 490.
         
         for index, row in df_data.iterrows():
-            if len(row) < 2: continue
-            date_val = row.iloc[1] # Col B
+            # Date is Column 2 (Index 1)
+            date_val = row.iloc[1]
             if pd.isna(date_val):
                 continue
                 
@@ -565,8 +544,10 @@ def process_import(file):
                     log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
                 except:
                     continue
-            else:
+            elif hasattr(date_val, 'date'):
                 log_date = date_val.date()
+            else:
+                continue
                 
             log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
             if not log:
@@ -583,6 +564,11 @@ def process_import(file):
                 val = row.iloc[idx]
                 return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
                 
+            def get_str(idx):
+                if idx >= len(row): return None
+                val = row.iloc[idx]
+                return str(val) if pd.notna(val) else None
+
             def get_time(idx):
                 if idx >= len(row): return None
                 val = row.iloc[idx]
@@ -590,11 +576,13 @@ def process_import(file):
                 if isinstance(val, str): return val
                 return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
 
+            # Hardcoded Mapping (0-based)
             log.culls_male = get_int(2)
             log.culls_female = get_int(3)
             log.mortality_male = get_int(4)
             log.mortality_female = get_int(5)
             
+            log.feed_program = get_str(15)
             log.feed_male_gp_bird = get_float(16)
             log.feed_female_gp_bird = get_float(17)
             
@@ -619,8 +607,7 @@ def process_import(file):
             log.feed_cleanup_start = get_time(53)
             log.feed_cleanup_end = get_time(54)
             
-            val_rem = row.iloc[56] if len(row) > 56 else None
-            log.clinical_notes = str(val_rem) if pd.notna(val_rem) else None
+            log.clinical_notes = get_str(56)
         
         db.session.commit()
         
@@ -635,4 +622,3 @@ def process_import(file):
                     log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
                     db.session.add(log)
         db.session.commit()
-
