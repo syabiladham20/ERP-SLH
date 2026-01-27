@@ -136,19 +136,20 @@
         let eventTraces = [];
         if (mode === 'daily' && data.events.length > 0) {
              const eventX = data.events.map(e => e.date);
-             // Place marker at top of yaxis2 (Depletion) or just fixed?
-             // Let's place it at y=0 on y2 axis but use a different symbol.
-             // Or better: scatter on yaxis (Egg Prod) at 100%?
-             const eventY = eventX.map(() => 95); // Near top of Egg Prod axis
+             const eventY = eventX.map(() => 95); // Near top
+
+             // Differentiate Flushing vs Normal
+             const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
+             const symbols = data.events.map(e => e.type === 'flushing' ? 'drop' : 'star');
 
              const traceEvt = {
                  x: eventX,
                  y: eventY,
                  mode: 'markers',
                  type: 'scatter',
-                 name: 'Note/Photo',
-                 marker: { symbol: 'star', size: 12, color: 'gold', line: {color: 'black', width: 1} },
-                 text: data.events.map(e => 'Click to view note/photo'),
+                 name: 'Events',
+                 marker: { symbol: symbols, size: 12, color: colors, line: {color: 'black', width: 1} },
+                 text: data.events.map(e => e.type === 'flushing' ? 'Flushing' : 'Note/Photo'),
                  hoverinfo: 'text'
              };
              eventTraces.push(traceEvt);
@@ -302,7 +303,7 @@
         const pointIndex = point.pointIndex; // Index in the data array
 
         // 1. Check Event Marker Click (Daily Mode)
-        if (mode === 'daily' && point.data.name === 'Note/Photo') {
+        if (mode === 'daily' && point.data.name === 'Events') {
             const dateClicked = point.x;
             const evt = currentData.events.find(e => e.date === dateClicked);
             if (evt) {

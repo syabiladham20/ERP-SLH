@@ -106,6 +106,14 @@
             <input type="number" class="form-control" name="water_reading_3" value="{{ log.water_reading_3 if log else 0 }}" onchange="calculateWater()">
           </div>
         </div>
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="flushing" id="flushing" {{ 'checked' if log and log.flushing else '' }}>
+                <label class="form-check-label" for="flushing">
+                    Flushing Active?
+                </label>
+            </div>
+        </div>
         <small class="text-muted">
           12h Consumption: <span id="water_12h">0</span> Liters
         </small>

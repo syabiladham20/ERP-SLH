@@ -94,6 +94,7 @@ class DailyLog(db.Model):
     
     clinical_notes = db.Column(db.Text)
     photo_path = db.Column(db.String(200)) # Path to file
+    flushing = db.Column(db.Boolean, default=False)
 
     @property
     def age_week_day(self):
@@ -107,7 +108,70 @@ class DailyLog(db.Model):
 @app.route('/')
 def index():
     active_flocks = Flock.query.filter_by(status='Active').all()
+
+    # Enrich with today's status and cumulative mortality split
+    today = date.today()
+    for f in active_flocks:
+        # Check if log exists for today
+        log_today = DailyLog.query.filter_by(flock_id=f.id, date=today).first()
+        f.has_log_today = True if log_today else False
+
+        # Calculate Cumulative Mortality (Rearing vs Production)
+        # Rearing: Start -> First Egg (Exclusive) or End of Rearing Phase
+        # Production: First Egg (Inclusive) -> Now
+
+        logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
+
+        rearing_mort_m = 0
+        rearing_mort_f = 0
+        prod_mort_m = 0
+        prod_mort_f = 0
+
+        prod_start_stock_m = f.intake_male
+        prod_start_stock_f = f.intake_female
+
+        # Find start of production (first egg)
+        is_prod = False
+
+        # We need to track stock as we go to get correct denominator if we want % at start of phase
+        curr_m = f.intake_male
+        curr_f = f.intake_female
+
+        for l in logs:
+            # Check for switch to production
+            if not is_prod and l.eggs_collected > 0:
+                is_prod = True
+                prod_start_stock_m = curr_m
+                prod_start_stock_f = curr_f
+
+            if is_prod:
+                prod_mort_m += l.mortality_male
+                prod_mort_f += l.mortality_female
+            else:
+                rearing_mort_m += l.mortality_male
+                rearing_mort_f += l.mortality_female
+
+            curr_m -= (l.mortality_male + l.culls_male)
+            curr_f -= (l.mortality_female + l.culls_female)
+
+        f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
+        f.rearing_mort_f_pct = (rearing_mort_f / f.intake_female * 100) if f.intake_female else 0
+
+        f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
+        f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
+
     return render_template('index.html', active_flocks=active_flocks)
+
+@app.route('/flock/<int:id>/delete', methods=['POST'])
+def delete_flock(id):
+    flock = Flock.query.get_or_404(id)
+    # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
+    # but here we didn't set cascade="all, delete". Manual delete safest.
+    DailyLog.query.filter_by(flock_id=id).delete()
+    db.session.delete(flock)
+    db.session.commit()
+    flash(f'Flock {flock.batch_id} deleted.', 'warning')
+    return redirect(url_for('index'))
 
 @app.route('/help')
 def help():
@@ -174,6 +238,30 @@ def close_flock(id):
     db.session.commit()
     flash(f'Flock {flock.batch_id} closed.', 'info')
     return redirect(url_for('index'))
+
+@app.route('/standards', methods=['GET', 'POST'])
+def manage_standards():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            s = Standard(
+                week=int(request.form.get('week')),
+                std_mortality_male=float(request.form.get('std_mortality_male') or 0),
+                std_mortality_female=float(request.form.get('std_mortality_female') or 0),
+                std_bw_male=float(request.form.get('std_bw_male') or 0),
+                std_bw_female=float(request.form.get('std_bw_female') or 0),
+                std_egg_prod=float(request.form.get('std_egg_prod') or 0)
+            )
+            db.session.add(s)
+            db.session.commit()
+            flash('Standard added.', 'success')
+
+        # Could handle delete/update here
+
+        return redirect(url_for('manage_standards'))
+
+    standards = Standard.query.order_by(Standard.week.asc()).all()
+    return render_template('standards.html', standards=standards)
 
 @app.route('/api/chart_data/<int:flock_id>')
 def get_chart_data(flock_id):
@@ -251,11 +339,16 @@ def get_chart_data(flock_id):
             data['metrics']['feed_m'].append(log.feed_male_gp_bird)
             data['metrics']['water_per_bird'].append(round(water_per_bird_ml, 1))
 
-            if log.photo_path or log.clinical_notes:
+            if log.photo_path or log.clinical_notes or log.flushing:
+                note = log.clinical_notes or ""
+                if log.flushing:
+                    note = f"[FLUSHING] {note}"
+
                 data['events'].append({
                     'date': log.date.isoformat(),
-                    'note': log.clinical_notes,
-                    'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+                    'note': note.strip(),
+                    'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None,
+                    'type': 'flushing' if log.flushing else 'note'
                 })
 
         # Update Cumulatives for next iteration
@@ -532,6 +625,148 @@ def flock_charts(id):
     flock = Flock.query.get_or_404(id)
     return render_template('flock_charts.html', flock=flock)
 
+@app.route('/flock/<int:id>/dashboard')
+def flock_dashboard(id):
+    flock = Flock.query.get_or_404(id)
+
+    date_str = request.args.get('date')
+    if date_str:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    else:
+        target_date = date.today()
+
+    # Get Logs
+    log_today = DailyLog.query.filter_by(flock_id=id, date=target_date).first()
+
+    from datetime import timedelta
+    log_prev = DailyLog.query.filter_by(flock_id=id, date=target_date - timedelta(days=1)).first()
+
+    # Calculate Age
+    age_days = (target_date - flock.intake_date).days
+    age_week = (age_days // 7) + 1
+
+    # Fetch Standard for this week
+    standard = Standard.query.filter_by(week=age_week).first()
+
+    # Pre-calc cumulatives for KPI
+    # We need cumulative up to today
+    all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
+
+    cum_mort_m = 0
+    cum_mort_f = 0
+    cum_cull_m = 0
+    cum_cull_f = 0
+
+    start_m = flock.intake_male
+    start_f = flock.intake_female
+
+    for l in all_logs:
+        cum_mort_m += l.mortality_male
+        cum_mort_f += l.mortality_female
+        cum_cull_m += l.culls_male
+        cum_cull_f += l.culls_female
+
+    curr_stock_m = start_m - cum_mort_m - cum_cull_m
+    curr_stock_f = start_f - cum_mort_f - cum_cull_f
+    if curr_stock_m <= 0: curr_stock_m = 1
+    if curr_stock_f <= 0: curr_stock_f = 1
+
+    # Prepare KPI Data Structure
+    kpis = []
+
+    def get_val(log, attr, default=0):
+        return getattr(log, attr) if log else default
+
+    def calc_pct(num, den):
+        return (num / den * 100) if den > 0 else 0
+
+    # 1. Female Mortality % (Daily)
+    mort_f_val = calc_pct(get_val(log_today, 'mortality_female'), curr_stock_f)
+    mort_f_prev = calc_pct(get_val(log_prev, 'mortality_female'), curr_stock_f + get_val(log_today, 'mortality_female')) # Approx prev stock
+
+    std_mort_f = standard.std_mortality_female if standard else None
+
+    kpis.append({
+        'label': 'Female Mortality %',
+        'value': mort_f_val,
+        'prev': mort_f_prev,
+        'unit': '%',
+        'std': std_mort_f,
+        'reverse_bad': True # Higher is bad
+    })
+
+    # 2. Female Cull %
+    cull_f_val = calc_pct(get_val(log_today, 'culls_female'), curr_stock_f)
+    cull_f_prev = calc_pct(get_val(log_prev, 'culls_female'), curr_stock_f)
+    kpis.append({
+        'label': 'Female Cull %',
+        'value': cull_f_val,
+        'prev': cull_f_prev,
+        'unit': '%',
+        'reverse_bad': True
+    })
+
+    # 3. Female Cum Mort %
+    cum_mort_f_pct = calc_pct(cum_mort_f, start_f)
+    # prev cum is cum - today's
+    cum_mort_f_prev = calc_pct(cum_mort_f - get_val(log_today, 'mortality_female'), start_f)
+    kpis.append({
+        'label': 'Female Cum. Mort %',
+        'value': cum_mort_f_pct,
+        'prev': cum_mort_f_prev,
+        'unit': '%',
+        'reverse_bad': True
+    })
+
+    # 4. Egg Prod %
+    eggs = get_val(log_today, 'eggs_collected')
+    egg_prod = calc_pct(eggs, curr_stock_f)
+    eggs_prev = get_val(log_prev, 'eggs_collected')
+    egg_prod_prev = calc_pct(eggs_prev, curr_stock_f) # approx stock
+
+    std_egg = standard.std_egg_prod if standard else None
+    kpis.append({
+        'label': 'Egg Production %',
+        'value': egg_prod,
+        'prev': egg_prod_prev,
+        'unit': '%',
+        'std': std_egg,
+        'reverse_bad': False # Lower is bad
+    })
+
+    # 5. Body Weights
+    bw_f = get_val(log_today, 'body_weight_female')
+    bw_f_prev = get_val(log_prev, 'body_weight_female')
+    std_bw_f = standard.std_bw_female if standard else None
+    kpis.append({
+        'label': 'Female BW',
+        'value': bw_f,
+        'prev': bw_f_prev,
+        'unit': 'g',
+        'std': std_bw_f,
+        'reverse_bad': False # Depends, but low is bad usually
+    })
+
+    # Calculate diff and status
+    for k in kpis:
+        k['diff'] = k['value'] - k['prev']
+        k['status'] = 'neutral'
+
+        if k['std'] is not None and k['value'] > 0:
+            # Anomaly Detection Logic
+            if k['reverse_bad']: # Higher than std is bad
+                if k['value'] > k['std'] * 1.1: # 10% tolerance?
+                    k['status'] = 'danger'
+                elif k['value'] > k['std']:
+                    k['status'] = 'warning'
+            else: # Lower than std is bad
+                if k['value'] < k['std'] * 0.9:
+                    k['status'] = 'danger'
+                elif k['value'] < k['std']:
+                    k['status'] = 'warning'
+
+    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days)
+
 @app.route('/daily_log', methods=['GET', 'POST'])
 def daily_log():
     if request.method == 'POST':
@@ -601,6 +836,7 @@ def daily_log():
             water_reading_2=int(request.form.get('water_reading_2') or 0),
             water_reading_3=water_r3,
             water_intake_calculated=water_intake_calc,
+            flushing=True if request.form.get('flushing') else False,
             
             light_on_time=request.form.get('light_on_time'),
             light_off_time=request.form.get('light_off_time'),
@@ -648,6 +884,7 @@ def edit_daily_log(id):
         log.water_reading_1 = int(request.form.get('water_reading_1') or 0)
         log.water_reading_2 = int(request.form.get('water_reading_2') or 0)
         log.water_reading_3 = int(request.form.get('water_reading_3') or 0)
+        log.flushing = True if request.form.get('flushing') else False
         
         log.light_on_time = request.form.get('light_on_time')
         log.light_off_time = request.form.get('light_off_time')
