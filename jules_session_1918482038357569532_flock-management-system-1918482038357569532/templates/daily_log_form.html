@@ -17,10 +17,13 @@
           {% if log %}
             <input type="text" class="form-control" value="{{ houses[0].name }}" disabled>
             <input type="hidden" name="house_id" value="{{ houses[0].id }}">
+            <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% else %}
-            <select class="form-select" id="house_id" name="house_id" required>
+            <select class="form-select" id="house_id" name="house_id" required onchange="updatePhase()">
               {% for house in houses %}
-                <option value="{{ house.id }}">{{ house.name }}</option>
+                {# Pass phase info in data attribute #}
+                {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
+                <option value="{{ house.id }}" data-phase="{{ flock.phase if flock else 'Rearing' }}">{{ house.name }}</option>
               {% endfor %}
             </select>
           {% endif %}
@@ -169,8 +172,15 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-secondary text-white">Body Weight & Uniformity</div>
+      <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+        <span>Body Weight & Uniformity</span>
+        <div class="form-check form-switch text-light">
+           <input class="form-check-input" type="checkbox" id="is_weighing_day" name="is_weighing_day" onchange="togglePartitions()" {{ 'checked' if log and log.is_weighing_day else '' }}>
+           <label class="form-check-label" for="is_weighing_day">Weighing Day</label>
+        </div>
+      </div>
       <div class="card-body">
+<<<<<<< HEAD
 
         {# Assuming we can detect phase. Need to pass 'phase' from backend context or check log.flock.phase #}
         {% set phase = log.flock.phase if log else (active_house_phase if active_house_phase else 'Rearing') %}
@@ -186,14 +196,63 @@
           <div class="col-6 mb-2">
             <label class="form-label">Female BW (Avg)</label>
             <input type="number" step="0.01" class="form-control" name="body_weight_female" value="{{ log.body_weight_female if log else 0 }}">
+=======
+
+        <!-- Standard BW -->
+        <div class="row mb-3" id="standard_bw_section">
+           <div class="col-6">
+             <label class="form-label text-muted small">Std Male BW</label>
+             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_male" value="{{ log.standard_bw_male if log else 0 }}">
+           </div>
+           <div class="col-6">
+             <label class="form-label text-muted small">Std Female BW</label>
+             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_female" value="{{ log.standard_bw_female if log else 0 }}">
+           </div>
+        </div>
+
+        <!-- Partitions Section (Hidden unless Weighing Day & Rearing) -->
+        <div id="partitions_section" style="display:none;">
+            <h6 class="text-primary">Male Partitions (2)</h6>
+            <div class="row mb-2">
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_male_p1" placeholder="M BW P1" value="{{ log.bw_male_p1 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_male_p1" placeholder="M Unif P1" value="{{ log.unif_male_p1 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_male_p2" placeholder="M BW P2" value="{{ log.bw_male_p2 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_male_p2" placeholder="M Unif P2" value="{{ log.unif_male_p2 if log else 0 }}" onchange="calcAvg()"></div>
+            </div>
+
+            <h6 class="text-danger">Female Partitions (4)</h6>
+            <div class="row mb-2">
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p1" placeholder="F BW P1" value="{{ log.bw_female_p1 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p1" placeholder="F Unif P1" value="{{ log.unif_female_p1 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p2" placeholder="F BW P2" value="{{ log.bw_female_p2 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p2" placeholder="F Unif P2" value="{{ log.unif_female_p2 if log else 0 }}" onchange="calcAvg()"></div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p3" placeholder="F BW P3" value="{{ log.bw_female_p3 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p3" placeholder="F Unif P3" value="{{ log.unif_female_p3 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p4" placeholder="F BW P4" value="{{ log.bw_female_p4 if log else 0 }}" onchange="calcAvg()"></div>
+                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p4" placeholder="F Unif P4" value="{{ log.unif_female_p4 if log else 0 }}" onchange="calcAvg()"></div>
+            </div>
+            <hr>
+        </div>
+
+        <div class="row" id="average_section">
+          <div class="col-6 mb-2">
+            <label class="form-label">Avg Male BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_male" id="body_weight_male" value="{{ log.body_weight_male if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
-            <label class="form-label">Male Unif %</label>
-            <input type="number" step="0.01" class="form-control" name="uniformity_male" value="{{ log.uniformity_male if log else 0 }}">
+            <label class="form-label">Avg Female BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_female" id="body_weight_female" value="{{ log.body_weight_female if log else 0 }}">
+>>>>>>> origin/main
           </div>
           <div class="col-6 mb-2">
-            <label class="form-label">Female Unif %</label>
-            <input type="number" step="0.01" class="form-control" name="uniformity_female" value="{{ log.uniformity_female if log else 0 }}">
+            <label class="form-label">Avg Male Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_male" id="uniformity_male" value="{{ log.uniformity_male if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Avg Female Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_female" id="uniformity_female" value="{{ log.uniformity_female if log else 0 }}">
           </div>
         </div>
 
@@ -279,6 +338,7 @@
         document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
     }
 
+<<<<<<< HEAD
     // Phase Toggle Logic
     const flockPhases = {{ flock_phases_json | default('{}') | safe }};
 
@@ -326,6 +386,145 @@
     if(document.getElementById('house_id')) {
         document.getElementById('house_id').addEventListener('change', updatePhaseVisibility);
     }
+=======
+    // Phase & Partition Logic
+    function updatePhase() {
+        let houseSelect = document.getElementById('house_id');
+        let phase = 'Rearing';
+        if (houseSelect) {
+            let option = houseSelect.options[houseSelect.selectedIndex];
+            phase = option.getAttribute('data-phase') || 'Rearing';
+        } else {
+            // Edit mode
+            phase = document.getElementById('phase_val').value;
+        }
+
+        let partitionsDiv = document.getElementById('partitions_section');
+        let avgDiv = document.getElementById('average_section');
+        let weighingCheck = document.getElementById('is_weighing_day');
+
+        // Logic:
+        // Production -> Always Show Average (Editable). Hide Partitions. Hide Weighing Checkbox?
+        // Rearing ->
+        //    Weighing Checkbox visible.
+        //    If Checked -> Show Partitions, Average is ReadOnly.
+        //    If Unchecked -> Hide Partitions, Hide Average (or Disabled 0).
+
+        // Actually user said: "During production phase, hide partition; only average input."
+        // And "hide bodyweight column if there is no weighing that day" (Rearing).
+
+        if (phase === 'Production') {
+            partitionsDiv.style.display = 'none';
+            avgDiv.style.display = 'flex'; // Show row
+            setAvgReadonly(false);
+            // Hide Checkbox container? Or just uncheck it?
+            // weighingCheck.closest('.form-switch').style.display = 'none';
+            // User didn't strictly say hide checkbox in production, but implied partitions irrelevant.
+        } else {
+            // Rearing
+            // weighingCheck.closest('.form-switch').style.display = 'block';
+            togglePartitions();
+        }
+    }
+
+    function togglePartitions() {
+        let isWeighing = document.getElementById('is_weighing_day').checked;
+        let partitionsDiv = document.getElementById('partitions_section');
+        let avgDiv = document.getElementById('average_section');
+
+        // Double check phase
+        let houseSelect = document.getElementById('house_id');
+        let phase = 'Rearing';
+        if (houseSelect) {
+             phase = houseSelect.options[houseSelect.selectedIndex].getAttribute('data-phase');
+        } else {
+             phase = document.getElementById('phase_val').value;
+        }
+
+        if (phase === 'Production') {
+            partitionsDiv.style.display = 'none';
+            avgDiv.style.display = 'flex';
+            setAvgReadonly(false);
+            return;
+        }
+
+        if (isWeighing) {
+            partitionsDiv.style.display = 'block';
+            avgDiv.style.display = 'flex';
+            setAvgReadonly(true);
+            calcAvg();
+        } else {
+            partitionsDiv.style.display = 'none';
+            // "hide bodyweight column if there is no weighing that day"
+            avgDiv.style.display = 'none';
+            // Optional: Clear values?
+        }
+    }
+
+    function setAvgReadonly(readonly) {
+        let ids = ['body_weight_male', 'body_weight_female', 'uniformity_male', 'uniformity_female'];
+        ids.forEach(id => {
+            let el = document.getElementById(id);
+            if(readonly) {
+                el.setAttribute('readonly', true);
+                el.classList.add('bg-light');
+            } else {
+                el.removeAttribute('readonly');
+                el.classList.remove('bg-light');
+            }
+        });
+    }
+
+    function calcAvg() {
+        // Only run if partitions visible
+        if (document.getElementById('partitions_section').style.display === 'none') return;
+
+        // Male
+        let m_p1 = parseFloat(document.getElementsByName('bw_male_p1')[0].value) || 0;
+        let m_p2 = parseFloat(document.getElementsByName('bw_male_p2')[0].value) || 0;
+        let m_cnt = 0, m_sum = 0;
+        if (m_p1 > 0) { m_sum += m_p1; m_cnt++; }
+        if (m_p2 > 0) { m_sum += m_p2; m_cnt++; }
+        document.getElementById('body_weight_male').value = (m_cnt > 0 ? (m_sum / m_cnt) : 0).toFixed(2);
+
+        let mu_p1 = parseFloat(document.getElementsByName('unif_male_p1')[0].value) || 0;
+        let mu_p2 = parseFloat(document.getElementsByName('unif_male_p2')[0].value) || 0;
+        let mu_sum = 0;
+        if (mu_p1 > 0) mu_sum += mu_p1;
+        if (mu_p2 > 0) mu_sum += mu_p2;
+        // Simple avg of unif?
+        document.getElementById('uniformity_male').value = (m_cnt > 0 ? (mu_sum / m_cnt) : 0).toFixed(2);
+
+        // Female
+        let f_p1 = parseFloat(document.getElementsByName('bw_female_p1')[0].value) || 0;
+        let f_p2 = parseFloat(document.getElementsByName('bw_female_p2')[0].value) || 0;
+        let f_p3 = parseFloat(document.getElementsByName('bw_female_p3')[0].value) || 0;
+        let f_p4 = parseFloat(document.getElementsByName('bw_female_p4')[0].value) || 0;
+
+        let f_cnt = 0, f_sum = 0;
+        if (f_p1 > 0) { f_sum += f_p1; f_cnt++; }
+        if (f_p2 > 0) { f_sum += f_p2; f_cnt++; }
+        if (f_p3 > 0) { f_sum += f_p3; f_cnt++; }
+        if (f_p4 > 0) { f_sum += f_p4; f_cnt++; }
+        document.getElementById('body_weight_female').value = (f_cnt > 0 ? (f_sum / f_cnt) : 0).toFixed(2);
+
+        let fu_p1 = parseFloat(document.getElementsByName('unif_female_p1')[0].value) || 0;
+        let fu_p2 = parseFloat(document.getElementsByName('unif_female_p2')[0].value) || 0;
+        let fu_p3 = parseFloat(document.getElementsByName('unif_female_p3')[0].value) || 0;
+        let fu_p4 = parseFloat(document.getElementsByName('unif_female_p4')[0].value) || 0;
+        let fu_sum = 0;
+        if (fu_p1 > 0) fu_sum += fu_p1;
+        if (fu_p2 > 0) fu_sum += fu_p2;
+        if (fu_p3 > 0) fu_sum += fu_p3;
+        if (fu_p4 > 0) fu_sum += fu_p4;
+        document.getElementById('uniformity_female').value = (f_cnt > 0 ? (fu_sum / f_cnt) : 0).toFixed(2);
+    }
+
+    // Initialize
+    window.onload = function() {
+        updatePhase();
+    };
+>>>>>>> origin/main
   </script>
 {% endif %}
 {% endblock %}
