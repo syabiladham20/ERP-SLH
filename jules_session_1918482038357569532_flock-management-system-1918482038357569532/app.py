@@ -142,6 +142,63 @@ class WeeklyData(db.Model):
     feed_male = db.Column(db.Float, default=0.0) # Total Kg
     feed_female = db.Column(db.Float, default=0.0) # Total Kg
 
+class SamplingEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    age_week = db.Column(db.Integer, nullable=False)
+    test_type = db.Column(db.String(50), nullable=False) # 'Serology', 'Salmonella', 'Serology & Salmonella'
+    status = db.Column(db.String(20), default='Pending') # 'Pending', 'Completed'
+    result_file = db.Column(db.String(200), nullable=True) # Path to PDF
+    upload_date = db.Column(db.Date, nullable=True)
+    remarks = db.Column(db.String(255), nullable=True)
+
+class ImportedWeeklyBenchmark(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    week = db.Column(db.Integer, nullable=False)
+
+    mortality_male = db.Column(db.Integer, default=0)
+    mortality_female = db.Column(db.Integer, default=0)
+    eggs_collected = db.Column(db.Integer, default=0)
+    bw_male = db.Column(db.Float, default=0.0)
+    bw_female = db.Column(db.Float, default=0.0)
+
+def initialize_sampling_schedule(flock_id):
+    schedule = {
+        1: 'Serology & Salmonella',
+        4: 'Salmonella',
+        8: 'Serology',
+        16: 'Salmonella',
+        18: 'Serology',
+        24: 'Serology',
+        28: 'Salmonella',
+        30: 'Serology',
+        38: 'Serology',
+        40: 'Salmonella',
+        50: 'Serology',
+        52: 'Salmonella',
+        58: 'Serology',
+        64: 'Salmonella',
+        70: 'Serology',
+        76: 'Salmonella',
+        90: 'Salmonella'
+    }
+
+    # Check if already initialized to avoid duplicates
+    existing = SamplingEvent.query.filter_by(flock_id=flock_id).first()
+    if existing:
+        return
+
+    for week, test in schedule.items():
+        event = SamplingEvent(
+            flock_id=flock_id,
+            age_week=week,
+            test_type=test,
+            status='Pending'
+        )
+        db.session.add(event)
+    db.session.commit()
+
 @app.route('/')
 def index():
     active_flocks = Flock.query.filter_by(status='Active').all()
@@ -306,6 +363,9 @@ def manage_flocks():
         
         db.session.add(new_flock)
         db.session.commit()
+
+        initialize_sampling_schedule(new_flock.id)
+
         flash(f'Flock created successfully! Batch ID: {batch_id}', 'success')
         return redirect(url_for('index'))
     
@@ -708,6 +768,47 @@ def flock_charts(id):
     flock = Flock.query.get_or_404(id)
     return render_template('flock_charts.html', flock=flock)
 
+@app.route('/flock/<int:id>/sampling')
+def flock_sampling(id):
+    flock = Flock.query.get_or_404(id)
+    events = SamplingEvent.query.filter_by(flock_id=id).order_by(SamplingEvent.age_week.asc()).all()
+    return render_template('flock_sampling.html', flock=flock, events=events)
+
+@app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
+def upload_sampling_result(id, event_id):
+    event = SamplingEvent.query.get_or_404(event_id)
+
+    # Update Remarks regardless of file? Or only with file?
+    # Usually we upload file OR just mark complete/add remarks.
+    # User said "upload and keep sampling result".
+    # I'll allow updating remarks even if no file is uploaded, but status might depend on file.
+
+    remarks = request.form.get('remarks')
+    if remarks:
+        event.remarks = remarks
+
+    if 'file' in request.files:
+        file = request.files['file']
+        if file and file.filename != '':
+            if file.filename.lower().endswith('.pdf'):
+                filename = secure_filename(f"{event.flock.batch_id}_W{event.age_week}_{file.filename}")
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+                event.result_file = filepath
+                event.upload_date = date.today()
+                event.status = 'Completed'
+                db.session.commit()
+                flash('Result uploaded successfully.', 'success')
+            else:
+                flash('Only PDF files are allowed.', 'danger')
+
+    # If just remarks updated
+    if remarks and not ('file' in request.files and request.files['file'].filename != ''):
+        db.session.commit()
+        flash('Remarks updated.', 'success')
+
+    return redirect(url_for('flock_sampling', id=id))
+
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
     flock = Flock.query.get_or_404(id)
@@ -1051,7 +1152,7 @@ def process_import(file):
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
     
-    ignore_sheets = ['DASHBOARD', 'CHART']
+    ignore_sheets = ['DASHBOARD', 'CHART', 'SUMMARY', 'TEMPLATE']
     
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
@@ -1114,13 +1215,9 @@ def process_import(file):
             db.session.add(flock)
             db.session.commit()
             
-        # Read Data - STARTING ROW 11 (0-index 10)
-        # User specified: Data starts in Row 11 until Row 500.
-        # Header in Row 9.
-        # If we read header=8 (Row 9), then Row 11 is index 1.
-        # But we use header=None and index logic.
-        # Row 11 is Index 10.
+            initialize_sampling_schedule(flock.id)
 
+        # Read Data - STARTING ROW 11 (0-index 10)
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
         
         for index, row in df_data.iterrows():
@@ -1166,45 +1263,44 @@ def process_import(file):
                 if isinstance(val, str): return val
                 return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
 
-            # Hardcoded Mapping (0-based)
-            log.culls_male = get_int(2)
-            log.culls_female = get_int(3)
-            log.mortality_male = get_int(4)
-            log.mortality_female = get_int(5)
-            
-            log.feed_program = get_str(15)
-            log.feed_male_gp_bird = get_float(16)
-            log.feed_female_gp_bird = get_float(17)
-            
-            log.eggs_collected = get_int(24)
-            log.cull_eggs_jumbo = get_int(25)
-            log.cull_eggs_small = get_int(26)
-            log.cull_eggs_abnormal = get_int(27)
-            log.cull_eggs_crack = get_int(28)
-            log.egg_weight = get_float(29)
-            
-            log.body_weight_male = get_float(39)
-            log.uniformity_male = get_float(40)
-            log.body_weight_female = get_float(41)
-            log.uniformity_female = get_float(42)
-            
-            log.water_reading_1 = get_int(43)
-            log.water_reading_2 = get_int(44)
-            log.water_reading_3 = get_int(45)
-            
-            log.light_on_time = get_time(50)
-            log.light_off_time = get_time(51)
-            log.feed_cleanup_start = get_time(53)
-            log.feed_cleanup_end = get_time(54)
-            
-            log.clinical_notes = get_str(56)
+            # Updated Mapping
+            log.culls_male = get_int(2)       # C
+            log.culls_female = get_int(3)     # D
+            log.mortality_male = get_int(4)   # E
+            log.mortality_female = get_int(5) # F
 
+            log.feed_program = get_str(15)    # P
+            log.feed_male_gp_bird = get_float(16)   # Q
+            log.feed_female_gp_bird = get_float(17) # R
+
+            log.eggs_collected = get_int(24)      # Y
+            log.cull_eggs_jumbo = get_int(25)     # Z
+            log.cull_eggs_small = get_int(26)     # AA
+            log.cull_eggs_abnormal = get_int(27)  # AB
+            log.cull_eggs_crack = get_int(28)     # AC
+            log.egg_weight = get_float(29)        # AD
+
+            log.body_weight_male = get_float(39)  # AN
+            log.uniformity_male = get_float(40)   # AO
+            log.body_weight_female = get_float(41)# AP
+            log.uniformity_female = get_float(42) # AQ
+            
+            log.water_reading_1 = get_int(43)     # AR
+            log.water_reading_2 = get_int(44)     # AS
+            log.water_reading_3 = get_int(45)     # AT
+            
+            log.light_on_time = get_time(50)      # AY
+            log.light_off_time = get_time(51)     # AZ
+            log.feed_cleanup_start = get_time(53) # BB
+            log.feed_cleanup_end = get_time(54)   # BC
+            
+            log.clinical_notes = get_str(56)      # BE
+            
             # --- Extract Daily Standards ---
-            # Standard Male Feed (22), Female Feed (23)
+            # Standard Male Feed (22), Female Feed (23) - W, X
             std_feed_m = get_float(22)
             std_feed_f = get_float(23)
 
-            # Update Standard for this week (using Feed g/bird)
             delta = (log_date - flock.intake_date).days
             week_num = (delta // 7) + 1
 
@@ -1218,8 +1314,8 @@ def process_import(file):
 
         db.session.commit()
         
-        # --- WEEKLY DATA IMPORT (Row 508-577) ---
-        # Row 508 is index 507
+        # --- WEEKLY DATA IMPORT (Benchmark) ---
+        # Data Start Row 508 (Index 507)
         df_weekly = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
 
         for index, row in df_weekly.iterrows():
@@ -1240,19 +1336,15 @@ def process_import(file):
             except:
                 continue
 
-            # Store Weekly Data
-            wd = WeeklyData.query.filter_by(flock_id=flock.id, week=week_num).first()
+            # Use ImportedWeeklyBenchmark
+            wd = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id, week=week_num).first()
             if not wd:
-                wd = WeeklyData(flock_id=flock.id, week=week_num)
+                wd = ImportedWeeklyBenchmark(flock_id=flock.id, week=week_num)
                 db.session.add(wd)
 
             wd.mortality_male = get_w_int(2)
             wd.culls_male = get_w_int(3)
             wd.mortality_female = get_w_int(4)
-            wd.culls_female = get_w_int(5)
-
-            wd.feed_male = get_w_float(15) # kg
-            wd.feed_female = get_w_float(16) # kg
 
             wd.eggs_collected = get_w_int(18)
 
@@ -1260,19 +1352,16 @@ def process_import(file):
             wd.bw_female = get_w_float(30)
 
             # Extract Weekly Standards
-            # Std Mort % (14), Std BW Male (32), Std BW Female (33)
             std_mort_pct = get_w_float(14)
             std_bw_m = get_w_float(32)
             std_bw_f = get_w_float(33)
 
-            # Update Standard Table
             std = Standard.query.filter_by(week=week_num).first()
             if not std:
                 std = Standard(week=week_num)
                 db.session.add(std)
 
             if std_mort_pct > 0:
-                # Excel 0.003 = 0.3%. Store as 0.3
                 std.std_mortality_female = std_mort_pct * 100
                 std.std_mortality_male = std_mort_pct * 100
 
@@ -1293,12 +1382,11 @@ def process_import(file):
                     db.session.add(log)
         db.session.commit()
 
-        # Verify Import
         verify_import_data(flock)
 
 def verify_import_data(flock):
-    # Compare WeeklyData (Imported) with DailyLog Aggregates
-    weekly_records = WeeklyData.query.filter_by(flock_id=flock.id).order_by(WeeklyData.week).all()
+    # Compare ImportedWeeklyBenchmark with DailyLog Aggregates
+    weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
     logs = DailyLog.query.filter_by(flock_id=flock.id).all()
 
     warnings = []
