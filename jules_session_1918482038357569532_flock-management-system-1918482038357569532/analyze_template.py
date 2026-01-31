@@ -8,6 +8,7 @@ def analyze_template():
         print(f"Reading: {path}")
         xls = pd.ExcelFile(path)
         print(f"Sheets: {xls.sheet_names}")
+<<<<<<< HEAD
 
         sheet = xls.sheet_names[0]
         print(f"Analyzing Sheet: {sheet}")
@@ -15,12 +16,25 @@ def analyze_template():
         # Read header=None to get raw rows
         df = pd.read_excel(xls, sheet_name=sheet, header=None)
 
+=======
+
+        sheet = xls.sheet_names[0]
+        print(f"Analyzing Sheet: {sheet}")
+
+        # Read header=None to get raw rows
+        df = pd.read_excel(xls, sheet_name=sheet, header=None)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         print("\n--- Daily Header (Row 9 / Index 8) ---")
         row_8 = df.iloc[8]
         for idx, val in enumerate(row_8):
             if pd.notna(val):
                 print(f"Col {idx}: {val}")
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Look for new male fields in header
         # specifically "Hospital", "Transfer" etc.
 

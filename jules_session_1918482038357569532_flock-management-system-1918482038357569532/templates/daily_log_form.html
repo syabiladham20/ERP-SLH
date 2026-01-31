@@ -57,7 +57,11 @@
             <input type="number" class="form-control" name="culls_female" value="{{ log.culls_female if log else 0 }}">
           </div>
         </div>
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         <hr>
         <h5 class="card-title">Male Hospital (Optional)</h5>
         <div class="row">
@@ -181,13 +185,21 @@
       </div>
       <div class="card-body">
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         {# Assuming we can detect phase. Need to pass 'phase' from backend context or check log.flock.phase #}
         {% set phase = log.flock.phase if log else (active_house_phase if active_house_phase else 'Rearing') %}
         {# Wait, active_house_phase is tricky if not passed. Let's rely on JavaScript or just render both and toggle? #}
         {# Simpler: If editing, we know. If creating, we selected a House. #}
         {# We need JS to toggle based on selected house phase. #}
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         <div id="bw-production" class="row">
           <div class="col-6 mb-2">
             <label class="form-label">Male BW (Avg)</label>
@@ -341,13 +353,21 @@
 <<<<<<< HEAD
     // Phase Toggle Logic
     const flockPhases = {{ flock_phases_json | default('{}') | safe }};
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
     function updatePhaseVisibility() {
         // If editing existing log, we rely on backend logic passed or check hidden input if added.
         // But simplified: check active house selection.
         const houseSelect = document.getElementById('house_id');
         let phase = 'Rearing'; // default
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         if (houseSelect) {
             // New Log mode
             const houseId = houseSelect.value;
@@ -363,18 +383,31 @@
             phase = '{{ log.flock.phase }}';
             {% endif %}
         }
+<<<<<<< HEAD
 
         const prodDiv = document.getElementById('bw-production');
         const rearingDiv = document.getElementById('bw-rearing');
 
         if (phase === 'Rearing') {
             prodDiv.style.display = 'none'; // Or 'flex' if we want to show the calculated avg too?
+=======
+
+        const prodDiv = document.getElementById('bw-production');
+        const rearingDiv = document.getElementById('bw-rearing');
+
+        if (phase === 'Rearing') {
+            prodDiv.style.display = 'none'; // Or 'flex' if we want to show the calculated avg too?
+>>>>>>> origin/import-logic-fix-704397853420473837
             // User said "only have one box... when start production". Implies in Rearing we have the 4 boxes.
             // Let's show Rearing Partitions AND maybe the result (avg) as readonly?
             // User: "create a new format... where it have 4 boxes... When start production, it will only have on box"
             // So toggle visibility.
             rearingDiv.style.display = 'block';
+<<<<<<< HEAD
             prodDiv.style.display = 'none';
+=======
+            prodDiv.style.display = 'none';
+>>>>>>> origin/import-logic-fix-704397853420473837
         } else {
             rearingDiv.style.display = 'none';
             prodDiv.style.display = 'flex';

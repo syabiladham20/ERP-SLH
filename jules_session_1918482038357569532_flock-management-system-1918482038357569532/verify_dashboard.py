@@ -6,11 +6,19 @@ def verify_logic():
         # Setup
         db.drop_all()
         db.create_all()
+<<<<<<< HEAD
 
         h = House(name="TestHouse")
         db.session.add(h)
         db.session.commit()
 
+=======
+
+        h = House(name="TestHouse")
+        db.session.add(h)
+        db.session.commit()
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         d0 = date.today() - timedelta(days=3)
         f = Flock(
             house_id=h.id,
@@ -23,7 +31,11 @@ def verify_logic():
         )
         db.session.add(f)
         db.session.commit()
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Log 1 (Day 1 - Rearing)
         l1 = DailyLog(
             flock_id=f.id,
@@ -32,7 +44,11 @@ def verify_logic():
             mortality_female=10
         )
         db.session.add(l1)
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Log 2 (Day 2 - Prod Start)
         # Mort 5 M (Prod). Transfer 50 M to Hosp.
         l2 = DailyLog(
@@ -43,7 +59,11 @@ def verify_logic():
             males_moved_to_hosp=50
         )
         db.session.add(l2)
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Log 3 (Day 3)
         # Mort 2 M (Hosp), 1 M (Prod).
         l3 = DailyLog(
@@ -54,6 +74,7 @@ def verify_logic():
             mortality_female=0
         )
         db.session.add(l3)
+<<<<<<< HEAD
 
         db.session.commit()
 
@@ -61,10 +82,20 @@ def verify_logic():
         # Copying logic from app.py index route
         logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
 
+=======
+
+        db.session.commit()
+
+        # --- RUN LOGIC ---
+        # Copying logic from app.py index route
+        logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         rearing_mort_m = 0
         prod_mort_m = 0
         prod_start_stock_m = f.intake_male
         prod_start_date = f.production_start_date
+<<<<<<< HEAD
 
         curr_m_prod = f.intake_male
         curr_m_hosp = 0
@@ -74,6 +105,17 @@ def verify_logic():
 
         print(f"Start: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
 
+=======
+
+        curr_m_prod = f.intake_male
+        curr_m_hosp = 0
+        curr_f = f.intake_female
+
+        in_production = False
+
+        print(f"Start: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         for l in logs:
             if not in_production:
                 if prod_start_date and l.date >= prod_start_date:
@@ -88,6 +130,7 @@ def verify_logic():
                 prod_mort_m += l.mortality_male
             else:
                 rearing_mort_m += l.mortality_male
+<<<<<<< HEAD
 
             mort_m_prod = l.mortality_male
             mort_m_hosp = getattr(l, 'mortality_male_hosp', 0)
@@ -105,6 +148,25 @@ def verify_logic():
 
             print(f"After {l.date}: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
 
+=======
+
+            mort_m_prod = l.mortality_male
+            mort_m_hosp = getattr(l, 'mortality_male_hosp', 0)
+
+            cull_m_prod = l.culls_male
+            cull_m_hosp = getattr(l, 'culls_male_hosp', 0)
+
+            moved_to_hosp = getattr(l, 'males_moved_to_hosp', 0)
+            moved_to_prod = getattr(l, 'males_moved_to_prod', 0)
+
+            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
+            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
+
+            curr_f -= (l.mortality_female + l.culls_female)
+
+            print(f"After {l.date}: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         print(f"Final M_Prod: {curr_m_prod} (Expected: 934)")
         print(f"Final M_Hosp: {curr_m_hosp} (Expected: 48)")
 

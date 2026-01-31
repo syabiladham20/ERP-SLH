@@ -20,10 +20,18 @@ if __name__ == "__main__":
     # Update Standard
     add_column_if_not_exists("standard", "std_feed_male", "FLOAT DEFAULT 0.0")
     add_column_if_not_exists("standard", "std_feed_female", "FLOAT DEFAULT 0.0")
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
     # Create WeeklyData table
     with app.app_context():
         db.create_all()
         print("Ensured all tables exist (including WeeklyData).")
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
     print("Schema migration v2 complete.")

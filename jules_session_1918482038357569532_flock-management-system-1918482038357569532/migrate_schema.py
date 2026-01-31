@@ -23,11 +23,19 @@ def add_column_if_not_exists(table, column, type_def):
 if __name__ == "__main__":
     # Update Flock
     add_column_if_not_exists("flock", "production_start_date", "DATE")
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
     # Update DailyLog
     add_column_if_not_exists("daily_log", "mortality_male_hosp", "INTEGER DEFAULT 0")
     add_column_if_not_exists("daily_log", "culls_male_hosp", "INTEGER DEFAULT 0")
     add_column_if_not_exists("daily_log", "males_moved_to_prod", "INTEGER DEFAULT 0")
     add_column_if_not_exists("daily_log", "males_moved_to_hosp", "INTEGER DEFAULT 0")
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
     print("Schema migration check complete.")
