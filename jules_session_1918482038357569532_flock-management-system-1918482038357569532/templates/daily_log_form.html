@@ -171,13 +171,20 @@
     <div class="card mb-3">
       <div class="card-header bg-secondary text-white">Body Weight & Uniformity</div>
       <div class="card-body">
-        <div class="row">
+
+        {# Assuming we can detect phase. Need to pass 'phase' from backend context or check log.flock.phase #}
+        {% set phase = log.flock.phase if log else (active_house_phase if active_house_phase else 'Rearing') %}
+        {# Wait, active_house_phase is tricky if not passed. Let's rely on JavaScript or just render both and toggle? #}
+        {# Simpler: If editing, we know. If creating, we selected a House. #}
+        {# We need JS to toggle based on selected house phase. #}
+
+        <div id="bw-production" class="row">
           <div class="col-6 mb-2">
-            <label class="form-label">Male BW</label>
+            <label class="form-label">Male BW (Avg)</label>
             <input type="number" step="0.01" class="form-control" name="body_weight_male" value="{{ log.body_weight_male if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
-            <label class="form-label">Female BW</label>
+            <label class="form-label">Female BW (Avg)</label>
             <input type="number" step="0.01" class="form-control" name="body_weight_female" value="{{ log.body_weight_female if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
@@ -188,6 +195,33 @@
             <label class="form-label">Female Unif %</label>
             <input type="number" step="0.01" class="form-control" name="uniformity_female" value="{{ log.uniformity_female if log else 0 }}">
           </div>
+        </div>
+
+        <div id="bw-rearing" class="mt-3" style="display: none;">
+            <hr>
+            <h6>Rearing Partitions (Auto-calculates Avg)</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>Female Partitions</strong>
+                    {% for i in range(1, 5) %}
+                    <div class="row mb-1">
+                        <div class="col-2"><label class="col-form-label btn-sm">F{{i}}</label></div>
+                        <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" value="{{ get_partition_val(log, 'F'~i, 'bw') }}"></div>
+                        <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Uni%" value="{{ get_partition_val(log, 'F'~i, 'uni') }}"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <strong>Male Partitions</strong>
+                    {% for i in range(1, 3) %}
+                    <div class="row mb-1">
+                        <div class="col-2"><label class="col-form-label btn-sm">M{{i}}</label></div>
+                        <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" value="{{ get_partition_val(log, 'M'~i, 'bw') }}"></div>
+                        <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Uni%" value="{{ get_partition_val(log, 'M'~i, 'uni') }}"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
       </div>
     </div>
@@ -243,6 +277,54 @@
         
         let consumption12h = (r3_real - r1_real) * 1000;
         document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
+    }
+
+    // Phase Toggle Logic
+    const flockPhases = {{ flock_phases_json | default('{}') | safe }};
+
+    function updatePhaseVisibility() {
+        // If editing existing log, we rely on backend logic passed or check hidden input if added.
+        // But simplified: check active house selection.
+        const houseSelect = document.getElementById('house_id');
+        let phase = 'Rearing'; // default
+
+        if (houseSelect) {
+            // New Log mode
+            const houseId = houseSelect.value;
+            // We need flock phases map. Let's pass it from backend.
+            phase = flockPhases[houseId] || 'Rearing';
+        } else {
+            // Edit mode: we injected phase variable or just rely on server side render?
+            // Actually, we need to toggle display NOW.
+            // Let's check a data attribute or hidden field.
+            // For now, let's assume if the Rearing block has values, show it.
+            // Or better: Pass flock.phase to template script.
+            {% if log %}
+            phase = '{{ log.flock.phase }}';
+            {% endif %}
+        }
+
+        const prodDiv = document.getElementById('bw-production');
+        const rearingDiv = document.getElementById('bw-rearing');
+
+        if (phase === 'Rearing') {
+            prodDiv.style.display = 'none'; // Or 'flex' if we want to show the calculated avg too?
+            // User said "only have one box... when start production". Implies in Rearing we have the 4 boxes.
+            // Let's show Rearing Partitions AND maybe the result (avg) as readonly?
+            // User: "create a new format... where it have 4 boxes... When start production, it will only have on box"
+            // So toggle visibility.
+            rearingDiv.style.display = 'block';
+            prodDiv.style.display = 'none';
+        } else {
+            rearingDiv.style.display = 'none';
+            prodDiv.style.display = 'flex';
+        }
+    }
+
+    // Run on load and change
+    document.addEventListener('DOMContentLoaded', updatePhaseVisibility);
+    if(document.getElementById('house_id')) {
+        document.getElementById('house_id').addEventListener('change', updatePhaseVisibility);
     }
   </script>
 {% endif %}

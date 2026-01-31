@@ -104,6 +104,8 @@ class DailyLog(db.Model):
     photo_path = db.Column(db.String(200)) # Path to file
     flushing = db.Column(db.Boolean, default=False)
 
+    partition_weights = db.relationship('PartitionWeight', backref='log', lazy=True, cascade="all, delete-orphan")
+
     @property
     def age_week_day(self):
         delta = (self.date - self.flock.intake_date).days
@@ -112,6 +114,13 @@ class DailyLog(db.Model):
         weeks = (delta - 1) // 7
         days = (delta - 1) % 7 + 1
         return f"{weeks}.{days}"
+
+class PartitionWeight(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
+    partition_name = db.Column(db.String(10), nullable=False) # F1, F2, F3, F4, M1, M2
+    body_weight = db.Column(db.Float, default=0.0)
+    uniformity = db.Column(db.Float, default=0.0)
 
 class Standard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1001,6 +1010,64 @@ def daily_log():
             r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
             water_intake_calc = (r1_today_real - r1_yesterday_real) * 1000.0
 
+        # Prepare Body Weight Data
+        bw_m_val = float(request.form.get('body_weight_male') or 0)
+        bw_f_val = float(request.form.get('body_weight_female') or 0)
+        uni_m_val = float(request.form.get('uniformity_male') or 0)
+        uni_f_val = float(request.form.get('uniformity_female') or 0)
+
+        # Rearing Phase Partition Logic
+        partition_data = []
+        if flock.phase == 'Rearing':
+            # Collect Partitions
+            f_parts = ['F1', 'F2', 'F3', 'F4']
+            m_parts = ['M1', 'M2']
+
+            sum_bw_f = 0
+            count_bw_f = 0
+            sum_uni_f = 0
+            count_uni_f = 0
+
+            sum_bw_m = 0
+            count_bw_m = 0
+            sum_uni_m = 0
+            count_uni_m = 0
+
+            # Process Female
+            for p in f_parts:
+                bw = float(request.form.get(f'bw_{p}') or 0)
+                uni = float(request.form.get(f'uni_{p}') or 0)
+                if bw > 0:
+                    partition_data.append({'name': p, 'bw': bw, 'uni': uni})
+                    sum_bw_f += bw
+                    count_bw_f += 1
+                    if uni > 0:
+                        sum_uni_f += uni
+                        count_uni_f += 1
+
+            # Process Male
+            for p in m_parts:
+                bw = float(request.form.get(f'bw_{p}') or 0)
+                uni = float(request.form.get(f'uni_{p}') or 0)
+                if bw > 0:
+                    partition_data.append({'name': p, 'bw': bw, 'uni': uni})
+                    sum_bw_m += bw
+                    count_bw_m += 1
+                    if uni > 0:
+                        sum_uni_m += uni
+                        count_uni_m += 1
+
+            # Calculate Averages (Overwrite manual if partitions exist)
+            if count_bw_f > 0:
+                bw_f_val = sum_bw_f / count_bw_f
+            if count_uni_f > 0:
+                uni_f_val = sum_uni_f / count_uni_f
+
+            if count_bw_m > 0:
+                bw_m_val = sum_bw_m / count_bw_m
+            if count_uni_m > 0:
+                uni_m_val = sum_uni_m / count_uni_m
+
         new_log = DailyLog(
             flock_id=flock.id,
             date=log_date,
@@ -1028,10 +1095,10 @@ def daily_log():
             cull_eggs_crack=int(request.form.get('cull_eggs_crack') or 0),
             egg_weight=float(request.form.get('egg_weight') or 0),
             
-            body_weight_male=float(request.form.get('body_weight_male') or 0),
-            body_weight_female=float(request.form.get('body_weight_female') or 0),
-            uniformity_male=float(request.form.get('uniformity_male') or 0),
-            uniformity_female=float(request.form.get('uniformity_female') or 0),
+            body_weight_male=bw_m_val,
+            body_weight_female=bw_f_val,
+            uniformity_male=uni_m_val,
+            uniformity_female=uni_f_val,
             
             water_reading_1=water_r1,
             water_reading_2=int(request.form.get('water_reading_2') or 0),
@@ -1050,13 +1117,41 @@ def daily_log():
         
         db.session.add(new_log)
         db.session.commit()
+
+        # Save Partitions
+        for p in partition_data:
+            pw = PartitionWeight(
+                log_id=new_log.id,
+                partition_name=p['name'],
+                body_weight=p['bw'],
+                uniformity=p['uni']
+            )
+            db.session.add(pw)
+        db.session.commit()
         flash('Daily Log submitted successfully!', 'success')
         return redirect(url_for('index'))
         
     # GET: Only show houses with Active flocks
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
-    return render_template('daily_log_form.html', houses=active_houses)
+
+    # Map House ID to Phase
+    import json
+    flock_phases = {f.house_id: f.phase for f in active_flocks}
+
+    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases))
+
+@app.context_processor
+def utility_processor():
+    def get_partition_val(log, name, type_):
+        if not log: return 0.0
+        # Check pre-loaded relationship or query
+        # Since we use lazy=True, accessing log.partition_weights triggers query
+        for pw in log.partition_weights:
+            if pw.partition_name == name:
+                return pw.body_weight if type_ == 'bw' else pw.uniformity
+        return 0.0
+    return dict(get_partition_val=get_partition_val)
 
 @app.route('/daily_log/<int:id>/edit', methods=['GET', 'POST'])
 def edit_daily_log(id):
@@ -1087,10 +1182,48 @@ def edit_daily_log(id):
         log.cull_eggs_crack = int(request.form.get('cull_eggs_crack') or 0)
         log.egg_weight = float(request.form.get('egg_weight') or 0)
         
-        log.body_weight_male = float(request.form.get('body_weight_male') or 0)
-        log.body_weight_female = float(request.form.get('body_weight_female') or 0)
-        log.uniformity_male = float(request.form.get('uniformity_male') or 0)
-        log.uniformity_female = float(request.form.get('uniformity_female') or 0)
+        # Body Weight Logic (Handle Partitions on Edit)
+        bw_m_val = float(request.form.get('body_weight_male') or 0)
+        bw_f_val = float(request.form.get('body_weight_female') or 0)
+        uni_m_val = float(request.form.get('uniformity_male') or 0)
+        uni_f_val = float(request.form.get('uniformity_female') or 0)
+
+        if log.flock.phase == 'Rearing':
+            # Clear existing partitions?
+            PartitionWeight.query.filter_by(log_id=log.id).delete()
+
+            f_parts = ['F1', 'F2', 'F3', 'F4']
+            m_parts = ['M1', 'M2']
+
+            sum_bw_f = 0; count_bw_f = 0
+            sum_uni_f = 0; count_uni_f = 0
+            sum_bw_m = 0; count_bw_m = 0
+            sum_uni_m = 0; count_uni_m = 0
+
+            for p in f_parts + m_parts:
+                bw = float(request.form.get(f'bw_{p}') or 0)
+                uni = float(request.form.get(f'uni_{p}') or 0)
+
+                if bw > 0:
+                    pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
+                    db.session.add(pw)
+
+                    if p.startswith('F'):
+                        sum_bw_f += bw; count_bw_f += 1
+                        if uni > 0: sum_uni_f += uni; count_uni_f += 1
+                    else:
+                        sum_bw_m += bw; count_bw_m += 1
+                        if uni > 0: sum_uni_m += uni; count_uni_m += 1
+
+            if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
+            if count_uni_f > 0: uni_f_val = sum_uni_f / count_uni_f
+            if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
+            if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
+
+        log.body_weight_male = bw_m_val
+        log.body_weight_female = bw_f_val
+        log.uniformity_male = uni_m_val
+        log.uniformity_female = uni_f_val
         
         log.water_reading_1 = int(request.form.get('water_reading_1') or 0)
         log.water_reading_2 = int(request.form.get('water_reading_2') or 0)
@@ -1304,7 +1437,7 @@ def process_import(file):
             log.feed_cleanup_end = get_time(54)   # BC
             
             log.clinical_notes = get_str(56)      # BE
-            
+
             # --- Extract Daily Standards ---
             # Standard Male Feed (22), Female Feed (23) - W, X
             std_feed_m = get_float(22)
