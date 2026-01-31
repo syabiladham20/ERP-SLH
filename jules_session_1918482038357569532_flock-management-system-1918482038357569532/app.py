@@ -71,6 +71,26 @@ class DailyLog(db.Model):
     body_weight_female = db.Column(db.Float, default=0.0)
     uniformity_male = db.Column(db.Float, default=0.0)
     uniformity_female = db.Column(db.Float, default=0.0)
+
+    # Partitions & Weighing Day
+    is_weighing_day = db.Column(db.Boolean, default=False)
+
+    bw_male_p1 = db.Column(db.Float, default=0.0)
+    bw_male_p2 = db.Column(db.Float, default=0.0)
+    unif_male_p1 = db.Column(db.Float, default=0.0)
+    unif_male_p2 = db.Column(db.Float, default=0.0)
+
+    bw_female_p1 = db.Column(db.Float, default=0.0)
+    bw_female_p2 = db.Column(db.Float, default=0.0)
+    bw_female_p3 = db.Column(db.Float, default=0.0)
+    bw_female_p4 = db.Column(db.Float, default=0.0)
+    unif_female_p1 = db.Column(db.Float, default=0.0)
+    unif_female_p2 = db.Column(db.Float, default=0.0)
+    unif_female_p3 = db.Column(db.Float, default=0.0)
+    unif_female_p4 = db.Column(db.Float, default=0.0)
+
+    standard_bw_male = db.Column(db.Float, default=0.0)
+    standard_bw_female = db.Column(db.Float, default=0.0)
     
     # Water (Readings 1, 2, 3)
     water_reading_1 = db.Column(db.Integer, default=0)
@@ -246,8 +266,9 @@ def view_flock(id):
         'mortality_cum_male': [],
         'mortality_cum_female': [],
         'egg_prod': [],
-        'bw_male': [],
-        'bw_female': []
+        'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
+        'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
+        'unif_male': [], 'unif_female': []
     }
     
     # Calculate cumulative mortality
@@ -293,8 +314,22 @@ def view_flock(id):
         egg_prod = (log.eggs_collected / current_stock_f) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
         
-        chart_data['bw_male'].append(log.body_weight_male)
-        chart_data['bw_female'].append(log.body_weight_female)
+        # Partitions or Null if 0 (to break lines)
+        def val_or_null(v):
+            return v if v > 0 else None
+
+        chart_data['bw_male_p1'].append(val_or_null(log.bw_male_p1))
+        chart_data['bw_male_p2'].append(val_or_null(log.bw_male_p2))
+        chart_data['bw_male_std'].append(val_or_null(log.standard_bw_male))
+
+        chart_data['bw_female_p1'].append(val_or_null(log.bw_female_p1))
+        chart_data['bw_female_p2'].append(val_or_null(log.bw_female_p2))
+        chart_data['bw_female_p3'].append(val_or_null(log.bw_female_p3))
+        chart_data['bw_female_p4'].append(val_or_null(log.bw_female_p4))
+        chart_data['bw_female_std'].append(val_or_null(log.standard_bw_female))
+
+        chart_data['unif_male'].append(val_or_null(log.uniformity_male))
+        chart_data['unif_female'].append(val_or_null(log.uniformity_female))
 
     return render_template('flock_detail.html', flock=flock, logs=list(reversed(logs)), weekly_data=weekly_data, chart_data=chart_data)
 
@@ -344,6 +379,8 @@ def daily_log():
             # Let's leave it 0 if no history.
             pass
 
+        is_weighing = 'is_weighing_day' in request.form
+
         new_log = DailyLog(
             flock_id=flock.id,
             date=log_date,
@@ -368,6 +405,22 @@ def daily_log():
             uniformity_male=float(request.form.get('uniformity_male') or 0),
             uniformity_female=float(request.form.get('uniformity_female') or 0),
             
+            is_weighing_day=is_weighing,
+            bw_male_p1=float(request.form.get('bw_male_p1') or 0),
+            bw_male_p2=float(request.form.get('bw_male_p2') or 0),
+            unif_male_p1=float(request.form.get('unif_male_p1') or 0),
+            unif_male_p2=float(request.form.get('unif_male_p2') or 0),
+            bw_female_p1=float(request.form.get('bw_female_p1') or 0),
+            bw_female_p2=float(request.form.get('bw_female_p2') or 0),
+            bw_female_p3=float(request.form.get('bw_female_p3') or 0),
+            bw_female_p4=float(request.form.get('bw_female_p4') or 0),
+            unif_female_p1=float(request.form.get('unif_female_p1') or 0),
+            unif_female_p2=float(request.form.get('unif_female_p2') or 0),
+            unif_female_p3=float(request.form.get('unif_female_p3') or 0),
+            unif_female_p4=float(request.form.get('unif_female_p4') or 0),
+            standard_bw_male=float(request.form.get('standard_bw_male') or 0),
+            standard_bw_female=float(request.form.get('standard_bw_female') or 0),
+
             water_reading_1=water_r1,
             water_reading_2=int(request.form.get('water_reading_2') or 0),
             water_reading_3=water_r3,
@@ -416,6 +469,22 @@ def edit_daily_log(id):
         log.uniformity_male = float(request.form.get('uniformity_male') or 0)
         log.uniformity_female = float(request.form.get('uniformity_female') or 0)
         
+        log.is_weighing_day = 'is_weighing_day' in request.form
+        log.bw_male_p1 = float(request.form.get('bw_male_p1') or 0)
+        log.bw_male_p2 = float(request.form.get('bw_male_p2') or 0)
+        log.unif_male_p1 = float(request.form.get('unif_male_p1') or 0)
+        log.unif_male_p2 = float(request.form.get('unif_male_p2') or 0)
+        log.bw_female_p1 = float(request.form.get('bw_female_p1') or 0)
+        log.bw_female_p2 = float(request.form.get('bw_female_p2') or 0)
+        log.bw_female_p3 = float(request.form.get('bw_female_p3') or 0)
+        log.bw_female_p4 = float(request.form.get('bw_female_p4') or 0)
+        log.unif_female_p1 = float(request.form.get('unif_female_p1') or 0)
+        log.unif_female_p2 = float(request.form.get('unif_female_p2') or 0)
+        log.unif_female_p3 = float(request.form.get('unif_female_p3') or 0)
+        log.unif_female_p4 = float(request.form.get('unif_female_p4') or 0)
+        log.standard_bw_male = float(request.form.get('standard_bw_male') or 0)
+        log.standard_bw_female = float(request.form.get('standard_bw_female') or 0)
+
         log.water_reading_1 = int(request.form.get('water_reading_1') or 0)
         log.water_reading_2 = int(request.form.get('water_reading_2') or 0)
         log.water_reading_3 = int(request.form.get('water_reading_3') or 0)
@@ -551,77 +620,250 @@ def process_import(file):
             db.session.add(flock)
             db.session.commit()
             
-        # Read Data
+        # Phase 1: Standard BW Extraction (Rows 508-571)
+        # Week number in Col A (Index 0), Male BW in Col AG (Index 32 - actually let's check), Female BW in Col AH (Index 33)
+        # Wait, header=8 means Row 9 is header.
+        # "row 508 - 571" in Excel means index 507 to 570 in 0-based index if reading whole file.
+        # Since we read from header=8 (row 9), the index in df_data will be (508 - 10) = ~498.
+        # But safest is to read these rows explicitly via skiprows/nrows or just scan df_data if it's large enough.
+
+        # Let's read standard BW separately to be robust.
+        df_std = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70) # 508 to ~578
+        standard_bw_map = {}
+
+        for _, s_row in df_std.iterrows():
+            try:
+                # Col A = Week (0)
+                week = int(s_row.iloc[0])
+                # Col AG = 32 (A=0... Z=25, AA=26... AG=32)
+                # Col AH = 33
+                std_m = float(s_row.iloc[32]) if pd.notna(s_row.iloc[32]) else 0.0
+                std_f = float(s_row.iloc[33]) if pd.notna(s_row.iloc[33]) else 0.0
+                standard_bw_map[week] = (std_m, std_f)
+            except:
+                continue
+
+        # Phase 2: Read Data
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
         
+        # Track rows to skip logic for BW if they are part of a partition block
+        partition_rows_indices = set()
+
+        # First Pass: Identify Partition Blocks
+        # We look for blocks where multiple consecutive rows have data in BW columns but maybe same date or special pattern?
+        # User said: "subsequent value before hitting blank cells is in week X... row 46-49".
+        # This implies we scan row by row. If we see BW data:
+        # Check if it is "Partition 1". How?
+        # If the *previous* row had NO BW data (or was a normal day without weighing?), this is start.
+        # Actually, simpler: Any row with BW data is potentially part of a block.
+        # User said "first row is the marking date for weighing date".
+
+        # Let's collect data first
+        data_rows = []
         for index, row in df_data.iterrows():
-            if len(row) < 2: continue
-            date_val = row.iloc[1] # Col B
-            if pd.isna(date_val):
+             data_rows.append(row)
+
+        i = 0
+        while i < len(data_rows):
+            row = data_rows[i]
+            if len(row) < 2:
+                i+=1
                 continue
                 
-            if isinstance(date_val, str):
-                try:
-                    log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
-                except:
-                    continue
-            else:
-                log_date = date_val.date()
+            # Date Handling
+            date_val = row.iloc[1] # Col B
+            log_date = None
+            if pd.notna(date_val):
+                if isinstance(date_val, str):
+                    try:
+                        log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
+                    except:
+                        pass
+                else:
+                    log_date = date_val.date()
+
+            if not log_date:
+                i+=1
+                continue
                 
+            # Ensure Log Exists
             log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
             if not log:
                 log = DailyLog(flock_id=flock.id, date=log_date)
                 db.session.add(log)
             
-            def get_float(idx):
-                if idx >= len(row): return 0.0
-                val = row.iloc[idx]
+            # Helper Helpers
+            def get_float(r, idx):
+                if idx >= len(r): return 0.0
+                val = r.iloc[idx]
                 return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
-                
-            def get_int(idx):
-                if idx >= len(row): return 0
-                val = row.iloc[idx]
+
+            def get_int(r, idx):
+                if idx >= len(r): return 0
+                val = r.iloc[idx]
                 return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
                 
-            def get_time(idx):
-                if idx >= len(row): return None
-                val = row.iloc[idx]
+            def get_time(r, idx):
+                if idx >= len(r): return None
+                val = r.iloc[idx]
                 if pd.isna(val): return None
                 if isinstance(val, str): return val
                 return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
 
-            log.culls_male = get_int(2)
-            log.culls_female = get_int(3)
-            log.mortality_male = get_int(4)
-            log.mortality_female = get_int(5)
+            # Standard Data
+            log.culls_male = get_int(row, 2)
+            log.culls_female = get_int(row, 3)
+            log.mortality_male = get_int(row, 4)
+            log.mortality_female = get_int(row, 5)
             
-            log.feed_male_gp_bird = get_float(16)
-            log.feed_female_gp_bird = get_float(17)
+            log.feed_male_gp_bird = get_float(row, 16)
+            log.feed_female_gp_bird = get_float(row, 17)
             
-            log.eggs_collected = get_int(24)
-            log.cull_eggs_jumbo = get_int(25)
-            log.cull_eggs_small = get_int(26)
-            log.cull_eggs_abnormal = get_int(27)
-            log.cull_eggs_crack = get_int(28)
-            log.egg_weight = get_float(29)
+            log.eggs_collected = get_int(row, 24)
+            log.cull_eggs_jumbo = get_int(row, 25)
+            log.cull_eggs_small = get_int(row, 26)
+            log.cull_eggs_abnormal = get_int(row, 27)
+            log.cull_eggs_crack = get_int(row, 28)
+            log.egg_weight = get_float(row, 29)
             
-            log.body_weight_male = get_float(39)
-            log.uniformity_male = get_float(40)
-            log.body_weight_female = get_float(41)
-            log.uniformity_female = get_float(42)
+            log.water_reading_1 = get_int(row, 43)
+            log.water_reading_2 = get_int(row, 44)
+            log.water_reading_3 = get_int(row, 45)
             
-            log.water_reading_1 = get_int(43)
-            log.water_reading_2 = get_int(44)
-            log.water_reading_3 = get_int(45)
-            
-            log.light_on_time = get_time(50)
-            log.light_off_time = get_time(51)
-            log.feed_cleanup_start = get_time(53)
-            log.feed_cleanup_end = get_time(54)
+            log.light_on_time = get_time(row, 50)
+            log.light_off_time = get_time(row, 51)
+            log.feed_cleanup_start = get_time(row, 53)
+            log.feed_cleanup_end = get_time(row, 54)
             
             val_rem = row.iloc[56] if len(row) > 56 else None
             log.clinical_notes = str(val_rem) if pd.notna(val_rem) else None
-        
+
+            # --- Partition / Weighing Logic ---
+            # Check if this row has BW data
+            bw_m = get_float(row, 39)
+            bw_f = get_float(row, 41)
+            unif_m = get_float(row, 40)
+            unif_f = get_float(row, 42)
+
+            has_bw = (bw_m > 0 or bw_f > 0)
+
+            # If we are already in a "consumed" row (detected previously as part of a block), skip BW processing?
+            # Actually, better approach:
+            # If has_bw is True, check if this is the START of a block.
+            # A block starts if:
+            # 1. It has BW data.
+            # 2. It is NOT identified as a continuation of a previous block.
+            # Since we iterate sequentially, we can just consume ahead.
+
+            if has_bw:
+                # Assume this is P1 (Partition 1)
+                log.is_weighing_day = True
+
+                # Load Standard BW
+                # Calculate Week
+                days_diff = (log.date - flock.intake_date).days
+                week_num = (days_diff // 7) + 1
+                if week_num in standard_bw_map:
+                    log.standard_bw_male = standard_bw_map[week_num][0]
+                    log.standard_bw_female = standard_bw_map[week_num][1]
+
+                # Male P1
+                log.bw_male_p1 = bw_m
+                log.unif_male_p1 = unif_m
+                # Female P1
+                log.bw_female_p1 = bw_f
+                log.unif_female_p1 = unif_f
+
+                # Now peek ahead for P2, P3, P4
+                # We expect up to 3 more rows to have BW data (total 4 for female, 2 for male)
+                # User: "row 46 is partition 1 until row 49 is partition 4"
+                # So next row is P2, next P3, next P4.
+
+                # Check next row (i+1) -> P2
+                if i + 1 < len(data_rows):
+                    row2 = data_rows[i+1]
+                    bw_m2 = get_float(row2, 39)
+                    bw_f2 = get_float(row2, 41)
+                    if bw_m2 > 0 or bw_f2 > 0:
+                        log.bw_male_p2 = bw_m2
+                        log.unif_male_p2 = get_float(row2, 40)
+
+                        log.bw_female_p2 = bw_f2
+                        log.unif_female_p2 = get_float(row2, 42)
+
+                        # Clear BW from that daily log to avoid duplicates?
+                        # We must update that day's log (which will be processed in next loop iteration)
+                        # to NOT treat it as a weighing day.
+                        # But wait, the next loop iteration will process `row2`.
+                        # We need to tell it "Skip BW for this row".
+                        # Let's modify the row in memory? Or set a flag?
+                        # Using `partition_rows_indices`
+                        partition_rows_indices.add(i+1)
+
+                # Check next row (i+2) -> P3 (Female only usually, but let's see)
+                if i + 2 < len(data_rows):
+                    row3 = data_rows[i+2]
+                    bw_f3 = get_float(row3, 41)
+                    if bw_f3 > 0:
+                        log.bw_female_p3 = bw_f3
+                        log.unif_female_p3 = get_float(row3, 42)
+                        partition_rows_indices.add(i+2)
+
+                # Check next row (i+3) -> P4
+                if i + 3 < len(data_rows):
+                    row4 = data_rows[i+3]
+                    bw_f4 = get_float(row4, 41)
+                    if bw_f4 > 0:
+                        log.bw_female_p4 = bw_f4
+                        log.unif_female_p4 = get_float(row4, 42)
+                        partition_rows_indices.add(i+3)
+
+            # If this row was marked as a "Partition continuation row" (P2/P3/P4),
+            # ensure we DON'T overwrite the main BW fields with these partition chunks
+            # effectively treating them as 0 for the "Average" (which we will calculate later or ignore)
+            if i in partition_rows_indices:
+                log.body_weight_male = 0
+                log.body_weight_female = 0
+                log.uniformity_male = 0
+                log.uniformity_female = 0
+                log.is_weighing_day = False # Ensure it doesn't trigger again
+            else:
+                # If it's a normal weighing day (P1), we keep the values in `bw_male_p1` etc.
+                # Do we also keep `body_weight_male`?
+                # User wants "Average" to be calculated.
+                # If we just imported P1..P4, let's calculate the average NOW and store it in body_weight_male/female.
+                if has_bw:
+                    # Calculate Average Male
+                    m_count = 0
+                    m_sum = 0
+                    if log.bw_male_p1 > 0: m_sum += log.bw_male_p1; m_count += 1
+                    if log.bw_male_p2 > 0: m_sum += log.bw_male_p2; m_count += 1
+                    log.body_weight_male = (m_sum / m_count) if m_count > 0 else 0
+
+                    # Calculate Average Female
+                    f_count = 0
+                    f_sum = 0
+                    if log.bw_female_p1 > 0: f_sum += log.bw_female_p1; f_count += 1
+                    if log.bw_female_p2 > 0: f_sum += log.bw_female_p2; f_count += 1
+                    if log.bw_female_p3 > 0: f_sum += log.bw_female_p3; f_count += 1
+                    if log.bw_female_p4 > 0: f_sum += log.bw_female_p4; f_count += 1
+                    log.body_weight_female = (f_sum / f_count) if f_count > 0 else 0
+
+                    # Uniformity Average? (Simple average of %s)
+                    m_u_sum = 0
+                    if log.unif_male_p1 > 0: m_u_sum += log.unif_male_p1
+                    if log.unif_male_p2 > 0: m_u_sum += log.unif_male_p2
+                    log.uniformity_male = (m_u_sum / m_count) if m_count > 0 else 0
+
+                    f_u_sum = 0
+                    if log.unif_female_p1 > 0: f_u_sum += log.unif_female_p1
+                    if log.unif_female_p2 > 0: f_u_sum += log.unif_female_p2
+                    if log.unif_female_p3 > 0: f_u_sum += log.unif_female_p3
+                    if log.unif_female_p4 > 0: f_u_sum += log.unif_female_p4
+                    log.uniformity_female = (f_u_sum / f_count) if f_count > 0 else 0
+
+            i += 1
+
         db.session.commit()
         
         # Recalculate Water
