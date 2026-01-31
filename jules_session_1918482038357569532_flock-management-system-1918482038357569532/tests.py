@@ -170,17 +170,29 @@ class FarmTestCase(unittest.TestCase):
         self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-11-01'})
         flock = Flock.query.filter_by(house_id=1).first()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         # Check Schedule
         events = SamplingEvent.query.filter_by(flock_id=flock.id).all()
         self.assertGreater(len(events), 0)
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         # Check Schedule
         events = SamplingEvent.query.filter_by(flock_id=flock.id).all()
         self.assertGreater(len(events), 0)
 
+<<<<<<< HEAD
+=======
+=======
+
+        # Check Schedule
+        events = SamplingEvent.query.filter_by(flock_id=flock.id).all()
+        self.assertGreater(len(events), 0)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Check specific week
         e = SamplingEvent.query.filter_by(flock_id=flock.id, age_week=4).first()

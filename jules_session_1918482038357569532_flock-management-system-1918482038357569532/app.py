@@ -59,9 +59,15 @@ class DailyLog(db.Model):
     mortality_male_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
     culls_male_hosp = db.Column(db.Integer, default=0) # Hospital Culls
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     culls_male = db.Column(db.Integer, default=0) # Production Culls
     culls_female = db.Column(db.Integer, default=0)
@@ -70,9 +76,15 @@ class DailyLog(db.Model):
     males_moved_to_prod = db.Column(db.Integer, default=0)
     males_moved_to_hosp = db.Column(db.Integer, default=0)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     feed_program = db.Column(db.String(50)) # 'Full Feed', 'Skip-a-day'
     # Feed (Grams per Bird)
@@ -132,9 +144,15 @@ class DailyLog(db.Model):
     photo_path = db.Column(db.String(200)) # Path to file
     flushing = db.Column(db.Boolean, default=False)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     partition_weights = db.relationship('PartitionWeight', backref='log', lazy=True, cascade="all, delete-orphan")
 
@@ -170,14 +188,21 @@ class WeeklyData(db.Model):
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
     week = db.Column(db.Integer, nullable=False)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     mortality_male = db.Column(db.Integer, default=0)
     mortality_female = db.Column(db.Integer, default=0)
     culls_male = db.Column(db.Integer, default=0)
     culls_female = db.Column(db.Integer, default=0)
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     eggs_collected = db.Column(db.Integer, default=0)
@@ -186,12 +211,24 @@ class WeeklyData(db.Model):
     bw_female = db.Column(db.Float, default=0.0)
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     eggs_collected = db.Column(db.Integer, default=0)
 
     bw_male = db.Column(db.Float, default=0.0)
     bw_female = db.Column(db.Float, default=0.0)
 
+<<<<<<< HEAD
+=======
+=======
+
+    eggs_collected = db.Column(db.Integer, default=0)
+
+    bw_male = db.Column(db.Float, default=0.0)
+    bw_female = db.Column(db.Float, default=0.0)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     feed_male = db.Column(db.Float, default=0.0) # Total Kg
     feed_female = db.Column(db.Float, default=0.0) # Total Kg
@@ -220,9 +257,15 @@ class ImportedWeeklyBenchmark(db.Model):
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
     week = db.Column(db.Integer, nullable=False)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     mortality_male = db.Column(db.Integer, default=0)
     mortality_female = db.Column(db.Integer, default=0)
@@ -251,9 +294,15 @@ def initialize_sampling_schedule(flock_id):
         90: 'Salmonella'
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # Check if already initialized to avoid duplicates
     existing = SamplingEvent.query.filter_by(flock_id=flock_id).first()
@@ -274,9 +323,15 @@ def initialize_sampling_schedule(flock_id):
 def index():
     active_flocks = Flock.query.filter_by(status='Active').all()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # Enrich with today's status and cumulative mortality split
     today = date.today()
@@ -285,21 +340,33 @@ def index():
         log_today = DailyLog.query.filter_by(flock_id=f.id, date=today).first()
         f.has_log_today = True if log_today else False
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         # Calculate Cumulative Mortality (Rearing vs Production)
         logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         # Calculate Cumulative Mortality (Rearing vs Production)
         logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
 
+<<<<<<< HEAD
+=======
+=======
+
+        # Calculate Cumulative Mortality (Rearing vs Production)
+        logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         rearing_mort_m = 0
         rearing_mort_f = 0
         prod_mort_m = 0
         prod_mort_f = 0
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         prod_start_stock_m = f.intake_male
         prod_start_stock_f = f.intake_female
@@ -308,6 +375,19 @@ def index():
         # Priority: Explicit Date -> First Egg -> Manual Phase Switch (Not tracked historically easily)
         prod_start_date = f.production_start_date
 
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+        prod_start_stock_m = f.intake_male
+        prod_start_stock_f = f.intake_female
+
+        # Determine Production Start
+        # Priority: Explicit Date -> First Egg -> Manual Phase Switch (Not tracked historically easily)
+        prod_start_date = f.production_start_date
+
+<<<<<<< HEAD
+=======
 =======
 
         prod_start_stock_m = f.intake_male
@@ -318,20 +398,32 @@ def index():
         prod_start_date = f.production_start_date
 
 >>>>>>> origin/import-logic-fix-704397853420473837
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Stock Tracking
         curr_m_prod = f.intake_male
         curr_m_hosp = 0
         curr_f = f.intake_female
+<<<<<<< HEAD
 <<<<<<< HEAD
 
         # Flag to indicate if we have reached production phase in the loop
         in_production = False
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         # Flag to indicate if we have reached production phase in the loop
         in_production = False
 
+<<<<<<< HEAD
+=======
+=======
+
+        # Flag to indicate if we have reached production phase in the loop
+        in_production = False
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         for l in logs:
             # Check Phase Transition
@@ -346,9 +438,15 @@ def index():
                     prod_start_stock_m = curr_m_prod
                     prod_start_stock_f = curr_f
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             # Cumulative Mortality/Culls calculation
             if in_production:
@@ -358,6 +456,7 @@ def index():
                 rearing_mort_m += l.mortality_male
                 rearing_mort_f += l.mortality_female
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             # Update Stocks
             # Prod Stock = Previous Prod - Prod Mort - Prod Culls - Moved to Hosp + Moved to Prod
@@ -388,6 +487,41 @@ def index():
         f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
         f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
 
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+            # Update Stocks
+            # Prod Stock = Previous Prod - Prod Mort - Prod Culls - Moved to Hosp + Moved to Prod
+            # Hosp Stock = Previous Hosp - Hosp Mort - Hosp Culls + Moved to Hosp - Moved to Prod
+
+            mort_m_prod = l.mortality_male
+            mort_m_hosp = l.mortality_male_hosp or 0
+
+            cull_m_prod = l.culls_male
+            cull_m_hosp = l.culls_male_hosp or 0
+
+            moved_to_hosp = l.males_moved_to_hosp or 0
+            moved_to_prod = l.males_moved_to_prod or 0
+
+            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
+            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
+
+            # Ensure no negative stock (safety)
+            if curr_m_prod < 0: curr_m_prod = 0
+            if curr_m_hosp < 0: curr_m_hosp = 0
+
+            curr_f -= (l.mortality_female + l.culls_female)
+            if curr_f < 0: curr_f = 0
+
+        f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
+        f.rearing_mort_f_pct = (rearing_mort_f / f.intake_female * 100) if f.intake_female else 0
+
+        f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
+        f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
+
+<<<<<<< HEAD
+=======
 =======
 
             # Update Stocks
@@ -420,15 +554,22 @@ def index():
         f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
 
 >>>>>>> origin/import-logic-fix-704397853420473837
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Male Ratio (Current)
         # Ratio = Males in Prod / Females * 100
         f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
         f.males_prod_count = curr_m_prod
         f.males_hosp_count = curr_m_hosp
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Current Week
         days_age = (today - f.intake_date).days
@@ -440,9 +581,15 @@ def index():
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
 <<<<<<< HEAD
+<<<<<<< HEAD
     # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
 =======
     # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
+=======
+    # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
+=======
+    # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # but here we didn't set cascade="all, delete". Manual delete safest.
     DailyLog.query.filter_by(flock_id=id).delete()
@@ -461,9 +608,15 @@ def manage_flocks():
         house_name = request.form.get('house_name').strip()
         intake_date_str = request.form.get('intake_date')
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         prod_start_date_str = request.form.get('production_start_date')
         prod_start_date = None
@@ -513,6 +666,7 @@ def manage_flocks():
         db.session.add(new_flock)
         db.session.commit()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         initialize_sampling_schedule(new_flock.id)
 
@@ -520,6 +674,15 @@ def manage_flocks():
 
         initialize_sampling_schedule(new_flock.id)
 
+=======
+
+        initialize_sampling_schedule(new_flock.id)
+
+=======
+
+        initialize_sampling_schedule(new_flock.id)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         flash(f'Flock created successfully! Batch ID: {batch_id}', 'success')
         return redirect(url_for('index'))
@@ -554,17 +717,29 @@ def manage_standards():
             db.session.commit()
             flash('Standard added.', 'success')
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         # Could handle delete/update here
 
         return redirect(url_for('manage_standards'))
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         # Could handle delete/update here
 
         return redirect(url_for('manage_standards'))
 
+<<<<<<< HEAD
+=======
+=======
+
+        # Could handle delete/update here
+
+        return redirect(url_for('manage_standards'))
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     standards = Standard.query.order_by(Standard.week.asc()).all()
     return render_template('standards.html', standards=standards)
@@ -573,17 +748,29 @@ def manage_standards():
 def get_chart_data(flock_id):
     flock = Flock.query.get_or_404(flock_id)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
 
+<<<<<<< HEAD
+=======
+=======
+
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # Pre-calculate stocks for %
     cum_mort_m = 0
@@ -593,6 +780,7 @@ def get_chart_data(flock_id):
     start_m = flock.intake_male or 1
     start_f = flock.intake_female or 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
@@ -600,6 +788,15 @@ def get_chart_data(flock_id):
 
     all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
+=======
+
+    all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+=======
+
+    all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     data = {
         'flock_batch': flock.batch_id,
@@ -610,9 +807,15 @@ def get_chart_data(flock_id):
         'metrics': {
             'mortality_f_pct': [], 'mortality_m_pct': [], # Depletion %
 <<<<<<< HEAD
+<<<<<<< HEAD
             'culls_f_pct': [], 'culls_m_pct': [],
 =======
             'culls_f_pct': [], 'culls_m_pct': [],
+=======
+            'culls_f_pct': [], 'culls_m_pct': [],
+=======
+            'culls_f_pct': [], 'culls_m_pct': [],
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             'egg_prod_pct': [], 'hatch_egg_pct': [],
             'bw_f': [], 'bw_m': [],
@@ -623,9 +826,15 @@ def get_chart_data(flock_id):
         'events': []
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     weekly_agg = {}
     monthly_agg = {}
@@ -636,6 +845,7 @@ def get_chart_data(flock_id):
         curr_stock_f = start_f - cum_mort_f - cum_cull_f
         if curr_stock_f <= 0: curr_stock_f = 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         # Calculate Daily Metrics
         daily_mort_f_pct = ((log.mortality_female + log.culls_female) / curr_stock_f) * 100
@@ -649,6 +859,24 @@ def get_chart_data(flock_id):
 
         water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
 
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+        # Calculate Daily Metrics
+        daily_mort_f_pct = ((log.mortality_female + log.culls_female) / curr_stock_f) * 100
+        daily_mort_m_pct = ((log.mortality_male + log.culls_male) / curr_stock_m) * 100
+
+        egg_prod_pct = (log.eggs_collected / curr_stock_f) * 100
+
+        total_cull_eggs = log.cull_eggs_jumbo + log.cull_eggs_small + log.cull_eggs_abnormal + log.cull_eggs_crack
+        hatch_eggs = log.eggs_collected - total_cull_eggs
+        hatch_pct = (hatch_eggs / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+
+        water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
+
+<<<<<<< HEAD
+=======
 =======
 
         # Calculate Daily Metrics
@@ -664,14 +892,21 @@ def get_chart_data(flock_id):
         water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
 
 >>>>>>> origin/import-logic-fix-704397853420473837
+>>>>>>> origin/import-logic-fix-704397853420473837
         # Determine if in range
         in_range = True
         if start_date_str and log.date < datetime.strptime(start_date_str, '%Y-%m-%d').date(): in_range = False
         if end_date_str and log.date > datetime.strptime(end_date_str, '%Y-%m-%d').date(): in_range = False
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if mode == 'daily' and in_range:
             data['dates'].append(log.date.isoformat())
@@ -687,18 +922,30 @@ def get_chart_data(flock_id):
             data['metrics']['feed_m'].append(log.feed_male_gp_bird)
             data['metrics']['water_per_bird'].append(round(water_per_bird_ml, 1))
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             if log.photo_path or log.clinical_notes or log.flushing:
                 note = log.clinical_notes or ""
                 if log.flushing:
                     note = f"[FLUSHING] {note}"
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
                 data['events'].append({
                     'date': log.date.isoformat(),
@@ -717,9 +964,15 @@ def get_chart_data(flock_id):
         days_diff = (log.date - flock.intake_date).days
         week_num = (days_diff // 7) + 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if week_num not in weekly_agg:
             weekly_agg[week_num] = {
@@ -739,9 +992,15 @@ def get_chart_data(flock_id):
                 'date_end': log.date
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         w = weekly_agg[week_num]
         w['count'] += 1
@@ -754,9 +1013,15 @@ def get_chart_data(flock_id):
         w['hatch_eggs_sum'] += hatch_eggs
         w['water_vol_sum'] += log.water_intake_calculated # Liters
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if log.body_weight_female > 0:
             w['bw_f_sum'] += log.body_weight_female
@@ -765,9 +1030,15 @@ def get_chart_data(flock_id):
             w['bw_m_sum'] += log.body_weight_male
             w['bw_m_count'] += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if log.uniformity_female > 0:
             w['uni_f_sum'] += log.uniformity_female
@@ -776,9 +1047,15 @@ def get_chart_data(flock_id):
             w['uni_m_sum'] += log.uniformity_male
             w['uni_m_count'] += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         w['feed_f_sum'] += log.feed_female_gp_bird
         w['feed_m_sum'] += log.feed_male_gp_bird
@@ -803,9 +1080,15 @@ def get_chart_data(flock_id):
                 'date_end': log.date
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         m = monthly_agg[month_key]
         m['count'] += 1
@@ -818,9 +1101,15 @@ def get_chart_data(flock_id):
         m['hatch_eggs_sum'] += hatch_eggs
         m['water_vol_sum'] += log.water_intake_calculated # Liters
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if log.body_weight_female > 0:
             m['bw_f_sum'] += log.body_weight_female
@@ -829,9 +1118,15 @@ def get_chart_data(flock_id):
             m['bw_m_sum'] += log.body_weight_male
             m['bw_m_count'] += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if log.uniformity_female > 0:
             m['uni_f_sum'] += log.uniformity_female
@@ -840,9 +1135,15 @@ def get_chart_data(flock_id):
             m['uni_m_sum'] += log.uniformity_male
             m['uni_m_count'] += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         m['feed_f_sum'] += log.feed_female_gp_bird
         m['feed_m_sum'] += log.feed_male_gp_bird
@@ -856,15 +1157,22 @@ def get_chart_data(flock_id):
         agg_data = monthly_agg
         label_prefix = ""
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     if agg_data:
         sorted_keys = sorted(agg_data.keys())
         for k in sorted_keys:
             a = agg_data[k]
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             # Filter check
             if start_date_str and a['date_end'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
@@ -885,6 +1193,31 @@ def get_chart_data(flock_id):
 
             hatch_pct = (a['hatch_eggs_sum'] / a['eggs_sum'] * 100) if a['eggs_sum'] > 0 else 0
 
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+            # Filter check
+            if start_date_str and a['date_end'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
+            if end_date_str and a['date_start'] > datetime.strptime(end_date_str, '%Y-%m-%d').date(): continue
+
+            if mode == 'weekly':
+                data['weeks'].append(k)
+
+            data['dates'].append(f"{label_prefix}{k}")
+            data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
+
+            # Calculate Averages/Rates
+            mort_f_pct = ((a['mort_f_sum'] + a['cull_f_sum']) / a['stock_f_start'] * 100) if a['stock_f_start'] > 0 else 0
+            mort_m_pct = ((a['mort_m_sum'] + a['cull_m_sum']) / a['stock_m_start'] * 100) if a['stock_m_start'] > 0 else 0
+
+            avg_stock_f = a['stock_f_start'] - ((a['mort_f_sum'] + a['cull_f_sum']) / 2)
+            egg_prod_pct = (a['eggs_sum'] / (avg_stock_f * a['count'])) * 100 if (avg_stock_f * a['count']) > 0 else 0
+
+            hatch_pct = (a['hatch_eggs_sum'] / a['eggs_sum'] * 100) if a['eggs_sum'] > 0 else 0
+
+<<<<<<< HEAD
+=======
 =======
 
             # Filter check
@@ -907,20 +1240,32 @@ def get_chart_data(flock_id):
             hatch_pct = (a['hatch_eggs_sum'] / a['eggs_sum'] * 100) if a['eggs_sum'] > 0 else 0
 
 >>>>>>> origin/import-logic-fix-704397853420473837
+>>>>>>> origin/import-logic-fix-704397853420473837
             avg_bw_f = a['bw_f_sum'] / a['bw_f_count'] if a['bw_f_count'] > 0 else 0
             avg_bw_m = a['bw_m_sum'] / a['bw_m_count'] if a['bw_m_count'] > 0 else 0
             avg_uni_f = a['uni_f_sum'] / a['uni_f_count'] if a['uni_f_count'] > 0 else 0
             avg_uni_m = a['uni_m_sum'] / a['uni_m_count'] if a['uni_m_count'] > 0 else 0
+<<<<<<< HEAD
 <<<<<<< HEAD
 
             avg_feed_f = a['feed_f_sum'] / a['count'] if a['count'] > 0 else 0
             avg_feed_m = a['feed_m_sum'] / a['count'] if a['count'] > 0 else 0
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
             avg_feed_f = a['feed_f_sum'] / a['count'] if a['count'] > 0 else 0
             avg_feed_m = a['feed_m_sum'] / a['count'] if a['count'] > 0 else 0
 
+<<<<<<< HEAD
+=======
+=======
+
+            avg_feed_f = a['feed_f_sum'] / a['count'] if a['count'] > 0 else 0
+            avg_feed_m = a['feed_m_sum'] / a['count'] if a['count'] > 0 else 0
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             avg_stock_total = avg_stock_f + (a['stock_m_start'] - ((a['mort_m_sum'] + a['cull_m_sum'])/2))
             water_ml_bird = (a['water_vol_sum'] * 1000) / (avg_stock_total * a['count']) if (avg_stock_total * a['count']) > 0 else 0
@@ -1076,6 +1421,7 @@ def flock_sampling(id):
 def upload_sampling_result(id, event_id):
     event = SamplingEvent.query.get_or_404(event_id)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     # Update Remarks regardless of file? Or only with file?
     # Usually we upload file OR just mark complete/add remarks.
@@ -1087,6 +1433,8 @@ def upload_sampling_result(id, event_id):
         event.remarks = remarks
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     # Update Remarks regardless of file? Or only with file?
     # Usually we upload file OR just mark complete/add remarks.
@@ -1097,6 +1445,20 @@ def upload_sampling_result(id, event_id):
     if remarks:
         event.remarks = remarks
 
+<<<<<<< HEAD
+=======
+=======
+
+    # Update Remarks regardless of file? Or only with file?
+    # Usually we upload file OR just mark complete/add remarks.
+    # User said "upload and keep sampling result".
+    # I'll allow updating remarks even if no file is uploaded, but status might depend on file.
+
+    remarks = request.form.get('remarks')
+    if remarks:
+        event.remarks = remarks
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     if 'file' in request.files:
         file = request.files['file']
@@ -1113,18 +1475,30 @@ def upload_sampling_result(id, event_id):
             else:
                 flash('Only PDF files are allowed.', 'danger')
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # If just remarks updated
     if remarks and not ('file' in request.files and request.files['file'].filename != ''):
         db.session.commit()
         flash('Remarks updated.', 'success')
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     return redirect(url_for('flock_sampling', id=id))
 
@@ -1132,9 +1506,15 @@ def upload_sampling_result(id, event_id):
 def flock_dashboard(id):
     flock = Flock.query.get_or_404(id)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     date_str = request.args.get('date')
     if date_str:
@@ -1142,6 +1522,7 @@ def flock_dashboard(id):
     else:
         target_date = date.today()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     # Get Logs
     log_today = DailyLog.query.filter_by(flock_id=id, date=target_date).first()
@@ -1160,6 +1541,29 @@ def flock_dashboard(id):
     # We need cumulative up to today
     all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
 
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+    # Get Logs
+    log_today = DailyLog.query.filter_by(flock_id=id, date=target_date).first()
+
+    from datetime import timedelta
+    log_prev = DailyLog.query.filter_by(flock_id=id, date=target_date - timedelta(days=1)).first()
+
+    # Calculate Age
+    age_days = (target_date - flock.intake_date).days
+    age_week = (age_days // 7) + 1
+
+    # Fetch Standard for this week
+    standard = Standard.query.filter_by(week=age_week).first()
+
+    # Pre-calc cumulatives for KPI
+    # We need cumulative up to today
+    all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
+
+<<<<<<< HEAD
+=======
 =======
 
     # Get Logs
@@ -1180,20 +1584,32 @@ def flock_dashboard(id):
     all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
 
 >>>>>>> origin/import-logic-fix-704397853420473837
+>>>>>>> origin/import-logic-fix-704397853420473837
     cum_mort_m = 0
     cum_mort_f = 0
     cum_cull_m = 0
     cum_cull_f = 0
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     start_m = flock.intake_male
     start_f = flock.intake_female
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     start_m = flock.intake_male
     start_f = flock.intake_female
 
+<<<<<<< HEAD
+=======
+=======
+
+    start_m = flock.intake_male
+    start_f = flock.intake_female
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     for l in all_logs:
         cum_mort_m += l.mortality_male
@@ -1201,14 +1617,21 @@ def flock_dashboard(id):
         cum_cull_m += l.culls_male
         cum_cull_f += l.culls_female
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     curr_stock_m = start_m - cum_mort_m - cum_cull_m
     curr_stock_f = start_f - cum_mort_f - cum_cull_f
     if curr_stock_m <= 0: curr_stock_m = 1
     if curr_stock_f <= 0: curr_stock_f = 1
+<<<<<<< HEAD
 <<<<<<< HEAD
 
     # Prepare KPI Data Structure
@@ -1227,6 +1650,8 @@ def flock_dashboard(id):
     std_mort_f = standard.std_mortality_female if standard else None
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     # Prepare KPI Data Structure
     kpis = []
@@ -1243,6 +1668,26 @@ def flock_dashboard(id):
 
     std_mort_f = standard.std_mortality_female if standard else None
 
+<<<<<<< HEAD
+=======
+=======
+
+    # Prepare KPI Data Structure
+    kpis = []
+
+    def get_val(log, attr, default=0):
+        return getattr(log, attr) if log else default
+
+    def calc_pct(num, den):
+        return (num / den * 100) if den > 0 else 0
+
+    # 1. Female Mortality % (Daily)
+    mort_f_val = calc_pct(get_val(log_today, 'mortality_female'), curr_stock_f)
+    mort_f_prev = calc_pct(get_val(log_prev, 'mortality_female'), curr_stock_f + get_val(log_today, 'mortality_female')) # Approx prev stock
+
+    std_mort_f = standard.std_mortality_female if standard else None
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     kpis.append({
         'label': 'Female Mortality %',
@@ -1253,9 +1698,15 @@ def flock_dashboard(id):
         'reverse_bad': True # Higher is bad
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # 2. Female Cull %
     cull_f_val = calc_pct(get_val(log_today, 'culls_female'), curr_stock_f)
@@ -1268,9 +1719,15 @@ def flock_dashboard(id):
         'reverse_bad': True
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # 3. Female Cum Mort %
     cum_mort_f_pct = calc_pct(cum_mort_f, start_f)
@@ -1284,9 +1741,15 @@ def flock_dashboard(id):
         'reverse_bad': True
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # 4. Egg Prod %
     eggs = get_val(log_today, 'eggs_collected')
@@ -1294,9 +1757,15 @@ def flock_dashboard(id):
     eggs_prev = get_val(log_prev, 'eggs_collected')
     egg_prod_prev = calc_pct(eggs_prev, curr_stock_f) # approx stock
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     std_egg = standard.std_egg_prod if standard else None
     kpis.append({
@@ -1308,9 +1777,15 @@ def flock_dashboard(id):
         'reverse_bad': False # Lower is bad
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # 5. Body Weights
     bw_f = get_val(log_today, 'body_weight_female')
@@ -1325,18 +1800,30 @@ def flock_dashboard(id):
         'reverse_bad': False # Depends, but low is bad usually
     })
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # Calculate diff and status
     for k in kpis:
         k['diff'] = k['value'] - k['prev']
         k['status'] = 'neutral'
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         if k['std'] is not None and k['value'] > 0:
             # Anomaly Detection Logic
@@ -1351,9 +1838,15 @@ def flock_dashboard(id):
                 elif k['value'] < k['std']:
                     k['status'] = 'warning'
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days)
 
@@ -1398,9 +1891,15 @@ def daily_log():
             r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
             water_intake_calc = (r1_today_real - r1_yesterday_real) * 1000.0
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Prepare Body Weight Data
         bw_m_val = float(request.form.get('body_weight_male') or 0)
@@ -1408,9 +1907,15 @@ def daily_log():
         uni_m_val = float(request.form.get('uniformity_male') or 0)
         uni_f_val = float(request.form.get('uniformity_female') or 0)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Rearing Phase Partition Logic
         partition_data = []
@@ -1419,27 +1924,45 @@ def daily_log():
             f_parts = ['F1', 'F2', 'F3', 'F4']
             m_parts = ['M1', 'M2']
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             sum_bw_f = 0
             count_bw_f = 0
             sum_uni_f = 0
             count_uni_f = 0
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             sum_bw_m = 0
             count_bw_m = 0
             sum_uni_m = 0
             count_uni_m = 0
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             # Process Female
             for p in f_parts:
@@ -1453,9 +1976,15 @@ def daily_log():
                         sum_uni_f += uni
                         count_uni_f += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             # Process Male
             for p in m_parts:
@@ -1469,9 +1998,15 @@ def daily_log():
                         sum_uni_m += uni
                         count_uni_m += 1
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             # Calculate Averages (Overwrite manual if partitions exist)
             if count_bw_f > 0:
@@ -1479,9 +2014,15 @@ def daily_log():
             if count_uni_f > 0:
                 uni_f_val = sum_uni_f / count_uni_f
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             if count_bw_m > 0:
                 bw_m_val = sum_bw_m / count_bw_m
@@ -1496,6 +2037,7 @@ def daily_log():
             mortality_male=int(request.form.get('mortality_male') or 0),
             mortality_female=int(request.form.get('mortality_female') or 0),
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             mortality_male_hosp=int(request.form.get('mortality_male_hosp') or 0),
             culls_male_hosp=int(request.form.get('culls_male_hosp') or 0),
@@ -1507,6 +2049,8 @@ def daily_log():
             males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
             mortality_male_hosp=int(request.form.get('mortality_male_hosp') or 0),
             culls_male_hosp=int(request.form.get('culls_male_hosp') or 0),
@@ -1517,6 +2061,20 @@ def daily_log():
             males_moved_to_prod=int(request.form.get('males_moved_to_prod') or 0),
             males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
 
+<<<<<<< HEAD
+=======
+=======
+
+            mortality_male_hosp=int(request.form.get('mortality_male_hosp') or 0),
+            culls_male_hosp=int(request.form.get('culls_male_hosp') or 0),
+
+            culls_male=int(request.form.get('culls_male') or 0),
+            culls_female=int(request.form.get('culls_female') or 0),
+
+            males_moved_to_prod=int(request.form.get('males_moved_to_prod') or 0),
+            males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             feed_program=request.form.get('feed_program'),
             
@@ -1569,9 +2127,15 @@ def daily_log():
         db.session.add(new_log)
         db.session.commit()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Save Partitions
         for p in partition_data:
@@ -1590,17 +2154,29 @@ def daily_log():
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     # Map House ID to Phase
     import json
     flock_phases = {f.house_id: f.phase for f in active_flocks}
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
     # Map House ID to Phase
     import json
     flock_phases = {f.house_id: f.phase for f in active_flocks}
 
+<<<<<<< HEAD
+=======
+=======
+
+    # Map House ID to Phase
+    import json
+    flock_phases = {f.house_id: f.phase for f in active_flocks}
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases))
 
@@ -1625,6 +2201,7 @@ def edit_daily_log(id):
         log.mortality_male = int(request.form.get('mortality_male') or 0)
         log.mortality_female = int(request.form.get('mortality_female') or 0)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
         log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
@@ -1636,6 +2213,8 @@ def edit_daily_log(id):
         log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
         log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
@@ -1646,6 +2225,20 @@ def edit_daily_log(id):
         log.males_moved_to_prod = int(request.form.get('males_moved_to_prod') or 0)
         log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
 
+<<<<<<< HEAD
+=======
+=======
+
+        log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
+        log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
+
+        log.culls_male = int(request.form.get('culls_male') or 0)
+        log.culls_female = int(request.form.get('culls_female') or 0)
+
+        log.males_moved_to_prod = int(request.form.get('males_moved_to_prod') or 0)
+        log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         log.feed_program = request.form.get('feed_program')
         log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
@@ -1663,6 +2256,7 @@ def edit_daily_log(id):
         bw_f_val = float(request.form.get('body_weight_female') or 0)
         uni_m_val = float(request.form.get('uniformity_male') or 0)
         uni_f_val = float(request.form.get('uniformity_female') or 0)
+<<<<<<< HEAD
 <<<<<<< HEAD
 
         if log.flock.phase == 'Rearing':
@@ -1701,7 +2295,50 @@ def edit_daily_log(id):
         log.body_weight_female = bw_f_val
         log.uniformity_male = uni_m_val
         log.uniformity_female = uni_f_val
+
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+        if log.flock.phase == 'Rearing':
+            # Clear existing partitions?
+            PartitionWeight.query.filter_by(log_id=log.id).delete()
+
+            f_parts = ['F1', 'F2', 'F3', 'F4']
+            m_parts = ['M1', 'M2']
+
+            sum_bw_f = 0; count_bw_f = 0
+            sum_uni_f = 0; count_uni_f = 0
+            sum_bw_m = 0; count_bw_m = 0
+            sum_uni_m = 0; count_uni_m = 0
+
+            for p in f_parts + m_parts:
+                bw = float(request.form.get(f'bw_{p}') or 0)
+                uni = float(request.form.get(f'uni_{p}') or 0)
+
+                if bw > 0:
+                    pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
+                    db.session.add(pw)
+
+                    if p.startswith('F'):
+                        sum_bw_f += bw; count_bw_f += 1
+                        if uni > 0: sum_uni_f += uni; count_uni_f += 1
+                    else:
+                        sum_bw_m += bw; count_bw_m += 1
+                        if uni > 0: sum_uni_m += uni; count_uni_m += 1
+
+            if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
+            if count_uni_f > 0: uni_f_val = sum_uni_f / count_uni_f
+            if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
+            if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
+
+        log.body_weight_male = bw_m_val
+        log.body_weight_female = bw_f_val
+        log.uniformity_male = uni_m_val
+        log.uniformity_female = uni_f_val
         
+<<<<<<< HEAD
+=======
 =======
 
         if log.flock.phase == 'Rearing':
@@ -1741,6 +2378,7 @@ def edit_daily_log(id):
         log.uniformity_male = uni_m_val
         log.uniformity_female = uni_f_val
 
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         log.is_weighing_day = 'is_weighing_day' in request.form
         log.bw_male_p1 = float(request.form.get('bw_male_p1') or 0)
@@ -1893,9 +2531,17 @@ def process_import(file):
 <<<<<<< HEAD
             initialize_sampling_schedule(flock.id)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         # Read Data - STARTING ROW 11 (0-index 10)
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
+=======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
+        # Read Data - STARTING ROW 11 (0-index 10)
+        df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
+>>>>>>> origin/import-logic-fix-704397853420473837
 =======
 
         # Read Data - STARTING ROW 11 (0-index 10)
@@ -1947,9 +2593,15 @@ def process_import(file):
 <<<<<<< HEAD
             # Date is Column 2 (Index 1)
 <<<<<<< HEAD
+<<<<<<< HEAD
             date_val = row.iloc[1]
 =======
             date_val = row.iloc[1]
+=======
+            date_val = row.iloc[1]
+=======
+            date_val = row.iloc[1]
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             if pd.isna(date_val):
                 continue
@@ -1989,9 +2641,15 @@ def process_import(file):
 >>>>>>> origin/main
                 continue
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             # Ensure Log Exists
             log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
@@ -2016,9 +2674,15 @@ def process_import(file):
                 val = row.iloc[idx]
                 return str(val) if pd.notna(val) else None
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             def get_time(idx):
                 if idx >= len(row): return None
@@ -2039,17 +2703,29 @@ def process_import(file):
             log.mortality_male = get_int(4)   # E
             log.mortality_female = get_int(5) # F
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             log.feed_program = get_str(15)    # P
             log.feed_male_gp_bird = get_float(16)   # Q
             log.feed_female_gp_bird = get_float(17) # R
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
             log.feed_program = get_str(15)    # P
             log.feed_male_gp_bird = get_float(16)   # Q
             log.feed_female_gp_bird = get_float(17) # R
 
+<<<<<<< HEAD
+=======
+=======
+
+            log.feed_program = get_str(15)    # P
+            log.feed_male_gp_bird = get_float(16)   # Q
+            log.feed_female_gp_bird = get_float(17) # R
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             log.eggs_collected = get_int(24)      # Y
             log.cull_eggs_jumbo = get_int(25)     # Z
@@ -2058,35 +2734,62 @@ def process_import(file):
             log.cull_eggs_crack = get_int(28)     # AC
             log.egg_weight = get_float(29)        # AD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             log.body_weight_male = get_float(39)  # AN
             log.uniformity_male = get_float(40)   # AO
             log.body_weight_female = get_float(41)# AP
             log.uniformity_female = get_float(42) # AQ
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             log.water_reading_1 = get_int(43)     # AR
             log.water_reading_2 = get_int(44)     # AS
             log.water_reading_3 = get_int(45)     # AT
 
+=======
+
+            log.water_reading_1 = get_int(43)     # AR
+            log.water_reading_2 = get_int(44)     # AS
+            log.water_reading_3 = get_int(45)     # AT
+
+>>>>>>> origin/import-logic-fix-704397853420473837
             log.light_on_time = get_time(50)      # AY
             log.light_off_time = get_time(51)     # AZ
             log.feed_cleanup_start = get_time(53) # BB
             log.feed_cleanup_end = get_time(54)   # BC
+<<<<<<< HEAD
 
             log.clinical_notes = get_str(56)      # BE
 
+=======
+
+            log.clinical_notes = get_str(56)      # BE
+
+>>>>>>> origin/import-logic-fix-704397853420473837
             # --- Extract Daily Standards ---
             # Standard Male Feed (22), Female Feed (23) - W, X
             std_feed_m = get_float(22)
             std_feed_f = get_float(23)
+<<<<<<< HEAD
 
             delta = (log_date - flock.intake_date).days
             week_num = (delta // 7) + 1
 
+=======
+
+            delta = (log_date - flock.intake_date).days
+            week_num = (delta // 7) + 1
+
+>>>>>>> origin/import-logic-fix-704397853420473837
             if week_num > 0 and (std_feed_m > 0 or std_feed_f > 0):
                 std = Standard.query.filter_by(week=week_num).first()
                 if not std:
@@ -2096,17 +2799,29 @@ def process_import(file):
                 if std_feed_f > 0: std.std_feed_female = std_feed_f
 
         db.session.commit()
+<<<<<<< HEAD
 
         # --- WEEKLY DATA IMPORT (Benchmark) ---
         # Data Start Row 508 (Index 507)
         df_weekly = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
 
+=======
+
+        # --- WEEKLY DATA IMPORT (Benchmark) ---
+        # Data Start Row 508 (Index 507)
+        df_weekly = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
         for index, row in df_weekly.iterrows():
             def get_w_float(idx):
                 if idx >= len(row): return 0.0
                 val = row.iloc[idx]
                 return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
             def get_w_int(idx):
                 if idx >= len(row): return 0
                 val = row.iloc[idx]
@@ -2118,7 +2833,70 @@ def process_import(file):
                 week_num = int(week_val)
             except:
                 continue
+<<<<<<< HEAD
+
+            # Use ImportedWeeklyBenchmark
+            wd = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id, week=week_num).first()
+            if not wd:
+                wd = ImportedWeeklyBenchmark(flock_id=flock.id, week=week_num)
+                db.session.add(wd)
+
+            wd.mortality_male = get_w_int(2)
+            wd.culls_male = get_w_int(3)
+            wd.mortality_female = get_w_int(4)
+
+            wd.eggs_collected = get_w_int(18)
             
+            wd.bw_male = get_w_float(28)
+            wd.bw_female = get_w_float(30)
+
+            # Extract Weekly Standards
+            std_mort_pct = get_w_float(14)
+            std_bw_m = get_w_float(32)
+            std_bw_f = get_w_float(33)
+
+            std = Standard.query.filter_by(week=week_num).first()
+            if not std:
+                std = Standard(week=week_num)
+                db.session.add(std)
+
+            if std_mort_pct > 0:
+                std.std_mortality_female = std_mort_pct * 100
+                std.std_mortality_male = std_mort_pct * 100
+
+            if std_bw_m > 0: std.std_bw_male = std_bw_m
+            if std_bw_f > 0: std.std_bw_female = std_bw_f
+
+=======
+            # Standard Data
+            log.culls_male = get_int(row, 2)
+            log.culls_female = get_int(row, 3)
+            log.mortality_male = get_int(row, 4)
+            log.mortality_female = get_int(row, 5)
+
+            log.feed_male_gp_bird = get_float(row, 16)
+            log.feed_female_gp_bird = get_float(row, 17)
+
+            log.eggs_collected = get_int(row, 24)
+            log.cull_eggs_jumbo = get_int(row, 25)
+            log.cull_eggs_small = get_int(row, 26)
+            log.cull_eggs_abnormal = get_int(row, 27)
+            log.cull_eggs_crack = get_int(row, 28)
+            log.egg_weight = get_float(row, 29)
+
+            log.water_reading_1 = get_int(row, 43)
+            log.water_reading_2 = get_int(row, 44)
+            log.water_reading_3 = get_int(row, 45)
+
+            log.light_on_time = get_time(row, 50)
+            log.light_off_time = get_time(row, 51)
+            log.feed_cleanup_start = get_time(row, 53)
+            log.feed_cleanup_end = get_time(row, 54)
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
+
             # Use ImportedWeeklyBenchmark
             wd = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id, week=week_num).first()
             if not wd:
@@ -2444,6 +3222,7 @@ def verify_import_data(flock):
     weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
     logs = DailyLog.query.filter_by(flock_id=flock.id).all()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     warnings = []
 
@@ -2451,6 +3230,15 @@ def verify_import_data(flock):
 
     warnings = []
 
+=======
+
+    warnings = []
+
+=======
+
+    warnings = []
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     # Aggregate Logs by Week
     agg = {}
@@ -2460,15 +3248,26 @@ def verify_import_data(flock):
         if week not in agg:
             agg[week] = {'mort_f': 0, 'eggs': 0}
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         agg[week]['mort_f'] += log.mortality_female
         agg[week]['eggs'] += log.eggs_collected
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         agg[week]['mort_f'] += log.mortality_female
         agg[week]['eggs'] += log.eggs_collected
 
+<<<<<<< HEAD
+=======
+=======
+
+        agg[week]['mort_f'] += log.mortality_female
+        agg[week]['eggs'] += log.eggs_collected
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     for wd in weekly_records:
         if wd.week in agg:
@@ -2477,17 +3276,29 @@ def verify_import_data(flock):
             if abs(calc['mort_f'] - wd.mortality_female) > 1: # Tolerance of 1
                 warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             # Check Eggs
             if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
                 warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
             # Check Eggs
             if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
                 warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
 
+<<<<<<< HEAD
+=======
+=======
+
+            # Check Eggs
+            if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
+                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     if warnings:
         flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')

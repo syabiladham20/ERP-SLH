@@ -71,9 +71,15 @@
     const flockId = {{ flock.id }};
     const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
     let currentData = null; // Store fetched data
 
@@ -130,17 +136,29 @@
             line: {color: 'blue', width: 2}
         };
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         const layout1 = { ...commonLayout,
             title: 'Female Depletion & Egg Production %',
             yaxis: {title: 'Egg Production %', range: [0, 100]},
             yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, 5], showgrid: false}
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         const layout1 = { ...commonLayout,
             title: 'Female Depletion & Egg Production %',
             yaxis: {title: 'Egg Production %', range: [0, 100]},
             yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, 5], showgrid: false}
+<<<<<<< HEAD
+=======
+=======
+
+        const layout1 = { ...commonLayout,
+            title: 'Female Depletion & Egg Production %',
+            yaxis: {title: 'Egg Production %', range: [0, 100]},
+            yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, 5], showgrid: false}
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         };
 
@@ -150,17 +168,29 @@
              const eventX = data.events.map(e => e.date);
              const eventY = eventX.map(() => 95); // Near top
 <<<<<<< HEAD
+<<<<<<< HEAD
 
              // Differentiate Flushing vs Normal
              const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
              const symbols = data.events.map(e => e.type === 'flushing' ? 'drop' : 'star');
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
              // Differentiate Flushing vs Normal
              const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
              const symbols = data.events.map(e => e.type === 'flushing' ? 'drop' : 'star');
 
+<<<<<<< HEAD
+=======
+=======
+
+             // Differentiate Flushing vs Normal
+             const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
+             const symbols = data.events.map(e => e.type === 'flushing' ? 'drop' : 'star');
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
              const traceEvt = {
                  x: eventX,
@@ -217,11 +247,19 @@
             marker: {color: 'orange', opacity: 0.6}
         };
 <<<<<<< HEAD
+<<<<<<< HEAD
         Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
             ...commonLayout,
 =======
         Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
             ...commonLayout,
+=======
+        Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
+            ...commonLayout,
+=======
+        Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
+            ...commonLayout,
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             title: 'Cull & Hatching Egg %',
             yaxis: {title: 'Cull %', range: [0, 20]},
@@ -327,9 +365,15 @@
         const point = data.points[0];
         const pointIndex = point.pointIndex; // Index in the data array
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         // 1. Check Event Marker Click (Daily Mode)
         if (mode === 'daily' && point.data.name === 'Events') {
@@ -355,17 +399,29 @@
         if ((mode === 'monthly' || mode === 'weekly') && currentData.ranges && currentData.ranges[pointIndex]) {
             const range = currentData.ranges[pointIndex];
 <<<<<<< HEAD
+<<<<<<< HEAD
 
             // Set Date Filter
             document.getElementById('startDate').value = range.start;
             document.getElementById('endDate').value = range.end;
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
             // Set Date Filter
             document.getElementById('startDate').value = range.start;
             document.getElementById('endDate').value = range.end;
 
+<<<<<<< HEAD
+=======
+=======
+
+            // Set Date Filter
+            document.getElementById('startDate').value = range.start;
+            document.getElementById('endDate').value = range.end;
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             // Switch Mode
             if (mode === 'monthly') {
@@ -374,9 +430,15 @@
                 document.getElementById('viewMode').value = 'daily';
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
             loadData();
         }

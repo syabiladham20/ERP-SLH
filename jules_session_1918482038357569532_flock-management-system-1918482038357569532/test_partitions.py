@@ -12,18 +12,30 @@ class PartitionTestCase(unittest.TestCase):
         self.ctx.push()
         db.create_all()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Setup House & Flock (Rearing)
         h = House(name='H1')
         db.session.add(h)
         db.session.commit()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         f = Flock(house_id=h.id, batch_id='B1', intake_date=date(2023, 1, 1), phase='Rearing')
         db.session.add(f)
@@ -45,6 +57,7 @@ class PartitionTestCase(unittest.TestCase):
             'bw_M1': 200, 'uni_M1': 95
         }, follow_redirects=True)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         self.assertIn(b'Daily Log submitted successfully', response.data)
 
@@ -56,6 +69,8 @@ class PartitionTestCase(unittest.TestCase):
         self.assertEqual(len(parts), 3) # F1, F2, M1
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         self.assertIn(b'Daily Log submitted successfully', response.data)
 
@@ -66,6 +81,20 @@ class PartitionTestCase(unittest.TestCase):
         parts = PartitionWeight.query.filter_by(log_id=log.id).all()
         self.assertEqual(len(parts), 3) # F1, F2, M1
 
+<<<<<<< HEAD
+=======
+=======
+
+        self.assertIn(b'Daily Log submitted successfully', response.data)
+
+        log = DailyLog.query.first()
+        self.assertIsNotNone(log)
+
+        # Check Partitions
+        parts = PartitionWeight.query.filter_by(log_id=log.id).all()
+        self.assertEqual(len(parts), 3) # F1, F2, M1
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Check Averages
         # Female: (100+110)/2 = 105
@@ -79,9 +108,15 @@ class PartitionTestCase(unittest.TestCase):
         db.session.add(log)
         db.session.commit()
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 
+=======
+
+=======
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         # Edit
         response = self.app.post(f'/daily_log/{log.id}/edit', data={
@@ -89,15 +124,26 @@ class PartitionTestCase(unittest.TestCase):
             'bw_M1': 220, 'uni_M1': 85
         }, follow_redirects=True)
 <<<<<<< HEAD
+<<<<<<< HEAD
 
         updated_log = DailyLog.query.get(log.id)
         self.assertEqual(updated_log.body_weight_female, 120.0)
 
 =======
+=======
+>>>>>>> origin/import-logic-fix-704397853420473837
 
         updated_log = DailyLog.query.get(log.id)
         self.assertEqual(updated_log.body_weight_female, 120.0)
 
+<<<<<<< HEAD
+=======
+=======
+
+        updated_log = DailyLog.query.get(log.id)
+        self.assertEqual(updated_log.body_weight_female, 120.0)
+
+>>>>>>> origin/import-logic-fix-704397853420473837
 >>>>>>> origin/import-logic-fix-704397853420473837
         parts = PartitionWeight.query.filter_by(log_id=log.id).all()
         self.assertEqual(len(parts), 2)
