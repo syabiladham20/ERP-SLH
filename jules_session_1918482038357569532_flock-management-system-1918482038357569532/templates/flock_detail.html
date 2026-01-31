@@ -49,19 +49,197 @@
 </div>
 {% endif %}
 
+<!-- Male Chart -->
 <div class="card mb-4">
-  <div class="card-header">Performance Charts</div>
+  <div class="card-header">Male Statistics (BW & Uniformity)</div>
   <div class="card-body">
-    <canvas id="performanceChart"></canvas>
+    <canvas id="maleChart"></canvas>
+  </div>
+</div>
+
+<!-- Female Chart -->
+<div class="card mb-4">
+  <div class="card-header">Female Statistics (BW & Uniformity)</div>
+  <div class="card-body">
+    <canvas id="femaleChart"></canvas>
+  </div>
+</div>
+
+<!-- General Performance Chart -->
+<div class="card mb-4">
+  <div class="card-header">General Performance</div>
+  <div class="card-body">
+    <canvas id="generalChart"></canvas>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
-  const ctx = document.getElementById('performanceChart').getContext('2d');
+  // Register plugin
+  Chart.register(ChartDataLabels);
+
   const chartData = {{ chart_data | tojson }};
-  
-  new Chart(ctx, {
+
+  // --- Common Options ---
+  const commonOptions = {
+      responsive: true,
+      spanGaps: true, // Connect lines if nulls exist
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+          datalabels: {
+              align: 'top',
+              anchor: 'end',
+              formatter: function(value, context) {
+                  return value ? value : '';
+              },
+              font: { weight: 'bold', size: 10 },
+              color: '#333'
+          }
+      }
+  };
+
+  // --- Male Chart ---
+  new Chart(document.getElementById('maleChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: chartData.dates,
+      datasets: [
+        {
+            label: 'BW P1',
+            data: chartData.bw_male_p1,
+            borderColor: '#36A2EB',
+            backgroundColor: '#36A2EB',
+            tension: 0.1,
+            yAxisID: 'y'
+        },
+        {
+            label: 'BW P2',
+            data: chartData.bw_male_p2,
+            borderColor: '#0056b3',
+            backgroundColor: '#0056b3',
+            tension: 0.1,
+            yAxisID: 'y'
+        },
+        {
+            label: 'Std BW',
+            data: chartData.bw_male_std,
+            borderColor: '#000000',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            borderWidth: 2,
+            yAxisID: 'y',
+            datalabels: { display: false } // Hide label for standard
+        },
+        {
+            label: 'Uniformity %',
+            data: chartData.unif_male,
+            borderColor: '#FFCE56',
+            borderDash: [2, 2],
+            pointStyle: 'rectRot',
+            yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+        ...commonOptions,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Body Weight (g)' }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: 'Uniformity %' },
+                grid: { drawOnChartArea: false } // independent grid
+            }
+        }
+    }
+  });
+
+  // --- Female Chart ---
+  new Chart(document.getElementById('femaleChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: chartData.dates,
+      datasets: [
+        {
+            label: 'BW P1',
+            data: chartData.bw_female_p1,
+            borderColor: '#FF6384',
+            backgroundColor: '#FF6384',
+            yAxisID: 'y'
+        },
+        {
+            label: 'BW P2',
+            data: chartData.bw_female_p2,
+            borderColor: '#FF9F40',
+            backgroundColor: '#FF9F40',
+            yAxisID: 'y'
+        },
+        {
+            label: 'BW P3',
+            data: chartData.bw_female_p3,
+            borderColor: '#FFCD56',
+            backgroundColor: '#FFCD56',
+            yAxisID: 'y'
+        },
+        {
+            label: 'BW P4',
+            data: chartData.bw_female_p4,
+            borderColor: '#4BC0C0',
+            backgroundColor: '#4BC0C0',
+            yAxisID: 'y'
+        },
+        {
+            label: 'Std BW',
+            data: chartData.bw_female_std,
+            borderColor: '#000000',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            borderWidth: 2,
+            yAxisID: 'y',
+            datalabels: { display: false }
+        },
+        {
+            label: 'Uniformity %',
+            data: chartData.unif_female,
+            borderColor: '#9966FF',
+            borderDash: [2, 2],
+            pointStyle: 'rectRot',
+            yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+        ...commonOptions,
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Body Weight (g)' }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: 'Uniformity %' },
+                grid: { drawOnChartArea: false }
+            }
+        }
+    }
+  });
+
+  // --- General Chart ---
+  new Chart(document.getElementById('generalChart').getContext('2d'), {
     type: 'line',
     data: {
       labels: chartData.dates,
@@ -70,19 +248,22 @@
           label: 'Egg Production %',
           data: chartData.egg_prod,
           borderColor: 'green',
-          yAxisID: 'y'
+          yAxisID: 'y',
+          datalabels: { display: false }
         },
         {
           label: 'Cum. Mortality Male %',
           data: chartData.mortality_cum_male,
           borderColor: 'blue',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          datalabels: { display: false }
         },
         {
           label: 'Cum. Mortality Female %',
           data: chartData.mortality_cum_female,
           borderColor: 'red',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          datalabels: { display: false }
         }
       ]
     },
@@ -108,6 +289,9 @@
             drawOnChartArea: false
           }
         }
+      },
+      plugins: {
+          datalabels: { display: false }
       }
     }
   });
