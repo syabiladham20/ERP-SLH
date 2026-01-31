@@ -156,9 +156,9 @@ class SamplingEvent(db.Model):
     @property
     def scheduled_date(self):
         from datetime import timedelta
-        # Week 1 starts on Day 0 (Intake Date).
-        # Week N starts on Intake + (N-1)*7 days.
-        days_offset = (self.age_week - 1) * 7
+        # Week 1 starts on Day 1 (Intake Date + 1).
+        # Week N starts on Intake + 1 + (N-1)*7 days.
+        days_offset = ((self.age_week - 1) * 7) + 1
         return self.flock.intake_date + timedelta(days=days_offset)
 
 class ImportedWeeklyBenchmark(db.Model):

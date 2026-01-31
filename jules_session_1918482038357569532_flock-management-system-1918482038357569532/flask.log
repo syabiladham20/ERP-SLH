@@ -3,22 +3,12 @@
 [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
  * Running on http://127.0.0.1:5000
 [33mPress CTRL+C to quit[0m
-127.0.0.1 - - [31/Jan/2026 03:58:25] "GET /flocks HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 03:58:25] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 03:58:26] "[32mPOST /flocks HTTP/1.1[0m" 302 -
-127.0.0.1 - - [31/Jan/2026 03:58:26] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 03:58:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [31/Jan/2026 04:04:38] "GET /flocks HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:04:38] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:04:39] "[32mPOST /flocks HTTP/1.1[0m" 302 -
-127.0.0.1 - - [31/Jan/2026 04:04:39] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:04:39] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "GET /flocks HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "[32mPOST /flocks HTTP/1.1[0m" 302 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "GET /flock/3 HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "GET /flock/3/sampling HTTP/1.1" 200 -
-127.0.0.1 - - [31/Jan/2026 04:09:25] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "GET /flocks HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "[32mPOST /flocks HTTP/1.1[0m" 302 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jan/2026 05:16:29] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [31/Jan/2026 05:16:30] "GET /flock/1/sampling HTTP/1.1" 200 -
+127.0.0.1 - - [31/Jan/2026 05:16:30] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
