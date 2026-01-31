@@ -145,12 +145,21 @@ class WeeklyData(db.Model):
 class SamplingEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock = db.relationship('Flock', backref='sampling_events')
     age_week = db.Column(db.Integer, nullable=False)
     test_type = db.Column(db.String(50), nullable=False) # 'Serology', 'Salmonella', 'Serology & Salmonella'
     status = db.Column(db.String(20), default='Pending') # 'Pending', 'Completed'
     result_file = db.Column(db.String(200), nullable=True) # Path to PDF
     upload_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
+
+    @property
+    def scheduled_date(self):
+        from datetime import timedelta
+        # Week 1 starts on Day 0 (Intake Date).
+        # Week N starts on Intake + (N-1)*7 days.
+        days_offset = (self.age_week - 1) * 7
+        return self.flock.intake_date + timedelta(days=days_offset)
 
 class ImportedWeeklyBenchmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)

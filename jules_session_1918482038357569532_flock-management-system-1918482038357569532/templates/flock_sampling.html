@@ -12,6 +12,7 @@
             <thead>
                 <tr>
                     <th>Age (Weeks)</th>
+                    <th>Scheduled Date</th>
                     <th>Test Type</th>
                     <th>Status</th>
                     <th>Result / Remarks</th>
@@ -22,6 +23,7 @@
                 {% for event in events %}
                 <tr>
                     <td>{{ event.age_week }}</td>
+                    <td>{{ event.scheduled_date }}</td>
                     <td>{{ event.test_type }}</td>
                     <td>
                         {% if event.status == 'Completed' %}
