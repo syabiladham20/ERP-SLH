@@ -1,0 +1,9 @@
+body {
+    padding-top: 56px; /* Space for fixed navbar */
+}
+.navbar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1030;
+}

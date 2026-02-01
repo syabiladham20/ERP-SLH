@@ -3,58 +3,66 @@
 {% block content %}
 <h2>Dashboard</h2>
 
-<div class="card mt-3">
-  <div class="card-header">
-    Active Flocks
-  </div>
-  <div class="card-body">
+<div class="row">
     {% if active_flocks %}
-      <div class="table-responsive">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>House</th>
-              <th>Batch ID</th>
-              <th>Phase</th>
-              <th>Intake Date</th>
-              <th>Intake (M/F)</th>
-              <th>DOA (M/F)</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for flock in active_flocks %}
-            <tr>
-              <td><a href="{{ url_for('view_flock', id=flock.id) }}">{{ flock.house.name }}</a></td>
-              <td>{{ flock.batch_id }}</td>
-              <td>
-                <span class="badge bg-{{ 'primary' if flock.phase == 'Rearing' else 'warning' }}">
-                  {{ flock.phase }}
-                </span>
-              </td>
-              <td>{{ flock.intake_date }}</td>
-              <td>{{ flock.intake_male }} / {{ flock.intake_female }}</td>
-              <td>{{ flock.doa_male }} / {{ flock.doa_female }}</td>
-              <td>
-                <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline">
-                   <button type="submit" class="btn btn-sm btn-outline-secondary">
-                     {{ 'Start Prod' if flock.phase == 'Rearing' else 'Revert Rearing' }}
-                   </button>
-                </form>
-                <form action="{{ url_for('close_flock', id=flock.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to close this flock?');">
-                  <button type="submit" class="btn btn-danger btn-sm">Close</button>
-                </form>
-                <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-info btn-sm">History</a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+        {% for flock in active_flocks %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ flock.house.name }}</strong> - {{ flock.batch_id }}
+                        <span class="badge bg-{{ 'primary' if flock.phase == 'Rearing' else 'warning' }}">{{ flock.phase }}</span>
+                        {% if flock.has_log_today %}
+                            <span class="badge bg-success ms-1" title="Daily Entry Submitted">✅ Today</span>
+                        {% else %}
+                            <span class="badge bg-danger ms-1" title="No Entry Today">⚠️ Missing</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-2">
+                        <div class="col-6">Intake: {{ flock.intake_date }}</div>
+                        <div class="col-6">Start: {{ flock.intake_male }}M / {{ flock.intake_female }}F</div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6 border-end">
+                            <small class="text-muted">Rearing Mort %</small><br>
+                            <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
+                            <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</strong>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Prod Mort %</small><br>
+                            <strong>M: {{ "%.2f"|format(flock.prod_mort_m_pct) }}%</strong><br>
+                            <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-between">
+                    <div>
+                        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info">History</a>
+                        <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline">
+                           <button type="submit" class="btn btn-sm btn-outline-secondary">
+                             {{ 'Start Prod' if flock.phase == 'Rearing' else 'Revert Rearing' }}
+                           </button>
+                        </form>
+                    </div>
+                    <div>
+                        <form action="{{ url_for('close_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Close this flock?');">
+                          <button type="submit" class="btn btn-warning btn-sm">Close</button>
+                        </form>
+                        <form action="{{ url_for('delete_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('DELETE flock? This cannot be undone.');">
+                          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     {% else %}
-      <p>No active flocks.</p>
-      <a href="{{ url_for('manage_flocks') }}" class="btn btn-primary">Create New Flock</a>
+        <div class="col-12">
+            <div class="alert alert-info">No active flocks. <a href="{{ url_for('manage_flocks') }}">Create one now.</a></div>
+        </div>
     {% endif %}
-  </div>
 </div>
 {% endblock %}
