@@ -1,6 +1,6 @@
 import requests
 import unittest
-from app import app, db, House, Flock, DailyLog
+from app import app, db, House, Flock, DailyLog, SamplingEvent
 import os
 
 class FarmTestCase(unittest.TestCase):
@@ -164,6 +164,20 @@ class FarmTestCase(unittest.TestCase):
         
         updated_log = DailyLog.query.get(log.id)
         self.assertEqual(updated_log.mortality_male, 10)
+
+    def test_sampling_schedule_init(self):
+        # Create flock
+        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-11-01'})
+        flock = Flock.query.filter_by(house_id=1).first()
+
+        # Check Schedule
+        events = SamplingEvent.query.filter_by(flock_id=flock.id).all()
+        self.assertGreater(len(events), 0)
+
+        # Check specific week
+        e = SamplingEvent.query.filter_by(flock_id=flock.id, age_week=4).first()
+        self.assertIsNotNone(e)
+        self.assertEqual(e.test_type, 'Salmonella')
 
 if __name__ == '__main__':
     unittest.main()
