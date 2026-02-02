@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <h3>Manage Feed Codes</h3>
+        <p class="text-muted">Define feed codes available for selection in Daily Logs.</p>
+
+        <form method="POST" class="mb-4">
+            <div class="input-group">
+                <input type="text" name="code" class="form-control" placeholder="Enter new code (e.g., 173P)" required>
+                <button type="submit" class="btn btn-primary">Add Code</button>
+            </div>
+        </form>
+
+        <ul class="list-group">
+            {% for c in codes %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ c.code }}
+                <form action="{{ url_for('delete_feed_code', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </li>
+            {% endfor %}
+            {% if not codes %}
+            <li class="list-group-item text-center text-muted">No feed codes found.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,4 +1,3 @@
-import requests
 import unittest
 from app import app, db, House, Flock, DailyLog, SamplingEvent
 import os

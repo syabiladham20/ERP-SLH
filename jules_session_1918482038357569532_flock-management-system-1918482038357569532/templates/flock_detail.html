@@ -110,46 +110,50 @@
   };
 
   // --- Male Chart ---
+  const maleDatasets = [];
+  const colorsM = ['#36A2EB', '#0056b3', '#4bc0c0', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384'];
+
+  // Dynamic Partitions 1-8
+  for (let i = 1; i <= 8; i++) {
+      let key = 'bw_M' + i;
+      if (chartData[key] && chartData[key].some(val => val !== null)) {
+          maleDatasets.push({
+            label: 'BW M' + i,
+            data: chartData[key],
+            borderColor: colorsM[i-1] || '#333',
+            backgroundColor: colorsM[i-1] || '#333',
+            tension: 0.1,
+            yAxisID: 'y'
+          });
+      }
+  }
+
+  // Add Standard if available (Legacy fallback check included in backend, but here we assume key exists)
+  maleDatasets.push({
+      label: 'Std BW',
+      data: chartData.bw_male_std,
+      borderColor: '#000000',
+      borderDash: [5, 5],
+      pointRadius: 0,
+      borderWidth: 2,
+      yAxisID: 'y',
+      datalabels: { display: false }
+  });
+
+  maleDatasets.push({
+      label: 'Uniformity %',
+      data: chartData.unif_male,
+      borderColor: '#FFCE56',
+      borderDash: [2, 2],
+      pointStyle: 'rectRot',
+      yAxisID: 'y1'
+  });
+
   new Chart(document.getElementById('maleChart').getContext('2d'), {
     type: 'line',
     data: {
       labels: chartData.dates,
-      datasets: [
-        {
-            label: 'BW P1',
-            data: chartData.bw_male_p1,
-            borderColor: '#36A2EB',
-            backgroundColor: '#36A2EB',
-            tension: 0.1,
-            yAxisID: 'y'
-        },
-        {
-            label: 'BW P2',
-            data: chartData.bw_male_p2,
-            borderColor: '#0056b3',
-            backgroundColor: '#0056b3',
-            tension: 0.1,
-            yAxisID: 'y'
-        },
-        {
-            label: 'Std BW',
-            data: chartData.bw_male_std,
-            borderColor: '#000000',
-            borderDash: [5, 5],
-            pointRadius: 0,
-            borderWidth: 2,
-            yAxisID: 'y',
-            datalabels: { display: false } // Hide label for standard
-        },
-        {
-            label: 'Uniformity %',
-            data: chartData.unif_male,
-            borderColor: '#FFCE56',
-            borderDash: [2, 2],
-            pointStyle: 'rectRot',
-            yAxisID: 'y1'
-        }
-      ]
+      datasets: maleDatasets
     },
     options: {
         ...commonOptions,
@@ -172,58 +176,47 @@
   });
 
   // --- Female Chart ---
+  const femaleDatasets = [];
+  const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
+
+  for (let i = 1; i <= 8; i++) {
+      let key = 'bw_F' + i;
+      if (chartData[key] && chartData[key].some(val => val !== null)) {
+          femaleDatasets.push({
+            label: 'BW F' + i,
+            data: chartData[key],
+            borderColor: colorsF[i-1] || '#333',
+            backgroundColor: colorsF[i-1] || '#333',
+            yAxisID: 'y'
+          });
+      }
+  }
+
+  femaleDatasets.push({
+      label: 'Std BW',
+      data: chartData.bw_female_std,
+      borderColor: '#000000',
+      borderDash: [5, 5],
+      pointRadius: 0,
+      borderWidth: 2,
+      yAxisID: 'y',
+      datalabels: { display: false }
+  });
+
+  femaleDatasets.push({
+      label: 'Uniformity %',
+      data: chartData.unif_female,
+      borderColor: '#9966FF',
+      borderDash: [2, 2],
+      pointStyle: 'rectRot',
+      yAxisID: 'y1'
+  });
+
   new Chart(document.getElementById('femaleChart').getContext('2d'), {
     type: 'line',
     data: {
       labels: chartData.dates,
-      datasets: [
-        {
-            label: 'BW P1',
-            data: chartData.bw_female_p1,
-            borderColor: '#FF6384',
-            backgroundColor: '#FF6384',
-            yAxisID: 'y'
-        },
-        {
-            label: 'BW P2',
-            data: chartData.bw_female_p2,
-            borderColor: '#FF9F40',
-            backgroundColor: '#FF9F40',
-            yAxisID: 'y'
-        },
-        {
-            label: 'BW P3',
-            data: chartData.bw_female_p3,
-            borderColor: '#FFCD56',
-            backgroundColor: '#FFCD56',
-            yAxisID: 'y'
-        },
-        {
-            label: 'BW P4',
-            data: chartData.bw_female_p4,
-            borderColor: '#4BC0C0',
-            backgroundColor: '#4BC0C0',
-            yAxisID: 'y'
-        },
-        {
-            label: 'Std BW',
-            data: chartData.bw_female_std,
-            borderColor: '#000000',
-            borderDash: [5, 5],
-            pointRadius: 0,
-            borderWidth: 2,
-            yAxisID: 'y',
-            datalabels: { display: false }
-        },
-        {
-            label: 'Uniformity %',
-            data: chartData.unif_female,
-            borderColor: '#9966FF',
-            borderDash: [2, 2],
-            pointStyle: 'rectRot',
-            yAxisID: 'y1'
-        }
-      ]
+      datasets: femaleDatasets
     },
     options: {
         ...commonOptions,
