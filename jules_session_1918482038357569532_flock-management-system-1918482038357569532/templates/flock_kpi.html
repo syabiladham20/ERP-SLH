@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>{{ flock.house.name }} Dashboard</h2>
+            <p><strong>Batch:</strong> {{ flock.batch_id }} | <strong>Phase:</strong> {{ flock.phase }}</p>
+        </div>
+        <div class="col-md-6 text-end">
+            <form class="d-inline-flex align-items-center">
+                <label class="me-2">Date:</label>
+                <input type="date" name="date" class="form-control me-2" value="{{ target_date }}" onchange="this.form.submit()">
+            </form>
+        </div>
+    </div>
+
+    <div class="card mb-4 bg-light">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h5>Date</h5>
+                    <h3>{{ target_date }}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h5>Age (Days)</h5>
+                    <h3>{{ age_days }}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h5>Week</h5>
+                    <h3>{{ age_week }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>KPI</th>
+                    <th>Latest</th>
+                    <th>Trend</th>
+                    <th>Previous</th>
+                    <th>Standard</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for k in kpis %}
+                <tr>
+                    <td>{{ k.label }}</td>
+                    <td>
+                        <strong>{{ "%.4f"|format(k.value) if k.unit == '%' else "%.1f"|format(k.value) }}</strong> {{ k.unit }}
+                    </td>
+                    <td>
+                        {% if k.diff > 0 %}
+                            <span class="text-{{ 'danger' if k.reverse_bad else 'success' }}">▲ +{{ "%.4f"|format(k.diff|abs) }}</span>
+                        {% elif k.diff < 0 %}
+                            <span class="text-{{ 'success' if k.reverse_bad else 'danger' }}">▼ -{{ "%.4f"|format(k.diff|abs) }}</span>
+                        {% else %}
+                            <span class="text-muted">–</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ "%.4f"|format(k.prev) if k.unit == '%' else "%.1f"|format(k.prev) }}</td>
+                    <td>{{ k.std if k.std else '-' }}</td>
+                    <td>
+                        {% if k.status == 'danger' %}
+                            <span class="badge bg-danger">Abnormal</span>
+                        {% elif k.status == 'warning' %}
+                            <span class="badge bg-warning text-dark">Warning</span>
+                        {% else %}
+                            <span class="badge bg-success">OK</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

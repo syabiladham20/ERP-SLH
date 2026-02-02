@@ -51,7 +51,14 @@
 
 <!-- Male Chart -->
 <div class="card mb-4">
-  <div class="card-header">Male Statistics (BW & Uniformity)</div>
+  <div class="card-header d-flex justify-content-between align-items-center">
+    Performance Charts
+    <div>
+        <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
+        <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
+        <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-sm btn-info">Sampling Schedule</a>
+    </div>
+  </div>
   <div class="card-body">
     <canvas id="maleChart"></canvas>
   </div>

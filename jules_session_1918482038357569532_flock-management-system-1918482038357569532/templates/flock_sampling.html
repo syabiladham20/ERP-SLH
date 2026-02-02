@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Sampling Schedule: {{ flock.batch_id }}</h2>
+    <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary">Back to Flock</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Age (Weeks)</th>
+                    <th>Scheduled Date</th>
+                    <th>Test Type</th>
+                    <th>Status</th>
+                    <th>Result / Remarks</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>{{ event.age_week }}</td>
+                    <td>{{ event.scheduled_date }}</td>
+                    <td>{{ event.test_type }}</td>
+                    <td>
+                        {% if event.status == 'Completed' %}
+                            <span class="badge bg-success">Completed</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.result_file %}
+                            {# Assume file path might be absolute or relative, fix basename logic in view or here #}
+                            {# The view uploaded_file takes filename. We need just the basename #}
+                            {% set fname = event.result_file.split('/')[-1].split('\\')[-1] %}
+                            <a href="{{ url_for('uploaded_file', filename=fname) }}" target="_blank">View PDF</a>
+                            <br>
+                            <small class="text-muted">{{ event.upload_date }}</small>
+                        {% else %}
+                            -
+                        {% endif %}
+                        {% if event.remarks %}
+                            <div class="small text-info mt-1">Note: {{ event.remarks }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="{{ url_for('upload_sampling_result', id=flock.id, event_id=event.id) }}" method="POST" enctype="multipart/form-data" class="d-flex flex-column">
+                            <div class="input-group input-group-sm mb-1">
+                                <input type="text" name="remarks" class="form-control" placeholder="Remarks" value="{{ event.remarks or '' }}">
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <input type="file" name="file" class="form-control" accept=".pdf">
+                                <button type="submit" class="btn btn-primary">Save/Upload</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

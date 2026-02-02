@@ -36,11 +36,12 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-info text-dark">Mortality & Culls</div>
+      <div class="card-header bg-info text-dark">Mortality, Culls & Transfers</div>
       <div class="card-body">
+        <h5 class="card-title">Production (Male & Female)</h5>
         <div class="row">
           <div class="col-6 mb-2">
-            <label class="form-label">Mortality Male</label>
+            <label class="form-label">Mortality Male (Prod)</label>
             <input type="number" class="form-control" name="mortality_male" value="{{ log.mortality_male if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
@@ -48,12 +49,38 @@
             <input type="number" class="form-control" name="mortality_female" value="{{ log.mortality_female if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
-            <label class="form-label">Culls Male</label>
+            <label class="form-label">Culls Male (Prod)</label>
             <input type="number" class="form-control" name="culls_male" value="{{ log.culls_male if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
             <label class="form-label">Culls Female</label>
             <input type="number" class="form-control" name="culls_female" value="{{ log.culls_female if log else 0 }}">
+          </div>
+        </div>
+
+        <hr>
+        <h5 class="card-title">Male Hospital (Optional)</h5>
+        <div class="row">
+          <div class="col-6 mb-2">
+            <label class="form-label">Mortality Male (Hosp)</label>
+            <input type="number" class="form-control" name="mortality_male_hosp" value="{{ log.mortality_male_hosp if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Culls Male (Hosp)</label>
+            <input type="number" class="form-control" name="culls_male_hosp" value="{{ log.culls_male_hosp if log else 0 }}">
+          </div>
+        </div>
+
+        <hr>
+        <h5 class="card-title">Male Transfers</h5>
+        <div class="row">
+           <div class="col-6 mb-2">
+            <label class="form-label">Moved TO Hospital</label>
+            <input type="number" class="form-control" name="males_moved_to_hosp" value="{{ log.males_moved_to_hosp if log else 0 }}">
+          </div>
+          <div class="col-6 mb-2">
+            <label class="form-label">Moved TO Production</label>
+            <input type="number" class="form-control" name="males_moved_to_prod" value="{{ log.males_moved_to_prod if log else 0 }}">
           </div>
         </div>
       </div>
@@ -109,6 +136,14 @@
             <input type="number" class="form-control" name="water_reading_3" value="{{ log.water_reading_3 if log else 0 }}" onchange="calculateWater()">
           </div>
         </div>
+        <div class="mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="flushing" id="flushing" {{ 'checked' if log and log.flushing else '' }}>
+                <label class="form-check-label" for="flushing">
+                    Flushing Active?
+                </label>
+            </div>
+        </div>
         <small class="text-muted">
           12h Consumption: <span id="water_12h">0</span> Liters
         </small>
@@ -145,7 +180,6 @@
         </div>
       </div>
       <div class="card-body">
-
         <!-- Standard BW -->
         <div class="row mb-3" id="standard_bw_section">
            <div class="col-6">
@@ -274,26 +308,11 @@
         let avgDiv = document.getElementById('average_section');
         let weighingCheck = document.getElementById('is_weighing_day');
 
-        // Logic:
-        // Production -> Always Show Average (Editable). Hide Partitions. Hide Weighing Checkbox?
-        // Rearing ->
-        //    Weighing Checkbox visible.
-        //    If Checked -> Show Partitions, Average is ReadOnly.
-        //    If Unchecked -> Hide Partitions, Hide Average (or Disabled 0).
-
-        // Actually user said: "During production phase, hide partition; only average input."
-        // And "hide bodyweight column if there is no weighing that day" (Rearing).
-
         if (phase === 'Production') {
             partitionsDiv.style.display = 'none';
             avgDiv.style.display = 'flex'; // Show row
             setAvgReadonly(false);
-            // Hide Checkbox container? Or just uncheck it?
-            // weighingCheck.closest('.form-switch').style.display = 'none';
-            // User didn't strictly say hide checkbox in production, but implied partitions irrelevant.
         } else {
-            // Rearing
-            // weighingCheck.closest('.form-switch').style.display = 'block';
             togglePartitions();
         }
     }
@@ -328,7 +347,6 @@
             partitionsDiv.style.display = 'none';
             // "hide bodyweight column if there is no weighing that day"
             avgDiv.style.display = 'none';
-            // Optional: Clear values?
         }
     }
 
