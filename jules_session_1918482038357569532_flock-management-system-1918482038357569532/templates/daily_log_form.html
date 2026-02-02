@@ -89,12 +89,23 @@
     <div class="card mb-3">
       <div class="card-header bg-success text-white">Feed</div>
       <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label">Feed Program</label>
-          <select class="form-select" name="feed_program">
-            <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
-            <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
-          </select>
+        <div class="row mb-3">
+            <div class="col-6">
+                <label class="form-label">Feed Program</label>
+                <select class="form-select" name="feed_program">
+                    <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
+                    <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Feed Code</label>
+                <select class="form-select" name="feed_code_id">
+                    <option value="">-- Select Code --</option>
+                    {% for fc in feed_codes %}
+                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_id == fc.id else '' }}>{{ fc.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <div class="row">
           <div class="col-6 mb-2">
@@ -194,26 +205,45 @@
 
         <!-- Partitions Section (Hidden unless Weighing Day & Rearing) -->
         <div id="partitions_section" style="display:none;">
-            <h6 class="text-primary">Male Partitions (2)</h6>
-            <div class="row mb-2">
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_male_p1" placeholder="M BW P1" value="{{ log.bw_male_p1 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_male_p1" placeholder="M Unif P1" value="{{ log.unif_male_p1 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_male_p2" placeholder="M BW P2" value="{{ log.bw_male_p2 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_male_p2" placeholder="M Unif P2" value="{{ log.unif_male_p2 if log else 0 }}" onchange="calcAvg()"></div>
-            </div>
+            <div class="row">
+                <!-- Male Section -->
+                <div class="col-md-6 border-end">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-primary mb-0">Male Partitions (Max 8)</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPartition('M')">+ Add</button>
+                    </div>
+                    {% for i in range(1, 9) %}
+                    {% set bw_val = get_partition_val(log, 'M' ~ i, 'bw') %}
+                    {% set uni_val = get_partition_val(log, 'M' ~ i, 'uni') %}
+                    <!-- If existing log has data, show it. Otherwise hide P3-P8 initially -->
+                    {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 2) else 'display:none;' %}
+                    <div class="row mb-2 partition-row-M" id="row_M{{i}}" style="{{ show_style }}">
+                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">M{{i}}</span></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" value="{{ bw_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Unif" value="{{ uni_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('M', {{i}})">&times;</button></div>
+                    </div>
+                    {% endfor %}
+                </div>
 
-            <h6 class="text-danger">Female Partitions (4)</h6>
-            <div class="row mb-2">
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p1" placeholder="F BW P1" value="{{ log.bw_female_p1 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p1" placeholder="F Unif P1" value="{{ log.unif_female_p1 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p2" placeholder="F BW P2" value="{{ log.bw_female_p2 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p2" placeholder="F Unif P2" value="{{ log.unif_female_p2 if log else 0 }}" onchange="calcAvg()"></div>
-            </div>
-            <div class="row mb-2">
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p3" placeholder="F BW P3" value="{{ log.bw_female_p3 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p3" placeholder="F Unif P3" value="{{ log.unif_female_p3 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_female_p4" placeholder="F BW P4" value="{{ log.bw_female_p4 if log else 0 }}" onchange="calcAvg()"></div>
-                <div class="col-3"><input type="number" step="0.01" class="form-control form-control-sm" name="unif_female_p4" placeholder="F Unif P4" value="{{ log.unif_female_p4 if log else 0 }}" onchange="calcAvg()"></div>
+                <!-- Female Section -->
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-danger mb-0">Female Partitions (Max 8)</h6>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="addPartition('F')">+ Add</button>
+                    </div>
+                    {% for i in range(1, 9) %}
+                    {% set bw_val = get_partition_val(log, 'F' ~ i, 'bw') %}
+                    {% set uni_val = get_partition_val(log, 'F' ~ i, 'uni') %}
+                    {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 4) else 'display:none;' %}
+                    <div class="row mb-2 partition-row-F" id="row_F{{i}}" style="{{ show_style }}">
+                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">F{{i}}</span></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" value="{{ bw_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Unif" value="{{ uni_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('F', {{i}})">&times;</button></div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
             <hr>
         </div>
@@ -364,48 +394,69 @@
         });
     }
 
+    function addPartition(sex) {
+        // Find first hidden row
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_' + sex + i);
+            if(row && row.style.display === 'none') {
+                row.style.display = 'flex';
+                break;
+            }
+        }
+    }
+
+    function removePartition(sex, index) {
+        let row = document.getElementById('row_' + sex + index);
+        if(row) {
+            row.style.display = 'none';
+            // Clear values
+            let inputs = row.getElementsByTagName('input');
+            for(let inp of inputs) {
+                inp.value = 0;
+            }
+            calcAvg();
+        }
+    }
+
     function calcAvg() {
-        // Only run if partitions visible
         if (document.getElementById('partitions_section').style.display === 'none') return;
 
         // Male
-        let m_p1 = parseFloat(document.getElementsByName('bw_male_p1')[0].value) || 0;
-        let m_p2 = parseFloat(document.getElementsByName('bw_male_p2')[0].value) || 0;
-        let m_cnt = 0, m_sum = 0;
-        if (m_p1 > 0) { m_sum += m_p1; m_cnt++; }
-        if (m_p2 > 0) { m_sum += m_p2; m_cnt++; }
-        document.getElementById('body_weight_male').value = (m_cnt > 0 ? (m_sum / m_cnt) : 0).toFixed(2);
-
-        let mu_p1 = parseFloat(document.getElementsByName('unif_male_p1')[0].value) || 0;
-        let mu_p2 = parseFloat(document.getElementsByName('unif_male_p2')[0].value) || 0;
+        let m_sum = 0, m_cnt = 0;
         let mu_sum = 0;
-        if (mu_p1 > 0) mu_sum += mu_p1;
-        if (mu_p2 > 0) mu_sum += mu_p2;
-        // Simple avg of unif?
+
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_M' + i);
+            if(row && row.style.display !== 'none') {
+                let bw = parseFloat(document.getElementsByName('bw_M' + i)[0].value) || 0;
+                let uni = parseFloat(document.getElementsByName('uni_M' + i)[0].value) || 0;
+                if(bw > 0) {
+                    m_sum += bw;
+                    m_cnt++;
+                    mu_sum += uni;
+                }
+            }
+        }
+        document.getElementById('body_weight_male').value = (m_cnt > 0 ? (m_sum / m_cnt) : 0).toFixed(2);
         document.getElementById('uniformity_male').value = (m_cnt > 0 ? (mu_sum / m_cnt) : 0).toFixed(2);
 
         // Female
-        let f_p1 = parseFloat(document.getElementsByName('bw_female_p1')[0].value) || 0;
-        let f_p2 = parseFloat(document.getElementsByName('bw_female_p2')[0].value) || 0;
-        let f_p3 = parseFloat(document.getElementsByName('bw_female_p3')[0].value) || 0;
-        let f_p4 = parseFloat(document.getElementsByName('bw_female_p4')[0].value) || 0;
-
-        let f_cnt = 0, f_sum = 0;
-        if (f_p1 > 0) { f_sum += f_p1; f_cnt++; }
-        if (f_p2 > 0) { f_sum += f_p2; f_cnt++; }
-        if (f_p3 > 0) { f_sum += f_p3; f_cnt++; }
-        if (f_p4 > 0) { f_sum += f_p4; f_cnt++; }
-        document.getElementById('body_weight_female').value = (f_cnt > 0 ? (f_sum / f_cnt) : 0).toFixed(2);
-
-        let fu_p1 = parseFloat(document.getElementsByName('unif_female_p1')[0].value) || 0;
-        let fu_p2 = parseFloat(document.getElementsByName('unif_female_p2')[0].value) || 0;
-        let fu_p3 = parseFloat(document.getElementsByName('unif_female_p3')[0].value) || 0;
-        let fu_p4 = parseFloat(document.getElementsByName('unif_female_p4')[0].value) || 0;
+        let f_sum = 0, f_cnt = 0;
         let fu_sum = 0;
-        if (fu_p1 > 0) fu_sum += fu_p1;
-        if (fu_p2 > 0) fu_sum += fu_p2;
-        if (fu_p3 > 0) fu_sum += fu_p3;
-        if (fu_p4 > 0) fu_sum += fu_p4;
+
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_F' + i);
+            if(row && row.style.display !== 'none') {
+                let bw = parseFloat(document.getElementsByName('bw_F' + i)[0].value) || 0;
+                let uni = parseFloat(document.getElementsByName('uni_F' + i)[0].value) || 0;
+                if(bw > 0) {
+                    f_sum += bw;
+                    f_cnt++;
+                    fu_sum += uni;
+                }
+            }
+        }
+        document.getElementById('body_weight_female').value = (f_cnt > 0 ? (f_sum / f_cnt) : 0).toFixed(2);
         document.getElementById('uniformity_female').value = (f_cnt > 0 ? (fu_sum / f_cnt) : 0).toFixed(2);
     }
 
