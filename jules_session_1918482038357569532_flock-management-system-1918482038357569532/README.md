@@ -34,6 +34,22 @@ python init_db.py
 ```
 This creates `instance/farm.db` and populates initial House names.
 
+## Configuration
+
+For production environments, you should set a secure secret key.
+
+1.  **Generate a secret key:**
+    ```bash
+    python generate_key.py
+    ```
+    Copy the generated key.
+
+2.  **Create a `.env` file:**
+    Create a file named `.env` in the root directory and add the following line:
+    ```
+    SECRET_KEY=your_generated_key_here
+    ```
+
 ## Running the Application
 
 ```bash
