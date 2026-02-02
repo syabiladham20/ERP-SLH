@@ -18,8 +18,9 @@ fi
 
 echo "Initializing database..."
 if [ -f instance/farm.db ]; then
-    echo "Removing existing database (fresh start requested)..."
-    rm instance/farm.db
+    echo "Database exists. Skipping deletion to preserve data."
+else
+    echo "No database found. Creating new..."
 fi
 
 python init_db.py
