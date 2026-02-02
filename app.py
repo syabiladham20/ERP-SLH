@@ -340,7 +340,32 @@ def index():
         days_age = (today - f.intake_date).days
         f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
 
-    return render_template('index.html', active_flocks=active_flocks)
+    return render_template('index.html', active_flocks=active_flocks, today=today)
+
+@app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
+def edit_flock(id):
+    flock = Flock.query.get_or_404(id)
+    if request.method == 'POST':
+        intake_date_str = request.form.get('intake_date')
+        if intake_date_str:
+            flock.intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
+
+        prod_start_str = request.form.get('production_start_date')
+        if prod_start_str:
+             flock.production_start_date = datetime.strptime(prod_start_str, '%Y-%m-%d').date()
+        else:
+             flock.production_start_date = None
+
+        flock.intake_male = int(request.form.get('intake_male') or 0)
+        flock.intake_female = int(request.form.get('intake_female') or 0)
+        flock.doa_male = int(request.form.get('doa_male') or 0)
+        flock.doa_female = int(request.form.get('doa_female') or 0)
+
+        db.session.commit()
+        flash(f'Flock {flock.batch_id} updated.', 'success')
+        return redirect(url_for('index'))
+
+    return render_template('flock_edit.html', flock=flock)
 
 @app.route('/flock/<int:id>/delete', methods=['POST'])
 def delete_flock(id):
@@ -740,9 +765,17 @@ def toggle_phase(id):
     flock = Flock.query.get_or_404(id)
     if flock.phase == 'Rearing':
         flock.phase = 'Production'
-        flash(f'Flock {flock.batch_id} switched to Production phase.', 'success')
+
+        prod_date_str = request.form.get('production_start_date')
+        if prod_date_str:
+            flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
+        else:
+            flock.production_start_date = date.today()
+
+        flash(f'Flock {flock.batch_id} switched to Production phase starting {flock.production_start_date}.', 'success')
     else:
         flock.phase = 'Rearing'
+        flock.production_start_date = None
         flash(f'Flock {flock.batch_id} switched back to Rearing phase.', 'warning')
     db.session.commit()
     return redirect(url_for('index'))
@@ -1559,12 +1592,14 @@ def process_import(file):
             if isinstance(date_val, str):
                 try:
                     log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
+                    data_rows.append(row)
                 except:
                     continue
             elif hasattr(date_val, 'date'):
                 log_date = date_val.date()
+                data_rows.append(row)
             else:
-             data_rows.append(row)
+                pass
 
         i = 0
         while i < len(data_rows):
@@ -1606,14 +1641,14 @@ def process_import(file):
                 val = r.iloc[idx]
                 return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
                 
-            def get_str(idx):
-                if idx >= len(row): return None
-                val = row.iloc[idx]
+            def get_str(r, idx):
+                if idx >= len(r): return None
+                val = r.iloc[idx]
                 return str(val) if pd.notna(val) else None
 
-            def get_time(idx):
-                if idx >= len(row): return None
-                val = row.iloc[idx]
+            def get_time(r, idx):
+                if idx >= len(r): return None
+                val = r.iloc[idx]
                 if pd.isna(val): return None
                 if isinstance(val, str): return val
                 return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)

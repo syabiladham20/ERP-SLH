@@ -111,10 +111,10 @@ class ImportTestCase(unittest.TestCase):
         
         # Post to import
         response = self.app.post('/import', data={
-            'file': (output, 'test.xlsx')
+            'files': (output, 'test.xlsx')
         }, content_type='multipart/form-data', follow_redirects=True)
         
-        self.assertIn(b'Data imported successfully', response.data)
+        self.assertIn(b'Successfully imported 1 files.', response.data)
         
         # Verify DB
         house = House.query.filter_by(name='TEST_HOUSE_1').first()

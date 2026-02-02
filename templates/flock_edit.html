@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Edit Flock: {{ flock.batch_id }}</h2>
+
+<div class="card">
+  <div class="card-body">
+    <form method="POST">
+      <div class="mb-3">
+        <label class="form-label">House</label>
+        <input type="text" class="form-control" value="{{ flock.house.name }}" disabled>
+      </div>
+
+      <div class="mb-3">
+        <label for="intake_date" class="form-label">Intake Date</label>
+        <input type="date" class="form-control" id="intake_date" name="intake_date" value="{{ flock.intake_date }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="production_start_date" class="form-label">Production Start Date</label>
+        <input type="date" class="form-control" id="production_start_date" name="production_start_date" value="{{ flock.production_start_date or '' }}">
+        <div class="form-text">Clear to revert to Rearing logic (unless manual Phase is set).</div>
+      </div>
+
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label for="intake_male" class="form-label">Intake Male</label>
+          <input type="number" class="form-control" id="intake_male" name="intake_male" value="{{ flock.intake_male }}">
+        </div>
+        <div class="col-6 mb-3">
+          <label for="intake_female" class="form-label">Intake Female</label>
+          <input type="number" class="form-control" id="intake_female" name="intake_female" value="{{ flock.intake_female }}">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label for="doa_male" class="form-label">DOA Male</label>
+          <input type="number" class="form-control" id="doa_male" name="doa_male" value="{{ flock.doa_male }}">
+        </div>
+        <div class="col-6 mb-3">
+          <label for="doa_female" class="form-label">DOA Female</label>
+          <input type="number" class="form-control" id="doa_female" name="doa_female" value="{{ flock.doa_female }}">
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between">
+          <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
