@@ -56,7 +56,8 @@
     <div>
         <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
         <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
-        <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-sm btn-info">Sampling Schedule</a>
+        <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-sm btn-info me-2">Sampling</a>
+        <a href="{{ url_for('flock_vaccines', id=flock.id) }}" class="btn btn-sm btn-warning">Vaccines</a>
     </div>
   </div>
   <div class="card-body">
@@ -317,7 +318,7 @@
         <td>{{ log.date }}</td>
         <td>{{ log.mortality_male }} / {{ log.mortality_female }}</td>
         <td>{{ log.feed_male_gp_bird }} / {{ log.feed_female_gp_bird }}</td>
-        <td>{{ "%.2f"|format(log.water_intake_calculated) }} L</td>
+        <td>{{ "%.0f"|format(log.water_intake_calculated) }} L</td>
         <td>{{ log.eggs_collected }}</td>
         <td>{{ log.body_weight_male }} / {{ log.body_weight_female }}</td>
         <td>

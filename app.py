@@ -211,6 +211,43 @@ class Medication(db.Model):
 
     flock = db.relationship('Flock', backref=db.backref('medications', lazy=True))
 
+class Vaccine(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    # Age can be defined by Day (for first few weeks) or Week
+    age_code = db.Column(db.String(10), nullable=False) # 'D1', 'W6', etc.
+    vaccine_name = db.Column(db.String(200), nullable=False)
+    route = db.Column(db.String(50), nullable=True)
+
+    # Dates
+    est_date = db.Column(db.Date, nullable=True)
+    actual_date = db.Column(db.Date, nullable=True)
+    remarks = db.Column(db.String(255), nullable=True)
+
+    flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True))
+
+    @property
+    def dose_count(self):
+        # "Round up the doses by overestimate the bird population, if 7500 birds, count as 8000 birds."
+        # Assuming 1000 doses per bottle as per prompt.
+        if not self.flock: return 0
+
+        # Determine bird count (Intake or Current?)
+        # "From D1 is week 0... if 7500 birds, count as 8000"
+        # Usually based on Intake or Current Stock. Let's use Intake for simplicity/safety or Current?
+        # Safe to use Intake or Current. Prompt says "bird population".
+        # Let's use a rough current stock estimation or just Intake for D1.
+        # But for W56, many birds might have died.
+        # Let's use 'current stock' estimation based on phase?
+        # Actually, simpler: Use Intake for now, or refine later.
+        # Prompt: "overestimate the bird population".
+        count = self.flock.intake_female + self.flock.intake_male
+        import math
+        # Round up to nearest 1000? "if 7500 ... count as 8000"
+        # 7500 / 1000 = 7.5 -> ceil -> 8 * 1000 = 8000
+        doses_needed = math.ceil(count / 1000.0) * 1000
+        return doses_needed
+
 class ImportedWeeklyBenchmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
@@ -223,6 +260,25 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_female = db.Column(db.Float, default=0.0)
 
 def initialize_sampling_schedule(flock_id):
+    # Updated Schedule based on user input
+    # Week 1 (Day 1): SEROLOGY AND SALMONELLA
+    # Week 4: SALMONELLA
+    # Week 8: SEROLOGY
+    # Week 16: SALMONELLA
+    # Week 18: SEROLOGY
+    # Week 24: SEROLOGY
+    # Week 28: SALMONELLA
+    # Week 30: SEROLOGY
+    # Week 38: SEROLOGY
+    # Week 40: SALMONELLA
+    # Week 50: SEROLOGY
+    # Week 52: SALMONELLA
+    # Week 58: SEROLOGY
+    # Week 64: SALMONELLA
+    # Week 70: SEROLOGY
+    # Week 76: SALMONELLA
+    # Week 90: SALMONELLA
+
     schedule = {
         1: 'Serology & Salmonella',
         4: 'Salmonella',
@@ -256,6 +312,114 @@ def initialize_sampling_schedule(flock_id):
             status='Pending'
         )
         db.session.add(event)
+    db.session.commit()
+
+def initialize_vaccine_schedule(flock_id):
+    flock = Flock.query.get(flock_id)
+    if not flock: return
+
+    # Schedule from prompt
+    # Structure: (AgeCode, VaccineName, Route, DaysOffset)
+    # D1 = 0 days from Intake (assuming Intake is Day 1 or Day 0? usually Intake is Day 0/1)
+    # Prompt: "From D1 is week 0".
+    # We will assume Intake Date = D1 (Day 1).
+
+    # Days Offset calculation:
+    # D1 -> 0
+    # D8 -> 7
+    # W6 -> (6-1)*7 = 35 days? Or just 6*7=42?
+    # Usually W1 = Days 0-6 or 1-7.
+    # Let's assume Wx = x * 7 days (approx) or start of that week.
+    # User prompt: "From D1 is week 0".
+    # D1 = Day 1.
+    # D8 = Day 8.
+    # W6 = Week 6. (Day 42 approx).
+
+    # Let's use simple logic:
+    # if 'D' in code: offset = int(code[1:]) - 1
+    # if 'W' in code: offset = (int(code[1:]) * 7) - 1 # Start of that week? Or end?
+    # Usually vaccination at "Week 6" means during week 6. Let's aim for start of week (Day 42).
+
+    schedule_data = [
+        ('D1', 'TRIVALENT VAXXITEK', 'S/C'),
+        ('D1', 'PREVEXXION', 'S/C'),
+        ('D1', 'COCCIVAC', 'SPRAY'),
+        ('D1', 'MA5 CLONE 30', 'SPRAY'),
+        ('D1', 'IBIRD', 'SPRAY'),
+        ('D8', 'REO S1133', 'S/C'),
+        ('D8', 'MA5 CLONE 30', 'EYE DROP'),
+        ('D14', 'NEW LS MASS (RHONE MA)', 'EYE DROP'),
+        ('D21', 'MA5 CLONE 30', 'EYE DROP'),
+        ('D21', 'VECTORMUNE FP-MG', 'W/W'),
+        ('D28', 'ND STANDARD (0.2ml)', 'EYE DROP'),
+        ('W6', 'FC OIL (0.2ml)', 'I/M'),
+        ('W7', 'ANIVAC H9N2', 'I/M'),
+        ('W7', 'NOBILIS IB 4/91 + MA5 CLONE 30', 'EYE DROP'),
+        ('W8', 'ND STANDARD (0.4ml)', 'I/M'),
+        ('W9', 'LT IVAX', 'EYE DROP'),
+        ('W9', 'ANIVAC FADV', 'I/M'),
+        ('W10', 'CEVA CIRCOMUNE', 'W/W'),
+        ('W10', 'POXIMUNE AE', 'W/W'),
+        ('W12', 'REO S1133', 'S/C'),
+        ('W12', 'MS VAC', 'I/M'),
+        ('W12', 'NEMOVAC', 'D/W'),
+        ('W13', 'CORYZA GEL 3', 'I/M'),
+        ('W13', 'GALLIVAC LASOTA IB MASS', 'EYE DROP'),
+        ('W14', 'GALLIMUNE 407', 'I/M'),
+        ('W14', 'ANIVAC H9N2', 'I/M'),
+        ('W16', 'GALLIVAC LASOTA IB MASS', 'D/W'),
+        ('W17', 'NOBILIS IB 4/91 + MA5 CLONE 30', 'EYE DROP'),
+        ('W17', 'FC OIL', 'I/M'),
+        ('W18', 'NOBILIS REO+IB+G+ND', 'I/M'),
+        ('W18', 'CORYZA OIL 3', 'I/M'),
+        ('W19', 'ANIVAC FADV', 'I/M'),
+        ('W19', 'MG BAC', 'I/M'),
+        ('W20', 'NEW LS MASS (RHONE MA)', 'D/W'),
+        ('W21', 'MS VAC', 'I/M'),
+        ('W22', 'NEW LS MASS (RHONE MA)', 'D/W'),
+        ('W23', 'ANIVAC H9N2', 'I/M'),
+        ('W28', 'GALLIVAC LASOTA IB MASS', 'D/W'),
+        ('W32', 'CEVAC NBL', 'D/W'),
+        ('W32', 'IBIRD', 'D/W'),
+        ('W36', 'NEW LS MASS (RHONE MA)', 'D/W'),
+        ('W40', 'GALLIVAC LASOTA IB MASS', 'D/W'),
+        ('W44', 'CEVAC NBL', 'D/W'),
+        ('W44', 'IBIRD', 'D/W'),
+        ('W48', 'NEW LS MASS (RHONE MA)', 'D/W'),
+        ('W52', 'GALLIVAC LASOTA IB MASS', 'D/W'),
+        ('W56', 'CEVAC NBL', 'D/W'),
+        ('W56', 'IBIRD', 'D/W'),
+    ]
+
+    from datetime import timedelta
+
+    for age_code, vaccine, route in schedule_data:
+        offset = 0
+        if age_code.startswith('D'):
+            try:
+                days = int(age_code[1:])
+                offset = days - 1
+            except: pass
+        elif age_code.startswith('W'):
+            try:
+                weeks = int(age_code[1:])
+                # Week 6 starts at Day (6*7)-7+1 = 36?
+                # Or Week 6 = 42 days?
+                # Let's assume W6 = 42 days old (End of week 6/Start of week 7) or Start of Week 6 (Day 36).
+                # User picture implies Age "Week 6". Let's stick to Week * 7 days.
+                offset = (weeks * 7)
+            except: pass
+
+        est_date = flock.intake_date + timedelta(days=offset)
+
+        v = Vaccine(
+            flock_id=flock_id,
+            age_code=age_code,
+            vaccine_name=vaccine,
+            route=route,
+            est_date=est_date
+        )
+        db.session.add(v)
     db.session.commit()
 
 @app.route('/')
@@ -449,6 +613,7 @@ def manage_flocks():
         db.session.commit()
 
         initialize_sampling_schedule(new_flock.id)
+        initialize_vaccine_schedule(new_flock.id)
 
         flash(f'Flock created successfully! Batch ID: {batch_id}', 'success')
         return redirect(url_for('index'))
@@ -935,6 +1100,51 @@ def flock_sampling(id):
     events = SamplingEvent.query.filter_by(flock_id=id).order_by(SamplingEvent.age_week.asc()).all()
     return render_template('flock_sampling.html', flock=flock, events=events)
 
+@app.route('/flock/<int:id>/vaccines', methods=['GET', 'POST'])
+def flock_vaccines(id):
+    flock = Flock.query.get_or_404(id)
+    if request.method == 'POST':
+        vaccine_id = request.form.get('vaccine_id')
+        v = Vaccine.query.get_or_404(vaccine_id)
+
+        actual_date_str = request.form.get('actual_date')
+        if actual_date_str:
+            v.actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
+
+        # Remarks update
+        remarks = request.form.get('remarks')
+        if remarks is not None:
+             v.remarks = remarks
+
+        db.session.commit()
+        flash('Vaccine record updated.', 'success')
+        return redirect(url_for('flock_vaccines', id=id))
+
+    vaccines = Vaccine.query.filter_by(flock_id=id).order_by(Vaccine.id.asc()).all()
+    return render_template('flock_vaccines.html', flock=flock, vaccines=vaccines)
+
+@app.route('/vaccine_schedule')
+def global_vaccine_schedule():
+    # Show monthly schedule for all active flocks
+    active_flocks = Flock.query.filter_by(status='Active').all()
+    flock_ids = [f.id for f in active_flocks]
+
+    # Get all pending vaccines or vaccines in future?
+    # "Show monthly what vaccine is needed"
+    vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).order_by(Vaccine.est_date.asc()).all()
+
+    # Group by Month
+    schedule = {}
+
+    for v in vaccines:
+        if not v.est_date: continue
+        month_key = v.est_date.strftime('%Y-%m') # "2024-05"
+        if month_key not in schedule:
+            schedule[month_key] = []
+        schedule[month_key].append(v)
+
+    return render_template('vaccine_schedule.html', schedule=schedule)
+
 @app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
 def upload_sampling_result(id, event_id):
     event = SamplingEvent.query.get_or_404(event_id)
@@ -1093,24 +1303,58 @@ def flock_dashboard(id):
     })
 
     # Calculate diff and status
+    diagnostic_hints = []
+
     for k in kpis:
         k['diff'] = k['value'] - k['prev']
         k['status'] = 'neutral'
 
-        if k['std'] is not None and k['value'] > 0:
+        std_val = k.get('std')
+        if std_val is not None and k['value'] > 0:
             # Anomaly Detection Logic
             if k['reverse_bad']: # Higher than std is bad
-                if k['value'] > k['std'] * 1.1: # 10% tolerance?
+                if k['value'] > std_val * 1.1: # 10% tolerance?
                     k['status'] = 'danger'
-                elif k['value'] > k['std']:
+                    diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
+                elif k['value'] > std_val:
                     k['status'] = 'warning'
             else: # Lower than std is bad
-                if k['value'] < k['std'] * 0.9:
+                if k['value'] < std_val * 0.9:
                     k['status'] = 'danger'
-                elif k['value'] < k['std']:
+                    diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
+                elif k['value'] < std_val:
                     k['status'] = 'warning'
 
-    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days)
+    # Mortality Spike Rule: > 0.1% for 3 consecutive days
+    # Need last 3 logs including target_date
+    last_3_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.desc()).limit(3).all()
+
+    if len(last_3_logs) == 3:
+        spike_count = 0
+        temp_stock_f = curr_stock_f
+
+        # logs[0] is Target Date
+        # logs[1] is Target - 1
+        # logs[2] is Target - 2
+
+        # Check logs[0]
+        m_pct = (last_3_logs[0].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        # Check logs[1]
+        temp_stock_f += (last_3_logs[0].mortality_female + last_3_logs[0].culls_female)
+        m_pct = (last_3_logs[1].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        # Check logs[2]
+        temp_stock_f += (last_3_logs[1].mortality_female + last_3_logs[1].culls_female)
+        m_pct = (last_3_logs[2].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        if spike_count == 3:
+             diagnostic_hints.insert(0, "Warning: Continuous mortality spike—review post-mortem photos.")
+
+    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days, diagnostic_hints=diagnostic_hints)
 
 @app.route('/daily_log', methods=['GET', 'POST'])
 def daily_log():
