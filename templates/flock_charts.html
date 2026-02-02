@@ -22,8 +22,9 @@
                 <label class="form-label">End Date</label>
                 <input type="date" id="endDate" class="form-control">
             </div>
-            <div class="col-md-3">
-                <button id="applyFilters" class="btn btn-primary w-100">Apply Filter</button>
+            <div class="col-md-3 d-flex gap-2">
+                <button id="applyFilters" class="btn btn-primary flex-grow-1">Apply</button>
+                <button id="downloadPdf" class="btn btn-outline-danger" title="Download PDF Report"><i class="bi bi-file-pdf"></i> PDF</button>
             </div>
         </div>
     </div>
@@ -67,6 +68,7 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
     const flockId = {{ flock.id }};
     const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
@@ -75,6 +77,24 @@
 
     document.getElementById('applyFilters').addEventListener('click', loadData);
     document.getElementById('viewMode').addEventListener('change', loadData);
+
+    // PDF Download
+    document.getElementById('downloadPdf').addEventListener('click', function() {
+        const overlay = document.getElementById('loading-overlay');
+        if(overlay) overlay.style.display = 'flex';
+
+        const element = document.querySelector('.container'); // Capture main container
+        const opt = {
+            margin:       0.3,
+            filename:     `Report_{{ flock.batch_id }}_${new Date().toISOString().split('T')[0]}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save().then(function(){
+            if(overlay) overlay.style.display = 'none';
+        });
+    });
 
     // Initial Load
     document.addEventListener('DOMContentLoaded', loadData);

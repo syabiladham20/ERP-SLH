@@ -34,6 +34,17 @@
         </div>
     </div>
 
+    {% if diagnostic_hints %}
+    <div class="alert alert-warning shadow-sm">
+        <h5 class="alert-heading"><i class="bi bi-robot"></i> AI Diagnostic Hints</h5>
+        <ul class="mb-0">
+            {% for hint in diagnostic_hints %}
+                <li>{{ hint }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <div class="table-responsive">
         <table class="table table-bordered align-middle">
             <thead class="table-dark">
