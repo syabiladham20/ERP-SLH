@@ -5,9 +5,9 @@ def init_db():
         db.create_all()
         
         # Pre-populate Houses
-        houses = ['VA1', 'VA2', 'VA3']
-        for name in houses:
-            if not House.query.filter_by(name=name).first():
+        if House.query.count() == 0:
+            houses = ['VA1', 'VA2', 'VA3']
+            for name in houses:
                 db.session.add(House(name=name))
                 print(f"Added House: {name}")
         

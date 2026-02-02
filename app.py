@@ -199,6 +199,18 @@ class SamplingEvent(db.Model):
         days_offset = ((self.age_week - 1) * 7) + 1
         return self.flock.intake_date + timedelta(days=days_offset)
 
+class Medication(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    drug_name = db.Column(db.String(100), nullable=False)
+    dosage = db.Column(db.String(50), nullable=False)
+    withdrawal_period_days = db.Column(db.Integer, default=0)
+    start_date = db.Column(db.Date, nullable=False, default=date.today)
+    end_date = db.Column(db.Date, nullable=True)
+    remarks = db.Column(db.String(255), nullable=True)
+
+    flock = db.relationship('Flock', backref=db.backref('medications', lazy=True))
+
 class ImportedWeeklyBenchmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
