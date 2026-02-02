@@ -4,12 +4,15 @@ from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
 from flask import send_from_directory
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'dev_key'  # Change for production
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key')
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
