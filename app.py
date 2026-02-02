@@ -1707,12 +1707,15 @@ def import_data():
         success_count = 0
         errors = []
 
+        import traceback
+
         for file in files:
             if file and file.filename.endswith('.xlsx'):
                 try:
                     process_import(file)
                     success_count += 1
                 except Exception as e:
+                    print(traceback.format_exc())
                     errors.append(f"{file.filename}: {str(e)}")
             else:
                 if file.filename:
@@ -2103,12 +2106,14 @@ def verify_import_data(flock):
         if wd.week in agg:
             calc = agg[wd.week]
             # Check Mortality Female
-            if abs(calc['mort_f'] - wd.mortality_female) > 1: # Tolerance of 1
-                warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
+            imported_mort = wd.mortality_female if wd.mortality_female is not None else 0
+            if abs(calc['mort_f'] - imported_mort) > 1: # Tolerance of 1
+                warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({imported_mort})")
 
             # Check Eggs
-            if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
-                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
+            imported_eggs = wd.eggs_collected if wd.eggs_collected is not None else 0
+            if abs(calc['eggs'] - imported_eggs) > 5: # Tolerance
+                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({imported_eggs})")
 
     if warnings:
         flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')
