@@ -16,12 +16,14 @@ else
     echo ".env file already exists."
 fi
 
-echo "Initializing database..."
+echo "Checking database..."
 if [ -f instance/farm.db ]; then
-    echo "Removing existing database (fresh start requested)..."
-    rm instance/farm.db
+    echo "Backing up existing database..."
+    cp instance/farm.db instance/farm.db.bak
+    echo "Backup created at instance/farm.db.bak"
 fi
 
+echo "Initializing/Updating database..."
 python init_db.py
 
 echo "Deployment setup complete!"
