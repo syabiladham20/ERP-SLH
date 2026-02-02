@@ -87,7 +87,7 @@
             document.querySelectorAll('form').forEach(form => {
                 form.addEventListener('submit', function(e) {
                     // Check validity first if using HTML5 validation
-                    if (this.checkValidity()) {
+                    if (this.checkValidity() && !e.defaultPrevented) {
                         if (!this.target || this.target === '_self') {
                             overlay.style.display = 'flex';
                         }
