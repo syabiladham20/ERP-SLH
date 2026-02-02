@@ -1258,6 +1258,7 @@ def flock_dashboard(id):
         'value': cull_f_val,
         'prev': cull_f_prev,
         'unit': '%',
+        'std': None,
         'reverse_bad': True
     })
 
@@ -1270,6 +1271,7 @@ def flock_dashboard(id):
         'value': cum_mort_f_pct,
         'prev': cum_mort_f_prev,
         'unit': '%',
+        'std': None,
         'reverse_bad': True
     })
 

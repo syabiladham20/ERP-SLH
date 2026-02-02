@@ -66,9 +66,9 @@
                     </td>
                     <td>
                         {% if k.diff > 0 %}
-                            <span class="text-{{ 'danger' if k.reverse_bad else 'success' }}">▲ +{{ "%.4f"|format(k.diff)|abs }}</span>
+                            <span class="text-{{ 'danger' if k.reverse_bad else 'success' }}">▲ +{{ "%.4f"|format(k.diff|abs) }}</span>
                         {% elif k.diff < 0 %}
-                            <span class="text-{{ 'success' if k.reverse_bad else 'danger' }}">▼ -{{ "%.4f"|format(k.diff)|abs }}</span>
+                            <span class="text-{{ 'success' if k.reverse_bad else 'danger' }}">▼ -{{ "%.4f"|format(k.diff|abs) }}</span>
                         {% else %}
                             <span class="text-muted">–</span>
                         {% endif %}
