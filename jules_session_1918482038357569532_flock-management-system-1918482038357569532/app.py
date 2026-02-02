@@ -23,6 +23,10 @@ def uploaded_file(filename):
 
 db = SQLAlchemy(app)
 
+class FeedCode(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)
+
 class House(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -125,6 +129,9 @@ class DailyLog(db.Model):
     clinical_notes = db.Column(db.Text)
     photo_path = db.Column(db.String(200)) # Path to file
     flushing = db.Column(db.Boolean, default=False)
+
+    feed_code_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
+    feed_code = db.relationship('FeedCode', backref='daily_logs')
 
     partition_weights = db.relationship('PartitionWeight', backref='log', lazy=True, cascade="all, delete-orphan")
 
@@ -445,6 +452,38 @@ def manage_standards():
 
     standards = Standard.query.order_by(Standard.week.asc()).all()
     return render_template('standards.html', standards=standards)
+
+@app.route('/feed_codes', methods=['GET', 'POST'])
+def manage_feed_codes():
+    if request.method == 'POST':
+        code = request.form.get('code').strip()
+        if code:
+            existing = FeedCode.query.filter_by(code=code).first()
+            if existing:
+                flash(f'Feed Code {code} already exists.', 'warning')
+            else:
+                db.session.add(FeedCode(code=code))
+                db.session.commit()
+                flash(f'Feed Code {code} added.', 'success')
+        return redirect(url_for('manage_feed_codes'))
+
+    # Seed if empty
+    if FeedCode.query.count() == 0:
+        default_codes = ['161C', '162C', '163C', '168C', '169C', '170P', '171P', '172P']
+        for c in default_codes:
+            db.session.add(FeedCode(code=c))
+        db.session.commit()
+
+    codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
+    return render_template('feed_codes.html', codes=codes)
+
+@app.route('/feed_codes/delete/<int:id>', methods=['POST'])
+def delete_feed_code(id):
+    fc = FeedCode.query.get_or_404(id)
+    db.session.delete(fc)
+    db.session.commit()
+    flash(f'Feed Code {fc.code} deleted.', 'info')
+    return redirect(url_for('manage_feed_codes'))
 
 @app.route('/api/chart_data/<int:flock_id>')
 def get_chart_data(flock_id):
@@ -813,6 +852,28 @@ def view_flock(id):
         chart_data['bw_female_p4'].append(val_or_null(log.bw_female_p4))
         chart_data['bw_female_std'].append(val_or_null(log.standard_bw_female))
 
+        # Dynamic Partitions (M1-M8, F1-F8)
+        p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
+
+        for i in range(1, 9):
+            key_m = f'bw_M{i}'
+            key_f = f'bw_F{i}'
+            if key_m not in chart_data: chart_data[key_m] = []
+            if key_f not in chart_data: chart_data[key_f] = []
+
+            val_m = p_map.get(f'M{i}', 0)
+            # Fallback to legacy columns for M1, M2
+            if val_m == 0 and i <= 2:
+                val_m = getattr(log, f'bw_male_p{i}', 0)
+
+            val_f = p_map.get(f'F{i}', 0)
+            # Fallback to legacy columns for F1-F4
+            if val_f == 0 and i <= 4:
+                val_f = getattr(log, f'bw_female_p{i}', 0)
+
+            chart_data[key_m].append(val_or_null(val_m))
+            chart_data[key_f].append(val_or_null(val_f))
+
         chart_data['unif_male'].append(val_or_null(log.uniformity_male))
         chart_data['unif_female'].append(val_or_null(log.uniformity_female))
 
@@ -1058,9 +1119,9 @@ def daily_log():
         # Rearing Phase Partition Logic
         partition_data = []
         if flock.phase == 'Rearing':
-            # Collect Partitions
-            f_parts = ['F1', 'F2', 'F3', 'F4']
-            m_parts = ['M1', 'M2']
+            # Collect Partitions - Dynamic M1-M8, F1-F8
+            f_parts = [f'F{i}' for i in range(1, 9)]
+            m_parts = [f'M{i}' for i in range(1, 9)]
 
             sum_bw_f = 0
             count_bw_f = 0
@@ -1125,6 +1186,7 @@ def daily_log():
             males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
 
             feed_program=request.form.get('feed_program'),
+            feed_code_id=int(request.form.get('feed_code_id')) if request.form.get('feed_code_id') else None,
             
             feed_male_gp_bird=float(request.form.get('feed_male_gp_bird') or 0),
             feed_female_gp_bird=float(request.form.get('feed_female_gp_bird') or 0),
@@ -1142,18 +1204,18 @@ def daily_log():
             uniformity_female=uni_f_val,
             
             is_weighing_day=is_weighing,
-            bw_male_p1=float(request.form.get('bw_male_p1') or 0),
-            bw_male_p2=float(request.form.get('bw_male_p2') or 0),
-            unif_male_p1=float(request.form.get('unif_male_p1') or 0),
-            unif_male_p2=float(request.form.get('unif_male_p2') or 0),
-            bw_female_p1=float(request.form.get('bw_female_p1') or 0),
-            bw_female_p2=float(request.form.get('bw_female_p2') or 0),
-            bw_female_p3=float(request.form.get('bw_female_p3') or 0),
-            bw_female_p4=float(request.form.get('bw_female_p4') or 0),
-            unif_female_p1=float(request.form.get('unif_female_p1') or 0),
-            unif_female_p2=float(request.form.get('unif_female_p2') or 0),
-            unif_female_p3=float(request.form.get('unif_female_p3') or 0),
-            unif_female_p4=float(request.form.get('unif_female_p4') or 0),
+            bw_male_p1=float(request.form.get('bw_M1') or 0),
+            bw_male_p2=float(request.form.get('bw_M2') or 0),
+            unif_male_p1=float(request.form.get('uni_M1') or 0),
+            unif_male_p2=float(request.form.get('uni_M2') or 0),
+            bw_female_p1=float(request.form.get('bw_F1') or 0),
+            bw_female_p2=float(request.form.get('bw_F2') or 0),
+            bw_female_p3=float(request.form.get('bw_F3') or 0),
+            bw_female_p4=float(request.form.get('bw_F4') or 0),
+            unif_female_p1=float(request.form.get('uni_F1') or 0),
+            unif_female_p2=float(request.form.get('uni_F2') or 0),
+            unif_female_p3=float(request.form.get('uni_F3') or 0),
+            unif_female_p4=float(request.form.get('uni_F4') or 0),
             standard_bw_male=float(request.form.get('standard_bw_male') or 0),
             standard_bw_female=float(request.form.get('standard_bw_female') or 0),
 
@@ -1196,7 +1258,9 @@ def daily_log():
     import json
     flock_phases = {f.house_id: f.phase for f in active_flocks}
 
-    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases))
+    feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
+
+    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases), feed_codes=feed_codes)
 
 @app.context_processor
 def utility_processor():
@@ -1229,6 +1293,8 @@ def edit_daily_log(id):
         log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
 
         log.feed_program = request.form.get('feed_program')
+        log.feed_code_id = int(request.form.get('feed_code_id')) if request.form.get('feed_code_id') else None
+
         log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
         log.feed_female_gp_bird = float(request.form.get('feed_female_gp_bird') or 0)
         
@@ -1249,8 +1315,8 @@ def edit_daily_log(id):
             # Clear existing partitions?
             PartitionWeight.query.filter_by(log_id=log.id).delete()
 
-            f_parts = ['F1', 'F2', 'F3', 'F4']
-            m_parts = ['M1', 'M2']
+            f_parts = [f'F{i}' for i in range(1, 9)]
+            m_parts = [f'M{i}' for i in range(1, 9)]
 
             sum_bw_f = 0; count_bw_f = 0
             sum_uni_f = 0; count_uni_f = 0
@@ -1283,18 +1349,18 @@ def edit_daily_log(id):
         log.uniformity_female = uni_f_val
         
         log.is_weighing_day = 'is_weighing_day' in request.form
-        log.bw_male_p1 = float(request.form.get('bw_male_p1') or 0)
-        log.bw_male_p2 = float(request.form.get('bw_male_p2') or 0)
-        log.unif_male_p1 = float(request.form.get('unif_male_p1') or 0)
-        log.unif_male_p2 = float(request.form.get('unif_male_p2') or 0)
-        log.bw_female_p1 = float(request.form.get('bw_female_p1') or 0)
-        log.bw_female_p2 = float(request.form.get('bw_female_p2') or 0)
-        log.bw_female_p3 = float(request.form.get('bw_female_p3') or 0)
-        log.bw_female_p4 = float(request.form.get('bw_female_p4') or 0)
-        log.unif_female_p1 = float(request.form.get('unif_female_p1') or 0)
-        log.unif_female_p2 = float(request.form.get('unif_female_p2') or 0)
-        log.unif_female_p3 = float(request.form.get('unif_female_p3') or 0)
-        log.unif_female_p4 = float(request.form.get('unif_female_p4') or 0)
+        log.bw_male_p1 = float(request.form.get('bw_M1') or 0)
+        log.bw_male_p2 = float(request.form.get('bw_M2') or 0)
+        log.unif_male_p1 = float(request.form.get('uni_M1') or 0)
+        log.unif_male_p2 = float(request.form.get('uni_M2') or 0)
+        log.bw_female_p1 = float(request.form.get('bw_F1') or 0)
+        log.bw_female_p2 = float(request.form.get('bw_F2') or 0)
+        log.bw_female_p3 = float(request.form.get('bw_F3') or 0)
+        log.bw_female_p4 = float(request.form.get('bw_F4') or 0)
+        log.unif_female_p1 = float(request.form.get('uni_F1') or 0)
+        log.unif_female_p2 = float(request.form.get('uni_F2') or 0)
+        log.unif_female_p3 = float(request.form.get('uni_F3') or 0)
+        log.unif_female_p4 = float(request.form.get('uni_F4') or 0)
         log.standard_bw_male = float(request.form.get('standard_bw_male') or 0)
         log.standard_bw_female = float(request.form.get('standard_bw_female') or 0)
 
@@ -1334,30 +1400,42 @@ def edit_daily_log(id):
         flash('Log updated successfully.', 'success')
         return redirect(url_for('view_flock', id=log.flock_id))
     
-    return render_template('daily_log_form.html', log=log, houses=[log.flock.house])
+    feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
+    return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes)
 
 @app.route('/import', methods=['GET', 'POST'])
 def import_data():
     if request.method == 'POST':
-        if 'file' not in request.files:
+        if 'files' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
-        file = request.files['file']
-        if file.filename == '':
-            flash('No selected file', 'danger')
-            return redirect(request.url)
         
-        if file and file.filename.endswith('.xlsx'):
-            try:
-                process_import(file)
-                flash('Data imported successfully!', 'success')
-                return redirect(url_for('index'))
-            except Exception as e:
-                flash(f'Error importing file: {str(e)}', 'danger')
-                return redirect(request.url)
-        else:
-            flash('Invalid file type. Please upload an Excel (.xlsx) file.', 'danger')
+        files = request.files.getlist('files')
+        if not files or files[0].filename == '':
+            flash('No selected files', 'danger')
             return redirect(request.url)
+
+        success_count = 0
+        errors = []
+
+        for file in files:
+            if file and file.filename.endswith('.xlsx'):
+                try:
+                    process_import(file)
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"{file.filename}: {str(e)}")
+            else:
+                if file.filename:
+                    errors.append(f"{file.filename}: Invalid type (must be .xlsx)")
+
+        if success_count > 0:
+            flash(f'Successfully imported {success_count} files.', 'success')
+
+        if errors:
+            flash(f'Errors occurred: {"; ".join(errors)}', 'danger')
+
+        return redirect(url_for('index'))
             
     return render_template('import.html')
 
