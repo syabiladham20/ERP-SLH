@@ -110,8 +110,8 @@ def create_template():
 
     # Chart Data:
     # Categories (X): Column O (Flock Age)
-    # Values (Y1 Stacked): Hatchability % (M), Clear % (G), Rotten % (I)
-    # Values (Y2 Line): Male Ratio % (N)
+    # Primary Axis (Stacked Bar): Hatchable/Fertile % (K), Clear % (G), Rotten % (I)
+    # Secondary Axis (Line): Hatchability % (M)
 
     # Create the Bar Chart (Primary) - Stacked
     c1 = BarChart()
@@ -120,7 +120,7 @@ def create_template():
     c1.grouping = "stacked"
     c1.overlap = 100
     c1.title = "Hatchability Analysis"
-    c1.y_axis.title = "Percentage"
+    c1.y_axis.title = "Egg Composition (%)"
     c1.x_axis.title = "Flock Age (Weeks)"
 
     # Force Text Axis to ensure duplicate categories (e.g. same week for diff setters) are plotted separately
@@ -128,21 +128,20 @@ def create_template():
     c1.x_axis.title = "Flock Age (Weeks)"
 
     # Data for Bar Chart
-    # M (Hatchability), G (Clear), I (Rotten)
-    # Note: openpyxl add_data takes columns.
-    # We want Series 1 = Hatchability (M), Series 2 = Clear (G), Series 3 = Rotten (I)
+    # K (Hatchable/Fertile %), G (Clear), I (Rotten)
     # Column indices (1-based):
     # G = 7
     # I = 9
+    # K = 11
     # M = 13
-    # N = 14
+    # N = 14 (Male Ratio - removed from graph)
     # O = 15
 
-    data_hatch = Reference(ws_data, min_col=13, min_row=1, max_row=101) # M
-    data_clear = Reference(ws_data, min_col=7, min_row=1, max_row=101)  # G
-    data_rotten = Reference(ws_data, min_col=9, min_row=1, max_row=101) # I
+    data_fertile = Reference(ws_data, min_col=11, min_row=1, max_row=101) # K
+    data_clear = Reference(ws_data, min_col=7, min_row=1, max_row=101)    # G
+    data_rotten = Reference(ws_data, min_col=9, min_row=1, max_row=101)   # I
 
-    c1.add_data(data_hatch, titles_from_data=True)
+    c1.add_data(data_fertile, titles_from_data=True)
     c1.add_data(data_clear, titles_from_data=True)
     c1.add_data(data_rotten, titles_from_data=True)
 
@@ -153,12 +152,13 @@ def create_template():
     # Create the Line Chart (Secondary)
     c2 = LineChart()
     c2.style = 13
-    c2.y_axis.title = "Male Ratio %"
+    c2.y_axis.title = "Hatchability %"
     c2.y_axis.axId = 200
     c2.y_axis.crosses = "max"
 
-    data_male = Reference(ws_data, min_col=14, min_row=1, max_row=101) # N
-    c2.add_data(data_male, titles_from_data=True)
+    # Secondary Data: Hatchability % (M)
+    data_hatchability = Reference(ws_data, min_col=13, min_row=1, max_row=101) # M
+    c2.add_data(data_hatchability, titles_from_data=True)
 
     # Combine
     c1 += c2
