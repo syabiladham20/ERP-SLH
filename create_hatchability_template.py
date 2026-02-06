@@ -89,7 +89,13 @@ def create_template():
         ws_data[f"J{row}"] = f"=IF(E{row}>0, E{row}-F{row}-H{row}, 0)" # Hatchable/Fertile
         ws_data[f"K{row}"] = f"=IF(E{row}>0, J{row}/E{row}, 0)" # Fertile %
         ws_data[f"M{row}"] = f"=IF(E{row}>0, L{row}/E{row}, 0)" # Hatchability %
-        ws_data[f"O{row}"] = f"=IFERROR(INT((A{row}-1-VLOOKUP(D{row},'Flock Reference'!$A:$B,2,FALSE))/7), \"\")"
+        # Age Calculation:
+        # Intake = Day 0.
+        # Week 0 = Day 1 to Day 7. (Day 1 - 1)/7 = 0. (Day 7 - 1)/7 = 0.
+        # Week 1 = Day 8 to Day 14. (Day 8 - 1)/7 = 1.
+        # "Use Offset": Use age of the day BEFORE Setting Date.
+        # Formula: Age = INT( ( (SettingDate - 1) - IntakeDate - 1 ) / 7 ) = INT( (Setting - Intake - 2) / 7 )
+        ws_data[f"O{row}"] = f"=IFERROR(INT((A{row}-2-VLOOKUP(D{row},'Flock Reference'!$A:$B,2,FALSE))/7), \"\")"
 
         for col in ['G', 'I', 'K', 'M', 'N']:
             ws_data[f"{col}{row}"].number_format = '0.00%'
