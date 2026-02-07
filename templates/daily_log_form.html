@@ -14,23 +14,31 @@
       <div class="card-body">
         <div class="mb-3">
           <label for="house_id" class="form-label">House</label>
+          <select class="form-select" id="house_id" name="house_id" required onchange="onSelectionChange()">
+            {% for house in houses %}
+              {# Pass phase info in data attribute #}
+              {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
+              <option value="{{ house.id }}"
+                      data-phase="{{ flock.phase if flock else 'Rearing' }}"
+                      {{ 'selected' if (log and log.flock.house_id == house.id) or (selected_house_id == house.id) else '' }}>
+                {{ house.name }}
+              </option>
+            {% endfor %}
+          </select>
           {% if log %}
-            <input type="text" class="form-control" value="{{ houses[0].name }}" disabled>
-            <input type="hidden" name="house_id" value="{{ houses[0].id }}">
-            <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
-          {% else %}
-            <select class="form-select" id="house_id" name="house_id" required onchange="updatePhase()">
-              {% for house in houses %}
-                {# Pass phase info in data attribute #}
-                {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
-                <option value="{{ house.id }}" data-phase="{{ flock.phase if flock else 'Rearing' }}">{{ house.name }}</option>
-              {% endfor %}
-            </select>
+             <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% endif %}
         </div>
         <div class="mb-3">
           <label for="date" class="form-label">Date</label>
-          <input type="date" class="form-control" id="date" name="date" required value="{{ log.date if log else date_today }}" {{ 'disabled' if log else '' }}>
+          <div class="input-group">
+              <input type="date" class="form-control" id="date" name="date" required
+                     value="{{ log.date if log else (selected_date if selected_date else date_today) }}"
+                     onchange="onSelectionChange()">
+              {% if log %}
+                  <span class="input-group-text text-success fw-bold" title="Data loaded from existing log">✅ Data Loaded</span>
+              {% endif %}
+          </div>
         </div>
       </div>
     </div>
@@ -300,10 +308,23 @@
   </form>
   
   <script>
-    {% if not log %}
-    // Set default date to today only for new logs
+    {% if not log and not selected_date %}
+    // Set default date to today only for new logs (if no date selected)
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
+
+    function onSelectionChange() {
+        {% if request.endpoint == 'daily_log' %}
+        let houseId = document.getElementById('house_id').value;
+        let dateVal = document.getElementById('date').value;
+        if (houseId && dateVal) {
+             // Reload page with query params to check for existing data
+             window.location.href = "{{ url_for('daily_log') }}?house_id=" + houseId + "&date=" + dateVal;
+             return;
+        }
+        {% endif %}
+        updatePhase();
+    }
 
     function calculateWater() {
         // Get values (integers)
@@ -326,12 +347,13 @@
     function updatePhase() {
         let houseSelect = document.getElementById('house_id');
         let phase = 'Rearing';
-        if (houseSelect) {
+        if (houseSelect && houseSelect.selectedIndex >= 0) {
             let option = houseSelect.options[houseSelect.selectedIndex];
             phase = option.getAttribute('data-phase') || 'Rearing';
         } else {
-            // Edit mode
-            phase = document.getElementById('phase_val').value;
+            // Fallback (though houseSelect should exist now)
+            let phaseInput = document.getElementById('phase_val');
+            phase = phaseInput ? phaseInput.value : 'Rearing';
         }
 
         let partitionsDiv = document.getElementById('partitions_section');
