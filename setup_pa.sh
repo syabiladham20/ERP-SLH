@@ -26,5 +26,8 @@ fi
 echo "Initializing/Updating database..."
 python init_db.py
 
+echo "Running migrations..."
+python migrate_schema_v5.py
+
 echo "Deployment setup complete!"
 echo "Please reload your web app in the PythonAnywhere 'Web' tab."

@@ -1400,7 +1400,7 @@ def daily_log():
         # Actually safest to manually attach it for the helper's phase check
         log.flock = flock
         
-        db.session.add(new_log)
+        db.session.add(log)
 
         # Handle Medication (Optional)
         med_name = request.form.get('med_drug_name')
@@ -1431,6 +1431,7 @@ def daily_log():
             )
             db.session.add(med)
 
+        update_log_from_request(log, request)
         db.session.commit()
 
         flash(flash_msg, 'success')
