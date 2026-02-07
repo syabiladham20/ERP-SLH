@@ -138,8 +138,11 @@ class DailyLog(db.Model):
     photo_path = db.Column(db.String(200)) # Path to file
     flushing = db.Column(db.Boolean, default=False)
 
-    feed_code_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
-    feed_code = db.relationship('FeedCode', backref='daily_logs')
+    feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
+    feed_code_female_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
+
+    feed_code_male = db.relationship('FeedCode', foreign_keys=[feed_code_male_id], backref='male_logs')
+    feed_code_female = db.relationship('FeedCode', foreign_keys=[feed_code_female_id], backref='female_logs')
 
     partition_weights = db.relationship('PartitionWeight', backref='log', lazy=True, cascade="all, delete-orphan")
 
@@ -1481,7 +1484,8 @@ def daily_log():
             males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
 
             feed_program=request.form.get('feed_program'),
-            feed_code_id=int(request.form.get('feed_code_id')) if request.form.get('feed_code_id') else None,
+            feed_code_male_id=int(request.form.get('feed_code_male_id')) if request.form.get('feed_code_male_id') else None,
+            feed_code_female_id=int(request.form.get('feed_code_female_id')) if request.form.get('feed_code_female_id') else None,
             
             feed_male_gp_bird=float(request.form.get('feed_male_gp_bird') or 0),
             feed_female_gp_bird=float(request.form.get('feed_female_gp_bird') or 0),
@@ -1549,13 +1553,47 @@ def daily_log():
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
 
-    # Map House ID to Phase
+    # Map House ID to Phase & Pre-fill Data
     import json
-    flock_phases = {f.house_id: f.phase for f in active_flocks}
+    flock_phases = {}
+    flock_defaults = {}
+
+    for f in active_flocks:
+        flock_phases[f.house_id] = f.phase
+
+        # Calculate Stock (Approximation for Feed Calc)
+        logs = DailyLog.query.filter_by(flock_id=f.id).all()
+
+        # Start with Intake
+        curr_m_prod = f.intake_male
+        curr_m_hosp = 0
+        curr_f = f.intake_female
+
+        # Simplified Stock Logic for defaults
+        for l in logs:
+            curr_m_prod = curr_m_prod - l.mortality_male - l.culls_male - (l.males_moved_to_hosp or 0) + (l.males_moved_to_prod or 0)
+            curr_m_hosp = curr_m_hosp - (l.mortality_male_hosp or 0) - (l.culls_male_hosp or 0) + (l.males_moved_to_hosp or 0) - (l.males_moved_to_prod or 0)
+            curr_f = curr_f - l.mortality_female - l.culls_female
+
+        if curr_m_prod < 0: curr_m_prod = 0
+        if curr_m_hosp < 0: curr_m_hosp = 0
+        if curr_f < 0: curr_f = 0
+
+        last_log = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.desc()).first()
+
+        flock_defaults[f.house_id] = {
+            'stock_male': curr_m_prod + curr_m_hosp,
+            'stock_female': curr_f,
+            'last_feed_program': last_log.feed_program if last_log else 'Full Feed',
+            'last_feed_code_male_id': last_log.feed_code_male_id if last_log else None,
+            'last_feed_code_female_id': last_log.feed_code_female_id if last_log else None,
+            'last_feed_male': last_log.feed_male_gp_bird if last_log else 0,
+            'last_feed_female': last_log.feed_female_gp_bird if last_log else 0
+        }
 
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
-    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases), feed_codes=feed_codes)
+    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases), flock_defaults_json=json.dumps(flock_defaults), feed_codes=feed_codes)
 
 @app.context_processor
 def utility_processor():
@@ -1588,7 +1626,8 @@ def edit_daily_log(id):
         log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
 
         log.feed_program = request.form.get('feed_program')
-        log.feed_code_id = int(request.form.get('feed_code_id')) if request.form.get('feed_code_id') else None
+        log.feed_code_male_id = int(request.form.get('feed_code_male_id')) if request.form.get('feed_code_male_id') else None
+        log.feed_code_female_id = int(request.form.get('feed_code_female_id')) if request.form.get('feed_code_female_id') else None
 
         log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
         log.feed_female_gp_bird = float(request.form.get('feed_female_gp_bird') or 0)

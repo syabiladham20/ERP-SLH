@@ -1,0 +1,29 @@
+ * Serving Flask app 'app.py'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [07/Feb/2026 07:47:45] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:47:45] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:47:46] "GET /flocks HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:47:46] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:47:46] "[32mPOST /flocks HTTP/1.1[0m" 302 -
+127.0.0.1 - - [07/Feb/2026 07:47:47] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:47:47] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:47:47] "GET /daily_log HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:47:47] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "GET /feed_codes HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "GET /flocks HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "[32mPOST /flocks HTTP/1.1[0m" 302 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "GET /flocks HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:48:42] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:49:42] "GET /feed_codes HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:49:42] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:49:42] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:49:42] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [07/Feb/2026 07:49:43] "GET /daily_log HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:49:43] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
