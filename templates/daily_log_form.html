@@ -304,6 +304,42 @@
       </div>
     </div>
 
+    <div class="card mb-3">
+      <div class="card-header bg-danger text-white">Medication Record (Optional)</div>
+      <div class="card-body">
+        <div class="alert alert-light border small">
+            Fill this section only if you want to record a NEW medication usage or program starting/occurring today.
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-2">
+                <label class="form-label">Drug Name</label>
+                <input type="text" class="form-control" name="med_drug_name" placeholder="e.g. Amoxicillin">
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="form-label">Dosage</label>
+                <input type="text" class="form-control" name="med_dosage" placeholder="e.g. 10ml/100L">
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="form-label">Amount Used</label>
+                <input type="text" class="form-control" name="med_amount_used" placeholder="e.g. 500ml">
+            </div>
+            <div class="col-md-2 mb-2">
+                <label class="form-label">Start Date</label>
+                <!-- Default to today if creating new log, or log date if editing -->
+                <input type="date" class="form-control" name="med_start_date" value="{{ log.date if log else '' }}">
+            </div>
+             <div class="col-md-2 mb-2">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" name="med_end_date">
+            </div>
+        </div>
+        <div class="mb-2">
+             <label class="form-label">Remarks</label>
+             <input type="text" class="form-control" name="med_remarks" placeholder="Notes / Withdrawal Period">
+        </div>
+      </div>
+    </div>
+
     <button type="submit" class="btn btn-primary w-100 mb-5">{{ 'Update Log' if log else 'Submit Log' }}</button>
   </form>
   
