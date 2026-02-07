@@ -34,10 +34,7 @@
                     </td>
                     <td>
                         {% if event.result_file %}
-                            {# Assume file path might be absolute or relative, fix basename logic in view or here #}
-                            {# The view uploaded_file takes filename. We need just the basename #}
-                            {% set fname = event.result_file.split('/')[-1].split('\\')[-1] %}
-                            <a href="{{ url_for('uploaded_file', filename=fname) }}" target="_blank">View PDF</a>
+                            <a href="{{ url_for('uploaded_file', filename=event.result_file|basename) }}" target="_blank">View PDF</a>
                             <br>
                             <small class="text-muted">{{ event.upload_date }}</small>
                         {% else %}

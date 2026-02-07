@@ -17,6 +17,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
 
+@app.template_filter('basename')
+def basename_filter(s):
+    if not s:
+        return None
+    return os.path.basename(str(s).replace('\\', '/'))
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
