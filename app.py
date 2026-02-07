@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
 from flask import send_from_directory
 from dotenv import load_dotenv
@@ -263,6 +263,33 @@ class ImportedWeeklyBenchmark(db.Model):
     eggs_collected = db.Column(db.Integer, default=0)
     bw_male = db.Column(db.Float, default=0.0)
     bw_female = db.Column(db.Float, default=0.0)
+
+class Hatchability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    setting_date = db.Column(db.Date, nullable=False)
+    egg_set = db.Column(db.Integer, default=0)
+    candling_date = db.Column(db.Date, nullable=True) # Usually Setting + 18 days
+    hatching_date = db.Column(db.Date, nullable=True) # Usually Setting + 21 days
+
+    clear_eggs = db.Column(db.Integer, default=0)
+    rotten_eggs = db.Column(db.Integer, default=0)
+    hatched_chicks = db.Column(db.Integer, default=0)
+
+    flock = db.relationship('Flock', backref=db.backref('hatchability_data', lazy=True, cascade="all, delete-orphan"))
+
+    @property
+    def fertile_eggs(self):
+        return self.egg_set - self.clear_eggs - self.rotten_eggs
+
+    @property
+    def hatch_of_fertile_pct(self):
+        fertile = self.fertile_eggs
+        return (self.hatched_chicks / fertile * 100) if fertile > 0 else 0.0
+
+    @property
+    def hatch_of_total_pct(self):
+        return (self.hatched_chicks / self.egg_set * 100) if self.egg_set > 0 else 0.0
 
 def initialize_sampling_schedule(flock_id):
     # Updated Schedule based on user input
@@ -1514,7 +1541,7 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    return dict(get_partition_val=get_partition_val)
+    return dict(get_partition_val=get_partition_val, timedelta=timedelta)
 
 @app.route('/daily_log/<int:id>/edit', methods=['GET', 'POST'])
 def edit_daily_log(id):
@@ -2434,3 +2461,111 @@ def health_log():
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         flock_tasks=flock_tasks
     )
+
+@app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
+def flock_hatchability(id):
+    flock = Flock.query.get_or_404(id)
+
+    if request.method == 'POST':
+        # Add New Setting
+        try:
+            setting_date_str = request.form.get('setting_date')
+            egg_set = int(request.form.get('egg_set') or 0)
+
+            setting_date = datetime.strptime(setting_date_str, '%Y-%m-%d').date()
+
+            # Auto-calculate Candling and Hatching
+            candling_date = setting_date + timedelta(days=18)
+            hatching_date = setting_date + timedelta(days=21)
+
+            h = Hatchability(
+                flock_id=flock.id,
+                setting_date=setting_date,
+                egg_set=egg_set,
+                candling_date=candling_date,
+                hatching_date=hatching_date
+            )
+            db.session.add(h)
+            db.session.commit()
+            flash('Hatchability setting record added.', 'success')
+        except Exception as e:
+            flash(f'Error adding record: {str(e)}', 'danger')
+
+        return redirect(url_for('flock_hatchability', id=id))
+
+    # GET: List and Chart
+    records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
+
+    # Chart Data Aggregation (By Flock Age Week)
+    # Week = (Setting Date - 2 - Intake Date) // 7
+    # Note: Using Setting Date - 2 days to get age at start of setting week or similar rule?
+    # User said: "(Setting Date - 2 - Intake Date) // 7 (Integer Weeks) to align with specific user rules (Week 0 starts Day 1, use age of day before setting)."
+
+    chart_data = {} # Week -> {set, clear, rotten, hatched}
+
+    for r in records:
+        days_diff = (r.setting_date - timedelta(days=2) - flock.intake_date).days
+        week = (days_diff // 7)
+        if week < 0: week = 0 # Safety
+
+        if week not in chart_data:
+            chart_data[week] = {'set': 0, 'clear': 0, 'rotten': 0, 'hatched': 0}
+
+        chart_data[week]['set'] += r.egg_set
+        chart_data[week]['clear'] += r.clear_eggs
+        chart_data[week]['rotten'] += r.rotten_eggs
+        chart_data[week]['hatched'] += r.hatched_chicks
+
+    # Format for Chart.js
+    sorted_weeks = sorted(chart_data.keys())
+    chart_json = {
+        'weeks': sorted_weeks,
+        'fertile_pct': [],
+        'clear_pct': [],
+        'rotten_pct': [],
+        'hatch_pct': [] # Hatch of Total
+    }
+
+    for w in sorted_weeks:
+        d = chart_data[w]
+        total = d['set']
+        if total > 0:
+            fertile = total - d['clear'] - d['rotten']
+            chart_json['fertile_pct'].append(round(fertile / total * 100, 2))
+            chart_json['clear_pct'].append(round(d['clear'] / total * 100, 2))
+            chart_json['rotten_pct'].append(round(d['rotten'] / total * 100, 2))
+            chart_json['hatch_pct'].append(round(d['hatched'] / total * 100, 2))
+        else:
+            chart_json['fertile_pct'].append(0)
+            chart_json['clear_pct'].append(0)
+            chart_json['rotten_pct'].append(0)
+            chart_json['hatch_pct'].append(0)
+
+    return render_template('flock_hatchability.html', flock=flock, records=records, chart_data=chart_json, today=date.today())
+
+@app.route('/hatchability/<int:id>/update', methods=['POST'])
+def update_hatchability(id):
+    h = Hatchability.query.get_or_404(id)
+
+    # Update Fields
+    if request.form.get('egg_set'):
+        h.egg_set = int(request.form.get('egg_set'))
+
+    h.clear_eggs = int(request.form.get('clear_eggs') or 0)
+    h.rotten_eggs = int(request.form.get('rotten_eggs') or 0)
+    h.hatched_chicks = int(request.form.get('hatched_chicks') or 0)
+
+    # Allow date updates if needed? For now just results.
+
+    db.session.commit()
+    flash('Hatchability record updated.', 'success')
+    return redirect(url_for('flock_hatchability', id=h.flock_id))
+
+@app.route('/hatchability/<int:id>/delete', methods=['POST'])
+def delete_hatchability(id):
+    h = Hatchability.query.get_or_404(id)
+    flock_id = h.flock_id
+    db.session.delete(h)
+    db.session.commit()
+    flash('Record deleted.', 'info')
+    return redirect(url_for('flock_hatchability', id=flock_id))

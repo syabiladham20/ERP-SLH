@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Hatchability: {{ flock.batch_id }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-outline-secondary me-2">Back to Flock</a>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addSettingModal">
+            + New Setting
+        </button>
+    </div>
+</div>
+
+<!-- Chart Section -->
+<div class="card mb-4">
+    <div class="card-header">Hatchability Analysis (By Flock Age)</div>
+    <div class="card-body">
+        <canvas id="hatchChart" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="table-responsive">
+    <table class="table table-striped table-bordered table-sm">
+        <thead class="table-light text-center">
+            <tr>
+                <th colspan="3">Setting</th>
+                <th colspan="5">Candling (18 Days)</th>
+                <th colspan="3">Hatching (21 Days)</th>
+                <th rowspan="2" style="vertical-align: middle;">Actions</th>
+            </tr>
+            <tr>
+                <th>Date</th>
+                <th>Age (Wk)</th>
+                <th>Egg Set</th>
+
+                <th>Date</th>
+                <th>Clear</th>
+                <th>Rotten</th>
+                <th>Fertile</th>
+                <th>Fertile %</th>
+
+                <th>Date</th>
+                <th>Hatched</th>
+                <th>Hatch %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in records %}
+            {% set fertile = r.egg_set - r.clear_eggs - r.rotten_eggs %}
+            {% set fertile_pct = (fertile / r.egg_set * 100) if r.egg_set > 0 else 0 %}
+            {% set hatch_pct = (r.hatched_chicks / r.egg_set * 100) if r.egg_set > 0 else 0 %}
+
+            <tr>
+                <td>{{ r.setting_date }}</td>
+                <td>{{ ((r.setting_date - timedelta(days=2) - flock.intake_date).days // 7) }}</td>
+                <td>{{ r.egg_set }}</td>
+
+                <td>{{ r.candling_date }}</td>
+                <td>{{ r.clear_eggs }}</td>
+                <td>{{ r.rotten_eggs }}</td>
+                <td>{{ fertile }}</td>
+                <td>{{ "%.1f"|format(fertile_pct) }}%</td>
+
+                <td>{{ r.hatching_date }}</td>
+                <td>{{ r.hatched_chicks }}</td>
+                <td class="fw-bold {{ 'text-success' if hatch_pct > 80 else 'text-warning' }}">{{ "%.1f"|format(hatch_pct) }}%</td>
+
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ r.id }}">Edit</button>
+                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ r.id }}">Del</button>
+                </td>
+            </tr>
+
+            <!-- Edit Modal -->
+            <div class="modal fade" id="editModal{{ r.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form action="{{ url_for('update_hatchability', id=r.id) }}" method="POST">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Record: {{ r.setting_date }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Egg Set</label>
+                                    <input type="number" name="egg_set" class="form-control" value="{{ r.egg_set }}" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Clear Eggs</label>
+                                        <input type="number" name="clear_eggs" class="form-control" value="{{ r.clear_eggs }}">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Rotten Eggs</label>
+                                        <input type="number" name="rotten_eggs" class="form-control" value="{{ r.rotten_eggs }}">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Hatched Chicks</label>
+                                    <input type="number" name="hatched_chicks" class="form-control" value="{{ r.hatched_chicks }}">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Delete Modal -->
+            <div class="modal fade" id="deleteModal{{ r.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form action="{{ url_for('delete_hatchability', id=r.id) }}" method="POST">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Delete Record</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                Are you sure you want to delete the record for {{ r.setting_date }}?
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addSettingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="{{ url_for('flock_hatchability', id=flock.id) }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Setting</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Setting Date</label>
+                        <input type="date" name="setting_date" class="form-control" required value="{{ today }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Egg Set</label>
+                        <input type="number" name="egg_set" class="form-control" required>
+                    </div>
+                    <div class="alert alert-info">
+                        Candling and Hatching dates will be auto-calculated (+18 and +21 days).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-success">Add Setting</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script>
+    Chart.register(ChartDataLabels);
+
+    const ctx = document.getElementById('hatchChart').getContext('2d');
+    const data = {{ chart_data | tojson }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.weeks.map(w => 'Week ' + w),
+            datasets: [
+                {
+                    type: 'line',
+                    label: 'Hatchability %',
+                    data: data.hatch_pct,
+                    borderColor: '#28a745',
+                    borderWidth: 3,
+                    fill: false,
+                    yAxisID: 'y1',
+                    datalabels: {
+                        color: 'black',
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: (val) => val + '%'
+                    }
+                },
+                {
+                    label: 'Fertile %',
+                    data: data.fertile_pct,
+                    backgroundColor: '#007bff',
+                    stack: 'Stack 0',
+                    yAxisID: 'y',
+                    datalabels: { display: false }
+                },
+                {
+                    label: 'Clear %',
+                    data: data.clear_pct,
+                    backgroundColor: '#ffc107',
+                    stack: 'Stack 0',
+                    yAxisID: 'y',
+                    datalabels: { display: false }
+                },
+                {
+                    label: 'Rotten %',
+                    data: data.rotten_pct,
+                    backgroundColor: '#dc3545',
+                    stack: 'Stack 0',
+                    yAxisID: 'y',
+                    datalabels: { display: false }
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: { display: true, text: 'Egg Composition (%)' },
+                    max: 100,
+                    stacked: true
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: { display: true, text: 'Hatchability (%)' },
+                    grid: { drawOnChartArea: false },
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y + '%';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
