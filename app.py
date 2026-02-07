@@ -1381,172 +1381,27 @@ def daily_log():
         
         log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         
-        # Handle File Upload
-        photo_path = None
-        if 'photo' in request.files:
-            file = request.files['photo']
-            if file and file.filename != '':
-                raw_name = f"{flock.batch_id}_{date_str}_{file.filename}"
-                filename = secure_filename(raw_name)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                photo_path = filepath
+        # Check if log exists
+        existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
         
-        # Water Calculation
-        water_r1 = int(request.form.get('water_reading_1') or 0)
-        water_r3 = int(request.form.get('water_reading_3') or 0)
+        if existing_log:
+            log = existing_log
+            flash_msg = 'Daily Log updated successfully!'
+        else:
+            log = DailyLog(flock_id=flock.id, date=log_date)
+            db.session.add(log)
+            flash_msg = 'Daily Log submitted successfully!'
+
+        # Populate/Update log
+        # Ensure log.flock is available for helper (if new, relationship needs explicit set or commit,
+        # but 'log.flock' might trigger lazy load which works if attached to session)
+        # Actually safest to manually attach it for the helper's phase check
+        log.flock = flock
         
-        # Calculate 24h intake: (R1_today - R1_yesterday) * 1000/100
-        # Find yesterday's log
-        from datetime import timedelta
-        yesterday = log_date - timedelta(days=1)
-        yesterday_log = DailyLog.query.filter_by(flock_id=flock.id, date=yesterday).first()
-        
-        water_intake_calc = 0.0
-        if yesterday_log:
-            r1_today_real = water_r1 / 100.0
-            r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
-            water_intake_calc = (r1_today_real - r1_yesterday_real) * 1000.0
-
-        # Prepare Body Weight Data
-        bw_m_val = float(request.form.get('body_weight_male') or 0)
-        bw_f_val = float(request.form.get('body_weight_female') or 0)
-        uni_m_val = float(request.form.get('uniformity_male') or 0)
-        uni_f_val = float(request.form.get('uniformity_female') or 0)
-
-        # Rearing Phase Partition Logic
-        partition_data = []
-        if flock.phase == 'Rearing':
-            # Collect Partitions - Dynamic M1-M8, F1-F8
-            f_parts = [f'F{i}' for i in range(1, 9)]
-            m_parts = [f'M{i}' for i in range(1, 9)]
-
-            sum_bw_f = 0
-            count_bw_f = 0
-            sum_uni_f = 0
-            count_uni_f = 0
-
-            sum_bw_m = 0
-            count_bw_m = 0
-            sum_uni_m = 0
-            count_uni_m = 0
-
-            # Process Female
-            for p in f_parts:
-                bw = float(request.form.get(f'bw_{p}') or 0)
-                uni = float(request.form.get(f'uni_{p}') or 0)
-                if bw > 0:
-                    partition_data.append({'name': p, 'bw': bw, 'uni': uni})
-                    sum_bw_f += bw
-                    count_bw_f += 1
-                    if uni > 0:
-                        sum_uni_f += uni
-                        count_uni_f += 1
-
-            # Process Male
-            for p in m_parts:
-                bw = float(request.form.get(f'bw_{p}') or 0)
-                uni = float(request.form.get(f'uni_{p}') or 0)
-                if bw > 0:
-                    partition_data.append({'name': p, 'bw': bw, 'uni': uni})
-                    sum_bw_m += bw
-                    count_bw_m += 1
-                    if uni > 0:
-                        sum_uni_m += uni
-                        count_uni_m += 1
-
-            # Calculate Averages (Overwrite manual if partitions exist)
-            if count_bw_f > 0:
-                bw_f_val = sum_bw_f / count_bw_f
-            if count_uni_f > 0:
-                uni_f_val = sum_uni_f / count_uni_f
-
-            if count_bw_m > 0:
-                bw_m_val = sum_bw_m / count_bw_m
-            if count_uni_m > 0:
-                uni_m_val = sum_uni_m / count_uni_m
-
-        is_weighing = 'is_weighing_day' in request.form
-
-        new_log = DailyLog(
-            flock_id=flock.id,
-            date=log_date,
-            mortality_male=int(request.form.get('mortality_male') or 0),
-            mortality_female=int(request.form.get('mortality_female') or 0),
-
-            mortality_male_hosp=int(request.form.get('mortality_male_hosp') or 0),
-            culls_male_hosp=int(request.form.get('culls_male_hosp') or 0),
-
-            culls_male=int(request.form.get('culls_male') or 0),
-            culls_female=int(request.form.get('culls_female') or 0),
-
-            males_moved_to_prod=int(request.form.get('males_moved_to_prod') or 0),
-            males_moved_to_hosp=int(request.form.get('males_moved_to_hosp') or 0),
-
-            feed_program=request.form.get('feed_program'),
-            feed_code_male_id=int(request.form.get('feed_code_male_id')) if request.form.get('feed_code_male_id') else None,
-            feed_code_female_id=int(request.form.get('feed_code_female_id')) if request.form.get('feed_code_female_id') else None,
-            
-            feed_male_gp_bird=float(request.form.get('feed_male_gp_bird') or 0),
-            feed_female_gp_bird=float(request.form.get('feed_female_gp_bird') or 0),
-            
-            eggs_collected=int(request.form.get('eggs_collected') or 0),
-            cull_eggs_jumbo=int(request.form.get('cull_eggs_jumbo') or 0),
-            cull_eggs_small=int(request.form.get('cull_eggs_small') or 0),
-            cull_eggs_abnormal=int(request.form.get('cull_eggs_abnormal') or 0),
-            cull_eggs_crack=int(request.form.get('cull_eggs_crack') or 0),
-            egg_weight=float(request.form.get('egg_weight') or 0),
-            
-            body_weight_male=bw_m_val,
-            body_weight_female=bw_f_val,
-            uniformity_male=uni_m_val,
-            uniformity_female=uni_f_val,
-            
-            is_weighing_day=is_weighing,
-            bw_male_p1=float(request.form.get('bw_M1') or 0),
-            bw_male_p2=float(request.form.get('bw_M2') or 0),
-            unif_male_p1=float(request.form.get('uni_M1') or 0),
-            unif_male_p2=float(request.form.get('uni_M2') or 0),
-            bw_female_p1=float(request.form.get('bw_F1') or 0),
-            bw_female_p2=float(request.form.get('bw_F2') or 0),
-            bw_female_p3=float(request.form.get('bw_F3') or 0),
-            bw_female_p4=float(request.form.get('bw_F4') or 0),
-            unif_female_p1=float(request.form.get('uni_F1') or 0),
-            unif_female_p2=float(request.form.get('uni_F2') or 0),
-            unif_female_p3=float(request.form.get('uni_F3') or 0),
-            unif_female_p4=float(request.form.get('uni_F4') or 0),
-            standard_bw_male=float(request.form.get('standard_bw_male') or 0),
-            standard_bw_female=float(request.form.get('standard_bw_female') or 0),
-
-            water_reading_1=water_r1,
-            water_reading_2=int(request.form.get('water_reading_2') or 0),
-            water_reading_3=water_r3,
-            water_intake_calculated=water_intake_calc,
-            flushing=True if request.form.get('flushing') else False,
-            
-            light_on_time=request.form.get('light_on_time'),
-            light_off_time=request.form.get('light_off_time'),
-            feed_cleanup_start=request.form.get('feed_cleanup_start'),
-            feed_cleanup_end=request.form.get('feed_cleanup_end'),
-            
-            clinical_notes=request.form.get('clinical_notes'),
-            photo_path=photo_path
-        )
-        
-        db.session.add(new_log)
+        update_log_from_request(log, request)
         db.session.commit()
 
-        # Save Partitions
-        for p in partition_data:
-            pw = PartitionWeight(
-                log_id=new_log.id,
-                partition_name=p['name'],
-                body_weight=p['bw'],
-                uniformity=p['uni']
-            )
-            db.session.add(pw)
-        db.session.commit()
-        flash('Daily Log submitted successfully!', 'success')
+        flash(flash_msg, 'success')
         return redirect(url_for('index'))
         
     # GET: Only show houses with Active flocks
@@ -1593,7 +1448,30 @@ def daily_log():
 
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
-    return render_template('daily_log_form.html', houses=active_houses, flock_phases_json=json.dumps(flock_phases), flock_defaults_json=json.dumps(flock_defaults), feed_codes=feed_codes)
+    # Pre-load data logic
+    selected_house_id = request.args.get('house_id')
+    selected_date_str = request.args.get('date')
+    log = None
+
+    if selected_house_id and selected_date_str:
+        try:
+             h_id = int(selected_house_id)
+             d_obj = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+
+             target_flock = Flock.query.filter_by(house_id=h_id, status='Active').first()
+             if target_flock:
+                 log = DailyLog.query.filter_by(flock_id=target_flock.id, date=d_obj).first()
+        except:
+             pass
+
+    return render_template('daily_log_form.html',
+                           houses=active_houses,
+                           flock_phases_json=json.dumps(flock_phases),
+                           flock_defaults_json=json.dumps(flock_defaults),
+                           feed_codes=feed_codes,
+                           log=log,
+                           selected_house_id=int(selected_house_id) if selected_house_id and selected_house_id.isdigit() else None,
+                           selected_date=selected_date_str)
 
 @app.context_processor
 def utility_processor():
@@ -1612,124 +1490,7 @@ def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
     if request.method == 'POST':
-        # Update fields
-        log.mortality_male = int(request.form.get('mortality_male') or 0)
-        log.mortality_female = int(request.form.get('mortality_female') or 0)
-
-        log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
-        log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
-
-        log.culls_male = int(request.form.get('culls_male') or 0)
-        log.culls_female = int(request.form.get('culls_female') or 0)
-
-        log.males_moved_to_prod = int(request.form.get('males_moved_to_prod') or 0)
-        log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
-
-        log.feed_program = request.form.get('feed_program')
-        log.feed_code_male_id = int(request.form.get('feed_code_male_id')) if request.form.get('feed_code_male_id') else None
-        log.feed_code_female_id = int(request.form.get('feed_code_female_id')) if request.form.get('feed_code_female_id') else None
-
-        log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
-        log.feed_female_gp_bird = float(request.form.get('feed_female_gp_bird') or 0)
-        
-        log.eggs_collected = int(request.form.get('eggs_collected') or 0)
-        log.cull_eggs_jumbo = int(request.form.get('cull_eggs_jumbo') or 0)
-        log.cull_eggs_small = int(request.form.get('cull_eggs_small') or 0)
-        log.cull_eggs_abnormal = int(request.form.get('cull_eggs_abnormal') or 0)
-        log.cull_eggs_crack = int(request.form.get('cull_eggs_crack') or 0)
-        log.egg_weight = float(request.form.get('egg_weight') or 0)
-        
-        # Body Weight Logic (Handle Partitions on Edit)
-        bw_m_val = float(request.form.get('body_weight_male') or 0)
-        bw_f_val = float(request.form.get('body_weight_female') or 0)
-        uni_m_val = float(request.form.get('uniformity_male') or 0)
-        uni_f_val = float(request.form.get('uniformity_female') or 0)
-
-        if log.flock.phase == 'Rearing':
-            # Clear existing partitions?
-            PartitionWeight.query.filter_by(log_id=log.id).delete()
-
-            f_parts = [f'F{i}' for i in range(1, 9)]
-            m_parts = [f'M{i}' for i in range(1, 9)]
-
-            sum_bw_f = 0; count_bw_f = 0
-            sum_uni_f = 0; count_uni_f = 0
-            sum_bw_m = 0; count_bw_m = 0
-            sum_uni_m = 0; count_uni_m = 0
-
-            for p in f_parts + m_parts:
-                bw = float(request.form.get(f'bw_{p}') or 0)
-                uni = float(request.form.get(f'uni_{p}') or 0)
-
-                if bw > 0:
-                    pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
-                    db.session.add(pw)
-
-                    if p.startswith('F'):
-                        sum_bw_f += bw; count_bw_f += 1
-                        if uni > 0: sum_uni_f += uni; count_uni_f += 1
-                    else:
-                        sum_bw_m += bw; count_bw_m += 1
-                        if uni > 0: sum_uni_m += uni; count_uni_m += 1
-
-            if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
-            if count_uni_f > 0: uni_f_val = sum_uni_f / count_uni_f
-            if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
-            if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
-
-        log.body_weight_male = bw_m_val
-        log.body_weight_female = bw_f_val
-        log.uniformity_male = uni_m_val
-        log.uniformity_female = uni_f_val
-        
-        log.is_weighing_day = 'is_weighing_day' in request.form
-        log.bw_male_p1 = float(request.form.get('bw_M1') or 0)
-        log.bw_male_p2 = float(request.form.get('bw_M2') or 0)
-        log.unif_male_p1 = float(request.form.get('uni_M1') or 0)
-        log.unif_male_p2 = float(request.form.get('uni_M2') or 0)
-        log.bw_female_p1 = float(request.form.get('bw_F1') or 0)
-        log.bw_female_p2 = float(request.form.get('bw_F2') or 0)
-        log.bw_female_p3 = float(request.form.get('bw_F3') or 0)
-        log.bw_female_p4 = float(request.form.get('bw_F4') or 0)
-        log.unif_female_p1 = float(request.form.get('uni_F1') or 0)
-        log.unif_female_p2 = float(request.form.get('uni_F2') or 0)
-        log.unif_female_p3 = float(request.form.get('uni_F3') or 0)
-        log.unif_female_p4 = float(request.form.get('uni_F4') or 0)
-        log.standard_bw_male = float(request.form.get('standard_bw_male') or 0)
-        log.standard_bw_female = float(request.form.get('standard_bw_female') or 0)
-
-        log.water_reading_1 = int(request.form.get('water_reading_1') or 0)
-        log.water_reading_2 = int(request.form.get('water_reading_2') or 0)
-        log.water_reading_3 = int(request.form.get('water_reading_3') or 0)
-        log.flushing = True if request.form.get('flushing') else False
-        
-        log.light_on_time = request.form.get('light_on_time')
-        log.light_off_time = request.form.get('light_off_time')
-        log.feed_cleanup_start = request.form.get('feed_cleanup_start')
-        log.feed_cleanup_end = request.form.get('feed_cleanup_end')
-        log.clinical_notes = request.form.get('clinical_notes')
-        
-        # Handle Photo Upload (Optional replace)
-        if 'photo' in request.files:
-            file = request.files['photo']
-            if file and file.filename != '':
-                date_str = log.date.strftime('%y%m%d')
-                raw_name = f"{log.flock.batch_id}_{date_str}_{file.filename}"
-                filename = secure_filename(raw_name)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                log.photo_path = filepath
-        
-        # Recalculate Water
-        from datetime import timedelta
-        yesterday = log.date - timedelta(days=1)
-        yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
-        
-        if yesterday_log:
-            r1_today_real = log.water_reading_1 / 100.0
-            r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
-            log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
-        
+        update_log_from_request(log, request)
         db.session.commit()
         flash('Log updated successfully.', 'success')
         return redirect(url_for('view_flock', id=log.flock_id))
@@ -2124,6 +1885,128 @@ def process_import(file):
         db.session.commit()
 
         verify_import_data(flock, logs=all_logs)
+
+def update_log_from_request(log, req):
+    """
+    Helper function to update a DailyLog object from request form data.
+    """
+    # Scalar Fields
+    log.mortality_male = int(req.form.get('mortality_male') or 0)
+    log.mortality_female = int(req.form.get('mortality_female') or 0)
+    log.mortality_male_hosp = int(req.form.get('mortality_male_hosp') or 0)
+    log.culls_male_hosp = int(req.form.get('culls_male_hosp') or 0)
+    log.culls_male = int(req.form.get('culls_male') or 0)
+    log.culls_female = int(req.form.get('culls_female') or 0)
+    log.males_moved_to_prod = int(req.form.get('males_moved_to_prod') or 0)
+    log.males_moved_to_hosp = int(req.form.get('males_moved_to_hosp') or 0)
+
+    log.feed_program = req.form.get('feed_program')
+    log.feed_code_male_id = int(req.form.get('feed_code_male_id')) if req.form.get('feed_code_male_id') else None
+    log.feed_code_female_id = int(req.form.get('feed_code_female_id')) if req.form.get('feed_code_female_id') else None
+
+    log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
+    log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
+
+    log.eggs_collected = int(req.form.get('eggs_collected') or 0)
+    log.cull_eggs_jumbo = int(req.form.get('cull_eggs_jumbo') or 0)
+    log.cull_eggs_small = int(req.form.get('cull_eggs_small') or 0)
+    log.cull_eggs_abnormal = int(req.form.get('cull_eggs_abnormal') or 0)
+    log.cull_eggs_crack = int(req.form.get('cull_eggs_crack') or 0)
+    log.egg_weight = float(req.form.get('egg_weight') or 0)
+
+    # Body Weight Logic
+    bw_m_val = float(req.form.get('body_weight_male') or 0)
+    bw_f_val = float(req.form.get('body_weight_female') or 0)
+    uni_m_val = float(req.form.get('uniformity_male') or 0)
+    uni_f_val = float(req.form.get('uniformity_female') or 0)
+
+    # Clean existing partitions if Rearing
+    if log.flock.phase == 'Rearing':
+        PartitionWeight.query.filter_by(log_id=log.id).delete()
+
+        f_parts = [f'F{i}' for i in range(1, 9)]
+        m_parts = [f'M{i}' for i in range(1, 9)]
+
+        sum_bw_f = 0; count_bw_f = 0
+        sum_uni_f = 0; count_uni_f = 0
+        sum_bw_m = 0; count_bw_m = 0
+        sum_uni_m = 0; count_uni_m = 0
+
+        for p in f_parts + m_parts:
+            bw = float(req.form.get(f'bw_{p}') or 0)
+            uni = float(req.form.get(f'uni_{p}') or 0)
+
+            if bw > 0:
+                pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
+                db.session.add(pw)
+
+                if p.startswith('F'):
+                    sum_bw_f += bw; count_bw_f += 1
+                    if uni > 0: sum_uni_f += uni; count_uni_f += 1
+                else:
+                    sum_bw_m += bw; count_bw_m += 1
+                    if uni > 0: sum_uni_m += uni; count_uni_m += 1
+
+        if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
+        if count_uni_f > 0: uni_f_val = sum_uni_f / count_uni_f
+        if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
+        if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
+
+    log.body_weight_male = bw_m_val
+    log.body_weight_female = bw_f_val
+    log.uniformity_male = uni_m_val
+    log.uniformity_female = uni_f_val
+
+    log.is_weighing_day = 'is_weighing_day' in req.form
+    log.bw_male_p1 = float(req.form.get('bw_M1') or 0)
+    log.bw_male_p2 = float(req.form.get('bw_M2') or 0)
+    log.unif_male_p1 = float(req.form.get('uni_M1') or 0)
+    log.unif_male_p2 = float(req.form.get('uni_M2') or 0)
+    log.bw_female_p1 = float(req.form.get('bw_F1') or 0)
+    log.bw_female_p2 = float(req.form.get('bw_F2') or 0)
+    log.bw_female_p3 = float(req.form.get('bw_F3') or 0)
+    log.bw_female_p4 = float(req.form.get('bw_F4') or 0)
+    log.unif_female_p1 = float(req.form.get('uni_F1') or 0)
+    log.unif_female_p2 = float(req.form.get('uni_F2') or 0)
+    log.unif_female_p3 = float(req.form.get('uni_F3') or 0)
+    log.unif_female_p4 = float(req.form.get('uni_F4') or 0)
+    log.standard_bw_male = float(req.form.get('standard_bw_male') or 0)
+    log.standard_bw_female = float(req.form.get('standard_bw_female') or 0)
+
+    log.water_reading_1 = int(req.form.get('water_reading_1') or 0)
+    log.water_reading_2 = int(req.form.get('water_reading_2') or 0)
+    log.water_reading_3 = int(req.form.get('water_reading_3') or 0)
+    log.flushing = True if req.form.get('flushing') else False
+
+    log.light_on_time = req.form.get('light_on_time')
+    log.light_off_time = req.form.get('light_off_time')
+    log.feed_cleanup_start = req.form.get('feed_cleanup_start')
+    log.feed_cleanup_end = req.form.get('feed_cleanup_end')
+    log.clinical_notes = req.form.get('clinical_notes')
+
+    # Handle Photo Upload
+    if 'photo' in req.files:
+        file = req.files['photo']
+        if file and file.filename != '':
+            date_str = log.date.strftime('%y%m%d')
+            raw_name = f"{log.flock.batch_id}_{date_str}_{file.filename}"
+            filename = secure_filename(raw_name)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            log.photo_path = filepath
+
+    # Recalculate Water
+    from datetime import timedelta
+    yesterday = log.date - timedelta(days=1)
+    yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
+
+    if yesterday_log:
+        r1_today_real = log.water_reading_1 / 100.0
+        r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
+        log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
+    else:
+        log.water_intake_calculated = 0.0
+
 
 def verify_import_data(flock, logs=None):
     # Compare ImportedWeeklyBenchmark with DailyLog Aggregates

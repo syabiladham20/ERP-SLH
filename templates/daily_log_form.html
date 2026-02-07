@@ -14,23 +14,31 @@
       <div class="card-body">
         <div class="mb-3">
           <label for="house_id" class="form-label">House</label>
+          <select class="form-select" id="house_id" name="house_id" required onchange="onSelectionChange()">
+            {% for house in houses %}
+              {# Pass phase info in data attribute #}
+              {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
+              <option value="{{ house.id }}"
+                      data-phase="{{ flock.phase if flock else 'Rearing' }}"
+                      {{ 'selected' if (log and log.flock.house_id == house.id) or (selected_house_id == house.id) else '' }}>
+                {{ house.name }}
+              </option>
+            {% endfor %}
+          </select>
           {% if log %}
-            <input type="text" class="form-control" value="{{ houses[0].name }}" disabled>
-            <input type="hidden" name="house_id" value="{{ houses[0].id }}">
-            <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
-          {% else %}
-            <select class="form-select" id="house_id" name="house_id" required onchange="updatePhase()">
-              {% for house in houses %}
-                {# Pass phase info in data attribute #}
-                {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
-                <option value="{{ house.id }}" data-phase="{{ flock.phase if flock else 'Rearing' }}">{{ house.name }}</option>
-              {% endfor %}
-            </select>
+             <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% endif %}
         </div>
         <div class="mb-3">
           <label for="date" class="form-label">Date</label>
-          <input type="date" class="form-control" id="date" name="date" required value="{{ log.date if log else date_today }}" {{ 'disabled' if log else '' }}>
+          <div class="input-group">
+              <input type="date" class="form-control" id="date" name="date" required
+                     value="{{ log.date if log else (selected_date if selected_date else date_today) }}"
+                     onchange="onSelectionChange()">
+              {% if log %}
+                  <span class="input-group-text text-success fw-bold" title="Data loaded from existing log">✅ Data Loaded</span>
+              {% endif %}
+          </div>
         </div>
       </div>
     </div>
@@ -90,47 +98,33 @@
       <div class="card-header bg-success text-white">Feed</div>
       <div class="card-body">
         <div class="row mb-3">
-            <div class="col-4">
+            <div class="col-6">
                 <label class="form-label">Feed Program</label>
-                <select class="form-select" name="feed_program" id="feed_program" onchange="calculateFeed()">
+                <select class="form-select" name="feed_program">
                     <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
                     <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
-                    <option value="2/1" {{ 'selected' if log and log.feed_program == '2/1' else '' }}>2/1</option>
                 </select>
             </div>
-            <div class="col-4">
-                <label class="form-label">Male Feed Code</label>
-                <select class="form-select" name="feed_code_male_id" id="feed_code_male_id">
-                    <option value="">-- Select --</option>
+            <div class="col-6">
+                <label class="form-label">Feed Code</label>
+                <select class="form-select" name="feed_code_id">
+                    <option value="">-- Select Code --</option>
                     {% for fc in feed_codes %}
-                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_male_id == fc.id else '' }}>{{ fc.code }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-4">
-                <label class="form-label">Female Feed Code</label>
-                <select class="form-select" name="feed_code_female_id" id="feed_code_female_id">
-                    <option value="">-- Select --</option>
-                    {% for fc in feed_codes %}
-                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_female_id == fc.id else '' }}>{{ fc.code }}</option>
+                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_id == fc.id else '' }}>{{ fc.code }}</option>
                     {% endfor %}
                 </select>
             </div>
         </div>
-        <div class="row mb-2">
+        <div class="row">
           <div class="col-6 mb-2">
-            <label class="form-label">Male Base Feed (g/bird)</label>
-            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" id="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log else 0 }}" onchange="calculateFeed()">
-            <small class="text-muted">Actual: <span id="actual_feed_male">0</span> g | Total: <span id="total_feed_male">0</span> kg</small>
+            <label class="form-label">Male Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log else 0 }}">
           </div>
           <div class="col-6 mb-2">
-            <label class="form-label">Female Base Feed (g/bird)</label>
-            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" id="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log else 0 }}" onchange="calculateFeed()">
-            <small class="text-muted">Actual: <span id="actual_feed_female">0</span> g | Total: <span id="total_feed_female">0</span> kg</small>
+            <label class="form-label">Female Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log else 0 }}">
           </div>
         </div>
-        <input type="hidden" id="stock_male" value="0">
-        <input type="hidden" id="stock_female" value="0">
         <div class="row">
           <div class="col-6 mb-2">
             <label class="form-label">Feed Cleanup Start</label>
@@ -314,10 +308,23 @@
   </form>
   
   <script>
-    {% if not log %}
-    // Set default date to today only for new logs
+    {% if not log and not selected_date %}
+    // Set default date to today only for new logs (if no date selected)
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
+
+    function onSelectionChange() {
+        {% if request.endpoint == 'daily_log' %}
+        let houseId = document.getElementById('house_id').value;
+        let dateVal = document.getElementById('date').value;
+        if (houseId && dateVal) {
+             // Reload page with query params to check for existing data
+             window.location.href = "{{ url_for('daily_log') }}?house_id=" + houseId + "&date=" + dateVal;
+             return;
+        }
+        {% endif %}
+        updatePhase();
+    }
 
     function calculateWater() {
         // Get values (integers)
@@ -336,73 +343,17 @@
         document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
     }
 
-    // Defaults Data
-    const flockDefaults = {{ flock_defaults_json|safe if flock_defaults_json else '{}' }};
-
-    function updateDefaults() {
-        let houseSelect = document.getElementById('house_id');
-        if (!houseSelect) return; // Edit mode
-
-        let houseId = houseSelect.value;
-        let data = flockDefaults[houseId];
-
-        if (data) {
-            document.getElementById('feed_program').value = data.last_feed_program || 'Full Feed';
-
-            if (data.last_feed_code_male_id) document.getElementById('feed_code_male_id').value = data.last_feed_code_male_id;
-            if (data.last_feed_code_female_id) document.getElementById('feed_code_female_id').value = data.last_feed_code_female_id;
-
-            document.getElementById('feed_male_gp_bird').value = data.last_feed_male || 0;
-            document.getElementById('feed_female_gp_bird').value = data.last_feed_female || 0;
-
-            // Update Hidden Stock
-            document.getElementById('stock_male').value = data.stock_male || 0;
-            document.getElementById('stock_female').value = data.stock_female || 0;
-
-            calculateFeed();
-        }
-    }
-
-    function calculateFeed() {
-        let program = document.getElementById('feed_program').value;
-        let baseM = parseFloat(document.getElementById('feed_male_gp_bird').value) || 0;
-        let baseF = parseFloat(document.getElementById('feed_female_gp_bird').value) || 0;
-
-        let stockM = parseFloat(document.getElementById('stock_male').value) || 0;
-        let stockF = parseFloat(document.getElementById('stock_female').value) || 0;
-
-        // Multiplier Logic
-        let mult = 1;
-        if (program === 'Skip-a-day') {
-             mult = 2;
-        } else if (program === '2/1') {
-             mult = 1.5;
-        }
-
-        let actualM = baseM * mult;
-        let actualF = baseF * mult;
-
-        let totalM_kg = (actualM * stockM) / 1000;
-        let totalF_kg = (actualF * stockF) / 1000;
-
-        document.getElementById('actual_feed_male').innerText = actualM.toFixed(2);
-        document.getElementById('total_feed_male').innerText = totalM_kg.toFixed(2);
-
-        document.getElementById('actual_feed_female').innerText = actualF.toFixed(2);
-        document.getElementById('total_feed_female').innerText = totalF_kg.toFixed(2);
-    }
-
     // Phase & Partition Logic
     function updatePhase() {
         let houseSelect = document.getElementById('house_id');
         let phase = 'Rearing';
-        if (houseSelect) {
+        if (houseSelect && houseSelect.selectedIndex >= 0) {
             let option = houseSelect.options[houseSelect.selectedIndex];
             phase = option.getAttribute('data-phase') || 'Rearing';
-            updateDefaults(); // Also update defaults when house changes
         } else {
-            // Edit mode
-            phase = document.getElementById('phase_val').value;
+            // Fallback (though houseSelect should exist now)
+            let phaseInput = document.getElementById('phase_val');
+            phase = phaseInput ? phaseInput.value : 'Rearing';
         }
 
         let partitionsDiv = document.getElementById('partitions_section');
