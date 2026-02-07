@@ -56,8 +56,7 @@
     <div>
         <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
         <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
-        <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-sm btn-info me-2">Sampling</a>
-        <a href="{{ url_for('flock_vaccines', id=flock.id) }}" class="btn btn-sm btn-warning">Vaccines</a>
+        <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">Health Log</a>
     </div>
   </div>
   <div class="card-body">

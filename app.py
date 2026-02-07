@@ -198,20 +198,14 @@ class SamplingEvent(db.Model):
     result_file = db.Column(db.String(200), nullable=True) # Path to PDF
     upload_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
-
-    @property
-    def scheduled_date(self):
-        from datetime import timedelta
-        # Week 1 starts on Day 1 (Intake Date + 1).
-        # Week N starts on Intake + 1 + (N-1)*7 days.
-        days_offset = ((self.age_week - 1) * 7) + 1
-        return self.flock.intake_date + timedelta(days=days_offset)
+    scheduled_date = db.Column(db.Date, nullable=True)
 
 class Medication(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
     drug_name = db.Column(db.String(100), nullable=False)
     dosage = db.Column(db.String(50), nullable=False)
+    amount_used = db.Column(db.String(100), nullable=True)
     withdrawal_period_days = db.Column(db.Integer, default=0)
     start_date = db.Column(db.Date, nullable=False, default=date.today)
     end_date = db.Column(db.Date, nullable=True)
@@ -312,12 +306,20 @@ def initialize_sampling_schedule(flock_id):
     if existing:
         return
 
+    from datetime import timedelta
+    flock = Flock.query.get(flock_id)
+    if not flock: return
+
     for week, test in schedule.items():
+        days_offset = ((week - 1) * 7) + 1
+        scheduled_date = flock.intake_date + timedelta(days=days_offset)
+
         event = SamplingEvent(
             flock_id=flock_id,
             age_week=week,
             test_type=test,
-            status='Pending'
+            status='Pending',
+            scheduled_date=scheduled_date
         )
         db.session.add(event)
     db.session.commit()
@@ -1530,6 +1532,36 @@ def daily_log():
         )
         
         db.session.add(new_log)
+
+        # Handle Medication (Optional)
+        med_name = request.form.get('med_drug_name')
+        if med_name:
+            start_date_val = request.form.get('med_start_date')
+            end_date_val = request.form.get('med_end_date')
+
+            s_date = log_date
+            if start_date_val:
+                try:
+                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                except: pass
+
+            e_date = None
+            if end_date_val:
+                try:
+                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                except: pass
+
+            med = Medication(
+                flock_id=flock.id,
+                drug_name=med_name,
+                dosage=request.form.get('med_dosage') or '',
+                amount_used=request.form.get('med_amount_used'),
+                start_date=s_date,
+                end_date=e_date,
+                remarks=request.form.get('med_remarks')
+            )
+            db.session.add(med)
+
         db.session.commit()
 
         # Save Partitions
@@ -1691,6 +1723,35 @@ def edit_daily_log(id):
             r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
             log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
         
+        # Handle Medication (Optional) - Only if adding new
+        med_name = request.form.get('med_drug_name')
+        if med_name:
+            start_date_val = request.form.get('med_start_date')
+            end_date_val = request.form.get('med_end_date')
+
+            s_date = log.date
+            if start_date_val:
+                try:
+                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                except: pass
+
+            e_date = None
+            if end_date_val:
+                try:
+                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                except: pass
+
+            med = Medication(
+                flock_id=log.flock_id,
+                drug_name=med_name,
+                dosage=request.form.get('med_dosage') or '',
+                amount_used=request.form.get('med_amount_used'),
+                start_date=s_date,
+                end_date=e_date,
+                remarks=request.form.get('med_remarks')
+            )
+            db.session.add(med)
+
         db.session.commit()
         flash('Log updated successfully.', 'success')
         return redirect(url_for('view_flock', id=log.flock_id))
@@ -2123,3 +2184,220 @@ def verify_import_data(flock, logs=None):
 
     if warnings:
         flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')
+
+@app.route('/health_log', methods=['GET', 'POST'])
+def health_log():
+    import calendar
+    from datetime import timedelta
+
+    today = date.today()
+
+    # --- HANDLE POST UPDATES ---
+    if request.method == 'POST':
+        # Check for Medication Add
+        if 'add_medication' in request.form:
+             flock_id = request.form.get('flock_id')
+             if flock_id:
+                 try:
+                     s_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+                     e_date = None
+                     if request.form.get('end_date'):
+                         e_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+
+                     m = Medication(
+                         flock_id=flock_id,
+                         drug_name=request.form.get('drug_name'),
+                         dosage=request.form.get('dosage'),
+                         amount_used=request.form.get('amount_used'),
+                         start_date=s_date,
+                         end_date=e_date,
+                         remarks=request.form.get('remarks')
+                     )
+                     db.session.add(m)
+                     db.session.commit()
+                     flash('Medication added.', 'success')
+                 except Exception as e:
+                     flash(f'Error adding medication: {str(e)}', 'danger')
+
+        # Check for Bulk Updates (Vaccine/Sampling/Medication)
+        updated_count = 0
+
+        # Collect IDs
+        v_ids = set()
+        s_ids = set()
+        m_ids = set()
+        for key in request.form:
+            if key.startswith('v_') and key.split('_')[-1].isdigit():
+                v_ids.add(int(key.split('_')[-1]))
+            elif key.startswith('s_') and key.split('_')[-1].isdigit():
+                s_ids.add(int(key.split('_')[-1]))
+            elif key.startswith('m_') and key.split('_')[-1].isdigit():
+                m_ids.add(int(key.split('_')[-1]))
+
+        # Process Vaccines
+        for vid in v_ids:
+            v = Vaccine.query.get(vid)
+            if not v: continue
+
+            name = request.form.get(f'v_name_{vid}')
+            if name and v.vaccine_name != name: v.vaccine_name = name; updated_count += 1
+
+            route = request.form.get(f'v_route_{vid}')
+            if route and v.route != route: v.route = route; updated_count += 1
+
+            est = request.form.get(f'v_est_date_{vid}')
+            if est:
+                try:
+                    d = datetime.strptime(est, '%Y-%m-%d').date()
+                    if v.est_date != d: v.est_date = d; updated_count += 1
+                except: pass
+
+            act = request.form.get(f'v_actual_date_{vid}')
+            if act:
+                try:
+                    d = datetime.strptime(act, '%Y-%m-%d').date()
+                    if v.actual_date != d: v.actual_date = d; updated_count += 1
+                except: pass
+
+        # Process Sampling
+        for sid in s_ids:
+            s = SamplingEvent.query.get(sid)
+            if not s: continue
+
+            test = request.form.get(f's_test_{sid}')
+            if test and s.test_type != test: s.test_type = test; updated_count += 1
+
+            age_str = request.form.get(f's_age_{sid}')
+            date_str = request.form.get(f's_date_{sid}')
+
+            new_age = int(age_str) if age_str else s.age_week
+            new_date = s.scheduled_date
+            if date_str:
+                try:
+                    new_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except: pass
+
+            age_changed = (new_age != s.age_week)
+            date_changed = (new_date != s.scheduled_date)
+
+            if age_changed and not date_changed:
+                s.age_week = new_age
+                s.scheduled_date = s.flock.intake_date + timedelta(days=((new_age-1)*7 + 1))
+                updated_count += 1
+            elif date_changed:
+                s.scheduled_date = new_date
+                diff = (new_date - s.flock.intake_date).days
+                s.age_week = (diff // 7) + 1
+                updated_count += 1
+
+        # Process Medication
+        for mid in m_ids:
+            m = Medication.query.get(mid)
+            if not m: continue
+
+            drug = request.form.get(f'm_drug_{mid}')
+            if drug and m.drug_name != drug: m.drug_name = drug; updated_count += 1
+
+            dosage = request.form.get(f'm_dosage_{mid}')
+            if dosage is not None and m.dosage != dosage: m.dosage = dosage; updated_count += 1
+
+            amount = request.form.get(f'm_amount_{mid}')
+            if amount is not None and m.amount_used != amount: m.amount_used = amount; updated_count += 1
+
+            rem = request.form.get(f'm_rem_{mid}')
+            if rem is not None and m.remarks != rem: m.remarks = rem; updated_count += 1
+
+            start = request.form.get(f'm_start_{mid}')
+            if start:
+                try:
+                    d = datetime.strptime(start, '%Y-%m-%d').date()
+                    if m.start_date != d: m.start_date = d; updated_count += 1
+                except: pass
+
+            end = request.form.get(f'm_end_{mid}')
+            if end:
+                try:
+                    d = datetime.strptime(end, '%Y-%m-%d').date()
+                    if m.end_date != d: m.end_date = d; updated_count += 1
+                except: pass
+            elif end == '' and m.end_date is not None:
+                m.end_date = None; updated_count += 1
+
+        if updated_count > 0:
+            db.session.commit()
+            flash(f'Updated {updated_count} records.', 'success')
+
+        return redirect(url_for('health_log', year=request.args.get('year'), month=request.args.get('month')))
+
+
+    # --- VIEW LOGIC ---
+    try:
+        year = int(request.args.get('year', today.year))
+        month = int(request.args.get('month', today.month))
+    except:
+        year = today.year
+        month = today.month
+
+    # Calendar Navigation
+    cal = calendar.Calendar(firstweekday=6) # Sunday start
+    month_days = cal.monthdatescalendar(year, month)
+
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    # Fetch Events for the Month
+    start_date = date(year, month, 1)
+    # End date: last day of month
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = date(year, month, last_day)
+
+    active_flocks = Flock.query.filter_by(status='Active').all()
+    flock_ids = [f.id for f in active_flocks]
+
+    # Map Events to Date
+    events_by_date = {} # Date -> [List of items]
+
+    # 1. Vaccines (Estimated Date in Range)
+    vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).all()
+    for v in vaccines:
+        d = v.est_date
+        if d not in events_by_date: events_by_date[d] = []
+        events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock})
+
+    # 2. Sampling (Scheduled Date in Range)
+    samplings = SamplingEvent.query.filter(SamplingEvent.flock_id.in_(flock_ids)).filter(SamplingEvent.scheduled_date >= start_date, SamplingEvent.scheduled_date <= end_date).all()
+    for s in samplings:
+        d = s.scheduled_date
+        if d:
+             if d not in events_by_date: events_by_date[d] = []
+             events_by_date[d].append({'type': 'Sampling', 'obj': s, 'flock': s.flock})
+
+    # Prepare List View (Grouped by House/Flock)
+    selected_flock_id = request.args.get('flock_id')
+
+    flock_tasks = {} # Flock -> {'vaccines': [], 'sampling': [], 'medications': []}
+
+    target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
+
+    for f in target_flocks:
+        flock_tasks[f] = {
+            'vaccines': Vaccine.query.filter_by(flock_id=f.id).order_by(Vaccine.est_date).all(),
+            'sampling': SamplingEvent.query.filter_by(flock_id=f.id).order_by(SamplingEvent.age_week).all(),
+            'medications': Medication.query.filter_by(flock_id=f.id).order_by(Medication.start_date.desc()).all()
+        }
+
+    return render_template('health_log.html',
+        today=today,
+        year=year,
+        month=month,
+        month_name=calendar.month_name[month],
+        month_days=month_days,
+        prev_month=prev_month, prev_year=prev_year,
+        next_month=next_month, next_year=next_year,
+        events_by_date=events_by_date,
+        active_flocks=active_flocks,
+        selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
+        flock_tasks=flock_tasks
+    )

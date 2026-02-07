@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Health Log</h2>
+    <div>
+        <a href="{{ url_for('health_log', year=prev_year, month=prev_month, flock_id=selected_flock_id) }}" class="btn btn-outline-secondary btn-sm">&lt; Prev</a>
+        <span class="mx-3 fw-bold">{{ month_name }} {{ year }}</span>
+        <a href="{{ url_for('health_log', year=next_year, month=next_month, flock_id=selected_flock_id) }}" class="btn btn-outline-secondary btn-sm">Next &gt;</a>
+    </div>
+</div>
+
+<!-- Calendar View -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">Monthly Schedule</div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0" style="table-layout: fixed;">
+            <thead class="table-light text-center">
+                <tr>
+                    <th style="width: 14.28%;">Sun</th>
+                    <th style="width: 14.28%;">Mon</th>
+                    <th style="width: 14.28%;">Tue</th>
+                    <th style="width: 14.28%;">Wed</th>
+                    <th style="width: 14.28%;">Thu</th>
+                    <th style="width: 14.28%;">Fri</th>
+                    <th style="width: 14.28%;">Sat</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for week in month_days %}
+                <tr>
+                    {% for day in week %}
+                    <td class="align-top" style="height: 120px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold {% if day == today %}text-primary{% endif %}">{{ day.day }}</span>
+                        </div>
+                        <div class="mt-1 overflow-auto" style="max-height: 90px;">
+                            {% if day in events_by_date %}
+                                {% for event in events_by_date[day] %}
+                                    <div class="mb-1 p-1 rounded {% if event.type == 'Vaccine' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}" style="font-size: 0.75rem;">
+                                        <strong>{{ event.flock.batch_id }}</strong><br>
+                                        {% if event.type == 'Vaccine' %}
+                                            {{ event.obj.vaccine_name }}
+                                        {% else %}
+                                            {{ event.obj.test_type }}
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Flock Selection -->
+<div class="mb-4">
+    <form method="GET" action="{{ url_for('health_log') }}" class="d-flex align-items-center">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <label class="me-2 fw-bold">Select Flock:</label>
+        <select name="flock_id" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+            <option value="">-- All Active Flocks --</option>
+            {% for f in active_flocks %}
+                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.batch_id }} ({{ f.house.name }})</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Detailed Lists (Editable) -->
+    {% for flock, tasks in flock_tasks.items() %}
+    <form method="POST" action="{{ url_for('health_log', year=year, month=month) }}">
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary">{{ flock.batch_id }} ({{ flock.house.name }}) - Age: {{ flock.current_week }} Weeks</h5>
+            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+        <div class="card-body">
+
+            <!-- Vaccines -->
+            <h6 class="text-secondary border-bottom pb-2">Vaccines</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Age</th>
+                            <th>Est. Date</th>
+                            <th>Actual Date</th>
+                            <th>Vaccine Name</th>
+                            <th>Route</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in tasks.vaccines %}
+                        <tr>
+                            <td>{{ v.age_code }}</td>
+                            <td>
+                                <input type="date" name="v_est_date_{{ v.id }}" value="{{ v.est_date }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
+                                <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
+                                <input type="text" name="v_name_{{ v.id }}" value="{{ v.vaccine_name }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <input type="text" name="v_route_{{ v.id }}" value="{{ v.route }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                {% if v.actual_date %}
+                                    <span class="badge bg-success">Done</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Sampling -->
+            <h6 class="text-secondary border-bottom pb-2 mt-4">Sampling</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Age (Week)</th>
+                            <th>Scheduled Date</th>
+                            <th>Test Type</th>
+                            <th>Status</th>
+                            <th>Results</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in tasks.sampling %}
+                        <tr>
+                            <td>
+                                <input type="number" name="s_age_{{ s.id }}" value="{{ s.age_week }}" class="form-control form-control-sm" style="width: 60px;">
+                            </td>
+                            <td>
+                                <input type="date" name="s_date_{{ s.id }}" value="{{ s.scheduled_date }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
+                                <input type="text" name="s_test_{{ s.id }}" value="{{ s.test_type }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <span class="badge {% if s.status == 'Completed' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ s.status }}</span>
+                            </td>
+                            <td>
+                                {% if s.result_file %}
+                                    <a href="{{ url_for('uploaded_file', filename=s.result_file|basename) }}" target="_blank">PDF</a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                                <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-xs btn-link p-0 ms-1">Upload</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Medications -->
+            <h6 class="text-secondary border-bottom pb-2 mt-4">Medications</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Drug Name</th>
+                            <th>Dosage</th>
+                            <th>Amount Used</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in tasks.medications %}
+                        <tr>
+                            <td>
+                                <input type="text" name="m_drug_{{ m.id }}" value="{{ m.drug_name }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <input type="text" name="m_dosage_{{ m.id }}" value="{{ m.dosage }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <input type="text" name="m_amount_{{ m.id }}" value="{{ m.amount_used or '' }}" class="form-control form-control-sm">
+                            </td>
+                            <td>
+                                <input type="date" name="m_start_{{ m.id }}" value="{{ m.start_date }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
+                                <input type="date" name="m_end_{{ m.id }}" value="{{ m.end_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
+                                <input type="text" name="m_rem_{{ m.id }}" value="{{ m.remarks or '' }}" class="form-control form-control-sm">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add Medication Form -->
+            <div class="bg-light p-3 rounded border">
+                <strong>Add New Medication Record</strong>
+                <div class="row g-2 mt-1">
+                    <input type="hidden" name="flock_id" value="{{ flock.id }}">
+                    <div class="col-md-3">
+                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Used">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="start_date" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="end_date" class="form-control form-control-sm" placeholder="End Date">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" name="add_medication" value="1" class="btn btn-success btn-sm w-100">Add</button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                         <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Remarks / Withdrawal Period">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    </form>
+    {% endfor %}
+{% endblock %}
