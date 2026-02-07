@@ -1467,7 +1467,6 @@ def daily_log():
     return render_template('daily_log_form.html',
                            houses=active_houses,
                            flock_phases_json=json.dumps(flock_phases),
-                           flock_defaults_json=json.dumps(flock_defaults),
                            feed_codes=feed_codes,
                            log=log,
                            selected_house_id=int(selected_house_id) if selected_house_id and selected_house_id.isdigit() else None,
@@ -1901,8 +1900,8 @@ def update_log_from_request(log, req):
     log.males_moved_to_hosp = int(req.form.get('males_moved_to_hosp') or 0)
 
     log.feed_program = req.form.get('feed_program')
-    log.feed_code_male_id = int(req.form.get('feed_code_male_id')) if req.form.get('feed_code_male_id') else None
-    log.feed_code_female_id = int(req.form.get('feed_code_female_id')) if req.form.get('feed_code_female_id') else None
+    fc_id = req.form.get('feed_code_id')
+    log.feed_code_id = int(fc_id) if fc_id else None
 
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
