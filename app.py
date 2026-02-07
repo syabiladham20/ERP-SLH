@@ -51,7 +51,9 @@ class Flock(db.Model):
     production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
     end_date = db.Column(db.Date, nullable=True)
     
-    logs = db.relationship('DailyLog', backref='flock', lazy=True)
+    logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
+    weekly_data = db.relationship('WeeklyData', backref='flock', lazy=True, cascade="all, delete-orphan")
+    weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
 class DailyLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -183,7 +185,7 @@ class WeeklyData(db.Model):
 class SamplingEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
-    flock = db.relationship('Flock', backref='sampling_events')
+    flock = db.relationship('Flock', backref=db.backref('sampling_events', cascade="all, delete-orphan"))
     age_week = db.Column(db.Integer, nullable=False)
     test_type = db.Column(db.String(50), nullable=False) # 'Serology', 'Salmonella', 'Serology & Salmonella'
     status = db.Column(db.String(20), default='Pending') # 'Pending', 'Completed'
@@ -209,7 +211,7 @@ class Medication(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
 
-    flock = db.relationship('Flock', backref=db.backref('medications', lazy=True))
+    flock = db.relationship('Flock', backref=db.backref('medications', lazy=True, cascade="all, delete-orphan"))
 
 class Vaccine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -224,7 +226,7 @@ class Vaccine(db.Model):
     actual_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
 
-    flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True))
+    flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True, cascade="all, delete-orphan"))
 
     @property
     def dose_count(self):
@@ -546,9 +548,7 @@ def edit_flock(id):
 @app.route('/flock/<int:id>/delete', methods=['POST'])
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
-    # Cascade delete logs? SQLAlchemy relationship usually handles if configured,
-    # but here we didn't set cascade="all, delete". Manual delete safest.
-    DailyLog.query.filter_by(flock_id=id).delete()
+    # SQLAlchemy relationship handles cascade delete for logs, sampling events, vaccines, etc.
     db.session.delete(flock)
     db.session.commit()
     flash(f'Flock {flock.batch_id} deleted.', 'warning')
