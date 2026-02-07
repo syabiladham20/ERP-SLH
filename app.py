@@ -558,7 +558,7 @@ def delete_flock(id):
     db.session.delete(flock)
     db.session.commit()
     flash(f'Flock {flock.batch_id} deleted.', 'warning')
-    return redirect(url_for('index'))
+    return redirect(url_for('manage_flocks'))
 
 @app.route('/help')
 def help():
