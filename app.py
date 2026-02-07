@@ -1799,6 +1799,9 @@ def process_import(file):
             
             initialize_sampling_schedule(flock.id)
 
+        # Cache existing logs for this flock to avoid N+1 queries
+        existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock.id).all()}
+
         # Read Data - STARTING ROW 11 (0-index 10)
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
         # Phase 1: Standard BW Extraction (Rows 508-571)
@@ -1882,11 +1885,12 @@ def process_import(file):
                 i+=1
                 continue
 
-            # Ensure Log Exists
-            log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
+            # Ensure Log Exists - Using cache to avoid N+1 queries
+            log = existing_logs_dict.get(log_date)
             if not log:
                 log = DailyLog(flock_id=flock.id, date=log_date)
                 db.session.add(log)
+                existing_logs_dict[log_date] = log
             
             # Helper Helpers
             def get_float(r, idx):
@@ -2067,7 +2071,7 @@ def process_import(file):
 
         db.session.commit()
         
-        # Recalculate Water
+        # Recalculate Water - Fetch once to avoid reloads after commit
         all_logs = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date).all()
         for i, log in enumerate(all_logs):
             if i > 0:
@@ -2079,12 +2083,13 @@ def process_import(file):
                     db.session.add(log)
         db.session.commit()
 
-        verify_import_data(flock)
+        verify_import_data(flock, logs=all_logs)
 
-def verify_import_data(flock):
+def verify_import_data(flock, logs=None):
     # Compare ImportedWeeklyBenchmark with DailyLog Aggregates
     weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
-    logs = DailyLog.query.filter_by(flock_id=flock.id).all()
+    if logs is None:
+        logs = DailyLog.query.filter_by(flock_id=flock.id).all()
 
     warnings = []
 
