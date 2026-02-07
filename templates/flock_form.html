@@ -70,6 +70,7 @@
                 <th>Batch ID</th>
                 <th>Status</th>
                 <th>Intake Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -82,6 +83,13 @@
                   </span>
                 </td>
                 <td>{{ flock.intake_date }}</td>
+                <td>
+                  {% if flock.status == 'Inactive' %}
+                  <form action="{{ url_for('delete_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('DELETE flock? This cannot be undone.');">
+                    <button type="submit" class="btn btn-danger btn-sm py-0">Delete</button>
+                  </form>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>
