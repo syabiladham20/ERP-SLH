@@ -248,6 +248,53 @@ class Vaccine(db.Model):
         doses_needed = math.ceil(count / 1000.0) * 1000
         return doses_needed
 
+class Hatchability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock = db.relationship('Flock', backref=db.backref('hatchability_data', lazy=True, cascade="all, delete-orphan"))
+
+    setting_date = db.Column(db.Date, nullable=False)
+    candling_date = db.Column(db.Date, nullable=False) # Computed: Setting + 18? usually.
+    hatching_date = db.Column(db.Date, nullable=False) # Computed: Setting + 21? usually.
+
+    egg_set = db.Column(db.Integer, default=0)
+
+    # Candling Results
+    clear_eggs = db.Column(db.Integer, default=0)
+    rotten_eggs = db.Column(db.Integer, default=0)
+
+    # Hatching Results
+    hatched_chicks = db.Column(db.Integer, default=0)
+
+    @property
+    def hatchable_eggs(self):
+        # Fertile Eggs
+        return self.egg_set - self.clear_eggs - self.rotten_eggs
+
+    @property
+    def fertile_pct(self):
+        return (self.hatchable_eggs / self.egg_set * 100) if self.egg_set > 0 else 0
+
+    @property
+    def clear_pct(self):
+        return (self.clear_eggs / self.egg_set * 100) if self.egg_set > 0 else 0
+
+    @property
+    def rotten_pct(self):
+        return (self.rotten_eggs / self.egg_set * 100) if self.egg_set > 0 else 0
+
+    @property
+    def hatchability_pct(self):
+        # Hatch of Total
+        return (self.hatched_chicks / self.egg_set * 100) if self.egg_set > 0 else 0
+
+    @property
+    def flock_age_weeks(self):
+        # Formula: (Setting - 2 - Intake) / 7
+        if not self.flock: return 0
+        days = (self.setting_date - self.flock.intake_date).days - 2
+        return days // 7
+
 class ImportedWeeklyBenchmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
@@ -1123,6 +1170,77 @@ def flock_vaccines(id):
     vaccines = Vaccine.query.filter_by(flock_id=id).order_by(Vaccine.id.asc()).all()
     return render_template('flock_vaccines.html', flock=flock, vaccines=vaccines)
 
+@app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
+def flock_hatchability(id):
+    flock = Flock.query.get_or_404(id)
+    if request.method == 'POST':
+        # Add new Hatchability Record
+        setting_date_str = request.form.get('setting_date')
+        egg_set = int(request.form.get('egg_set') or 0)
+
+        # Calculate Dates (Defaults)
+        # Assuming standard broiler breeder: Candling 18 days, Hatch 21 days
+        setting_date = datetime.strptime(setting_date_str, '%Y-%m-%d').date()
+        from datetime import timedelta
+        candling_date = setting_date + timedelta(days=18)
+        hatching_date = setting_date + timedelta(days=21)
+
+        # Optional: Allow user to override computed dates in future, but for now auto-calc on creation
+
+        # Create Record
+        new_record = Hatchability(
+            flock_id=flock.id,
+            setting_date=setting_date,
+            candling_date=candling_date,
+            hatching_date=hatching_date,
+            egg_set=egg_set,
+            # Other fields default to 0
+        )
+        db.session.add(new_record)
+        db.session.commit()
+        flash('Hatchability record added.', 'success')
+        return redirect(url_for('flock_hatchability', id=id))
+
+    records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
+    return render_template('flock_hatchability.html', flock=flock, records=records)
+
+@app.route('/flock/<int:id>/hatchability/<int:record_id>/edit', methods=['POST'])
+def edit_hatchability(id, record_id):
+    record = Hatchability.query.get_or_404(record_id)
+
+    # Check what data is being updated
+    # Could be Setting info, Candling info, or Hatching info
+
+    if request.form.get('egg_set'):
+        record.egg_set = int(request.form.get('egg_set') or 0)
+        # Update setting date if provided? usually fixed.
+        if request.form.get('setting_date'):
+             record.setting_date = datetime.strptime(request.form.get('setting_date'), '%Y-%m-%d').date()
+             # Re-calc derived dates? Only if they weren't manually set?
+             # Let's simple re-calc for now
+             from datetime import timedelta
+             record.candling_date = record.setting_date + timedelta(days=18)
+             record.hatching_date = record.setting_date + timedelta(days=21)
+
+    if request.form.get('candling_date'): # Just a trigger to save candling data
+        record.clear_eggs = int(request.form.get('clear_eggs') or 0)
+        record.rotten_eggs = int(request.form.get('rotten_eggs') or 0)
+
+    if request.form.get('hatching_date'): # Trigger to save hatching data
+        record.hatched_chicks = int(request.form.get('hatched_chicks') or 0)
+
+    db.session.commit()
+    flash('Record updated.', 'success')
+    return redirect(url_for('flock_hatchability', id=id))
+
+@app.route('/flock/<int:id>/hatchability/<int:record_id>/delete', methods=['POST'])
+def delete_hatchability(id, record_id):
+    record = Hatchability.query.get_or_404(record_id)
+    db.session.delete(record)
+    db.session.commit()
+    flash('Record deleted.', 'info')
+    return redirect(url_for('flock_hatchability', id=id))
+
 @app.route('/vaccine_schedule')
 def global_vaccine_schedule():
     # Show monthly schedule for all active flocks
@@ -1356,7 +1474,46 @@ def flock_dashboard(id):
         if spike_count == 3:
              diagnostic_hints.insert(0, "Warning: Continuous mortality spike—review post-mortem photos.")
 
-    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days, diagnostic_hints=diagnostic_hints)
+    # --- Hatchability Chart Data ---
+    hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.asc()).all()
+
+    # Aggregate by Age (Week)
+    hatch_agg = {}
+
+    for r in hatch_records:
+        age_week = r.flock_age_weeks
+        if age_week not in hatch_agg:
+            hatch_agg[age_week] = {
+                'egg_set': 0, 'clear': 0, 'rotten': 0, 'hatched': 0, 'fertile': 0
+            }
+
+        hatch_agg[age_week]['egg_set'] += r.egg_set
+        hatch_agg[age_week]['clear'] += r.clear_eggs
+        hatch_agg[age_week]['rotten'] += r.rotten_eggs
+        hatch_agg[age_week]['hatched'] += r.hatched_chicks
+        hatch_agg[age_week]['fertile'] += r.hatchable_eggs
+
+    # Prepare Chart Arrays
+    hatch_chart = {
+        'weeks': [],
+        'fertile_pct': [],
+        'clear_pct': [],
+        'rotten_pct': [],
+        'hatchability_pct': []
+    }
+
+    sorted_weeks = sorted(hatch_agg.keys())
+    for w in sorted_weeks:
+        d = hatch_agg[w]
+        total = d['egg_set']
+        if total > 0:
+            hatch_chart['weeks'].append(f"Week {w}")
+            hatch_chart['fertile_pct'].append(round(d['fertile'] / total * 100, 2))
+            hatch_chart['clear_pct'].append(round(d['clear'] / total * 100, 2))
+            hatch_chart['rotten_pct'].append(round(d['rotten'] / total * 100, 2))
+            hatch_chart['hatchability_pct'].append(round(d['hatched'] / total * 100, 2))
+
+    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days, diagnostic_hints=diagnostic_hints, hatch_chart=hatch_chart)
 
 @app.route('/daily_log', methods=['GET', 'POST'])
 def daily_log():

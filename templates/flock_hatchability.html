@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <h3>Hatchability Data: {{ flock.batch_id }}</h3>
+            <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+        </div>
+        <div class="col-md-6 text-end">
+            <!-- Add Button Triggers Modal -->
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHatchModal">
+                <i class="fas fa-plus"></i> New Setting
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Age</th>
+                    <th>Setting Date</th>
+                    <th>Egg Set</th>
+                    <th>Candling Date</th>
+                    <th>Clear</th>
+                    <th>Rotten</th>
+                    <th>Fertile (Calc)</th>
+                    <th>Hatching Date</th>
+                    <th>Hatched</th>
+                    <th>Hatchability %</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>Week {{ r.flock_age_weeks }}</td>
+                    <td>{{ r.setting_date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ r.egg_set }}</td>
+                    <td>
+                        {{ r.candling_date.strftime('%Y-%m-%d') }}
+                        <!-- Edit Candling Trigger -->
+                        <button class="btn btn-sm btn-outline-info ms-1" data-bs-toggle="modal" data-bs-target="#editCandlingModal{{ r.id }}" title="Enter Candling Results">
+                            <i class="fas fa-microscope"></i>
+                        </button>
+                    </td>
+                    <td>{{ r.clear_eggs }}</td>
+                    <td>{{ r.rotten_eggs }}</td>
+                    <td>{{ r.hatchable_eggs }} ({{ "%.1f"|format(r.fertile_pct) }}%)</td>
+                    <td>
+                        {{ r.hatching_date.strftime('%Y-%m-%d') }}
+                        <!-- Edit Hatching Trigger -->
+                        <button class="btn btn-sm btn-outline-success ms-1" data-bs-toggle="modal" data-bs-target="#editHatchingModal{{ r.id }}" title="Enter Hatching Results">
+                            <i class="fas fa-egg"></i>
+                        </button>
+                    </td>
+                    <td>{{ r.hatched_chicks }}</td>
+                    <td><strong>{{ "%.1f"|format(r.hatchability_pct) }}%</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editSettingModal{{ r.id }}"><i class="fas fa-edit"></i></button>
+                        <form action="{{ url_for('delete_hatchability', id=flock.id, record_id=r.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this record?');">
+                            <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+
+                <!-- Modal: Edit Setting -->
+                <div class="modal fade" id="editSettingModal{{ r.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <form action="{{ url_for('edit_hatchability', id=flock.id, record_id=r.id) }}" method="POST">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Edit Setting Info</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Setting Date</label>
+                                        <input type="date" name="setting_date" class="form-control" value="{{ r.setting_date }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Egg Set</label>
+                                        <input type="number" name="egg_set" class="form-control" value="{{ r.egg_set }}" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Modal: Edit Candling -->
+                <div class="modal fade" id="editCandlingModal{{ r.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <form action="{{ url_for('edit_hatchability', id=flock.id, record_id=r.id) }}" method="POST">
+                            <!-- Hidden triggers -->
+                            <input type="hidden" name="candling_date" value="1">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Enter Candling Results</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Egg Set: {{ r.egg_set }}</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Clear Eggs</label>
+                                        <input type="number" name="clear_eggs" class="form-control" value="{{ r.clear_eggs }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Rotten Eggs</label>
+                                        <input type="number" name="rotten_eggs" class="form-control" value="{{ r.rotten_eggs }}">
+                                    </div>
+                                    <div class="alert alert-info">
+                                        Fertile will be auto-calculated.
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary">Save Results</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Modal: Edit Hatching -->
+                <div class="modal fade" id="editHatchingModal{{ r.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <form action="{{ url_for('edit_hatchability', id=flock.id, record_id=r.id) }}" method="POST">
+                             <input type="hidden" name="hatching_date" value="1">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Enter Hatching Results</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Egg Set: {{ r.egg_set }}</p>
+                                    <div class="mb-3">
+                                        <label class="form-label">Hatched Chicks</label>
+                                        <input type="number" name="hatched_chicks" class="form-control" value="{{ r.hatched_chicks }}">
+                                    </div>
+                                    <div class="alert alert-info">
+                                        Hatchability % will be auto-calculated.
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary">Save Results</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addHatchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form action="{{ url_for('flock_hatchability', id=flock.id) }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Hatchability Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Setting Date</label>
+                        <input type="date" name="setting_date" class="form-control" required value="{{ today }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Egg Set</label>
+                        <input type="number" name="egg_set" class="form-control" required min="0">
+                    </div>
+                    <div class="alert alert-secondary">
+                        Candling Date (+18 days) and Hatching Date (+21 days) will be set automatically.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Create Record</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -89,5 +89,110 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Hatchability Chart Section -->
+    {% if hatch_chart and hatch_chart.weeks %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Hatchability Performance</h5>
+                    <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-light">Manage Data</a>
+                </div>
+                <div class="card-body">
+                    <canvas id="hatchChart" style="max-height: 400px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js Script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('hatchChart').getContext('2d');
+
+            const weeks = {{ hatch_chart.weeks|tojson }};
+            const fertile = {{ hatch_chart.fertile_pct|tojson }};
+            const clear = {{ hatch_chart.clear_pct|tojson }};
+            const rotten = {{ hatch_chart.rotten_pct|tojson }};
+            const hatchability = {{ hatch_chart.hatchability_pct|tojson }};
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: weeks,
+                    datasets: [
+                        {
+                            label: 'Hatchability %',
+                            data: hatchability,
+                            type: 'line',
+                            borderColor: '#28a745', // Green
+                            borderWidth: 3,
+                            fill: false,
+                            yAxisID: 'y1',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Fertile %',
+                            data: fertile,
+                            backgroundColor: '#007bff', // Blue
+                            stack: 'Stack 0',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Clear %',
+                            data: clear,
+                            backgroundColor: '#ffc107', // Yellow
+                            stack: 'Stack 0',
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Rotten %',
+                            data: rotten,
+                            backgroundColor: '#dc3545', // Red
+                            stack: 'Stack 0',
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Egg Composition (%)'
+                            },
+                            stacked: true,
+                            max: 100
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Hatchability %'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            max: 100
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
 </div>
 {% endblock %}
