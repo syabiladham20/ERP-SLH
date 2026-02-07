@@ -1756,6 +1756,21 @@ def process_import(file):
             except IndexError:
                 return None
 
+        def parse_date(date_val):
+            if pd.isna(date_val):
+                return None
+            if hasattr(date_val, 'date'):
+                return date_val.date()
+            if isinstance(date_val, str):
+                # Handle various formats
+                formats = ['%Y-%m-%d', '%d/%m/%y', '%d/%m/%Y', '%m/%d/%Y', '%m/%d/%y']
+                for fmt in formats:
+                    try:
+                        return datetime.strptime(date_val, fmt).date()
+                    except ValueError:
+                        continue
+            return None
+
         house_name_cell = str(get_val(1, 1)).strip() # B2
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
         
@@ -1775,14 +1790,10 @@ def process_import(file):
             db.session.commit()
         
         # Find or Create Flock
-        if isinstance(intake_date_val, str):
-            try:
-                intake_date = datetime.strptime(intake_date_val, '%Y-%m-%d').date()
-            except:
-                print(f"Skipping sheet {sheet_name}: Invalid Date {intake_date_val}")
-                continue
-        else:
-            intake_date = intake_date_val.date()
+        intake_date = parse_date(intake_date_val)
+        if not intake_date:
+            print(f"Skipping sheet {sheet_name}: Invalid Date {intake_date_val}")
+            continue
             
         date_str = intake_date.strftime('%y%m%d')
         
@@ -1856,17 +1867,9 @@ def process_import(file):
             if pd.isna(date_val):
                 continue
 
-            if isinstance(date_val, str):
-                try:
-                    log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
-                    data_rows.append(row)
-                except:
-                    continue
-            elif hasattr(date_val, 'date'):
-                log_date = date_val.date()
+            log_date = parse_date(date_val)
+            if log_date:
                 data_rows.append(row)
-            else:
-                pass
 
         i = 0
         while i < len(data_rows):
@@ -1877,15 +1880,7 @@ def process_import(file):
 
             # Date Handling
             date_val = row.iloc[1] # Col B
-            log_date = None
-            if pd.notna(date_val):
-                if isinstance(date_val, str):
-                    try:
-                        log_date = datetime.strptime(date_val, '%Y-%m-%d').date()
-                    except:
-                        pass
-                else:
-                    log_date = date_val.date()
+            log_date = parse_date(date_val)
 
             if not log_date:
                 i+=1
