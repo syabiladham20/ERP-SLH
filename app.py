@@ -1400,7 +1400,9 @@ def daily_log():
         # Actually safest to manually attach it for the helper's phase check
         log.flock = flock
         
-        db.session.add(new_log)
+        db.session.add(log)
+
+        update_log_from_request(log, request)
 
         # Handle Medication (Optional)
         med_name = request.form.get('med_drug_name')
@@ -1696,6 +1698,8 @@ def import_data():
                     process_import(file)
                     success_count += 1
                 except Exception as e:
+                    import traceback
+                    traceback.print_exc()
                     errors.append(f"{file.filename}: {str(e)}")
             else:
                 if file.filename:
@@ -1808,18 +1812,31 @@ def process_import(file):
         # Let's read standard BW separately to be robust.
         df_std = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70) # 508 to ~578
         standard_bw_map = {}
+        missing_std_weeks = []
 
-        for _, s_row in df_std.iterrows():
-            try:
-                # Col A = Week (0)
-                week = int(s_row.iloc[0])
-                # Col AG = 32 (A=0... Z=25, AA=26... AG=32)
-                # Col AH = 33
-                std_m = float(s_row.iloc[32]) if pd.notna(s_row.iloc[32]) else 0.0
-                std_f = float(s_row.iloc[33]) if pd.notna(s_row.iloc[33]) else 0.0
-                standard_bw_map[week] = (std_m, std_f)
-            except:
-                continue
+        # Optimized iteration using zip (avoid iterrows)
+        # Expected columns: 0 (Week), 32 (Male), 33 (Female)
+        if df_std.shape[1] > 33:
+            weeks = df_std[0]
+            males = df_std[32]
+            females = df_std[33]
+
+            for w, m, f in zip(weeks, males, females):
+                try:
+                    week_val = int(w)
+                    m_val = float(m) if pd.notna(m) else 0.0
+                    f_val = float(f) if pd.notna(f) else 0.0
+                    standard_bw_map[week_val] = (m_val, f_val)
+                except (ValueError, TypeError):
+                    # Track invalid weeks (if week is present but invalid, or week valid but data invalid?)
+                    # If week is invalid, we can't key it.
+                    # If data is invalid (e.g. string), float() fails.
+                    if pd.notna(w):
+                        missing_std_weeks.append(str(w))
+                    continue
+
+        if missing_std_weeks:
+            flash(f"Warning: Standard BW data invalid for weeks: {', '.join(missing_std_weeks[:10])}{'...' if len(missing_std_weeks)>10 else ''}. Please update manually.", "warning")
 
         # Phase 2: Read Data
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
@@ -2019,30 +2036,30 @@ def process_import(file):
                     # Calculate Average Male
                     m_count = 0
                     m_sum = 0
-                    if log.bw_male_p1 > 0: m_sum += log.bw_male_p1; m_count += 1
-                    if log.bw_male_p2 > 0: m_sum += log.bw_male_p2; m_count += 1
+                    if (log.bw_male_p1 or 0) > 0: m_sum += log.bw_male_p1; m_count += 1
+                    if (log.bw_male_p2 or 0) > 0: m_sum += log.bw_male_p2; m_count += 1
                     log.body_weight_male = (m_sum / m_count) if m_count > 0 else 0
 
                     # Calculate Average Female
                     f_count = 0
                     f_sum = 0
-                    if log.bw_female_p1 > 0: f_sum += log.bw_female_p1; f_count += 1
-                    if log.bw_female_p2 > 0: f_sum += log.bw_female_p2; f_count += 1
-                    if log.bw_female_p3 > 0: f_sum += log.bw_female_p3; f_count += 1
-                    if log.bw_female_p4 > 0: f_sum += log.bw_female_p4; f_count += 1
+                    if (log.bw_female_p1 or 0) > 0: f_sum += log.bw_female_p1; f_count += 1
+                    if (log.bw_female_p2 or 0) > 0: f_sum += log.bw_female_p2; f_count += 1
+                    if (log.bw_female_p3 or 0) > 0: f_sum += log.bw_female_p3; f_count += 1
+                    if (log.bw_female_p4 or 0) > 0: f_sum += log.bw_female_p4; f_count += 1
                     log.body_weight_female = (f_sum / f_count) if f_count > 0 else 0
 
                     # Uniformity Average? (Simple average of %s)
                     m_u_sum = 0
-                    if log.unif_male_p1 > 0: m_u_sum += log.unif_male_p1
-                    if log.unif_male_p2 > 0: m_u_sum += log.unif_male_p2
+                    if (log.unif_male_p1 or 0) > 0: m_u_sum += log.unif_male_p1
+                    if (log.unif_male_p2 or 0) > 0: m_u_sum += log.unif_male_p2
                     log.uniformity_male = (m_u_sum / m_count) if m_count > 0 else 0
 
                     f_u_sum = 0
-                    if log.unif_female_p1 > 0: f_u_sum += log.unif_female_p1
-                    if log.unif_female_p2 > 0: f_u_sum += log.unif_female_p2
-                    if log.unif_female_p3 > 0: f_u_sum += log.unif_female_p3
-                    if log.unif_female_p4 > 0: f_u_sum += log.unif_female_p4
+                    if (log.unif_female_p1 or 0) > 0: f_u_sum += log.unif_female_p1
+                    if (log.unif_female_p2 or 0) > 0: f_u_sum += log.unif_female_p2
+                    if (log.unif_female_p3 or 0) > 0: f_u_sum += log.unif_female_p3
+                    if (log.unif_female_p4 or 0) > 0: f_u_sum += log.unif_female_p4
                     log.uniformity_female = (f_u_sum / f_count) if f_count > 0 else 0
 
             i += 1
