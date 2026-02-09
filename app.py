@@ -5,6 +5,8 @@ from datetime import datetime, date
 import os
 from flask import send_from_directory
 from dotenv import load_dotenv
+import json
+from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
 
@@ -31,6 +33,23 @@ class House(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     flocks = db.relationship('Flock', backref='house', lazy=True)
+
+    # Dashboard Configs
+    charts = db.relationship('ChartConfiguration', backref='house', lazy=True, cascade="all, delete-orphan")
+    overview_config = db.relationship('OverviewConfiguration', backref='house', uselist=False, cascade="all, delete-orphan")
+
+class ChartConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    chart_type = db.Column(db.String(20), default='line') # 'line', 'bar'
+    config_json = db.Column(db.Text, nullable=False) # JSON: metrics, axis settings, colors
+    is_template = db.Column(db.Boolean, default=False)
+
+class OverviewConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, unique=True)
+    visible_metrics_json = db.Column(db.Text, nullable=False) # JSON list of keys
 
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -924,6 +943,11 @@ def upload_sampling_result(id, event_id):
         flash('Remarks updated.', 'success')
 
     return redirect(url_for('flock_sampling', id=id))
+
+@app.route('/flock/<int:id>/custom_dashboard')
+def flock_custom_dashboard(id):
+    flock = Flock.query.get_or_404(id)
+    return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
@@ -1819,3 +1843,105 @@ def verify_import_data(flock):
 
     if warnings:
         flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')
+
+@app.route('/api/metrics')
+def get_metrics_list():
+    return json.dumps(METRICS_REGISTRY)
+
+@app.route('/api/flock/<int:flock_id>/custom_data', methods=['POST'])
+def get_custom_data(flock_id):
+    flock = Flock.query.get_or_404(flock_id)
+    req_data = request.get_json()
+    metrics = req_data.get('metrics', [])
+
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    result = calculate_metrics(logs, flock, metrics)
+    return json.dumps(result)
+
+@app.route('/api/house/<int:house_id>/dashboard_config')
+def get_dashboard_config(house_id):
+    house = House.query.get_or_404(house_id)
+
+    charts = []
+    for c in house.charts:
+        charts.append({
+            'id': c.id,
+            'title': c.title,
+            'chart_type': c.chart_type,
+            'config': json.loads(c.config_json),
+            'is_template': c.is_template
+        })
+
+    overview_cols = []
+    if house.overview_config:
+        overview_cols = json.loads(house.overview_config.visible_metrics_json)
+
+    return json.dumps({'charts': charts, 'overview_columns': overview_cols})
+
+@app.route('/api/house/<int:house_id>/charts', methods=['POST'])
+def save_chart(house_id):
+    data = request.get_json()
+
+    # Check if update or create
+    chart_id = data.get('id')
+    title = data.get('title')
+    chart_type = data.get('chart_type', 'line')
+    config = data.get('config') # JSON object
+    is_template = data.get('is_template', False)
+
+    if chart_id:
+        chart = ChartConfiguration.query.get_or_404(chart_id)
+        if chart.house_id != house_id:
+            return "Unauthorized", 403
+        chart.title = title
+        chart.chart_type = chart_type
+        chart.config_json = json.dumps(config)
+        chart.is_template = is_template
+    else:
+        chart = ChartConfiguration(
+            house_id=house_id,
+            title=title,
+            chart_type=chart_type,
+            config_json=json.dumps(config),
+            is_template=is_template
+        )
+        db.session.add(chart)
+
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/charts/<int:chart_id>', methods=['DELETE'])
+def delete_chart(chart_id):
+    chart = ChartConfiguration.query.get_or_404(chart_id)
+    db.session.delete(chart)
+    db.session.commit()
+    return "Deleted", 200
+
+@app.route('/api/house/<int:house_id>/overview', methods=['POST'])
+def save_overview_config(house_id):
+    data = request.get_json()
+    cols = data.get('columns', [])
+
+    config = OverviewConfiguration.query.filter_by(house_id=house_id).first()
+    if not config:
+        config = OverviewConfiguration(house_id=house_id)
+        db.session.add(config)
+
+    config.visible_metrics_json = json.dumps(cols)
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/templates')
+def get_templates():
+    templates = ChartConfiguration.query.filter_by(is_template=True).all()
+    res = []
+    for t in templates:
+        res.append({
+            'id': t.id,
+            'title': t.title,
+            'chart_type': t.chart_type,
+            'config': json.loads(t.config_json),
+            'house_name': t.house.name
+        })
+    return json.dumps(res)

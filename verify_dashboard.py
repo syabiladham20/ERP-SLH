@@ -1,112 +1,70 @@
-from app import app, db, Flock, DailyLog, House
-from datetime import date, timedelta
+from app import app, db, House, Flock, DailyLog, ChartConfiguration
+import json
+from datetime import date
 
-def verify_logic():
+def test_api():
+    client = app.test_client()
+
     with app.app_context():
-        # Setup
-        db.drop_all()
-        db.create_all()
+        # Setup Data
+        house = House.query.first()
+        if not house:
+            house = House(name='TestHouse')
+            db.session.add(house)
+            db.session.commit()
 
-        h = House(name="TestHouse")
-        db.session.add(h)
+        flock = Flock.query.filter_by(house_id=house.id).first()
+        if not flock:
+            flock = Flock(house_id=house.id, batch_id='TestBatch', intake_date=date.today())
+            db.session.add(flock)
+            db.session.commit()
+
+        log = DailyLog(flock_id=flock.id, date=date.today(), eggs_collected=1000, cull_eggs_crack=10)
+        db.session.add(log)
         db.session.commit()
 
-        d0 = date.today() - timedelta(days=3)
-        f = Flock(
-            house_id=h.id,
-            batch_id="TestBatch",
-            intake_date=d0,
-            intake_male=1000,
-            intake_female=1000,
-            status='Active',
-            production_start_date=d0 + timedelta(days=1) # Day 1 is rearing, Day 2 (d0+1) is Prod
-        )
-        db.session.add(f)
-        db.session.commit()
+        # Test 1: Metrics List
+        res = client.get('/api/metrics')
+        print(f"Metrics: {res.status_code}")
+        metrics = json.loads(res.data)
+        assert 'mortality_female_pct' in metrics
 
-        # Log 1 (Day 1 - Rearing)
-        l1 = DailyLog(
-            flock_id=f.id,
-            date=d0,
-            mortality_male=10,
-            mortality_female=10
-        )
-        db.session.add(l1)
+        # Test 2: Custom Data
+        res = client.post(f'/api/flock/{flock.id}/custom_data', json={
+            'metrics': ['eggs_collected', 'cull_eggs_crack_pct']
+        })
+        print(f"Custom Data: {res.status_code}")
+        data = json.loads(res.data)
+        assert len(data['eggs_collected']) > 0
+        assert data['cull_eggs_crack_pct'][0] == 1.0 # 10/1000 * 100
 
-        # Log 2 (Day 2 - Prod Start)
-        # Mort 5 M (Prod). Transfer 50 M to Hosp.
-        l2 = DailyLog(
-            flock_id=f.id,
-            date=d0 + timedelta(days=1),
-            mortality_male=5,
-            mortality_female=0,
-            males_moved_to_hosp=50
-        )
-        db.session.add(l2)
+        # Test 3: Save Chart
+        res = client.post(f'/api/house/{house.id}/charts', json={
+            'title': 'Test Chart',
+            'chart_type': 'line',
+            'config': {'metrics': ['eggs_collected']},
+            'is_template': True
+        })
+        print(f"Save Chart: {res.status_code}")
 
-        # Log 3 (Day 3)
-        # Mort 2 M (Hosp), 1 M (Prod).
-        l3 = DailyLog(
-            flock_id=f.id,
-            date=d0 + timedelta(days=2),
-            mortality_male=1,
-            mortality_male_hosp=2,
-            mortality_female=0
-        )
-        db.session.add(l3)
+        # Test 4: Get Config
+        res = client.get(f'/api/house/{house.id}/dashboard_config')
+        print(f"Get Config: {res.status_code}")
+        config = json.loads(res.data)
+        assert len(config['charts']) > 0
+        assert config['charts'][0]['title'] == 'Test Chart'
 
-        db.session.commit()
+        # Test 5: Templates
+        res = client.get('/api/templates')
+        print(f"Templates: {res.status_code}")
+        temps = json.loads(res.data)
+        assert len(temps) > 0
 
-        # --- RUN LOGIC ---
-        # Copying logic from app.py index route
-        logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
+        # Cleanup (optional, but good practice if repeatable)
+        # ChartConfiguration.query.delete()
+        # db.session.commit()
 
-        rearing_mort_m = 0
-        prod_mort_m = 0
-        prod_start_stock_m = f.intake_male
-        prod_start_date = f.production_start_date
-
-        curr_m_prod = f.intake_male
-        curr_m_hosp = 0
-        curr_f = f.intake_female
-
-        in_production = False
-
-        print(f"Start: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
-
-        for l in logs:
-            if not in_production:
-                if prod_start_date and l.date >= prod_start_date:
-                    in_production = True
-                    prod_start_stock_m = curr_m_prod
-                    print(f"entered prod on {l.date}. Start Stock M = {prod_start_stock_m}")
-                elif not prod_start_date and l.eggs_collected > 0:
-                    in_production = True
-                    prod_start_stock_m = curr_m_prod
-
-            if in_production:
-                prod_mort_m += l.mortality_male
-            else:
-                rearing_mort_m += l.mortality_male
-
-            mort_m_prod = l.mortality_male
-            mort_m_hosp = getattr(l, 'mortality_male_hosp', 0)
-
-            cull_m_prod = l.culls_male
-            cull_m_hosp = getattr(l, 'culls_male_hosp', 0)
-
-            moved_to_hosp = getattr(l, 'males_moved_to_hosp', 0)
-            moved_to_prod = getattr(l, 'males_moved_to_prod', 0)
-
-            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
-            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
-
-            curr_f -= (l.mortality_female + l.culls_female)
-
-            print(f"After {l.date}: M_Prod={curr_m_prod}, M_Hosp={curr_m_hosp}")
-
-        print(f"Final M_Prod: {curr_m_prod} (Expected: 934)")
-        print(f"Final M_Hosp: {curr_m_hosp} (Expected: 48)")
+    print("ALL TESTS PASSED")
 
 if __name__ == "__main__":
-    verify_logic()
+    test_api()
