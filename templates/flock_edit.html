@@ -12,6 +12,11 @@
       </div>
 
       <div class="mb-3">
+        <label for="batch_id" class="form-label">Batch Name (ID)</label>
+        <input type="text" class="form-control" id="batch_id" name="batch_id" value="{{ flock.batch_id }}" required>
+      </div>
+
+      <div class="mb-3">
         <label for="intake_date" class="form-label">Intake Date</label>
         <input type="date" class="form-control" id="intake_date" name="intake_date" value="{{ flock.intake_date }}" required>
       </div>

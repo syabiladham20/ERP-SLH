@@ -305,38 +305,56 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-danger text-white">Medication Record (Optional)</div>
+      <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+        <span>Medication Record (Optional)</span>
+        <button type="button" class="btn btn-sm btn-light text-danger fw-bold" onclick="addMedicationRow()">+ Add Medication</button>
+      </div>
       <div class="card-body">
-        <div class="alert alert-light border small">
+        <div class="alert alert-light border small mb-3">
             Fill this section only if you want to record a NEW medication usage or program starting/occurring today.
+            You can add multiple medications.
         </div>
-        <div class="row">
-            <div class="col-md-4 mb-2">
-                <label class="form-label">Drug Name</label>
-                <input type="text" class="form-control" name="med_drug_name" placeholder="e.g. Amoxicillin">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Dosage</label>
-                <input type="text" class="form-control" name="med_dosage" placeholder="e.g. 10ml/100L">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Amount Used</label>
-                <input type="text" class="form-control" name="med_amount_used" placeholder="e.g. 500ml">
-            </div>
-            <div class="col-md-2 mb-2">
-                <label class="form-label">Start Date</label>
-                <!-- Default to today if creating new log, or log date if editing -->
-                <input type="date" class="form-control" name="med_start_date" value="{{ log.date if log else '' }}">
-            </div>
-             <div class="col-md-2 mb-2">
-                <label class="form-label">End Date</label>
-                <input type="date" class="form-control" name="med_end_date">
+
+        <div id="medication_container">
+            <!-- Dynamic rows will be added here -->
+        </div>
+
+        <!-- Template Row (Hidden) -->
+        <div id="medication_template" style="display:none;">
+            <div class="medication-row border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <h6 class="text-danger">Medication Entry <span class="med-index">1</span></h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeMedicationRow(this)">Remove</button>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label">Drug Name</label>
+                        <input type="text" class="form-control med-input" name="med_drug_name[]" placeholder="e.g. Amoxicillin">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label">Dosage</label>
+                        <input type="text" class="form-control med-input" name="med_dosage[]" placeholder="e.g. 10ml/100L">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label">Amount Used</label>
+                        <input type="text" class="form-control med-input" name="med_amount_used[]" placeholder="e.g. 500ml">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label">Start Date</label>
+                        <input type="date" class="form-control med-input" name="med_start_date[]" value="{{ log.date if log else '' }}">
+                    </div>
+                     <div class="col-md-2 mb-2">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control med-input" name="med_end_date[]">
+                    </div>
+                </div>
+                <div class="mb-2">
+                     <label class="form-label">Remarks</label>
+                     <input type="text" class="form-control med-input" name="med_remarks[]" placeholder="Notes / Withdrawal Period">
+                </div>
             </div>
         </div>
-        <div class="mb-2">
-             <label class="form-label">Remarks</label>
-             <input type="text" class="form-control" name="med_remarks" placeholder="Notes / Withdrawal Period">
-        </div>
+
       </div>
     </div>
 
@@ -518,9 +536,39 @@
         document.getElementById('uniformity_female').value = (f_cnt > 0 ? (fu_sum / f_cnt) : 0).toFixed(2);
     }
 
+    // Medication Row Management
+    let medIndex = 0;
+
+    function addMedicationRow() {
+        medIndex++;
+        let container = document.getElementById('medication_container');
+        let template = document.getElementById('medication_template').innerHTML;
+
+        let newRow = document.createElement('div');
+        newRow.innerHTML = template;
+
+        // Update index label
+        newRow.querySelector('.med-index').textContent = medIndex;
+
+        // Ensure date fields are properly reset if needed or set to default
+        // The value="" is copied from template.
+        // We might want to ensure the input names are consistent (med_drug_name[], etc.) which they are in the template.
+
+        container.appendChild(newRow.firstElementChild);
+    }
+
+    function removeMedicationRow(btn) {
+        let row = btn.closest('.medication-row');
+        row.remove();
+    }
+
     // Initialize
     window.onload = function() {
         updatePhase();
+        // Add one empty medication row by default? No, user requested "add". Let's start empty or with one?
+        // Let's start with one empty row for convenience, or zero?
+        // Existing behavior was one set of fields. Let's add one row by default.
+        addMedicationRow();
     };
   </script>
 {% endif %}
