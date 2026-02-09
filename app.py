@@ -2152,9 +2152,21 @@ def get_custom_data(flock_id):
     req_data = request.get_json()
     metrics = req_data.get('metrics', [])
 
+    start_date = None
+    if req_data.get('start_date'):
+        try:
+            start_date = datetime.strptime(req_data.get('start_date'), '%Y-%m-%d').date()
+        except ValueError: pass
+
+    end_date = None
+    if req_data.get('end_date'):
+        try:
+            end_date = datetime.strptime(req_data.get('end_date'), '%Y-%m-%d').date()
+        except ValueError: pass
+
     logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
-    result = calculate_metrics(logs, flock, metrics)
+    result = calculate_metrics(logs, flock, metrics, start_date=start_date, end_date=end_date)
     return json.dumps(result)
 
 @app.route('/api/house/<int:house_id>/dashboard_config')
