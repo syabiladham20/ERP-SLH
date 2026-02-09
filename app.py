@@ -403,7 +403,16 @@ def initialize_vaccine_schedule(flock_id):
 
 @app.route('/')
 def index():
-    active_flocks = Flock.query.options(joinedload(Flock.logs)).filter_by(status='Active').all()
+    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+
+    # Helper for natural sorting (VA1, VA2, VA10)
+    import re
+    def natural_sort_key(flock):
+        s = flock.house.name
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split('([0-9]+)', s)]
+
+    active_flocks.sort(key=natural_sort_key)
 
     # Enrich with today's status and cumulative mortality split
     today = date.today()
@@ -496,6 +505,16 @@ def index():
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
+        # Batch Name (ID) Update
+        new_batch_id = request.form.get('batch_id').strip()
+        if new_batch_id and new_batch_id != flock.batch_id:
+            # Check for uniqueness
+            existing = Flock.query.filter_by(batch_id=new_batch_id).first()
+            if existing:
+                flash(f'Error: Batch Name "{new_batch_id}" already exists.', 'danger')
+                return render_template('flock_edit.html', flock=flock)
+            flock.batch_id = new_batch_id
+
         intake_date_str = request.form.get('intake_date')
         if intake_date_str:
             flock.intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
@@ -1299,31 +1318,40 @@ def daily_log():
 
         update_log_from_request(log, request)
 
-        med_name = request.form.get('med_drug_name')
-        if med_name:
-            start_date_val = request.form.get('med_start_date')
-            end_date_val = request.form.get('med_end_date')
+        # Handle Multiple Medications
+        med_names = request.form.getlist('med_drug_name[]')
+        med_dosages = request.form.getlist('med_dosage[]')
+        med_amounts = request.form.getlist('med_amount_used[]')
+        med_start_dates = request.form.getlist('med_start_date[]')
+        med_end_dates = request.form.getlist('med_end_date[]')
+        med_remarks = request.form.getlist('med_remarks[]')
+
+        for i, name in enumerate(med_names):
+            if not name or not name.strip():
+                continue
 
             s_date = log_date
-            if start_date_val:
+            s_date_val = med_start_dates[i] if i < len(med_start_dates) else None
+            if s_date_val:
                 try:
-                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                    s_date = datetime.strptime(s_date_val, '%Y-%m-%d').date()
                 except: pass
 
             e_date = None
-            if end_date_val:
+            e_date_val = med_end_dates[i] if i < len(med_end_dates) else None
+            if e_date_val:
                 try:
-                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                    e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
             med = Medication(
                 flock_id=flock.id,
-                drug_name=med_name,
-                dosage=request.form.get('med_dosage') or '',
-                amount_used=request.form.get('med_amount_used'),
+                drug_name=name,
+                dosage=med_dosages[i] if i < len(med_dosages) else '',
+                amount_used=med_amounts[i] if i < len(med_amounts) else '',
                 start_date=s_date,
                 end_date=e_date,
-                remarks=request.form.get('med_remarks')
+                remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
 
@@ -1380,31 +1408,40 @@ def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
     if request.method == 'POST':
-        med_name = request.form.get('med_drug_name')
-        if med_name:
-            start_date_val = request.form.get('med_start_date')
-            end_date_val = request.form.get('med_end_date')
+        # Handle Multiple Medications
+        med_names = request.form.getlist('med_drug_name[]')
+        med_dosages = request.form.getlist('med_dosage[]')
+        med_amounts = request.form.getlist('med_amount_used[]')
+        med_start_dates = request.form.getlist('med_start_date[]')
+        med_end_dates = request.form.getlist('med_end_date[]')
+        med_remarks = request.form.getlist('med_remarks[]')
+
+        for i, name in enumerate(med_names):
+            if not name or not name.strip():
+                continue
 
             s_date = log.date
-            if start_date_val:
+            s_date_val = med_start_dates[i] if i < len(med_start_dates) else None
+            if s_date_val:
                 try:
-                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                    s_date = datetime.strptime(s_date_val, '%Y-%m-%d').date()
                 except: pass
 
             e_date = None
-            if end_date_val:
+            e_date_val = med_end_dates[i] if i < len(med_end_dates) else None
+            if e_date_val:
                 try:
-                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                    e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
             med = Medication(
                 flock_id=log.flock_id,
-                drug_name=med_name,
-                dosage=request.form.get('med_dosage') or '',
-                amount_used=request.form.get('med_amount_used'),
+                drug_name=name,
+                dosage=med_dosages[i] if i < len(med_dosages) else '',
+                amount_used=med_amounts[i] if i < len(med_amounts) else '',
                 start_date=s_date,
                 end_date=e_date,
-                remarks=request.form.get('med_remarks')
+                remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
 
