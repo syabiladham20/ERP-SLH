@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
 import os
@@ -437,17 +438,20 @@ def initialize_vaccine_schedule(flock_id):
 
 @app.route('/')
 def index():
-    active_flocks = Flock.query.filter_by(status='Active').all()
+    active_flocks = Flock.query.options(joinedload(Flock.logs)).filter_by(status='Active').all()
 
     # Enrich with today's status and cumulative mortality split
     today = date.today()
     for f in active_flocks:
+        # Sort logs by date to ensure correct order for cumulative calculations
+        logs = sorted(f.logs, key=lambda l: l.date)
+
         # Check if log exists for today
-        log_today = DailyLog.query.filter_by(flock_id=f.id, date=today).first()
+        log_today = next((l for l in logs if l.date == today), None)
         f.has_log_today = True if log_today else False
 
         # Calculate Cumulative Mortality (Rearing vs Production)
-        logs = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.asc()).all()
+        # logs is already sorted and available
 
         rearing_mort_m = 0
         rearing_mort_f = 0
