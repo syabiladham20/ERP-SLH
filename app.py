@@ -1726,6 +1726,20 @@ def process_import(file):
     sheets = xls.sheet_names
     
     ignore_sheets = ['DASHBOARD', 'CHART', 'SUMMARY', 'TEMPLATE']
+
+    # Pre-fetch Houses: Name -> ID
+    all_houses_map = {h.name: h.id for h in House.query.all()}
+
+    # Pre-fetch Flocks: (house_id, intake_date) -> flock_id
+    # Also track counts per house for batch_id generation
+    flock_query = db.session.query(Flock.id, Flock.house_id, Flock.intake_date).all()
+    all_flocks_map = {}
+    flock_counts = {}
+
+    for f_id, f_house_id, f_intake_date in flock_query:
+        if f_intake_date:
+             all_flocks_map[(f_house_id, f_intake_date)] = f_id
+        flock_counts[f_house_id] = flock_counts.get(f_house_id, 0) + 1
     
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
@@ -1768,10 +1782,13 @@ def process_import(file):
             continue
             
         # Find or Create House
-        house = House.query.filter_by(name=house_name).first()
-        if not house:
+        house_id = all_houses_map.get(house_name)
+        if not house_id:
             house = House(name=house_name)
             db.session.add(house)
+            db.session.flush() # Get ID
+            house_id = house.id
+            all_houses_map[house_name] = house_id
             db.session.commit()
         
         # Find or Create Flock
@@ -1782,14 +1799,14 @@ def process_import(file):
             
         date_str = intake_date.strftime('%y%m%d')
         
-        flock = Flock.query.filter_by(house_id=house.id, intake_date=intake_date).first()
-        if not flock:
-            house_flock_count = Flock.query.filter_by(house_id=house.id).count()
-            n = house_flock_count + 1
-            batch_id = f"{house.name}_{date_str}_Batch{n}"
+        flock_id = all_flocks_map.get((house_id, intake_date))
+        if not flock_id:
+            current_count = flock_counts.get(house_id, 0)
+            n = current_count + 1
+            batch_id = f"{house_name}_{date_str}_Batch{n}"
             
             flock = Flock(
-                house_id=house.id,
+                house_id=house_id,
                 batch_id=batch_id,
                 intake_date=intake_date,
                 intake_male=intake_male,
@@ -1797,12 +1814,16 @@ def process_import(file):
                 status='Active'
             )
             db.session.add(flock)
+            db.session.flush() # Get ID
+            flock_id = flock.id
+            all_flocks_map[(house_id, intake_date)] = flock_id
+            flock_counts[house_id] = n
             db.session.commit()
             
-            initialize_sampling_schedule(flock.id)
+            initialize_sampling_schedule(flock_id)
 
         # Cache existing logs for this flock to avoid N+1 queries
-        existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock.id).all()}
+        existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock_id).all()}
 
         # Read Data - STARTING ROW 11 (0-index 10)
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
@@ -1887,7 +1908,7 @@ def process_import(file):
             # Ensure Log Exists - Using cache to avoid N+1 queries
             log = existing_logs_dict.get(log_date)
             if not log:
-                log = DailyLog(flock_id=flock.id, date=log_date)
+                log = DailyLog(flock_id=flock_id, date=log_date)
                 db.session.add(log)
                 existing_logs_dict[log_date] = log
             
@@ -1965,7 +1986,7 @@ def process_import(file):
 
                 # Load Standard BW
                 # Calculate Week
-                days_diff = (log.date - flock.intake_date).days
+                days_diff = (log.date - intake_date).days
                 week_num = (days_diff // 7) + 1
                 if week_num in standard_bw_map:
                     log.standard_bw_male = standard_bw_map[week_num][0]
@@ -2071,7 +2092,7 @@ def process_import(file):
         db.session.commit()
         
         # Recalculate Water - Fetch once to avoid reloads after commit
-        all_logs = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date).all()
+        all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
         for i, log in enumerate(all_logs):
             if i > 0:
                 prev_log = all_logs[i-1]
@@ -2082,7 +2103,8 @@ def process_import(file):
                     db.session.add(log)
         db.session.commit()
 
-        verify_import_data(flock, logs=all_logs)
+        flock_obj = Flock.query.get(flock_id)
+        verify_import_data(flock_obj, logs=all_logs)
 
 def update_log_from_request(log, req):
     """
