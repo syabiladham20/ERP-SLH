@@ -256,19 +256,35 @@
             const col = document.createElement('div');
             col.className = 'col-md-6 col-lg-6';
 
-            col.innerHTML = `
-                <div class="card h-100 shadow-sm">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold">${chart.title}</h6>
-                        <button class="btn btn-sm btn-outline-secondary" onclick='editChart(${JSON.stringify(chart)})'>
-                            <i class="bi bi-gear"></i> Edit
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="chartCanvas_${chart.id}"></canvas>
-                    </div>
-                </div>
-            `;
+            const card = document.createElement('div');
+            card.className = 'card h-100 shadow-sm';
+
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-header d-flex justify-content-between align-items-center';
+
+            const title = document.createElement('h6');
+            title.className = 'mb-0 fw-bold';
+            title.textContent = chart.title;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-sm btn-outline-secondary';
+            btn.innerHTML = '<i class="bi bi-gear"></i> Edit';
+            btn.onclick = function() { editChart(chart.id); };
+
+            cardHeader.appendChild(title);
+            cardHeader.appendChild(btn);
+
+            const cardBody = document.createElement('div');
+            cardBody.className = 'card-body';
+
+            const canvas = document.createElement('canvas');
+            canvas.id = `chartCanvas_${chart.id}`;
+
+            cardBody.appendChild(canvas);
+            card.appendChild(cardHeader);
+            card.appendChild(cardBody);
+            col.appendChild(card);
+
             container.appendChild(col);
 
             drawChart(chart, `chartCanvas_${chart.id}`);
@@ -403,7 +419,10 @@
         document.querySelectorAll('#rightAxisMetrics input').forEach(c => c.checked = false);
     }
 
-    function editChart(chart) {
+    function editChart(chartId) {
+        const chart = CONFIG.charts.find(c => c.id === chartId);
+        if (!chart) return;
+
         prepareAddChart();
         document.getElementById('chartId').value = chart.id;
         document.getElementById('chartTitle').value = chart.title;
