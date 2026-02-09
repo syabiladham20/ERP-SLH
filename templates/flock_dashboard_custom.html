@@ -17,13 +17,20 @@
 
 <!-- Controls Toolbar -->
 <div class="row mb-3" id="chartsToolbar">
-    <div class="col">
+    <div class="col-md-6">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chartModal" onclick="prepareAddChart()">
             <i class="bi bi-plus-lg"></i> Add Chart
         </button>
         <button class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#templatesModal" onclick="loadTemplates()">
             Import Template
         </button>
+    </div>
+    <div class="col-md-6 d-flex gap-2 justify-content-end align-items-center">
+        <label>From:</label>
+        <input type="date" id="startDate" class="form-control form-control-sm" style="width: 130px;">
+        <label>To:</label>
+        <input type="date" id="endDate" class="form-control form-control-sm" style="width: 130px;">
+        <button class="btn btn-primary btn-sm" onclick="loadDashboardConfig()">Update</button>
     </div>
 </div>
 
@@ -202,15 +209,32 @@
 
         sortedKeys.forEach(key => {
             const m = METRICS_META[key];
-            const item = (targetId, prefix) => `
+
+            // For Charts: Checkbox + Type Select
+            const chartItem = (prefix) => `
+                <div class="list-group-item p-1">
+                    <div class="d-flex align-items-center">
+                        <input class="form-check-input me-2" type="checkbox" value="${key}" id="${prefix}_check_${key}">
+                        <label class="form-check-label small flex-grow-1 text-wrap" for="${prefix}_check_${key}">
+                            ${m.label}
+                        </label>
+                        <select class="form-select form-select-sm py-0 ps-1 pe-3" id="${prefix}_type_${key}" style="width: 70px; height: 24px; font-size: 0.75rem;">
+                            <option value="line">Line</option>
+                            <option value="bar">Bar</option>
+                        </select>
+                    </div>
+                </div>`;
+
+            // For Table: Simple Checkbox
+            const tblItem = `
                 <label class="list-group-item">
-                    <input class="form-check-input me-1" type="checkbox" value="${key}" id="${prefix}_${key}">
-                    ${m.label} <small class="text-muted">(${m.unit})</small>
+                    <input class="form-check-input me-1" type="checkbox" value="${key}" id="tbl_${key}">
+                    ${m.label}
                 </label>`;
 
-            leftList.insertAdjacentHTML('beforeend', item('leftAxisMetrics', 'left'));
-            rightList.insertAdjacentHTML('beforeend', item('rightAxisMetrics', 'right'));
-            tableList.insertAdjacentHTML('beforeend', item('tableMetricsList', 'tbl'));
+            leftList.insertAdjacentHTML('beforeend', chartItem('left'));
+            rightList.insertAdjacentHTML('beforeend', chartItem('right'));
+            tableList.insertAdjacentHTML('beforeend', tblItem);
         });
     }
 
@@ -234,11 +258,17 @@
             CONFIG.overview_columns.forEach(m => metricsNeeded.add(m));
         }
 
+        const payload = {
+            metrics: Array.from(metricsNeeded),
+            start_date: document.getElementById('startDate').value,
+            end_date: document.getElementById('endDate').value
+        };
+
         // Fetch Data
         const dataRes = await fetch(`/api/flock/${FLOCK_ID}/custom_data`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ metrics: Array.from(metricsNeeded) })
+            body: JSON.stringify(payload)
         });
 
         CURRENT_DATA = await dataRes.json();
@@ -297,47 +327,89 @@
         const datasets = [];
         const leftMetrics = chart.config.metrics || [];
         const rightMetrics = chart.config.metrics_right || [];
+        const metricTypes = chart.config.types || {};
 
         const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#20c997'];
         let colorIdx = 0;
 
-        leftMetrics.forEach(m => {
+        function addDataset(m, axis) {
             if (!CURRENT_DATA[m]) return;
-            datasets.push({
-                label: METRICS_META[m]?.label || m,
-                data: CURRENT_DATA[m],
-                borderColor: colors[colorIdx % colors.length],
-                backgroundColor: colors[colorIdx % colors.length],
-                yAxisID: 'y',
-                tension: 0.1,
-                spanGaps: true,
-                fill: false
-            });
-            colorIdx++;
-        });
 
-        rightMetrics.forEach(m => {
-            if (!CURRENT_DATA[m]) return;
+            const type = metricTypes[m] || chart.chart_type || 'line';
+            const color = colors[colorIdx % colors.length];
+
             datasets.push({
                 label: METRICS_META[m]?.label || m,
                 data: CURRENT_DATA[m],
-                borderColor: colors[colorIdx % colors.length],
-                backgroundColor: colors[colorIdx % colors.length],
-                yAxisID: 'y1',
-                borderDash: [5, 5], // Dashed for secondary axis
+                borderColor: color,
+                backgroundColor: color,
+                yAxisID: axis,
+                type: type,
                 tension: 0.1,
                 spanGaps: true,
-                fill: false
+                fill: false,
+                borderWidth: type === 'bar' ? 1 : 2,
+                pointRadius: type === 'line' ? 2 : 0,
             });
             colorIdx++;
-        });
+        }
+
+        leftMetrics.forEach(m => addDataset(m, 'y'));
+        rightMetrics.forEach(m => addDataset(m, 'y1'));
 
         const hasRight = rightMetrics.length > 0;
 
+        // Custom Title Construction
+        const metricNames = [...leftMetrics, ...rightMetrics].map(m => METRICS_META[m]?.label || m).join(', ');
+        const dateRange = CURRENT_DATA.dates.length > 0 ?
+            `${CURRENT_DATA.dates[0]} – ${CURRENT_DATA.dates[CURRENT_DATA.dates.length-1]}` : '';
+        const weekRange = CURRENT_DATA.weeks.length > 0 ?
+            `${CURRENT_DATA.weeks[0]}–${CURRENT_DATA.weeks[CURRENT_DATA.weeks.length-1]} wk` : '';
+
+        // "Metric Names - Flock (DateRange, WeekRange)"
+        const dynamicTitle = `${metricNames} - {{ flock.batch_id }} (${dateRange}, ${weekRange})`;
+
+        // Prepare X Labels (Date + Week/Age)
+        const xLabels = CURRENT_DATA.dates.map((d, i) => {
+            const dateObj = new Date(d);
+            const dayMonth = `${dateObj.getDate()}/${dateObj.getMonth()+1}`;
+            return `${dayMonth} (${CURRENT_DATA.weeks[i]} wk)`;
+        });
+
+        // Week Partition Plugin
+        const weekPartitionPlugin = {
+            id: 'weekPartition',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const top = chart.scales.y.top;
+                const bottom = chart.scales.y.bottom;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.setLineDash([5, 5]);
+
+                // Detect week changes
+                for (let i = 1; i < CURRENT_DATA.weeks.length; i++) {
+                    if (CURRENT_DATA.weeks[i] !== CURRENT_DATA.weeks[i-1]) {
+                         // Week changed between i-1 and i. Draw line at i.
+                         const x = xAxis.getPixelForValue(i);
+                         // Actually better to draw between ticks if possible, but at index i is fine
+                         ctx.moveTo(x, top);
+                         ctx.lineTo(x, bottom);
+                    }
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
         CHART_INSTANCES[chart.id] = new Chart(ctx, {
-            type: chart.chart_type || 'line',
+            type: chart.chart_type || 'line', // Base type, datasets override
             data: {
-                labels: CURRENT_DATA.dates, // Or weeks? Dates is better usually
+                labels: xLabels,
                 datasets: datasets
             },
             options: {
@@ -346,16 +418,25 @@
                     mode: 'index',
                     intersect: false,
                 },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: dynamicTitle,
+                        font: { size: 14 }
+                    }
+                },
                 scales: {
                     x: {
                         ticks: {
-                            maxTicksLimit: 20
+                            maxTicksLimit: 20,
+                            autoSkip: true
                         }
                     },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
+                        title: { display: true, text: 'Primary Axis' }
                     },
                     y1: {
                         type: 'linear',
@@ -364,9 +445,11 @@
                         grid: {
                             drawOnChartArea: false,
                         },
+                        title: { display: true, text: 'Secondary Axis' }
                     },
                 }
-            }
+            },
+            plugins: [weekPartitionPlugin]
         });
     }
 
@@ -417,6 +500,8 @@
         // Uncheck all
         document.querySelectorAll('#leftAxisMetrics input').forEach(c => c.checked = false);
         document.querySelectorAll('#rightAxisMetrics input').forEach(c => c.checked = false);
+        // Reset types to line
+        document.querySelectorAll('select[id*="_type_"]').forEach(s => s.value = 'line');
     }
 
     function editChart(chartId) {
@@ -434,14 +519,24 @@
         // Check boxes
         if (chart.config.metrics) {
             chart.config.metrics.forEach(m => {
-                const el = document.getElementById('left_' + m);
+                const el = document.getElementById('left_check_' + m);
                 if (el) el.checked = true;
+                // Set type
+                const typeSel = document.getElementById('left_type_' + m);
+                if (typeSel && chart.config.types && chart.config.types[m]) {
+                    typeSel.value = chart.config.types[m];
+                }
             });
         }
         if (chart.config.metrics_right) {
             chart.config.metrics_right.forEach(m => {
-                const el = document.getElementById('right_' + m);
+                const el = document.getElementById('right_check_' + m);
                 if (el) el.checked = true;
+                // Set type
+                const typeSel = document.getElementById('right_type_' + m);
+                if (typeSel && chart.config.types && chart.config.types[m]) {
+                    typeSel.value = chart.config.types[m];
+                }
             });
         }
 
@@ -455,8 +550,24 @@
         const type = document.getElementById('chartType').value;
         const isTemplate = document.getElementById('isTemplate').checked;
 
-        const leftMetrics = Array.from(document.querySelectorAll('#leftAxisMetrics input:checked')).map(el => el.value);
-        const rightMetrics = Array.from(document.querySelectorAll('#rightAxisMetrics input:checked')).map(el => el.value);
+        // Collect metrics and their specific types
+        const leftMetrics = [];
+        const rightMetrics = [];
+        const metricTypes = {};
+
+        document.querySelectorAll('#leftAxisMetrics input:checked').forEach(el => {
+            const m = el.value;
+            leftMetrics.push(m);
+            const t = document.getElementById('left_type_' + m).value;
+            metricTypes[m] = t;
+        });
+
+        document.querySelectorAll('#rightAxisMetrics input:checked').forEach(el => {
+            const m = el.value;
+            rightMetrics.push(m);
+            const t = document.getElementById('right_type_' + m).value;
+            metricTypes[m] = t;
+        });
 
         if (!title || (leftMetrics.length === 0 && rightMetrics.length === 0)) {
             alert("Please provide a title and select at least one metric.");
@@ -470,7 +581,8 @@
             is_template: isTemplate,
             config: {
                 metrics: leftMetrics,
-                metrics_right: rightMetrics
+                metrics_right: rightMetrics,
+                types: metricTypes
             }
         };
 
@@ -480,7 +592,7 @@
             body: JSON.stringify(payload)
         });
 
-        location.reload(); // Reload to refresh everything safely
+        location.reload();
     }
 
     async function deleteChart() {

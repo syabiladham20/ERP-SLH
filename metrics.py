@@ -51,10 +51,11 @@ METRICS_REGISTRY = {
     'uniformity_male': {'label': 'Uniformity Male (%)', 'unit': '%', 'type': 'raw'},
 }
 
-def calculate_metrics(logs, flock, requested_metrics):
+def calculate_metrics(logs, flock, requested_metrics, start_date=None, end_date=None):
     """
     Process logs and return a dictionary of lists for requested metrics.
     Also returns 'dates' and 'weeks'.
+    If start_date/end_date provided, filters the output but maintains cumulative state.
     """
     data = {m: [] for m in requested_metrics}
     data['dates'] = []
@@ -70,10 +71,16 @@ def calculate_metrics(logs, flock, requested_metrics):
     start_f = flock.intake_female or 1
 
     for log in logs:
-        data['dates'].append(log.date.isoformat())
-        days_diff = (log.date - flock.intake_date).days
-        week = (days_diff // 7) + 1
-        data['weeks'].append(week)
+        # Check Date Range
+        in_range = True
+        if start_date and log.date < start_date: in_range = False
+        if end_date and log.date > end_date: in_range = False
+
+        if in_range:
+            data['dates'].append(log.date.isoformat())
+            days_diff = (log.date - flock.intake_date).days
+            week = (days_diff // 7) + 1
+            data['weeks'].append(week)
 
         # Update Stocks
         # Note: log.mortality is for THIS day. Stock is Start - Cum(Prev).
@@ -150,11 +157,12 @@ def calculate_metrics(logs, flock, requested_metrics):
         row_vals['water_per_bird'] = (log.water_intake_calculated * 1000) / stock_total if stock_total > 0 else 0
 
         # Fill Data
-        for m in requested_metrics:
-            val = row_vals.get(m, 0)
-            # Rounding
-            if isinstance(val, float):
-                val = round(val, 2)
-            data[m].append(val)
+        if in_range:
+            for m in requested_metrics:
+                val = row_vals.get(m, 0)
+                # Rounding
+                if isinstance(val, float):
+                    val = round(val, 2)
+                data[m].append(val)
 
     return data
