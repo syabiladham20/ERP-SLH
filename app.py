@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
-from flask import send_from_directory
 from dotenv import load_dotenv
+import json
+import pandas as pd
+from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
 
@@ -30,6 +32,8 @@ def uploaded_file(filename):
 
 db = SQLAlchemy(app)
 
+# --- Models ---
+
 class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
@@ -38,6 +42,23 @@ class House(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     flocks = db.relationship('Flock', backref='house', lazy=True)
+
+    # Dashboard Configs (From Feature Branch)
+    charts = db.relationship('ChartConfiguration', backref='house', lazy=True, cascade="all, delete-orphan")
+    overview_config = db.relationship('OverviewConfiguration', backref='house', uselist=False, cascade="all, delete-orphan")
+
+class ChartConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    chart_type = db.Column(db.String(20), default='line') # 'line', 'bar'
+    config_json = db.Column(db.Text, nullable=False) # JSON: metrics, axis settings, colors
+    is_template = db.Column(db.Boolean, default=False)
+
+class OverviewConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, unique=True)
+    visible_metrics_json = db.Column(db.Text, nullable=False) # JSON list of keys
 
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -139,6 +160,7 @@ class DailyLog(db.Model):
     photo_path = db.Column(db.String(200)) # Path to file
     flushing = db.Column(db.Boolean, default=False)
 
+    # Feed Codes (Main Branch Logic)
     feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
     feed_code_female_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
 
@@ -234,23 +256,9 @@ class Vaccine(db.Model):
 
     @property
     def dose_count(self):
-        # "Round up the doses by overestimate the bird population, if 7500 birds, count as 8000 birds."
-        # Assuming 1000 doses per bottle as per prompt.
         if not self.flock: return 0
-
-        # Determine bird count (Intake or Current?)
-        # "From D1 is week 0... if 7500 birds, count as 8000"
-        # Usually based on Intake or Current Stock. Let's use Intake for simplicity/safety or Current?
-        # Safe to use Intake or Current. Prompt says "bird population".
-        # Let's use a rough current stock estimation or just Intake for D1.
-        # But for W56, many birds might have died.
-        # Let's use 'current stock' estimation based on phase?
-        # Actually, simpler: Use Intake for now, or refine later.
-        # Prompt: "overestimate the bird population".
         count = self.flock.intake_female + self.flock.intake_male
         import math
-        # Round up to nearest 1000? "if 7500 ... count as 8000"
-        # 7500 / 1000 = 7.5 -> ceil -> 8 * 1000 = 8000
         doses_needed = math.ceil(count / 1000.0) * 1000
         return doses_needed
 
@@ -265,26 +273,10 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_male = db.Column(db.Float, default=0.0)
     bw_female = db.Column(db.Float, default=0.0)
 
+# --- Initialization Helpers ---
+
 def initialize_sampling_schedule(flock_id):
     # Updated Schedule based on user input
-    # Week 1 (Day 1): SEROLOGY AND SALMONELLA
-    # Week 4: SALMONELLA
-    # Week 8: SEROLOGY
-    # Week 16: SALMONELLA
-    # Week 18: SEROLOGY
-    # Week 24: SEROLOGY
-    # Week 28: SALMONELLA
-    # Week 30: SEROLOGY
-    # Week 38: SEROLOGY
-    # Week 40: SALMONELLA
-    # Week 50: SEROLOGY
-    # Week 52: SALMONELLA
-    # Week 58: SEROLOGY
-    # Week 64: SALMONELLA
-    # Week 70: SEROLOGY
-    # Week 76: SALMONELLA
-    # Week 90: SALMONELLA
-
     schedule = {
         1: 'Serology & Salmonella',
         4: 'Salmonella',
@@ -310,7 +302,6 @@ def initialize_sampling_schedule(flock_id):
     if existing:
         return
 
-    from datetime import timedelta
     flock = Flock.query.get(flock_id)
     if not flock: return
 
@@ -331,28 +322,6 @@ def initialize_sampling_schedule(flock_id):
 def initialize_vaccine_schedule(flock_id):
     flock = Flock.query.get(flock_id)
     if not flock: return
-
-    # Schedule from prompt
-    # Structure: (AgeCode, VaccineName, Route, DaysOffset)
-    # D1 = 0 days from Intake (assuming Intake is Day 1 or Day 0? usually Intake is Day 0/1)
-    # Prompt: "From D1 is week 0".
-    # We will assume Intake Date = D1 (Day 1).
-
-    # Days Offset calculation:
-    # D1 -> 0
-    # D8 -> 7
-    # W6 -> (6-1)*7 = 35 days? Or just 6*7=42?
-    # Usually W1 = Days 0-6 or 1-7.
-    # Let's assume Wx = x * 7 days (approx) or start of that week.
-    # User prompt: "From D1 is week 0".
-    # D1 = Day 1.
-    # D8 = Day 8.
-    # W6 = Week 6. (Day 42 approx).
-
-    # Let's use simple logic:
-    # if 'D' in code: offset = int(code[1:]) - 1
-    # if 'W' in code: offset = (int(code[1:]) * 7) - 1 # Start of that week? Or end?
-    # Usually vaccination at "Week 6" means during week 6. Let's aim for start of week (Day 42).
 
     schedule_data = [
         ('D1', 'TRIVALENT VAXXITEK', 'S/C'),
@@ -405,8 +374,6 @@ def initialize_vaccine_schedule(flock_id):
         ('W56', 'IBIRD', 'D/W'),
     ]
 
-    from datetime import timedelta
-
     for age_code, vaccine, route in schedule_data:
         offset = 0
         if age_code.startswith('D'):
@@ -417,10 +384,6 @@ def initialize_vaccine_schedule(flock_id):
         elif age_code.startswith('W'):
             try:
                 weeks = int(age_code[1:])
-                # Week 6 starts at Day (6*7)-7+1 = 36?
-                # Or Week 6 = 42 days?
-                # Let's assume W6 = 42 days old (End of week 6/Start of week 7) or Start of Week 6 (Day 36).
-                # User picture implies Age "Week 6". Let's stick to Week * 7 days.
                 offset = (weeks * 7)
             except: pass
 
@@ -436,6 +399,8 @@ def initialize_vaccine_schedule(flock_id):
         db.session.add(v)
     db.session.commit()
 
+# --- Routes ---
+
 @app.route('/')
 def index():
     active_flocks = Flock.query.options(joinedload(Flock.logs)).filter_by(status='Active').all()
@@ -450,9 +415,6 @@ def index():
         log_today = next((l for l in logs if l.date == today), None)
         f.has_log_today = True if log_today else False
 
-        # Calculate Cumulative Mortality (Rearing vs Production)
-        # logs is already sorted and available
-
         rearing_mort_m = 0
         rearing_mort_f = 0
         prod_mort_m = 0
@@ -462,7 +424,6 @@ def index():
         prod_start_stock_f = f.intake_female
 
         # Determine Production Start
-        # Priority: Explicit Date -> First Egg -> Manual Phase Switch (Not tracked historically easily)
         prod_start_date = f.production_start_date
 
         # Stock Tracking
@@ -495,9 +456,6 @@ def index():
                 rearing_mort_f += l.mortality_female
 
             # Update Stocks
-            # Prod Stock = Previous Prod - Prod Mort - Prod Culls - Moved to Hosp + Moved to Prod
-            # Hosp Stock = Previous Hosp - Hosp Mort - Hosp Culls + Moved to Hosp - Moved to Prod
-
             mort_m_prod = l.mortality_male
             mort_m_hosp = l.mortality_male_hosp or 0
 
@@ -524,7 +482,6 @@ def index():
         f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
 
         # Male Ratio (Current)
-        # Ratio = Males in Prod / Females * 100
         f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
         f.males_prod_count = curr_m_prod
         f.males_hosp_count = curr_m_hosp
@@ -563,7 +520,6 @@ def edit_flock(id):
 @app.route('/flock/<int:id>/delete', methods=['POST'])
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
-    # SQLAlchemy relationship handles cascade delete for logs, sampling events, vaccines, etc.
     db.session.delete(flock)
     db.session.commit()
     flash(f'Flock {flock.batch_id} deleted.', 'warning')
@@ -663,8 +619,6 @@ def manage_standards():
             db.session.commit()
             flash('Standard added.', 'success')
 
-        # Could handle delete/update here
-
         return redirect(url_for('manage_standards'))
 
     standards = Standard.query.order_by(Standard.week.asc()).all()
@@ -684,7 +638,6 @@ def manage_feed_codes():
                 flash(f'Feed Code {code} added.', 'success')
         return redirect(url_for('manage_feed_codes'))
 
-    # Seed if empty
     if FeedCode.query.count() == 0:
         default_codes = ['161C', '162C', '163C', '168C', '169C', '170P', '171P', '172P']
         for c in default_codes:
@@ -710,7 +663,6 @@ def get_chart_data(flock_id):
     end_date_str = request.args.get('end_date')
     mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
 
-    # Pre-calculate stocks for %
     cum_mort_m = 0
     cum_mort_f = 0
     cum_cull_m = 0
@@ -725,9 +677,9 @@ def get_chart_data(flock_id):
         'intake_date': flock.intake_date.isoformat(),
         'dates': [],
         'weeks': [],
-        'ranges': [], # New: Store {start, end} for each point for drill-down
+        'ranges': [],
         'metrics': {
-            'mortality_f_pct': [], 'mortality_m_pct': [], # Depletion %
+            'mortality_f_pct': [], 'mortality_m_pct': [],
             'culls_f_pct': [], 'culls_m_pct': [],
             'egg_prod_pct': [], 'hatch_egg_pct': [],
             'bw_f': [], 'bw_m': [],
@@ -747,7 +699,6 @@ def get_chart_data(flock_id):
         curr_stock_f = start_f - cum_mort_f - cum_cull_f
         if curr_stock_f <= 0: curr_stock_f = 1
 
-        # Calculate Daily Metrics
         daily_mort_f_pct = ((log.mortality_female + log.culls_female) / curr_stock_f) * 100
         daily_mort_m_pct = ((log.mortality_male + log.culls_male) / curr_stock_m) * 100
 
@@ -759,7 +710,6 @@ def get_chart_data(flock_id):
 
         water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
 
-        # Determine if in range
         in_range = True
         if start_date_str and log.date < datetime.strptime(start_date_str, '%Y-%m-%d').date(): in_range = False
         if end_date_str and log.date > datetime.strptime(end_date_str, '%Y-%m-%d').date(): in_range = False
@@ -790,13 +740,11 @@ def get_chart_data(flock_id):
                     'type': 'flushing' if log.flushing else 'note'
                 })
 
-        # Update Cumulatives for next iteration
         cum_mort_m += log.mortality_male
         cum_mort_f += log.mortality_female
         cum_cull_m += log.culls_male
         cum_cull_f += log.culls_female
 
-        # Aggregate Weekly (Collect regardless of filter to ensure accurate sums within week)
         days_diff = (log.date - flock.intake_date).days
         week_num = (days_diff // 7) + 1
 
@@ -812,7 +760,7 @@ def get_chart_data(flock_id):
                 'uni_m_sum': 0, 'uni_m_count': 0,
                 'feed_f_sum': 0, 'feed_m_sum': 0,
                 'water_vol_sum': 0,
-                'stock_f_start': curr_stock_f, # Approximation for start of week logic if needed
+                'stock_f_start': curr_stock_f,
                 'stock_m_start': curr_stock_m,
                 'date_start': log.date,
                 'date_end': log.date
@@ -827,7 +775,7 @@ def get_chart_data(flock_id):
         w['cull_m_sum'] += log.culls_male
         w['eggs_sum'] += log.eggs_collected
         w['hatch_eggs_sum'] += hatch_eggs
-        w['water_vol_sum'] += log.water_intake_calculated # Liters
+        w['water_vol_sum'] += log.water_intake_calculated
 
         if log.body_weight_female > 0:
             w['bw_f_sum'] += log.body_weight_female
@@ -846,7 +794,6 @@ def get_chart_data(flock_id):
         w['feed_f_sum'] += log.feed_female_gp_bird
         w['feed_m_sum'] += log.feed_male_gp_bird
 
-        # Aggregate Monthly
         month_key = log.date.strftime('%Y-%m')
         if month_key not in monthly_agg:
             monthly_agg[month_key] = {
@@ -868,14 +815,14 @@ def get_chart_data(flock_id):
 
         m = monthly_agg[month_key]
         m['count'] += 1
-        m['date_end'] = log.date # update to max date
+        m['date_end'] = log.date
         m['mort_f_sum'] += log.mortality_female
         m['mort_m_sum'] += log.mortality_male
         m['cull_f_sum'] += log.culls_female
         m['cull_m_sum'] += log.culls_male
         m['eggs_sum'] += log.eggs_collected
         m['hatch_eggs_sum'] += hatch_eggs
-        m['water_vol_sum'] += log.water_intake_calculated # Liters
+        m['water_vol_sum'] += log.water_intake_calculated
 
         if log.body_weight_female > 0:
             m['bw_f_sum'] += log.body_weight_female
@@ -894,7 +841,6 @@ def get_chart_data(flock_id):
         m['feed_f_sum'] += log.feed_female_gp_bird
         m['feed_m_sum'] += log.feed_male_gp_bird
 
-    # Process Aggregates based on Mode
     agg_data = None
     if mode == 'weekly':
         agg_data = weekly_agg
@@ -908,7 +854,6 @@ def get_chart_data(flock_id):
         for k in sorted_keys:
             a = agg_data[k]
 
-            # Filter check
             if start_date_str and a['date_end'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
             if end_date_str and a['date_start'] > datetime.strptime(end_date_str, '%Y-%m-%d').date(): continue
 
@@ -918,7 +863,6 @@ def get_chart_data(flock_id):
             data['dates'].append(f"{label_prefix}{k}")
             data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
 
-            # Calculate Averages/Rates
             mort_f_pct = ((a['mort_f_sum'] + a['cull_f_sum']) / a['stock_f_start'] * 100) if a['stock_f_start'] > 0 else 0
             mort_m_pct = ((a['mort_m_sum'] + a['cull_m_sum']) / a['stock_m_start'] * 100) if a['stock_m_start'] > 0 else 0
 
@@ -977,25 +921,18 @@ def view_flock(id):
     flock = Flock.query.get_or_404(id)
     logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
     
-    # Calculate Weekly Summaries
     weekly_data = []
     current_week = None
     week_summary = None
     
-    # Iterate sorted by date ASC
     for log in logs:
-        # Determine Age in days (assuming intake_date is day 0 or 1?)
-        # Excel template uses Age. Usually Age = (Date - IntakeDate).days
         days_diff = (log.date - flock.intake_date).days
-        # Week number for summary (1-based index of weeks)
         week_num = (days_diff // 7) + 1
         
         if current_week != week_num:
-            # Save previous week
             if week_summary:
                 weekly_data.append(week_summary)
             
-            # Start new week
             current_week = week_num
             week_summary = {
                 'week': week_num,
@@ -1023,12 +960,10 @@ def view_flock(id):
     if week_summary:
         weekly_data.append(week_summary)
     
-    # Calculate Averages
     for w in weekly_data:
         w['avg_bw_male'] = w['bw_male_sum'] / w['bw_male_count'] if w['bw_male_count'] > 0 else 0
         w['avg_bw_female'] = w['bw_female_sum'] / w['bw_female_count'] if w['bw_female_count'] > 0 else 0
 
-    # Prepare Chart Data
     chart_data = {
         'dates': [log.date.strftime('%Y-%m-%d') for log in logs],
         'mortality_cum_male': [],
@@ -1039,7 +974,6 @@ def view_flock(id):
         'unif_male': [], 'unif_female': []
     }
     
-    # Calculate cumulative mortality and stock
     cum_mort_m = 0
     cum_mort_f = 0
     cum_cull_m = 0
@@ -1063,7 +997,6 @@ def view_flock(id):
         egg_prod = (log.eggs_collected / current_stock_f) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
 
-        # Partitions or Null if 0 (to break lines)
         def val_or_null(v):
             return v if v > 0 else None
 
@@ -1077,7 +1010,6 @@ def view_flock(id):
         chart_data['bw_female_p4'].append(val_or_null(log.bw_female_p4))
         chart_data['bw_female_std'].append(val_or_null(log.standard_bw_female))
 
-        # Dynamic Partitions (M1-M8, F1-F8)
         p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
 
         for i in range(1, 9):
@@ -1087,12 +1019,10 @@ def view_flock(id):
             if key_f not in chart_data: chart_data[key_f] = []
 
             val_m = p_map.get(f'M{i}', 0)
-            # Fallback to legacy columns for M1, M2
             if val_m == 0 and i <= 2:
                 val_m = getattr(log, f'bw_male_p{i}', 0)
 
             val_f = p_map.get(f'F{i}', 0)
-            # Fallback to legacy columns for F1-F4
             if val_f == 0 and i <= 4:
                 val_f = getattr(log, f'bw_female_p{i}', 0)
 
@@ -1126,7 +1056,6 @@ def flock_vaccines(id):
         if actual_date_str:
             v.actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
 
-        # Remarks update
         remarks = request.form.get('remarks')
         if remarks is not None:
              v.remarks = remarks
@@ -1140,20 +1069,14 @@ def flock_vaccines(id):
 
 @app.route('/vaccine_schedule')
 def global_vaccine_schedule():
-    # Show monthly schedule for all active flocks
     active_flocks = Flock.query.filter_by(status='Active').all()
     flock_ids = [f.id for f in active_flocks]
-
-    # Get all pending vaccines or vaccines in future?
-    # "Show monthly what vaccine is needed"
     vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).order_by(Vaccine.est_date.asc()).all()
 
-    # Group by Month
     schedule = {}
-
     for v in vaccines:
         if not v.est_date: continue
-        month_key = v.est_date.strftime('%Y-%m') # "2024-05"
+        month_key = v.est_date.strftime('%Y-%m')
         if month_key not in schedule:
             schedule[month_key] = []
         schedule[month_key].append(v)
@@ -1163,11 +1086,6 @@ def global_vaccine_schedule():
 @app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
 def upload_sampling_result(id, event_id):
     event = SamplingEvent.query.get_or_404(event_id)
-
-    # Update Remarks regardless of file? Or only with file?
-    # Usually we upload file OR just mark complete/add remarks.
-    # User said "upload and keep sampling result".
-    # I'll allow updating remarks even if no file is uploaded, but status might depend on file.
 
     remarks = request.form.get('remarks')
     if remarks:
@@ -1188,12 +1106,16 @@ def upload_sampling_result(id, event_id):
             else:
                 flash('Only PDF files are allowed.', 'danger')
 
-    # If just remarks updated
     if remarks and not ('file' in request.files and request.files['file'].filename != ''):
         db.session.commit()
         flash('Remarks updated.', 'success')
 
     return redirect(url_for('flock_sampling', id=id))
+
+@app.route('/flock/<int:id>/custom_dashboard')
+def flock_custom_dashboard(id):
+    flock = Flock.query.get_or_404(id)
+    return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
@@ -1205,21 +1127,15 @@ def flock_dashboard(id):
     else:
         target_date = date.today()
 
-    # Get Logs
     log_today = DailyLog.query.filter_by(flock_id=id, date=target_date).first()
 
-    from datetime import timedelta
     log_prev = DailyLog.query.filter_by(flock_id=id, date=target_date - timedelta(days=1)).first()
 
-    # Calculate Age
     age_days = (target_date - flock.intake_date).days
     age_week = (age_days // 7) + 1
 
-    # Fetch Standard for this week
     standard = Standard.query.filter_by(week=age_week).first()
 
-    # Pre-calc cumulatives for KPI
-    # We need cumulative up to today
     all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
 
     cum_mort_m = 0
@@ -1241,7 +1157,6 @@ def flock_dashboard(id):
     if curr_stock_m <= 0: curr_stock_m = 1
     if curr_stock_f <= 0: curr_stock_f = 1
 
-    # Prepare KPI Data Structure
     kpis = []
 
     def get_val(log, attr, default=0):
@@ -1250,9 +1165,8 @@ def flock_dashboard(id):
     def calc_pct(num, den):
         return (num / den * 100) if den > 0 else 0
 
-    # 1. Female Mortality % (Daily)
     mort_f_val = calc_pct(get_val(log_today, 'mortality_female'), curr_stock_f)
-    mort_f_prev = calc_pct(get_val(log_prev, 'mortality_female'), curr_stock_f + get_val(log_today, 'mortality_female')) # Approx prev stock
+    mort_f_prev = calc_pct(get_val(log_prev, 'mortality_female'), curr_stock_f + get_val(log_today, 'mortality_female'))
 
     std_mort_f = standard.std_mortality_female if standard else None
 
@@ -1262,10 +1176,9 @@ def flock_dashboard(id):
         'prev': mort_f_prev,
         'unit': '%',
         'std': std_mort_f,
-        'reverse_bad': True # Higher is bad
+        'reverse_bad': True
     })
 
-    # 2. Female Cull %
     cull_f_val = calc_pct(get_val(log_today, 'culls_female'), curr_stock_f)
     cull_f_prev = calc_pct(get_val(log_prev, 'culls_female'), curr_stock_f)
     kpis.append({
@@ -1277,9 +1190,7 @@ def flock_dashboard(id):
         'reverse_bad': True
     })
 
-    # 3. Female Cum Mort %
     cum_mort_f_pct = calc_pct(cum_mort_f, start_f)
-    # prev cum is cum - today's
     cum_mort_f_prev = calc_pct(cum_mort_f - get_val(log_today, 'mortality_female'), start_f)
     kpis.append({
         'label': 'Female Cum. Mort %',
@@ -1290,11 +1201,10 @@ def flock_dashboard(id):
         'reverse_bad': True
     })
 
-    # 4. Egg Prod %
     eggs = get_val(log_today, 'eggs_collected')
     egg_prod = calc_pct(eggs, curr_stock_f)
     eggs_prev = get_val(log_prev, 'eggs_collected')
-    egg_prod_prev = calc_pct(eggs_prev, curr_stock_f) # approx stock
+    egg_prod_prev = calc_pct(eggs_prev, curr_stock_f)
 
     std_egg = standard.std_egg_prod if standard else None
     kpis.append({
@@ -1303,10 +1213,9 @@ def flock_dashboard(id):
         'prev': egg_prod_prev,
         'unit': '%',
         'std': std_egg,
-        'reverse_bad': False # Lower is bad
+        'reverse_bad': False
     })
 
-    # 5. Body Weights
     bw_f = get_val(log_today, 'body_weight_female')
     bw_f_prev = get_val(log_prev, 'body_weight_female')
     std_bw_f = standard.std_bw_female if standard else None
@@ -1316,10 +1225,9 @@ def flock_dashboard(id):
         'prev': bw_f_prev,
         'unit': 'g',
         'std': std_bw_f,
-        'reverse_bad': False # Depends, but low is bad usually
+        'reverse_bad': False
     })
 
-    # Calculate diff and status
     diagnostic_hints = []
 
     for k in kpis:
@@ -1328,42 +1236,32 @@ def flock_dashboard(id):
 
         std_val = k.get('std')
         if std_val is not None and k['value'] > 0:
-            # Anomaly Detection Logic
-            if k['reverse_bad']: # Higher than std is bad
-                if k['value'] > std_val * 1.1: # 10% tolerance?
+            if k['reverse_bad']:
+                if k['value'] > std_val * 1.1:
                     k['status'] = 'danger'
                     diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
                 elif k['value'] > std_val:
                     k['status'] = 'warning'
-            else: # Lower than std is bad
+            else:
                 if k['value'] < std_val * 0.9:
                     k['status'] = 'danger'
                     diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
                 elif k['value'] < std_val:
                     k['status'] = 'warning'
 
-    # Mortality Spike Rule: > 0.1% for 3 consecutive days
-    # Need last 3 logs including target_date
     last_3_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.desc()).limit(3).all()
 
     if len(last_3_logs) == 3:
         spike_count = 0
         temp_stock_f = curr_stock_f
 
-        # logs[0] is Target Date
-        # logs[1] is Target - 1
-        # logs[2] is Target - 2
-
-        # Check logs[0]
         m_pct = (last_3_logs[0].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
 
-        # Check logs[1]
         temp_stock_f += (last_3_logs[0].mortality_female + last_3_logs[0].culls_female)
         m_pct = (last_3_logs[1].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
 
-        # Check logs[2]
         temp_stock_f += (last_3_logs[1].mortality_female + last_3_logs[1].culls_female)
         m_pct = (last_3_logs[2].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
@@ -1379,7 +1277,6 @@ def daily_log():
         house_id = request.form.get('house_id')
         date_str = request.form.get('date')
         
-        # Look up active flock for the house
         flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
         if not flock:
             flash('Error: No active flock found for this house.', 'danger')
@@ -1387,7 +1284,6 @@ def daily_log():
         
         log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         
-        # Check if log exists
         existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
         
         if existing_log:
@@ -1398,17 +1294,11 @@ def daily_log():
             db.session.add(log)
             flash_msg = 'Daily Log submitted successfully!'
 
-        # Populate/Update log
-        # Ensure log.flock is available for helper (if new, relationship needs explicit set or commit,
-        # but 'log.flock' might trigger lazy load which works if attached to session)
-        # Actually safest to manually attach it for the helper's phase check
         log.flock = flock
-        
         db.session.add(log)
 
         update_log_from_request(log, request)
 
-        # Handle Medication (Optional)
         med_name = request.form.get('med_drug_name')
         if med_name:
             start_date_val = request.form.get('med_start_date')
@@ -1438,55 +1328,20 @@ def daily_log():
             db.session.add(med)
 
         db.session.commit()
-
         flash(flash_msg, 'success')
         return redirect(url_for('index'))
         
-    # GET: Only show houses with Active flocks
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
 
-    # Map House ID to Phase & Pre-fill Data
-    import json
     flock_phases = {}
     flock_defaults = {}
 
     for f in active_flocks:
         flock_phases[f.house_id] = f.phase
 
-        # Calculate Stock (Approximation for Feed Calc)
-        logs = DailyLog.query.filter_by(flock_id=f.id).all()
-
-        # Start with Intake
-        curr_m_prod = f.intake_male
-        curr_m_hosp = 0
-        curr_f = f.intake_female
-
-        # Simplified Stock Logic for defaults
-        for l in logs:
-            curr_m_prod = curr_m_prod - l.mortality_male - l.culls_male - (l.males_moved_to_hosp or 0) + (l.males_moved_to_prod or 0)
-            curr_m_hosp = curr_m_hosp - (l.mortality_male_hosp or 0) - (l.culls_male_hosp or 0) + (l.males_moved_to_hosp or 0) - (l.males_moved_to_prod or 0)
-            curr_f = curr_f - l.mortality_female - l.culls_female
-
-        if curr_m_prod < 0: curr_m_prod = 0
-        if curr_m_hosp < 0: curr_m_hosp = 0
-        if curr_f < 0: curr_f = 0
-
-        last_log = DailyLog.query.filter_by(flock_id=f.id).order_by(DailyLog.date.desc()).first()
-
-        flock_defaults[f.house_id] = {
-            'stock_male': curr_m_prod + curr_m_hosp,
-            'stock_female': curr_f,
-            'last_feed_program': last_log.feed_program if last_log else 'Full Feed',
-            'last_feed_code_male_id': last_log.feed_code_male_id if last_log else None,
-            'last_feed_code_female_id': last_log.feed_code_female_id if last_log else None,
-            'last_feed_male': last_log.feed_male_gp_bird if last_log else 0,
-            'last_feed_female': last_log.feed_female_gp_bird if last_log else 0
-        }
-
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
-    # Pre-load data logic
     selected_house_id = request.args.get('house_id')
     selected_date_str = request.args.get('date')
     log = None
@@ -1514,8 +1369,6 @@ def daily_log():
 def utility_processor():
     def get_partition_val(log, name, type_):
         if not log: return 0.0
-        # Check pre-loaded relationship or query
-        # Since we use lazy=True, accessing log.partition_weights triggers query
         for pw in log.partition_weights:
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
@@ -1527,124 +1380,6 @@ def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
     if request.method == 'POST':
-        # Update fields
-        log.mortality_male = int(request.form.get('mortality_male') or 0)
-        log.mortality_female = int(request.form.get('mortality_female') or 0)
-
-        log.mortality_male_hosp = int(request.form.get('mortality_male_hosp') or 0)
-        log.culls_male_hosp = int(request.form.get('culls_male_hosp') or 0)
-
-        log.culls_male = int(request.form.get('culls_male') or 0)
-        log.culls_female = int(request.form.get('culls_female') or 0)
-
-        log.males_moved_to_prod = int(request.form.get('males_moved_to_prod') or 0)
-        log.males_moved_to_hosp = int(request.form.get('males_moved_to_hosp') or 0)
-
-        log.feed_program = request.form.get('feed_program')
-        log.feed_code_id = int(request.form.get('feed_code_id')) if request.form.get('feed_code_id') else None
-
-        log.feed_male_gp_bird = float(request.form.get('feed_male_gp_bird') or 0)
-        log.feed_female_gp_bird = float(request.form.get('feed_female_gp_bird') or 0)
-        
-        log.eggs_collected = int(request.form.get('eggs_collected') or 0)
-        log.cull_eggs_jumbo = int(request.form.get('cull_eggs_jumbo') or 0)
-        log.cull_eggs_small = int(request.form.get('cull_eggs_small') or 0)
-        log.cull_eggs_abnormal = int(request.form.get('cull_eggs_abnormal') or 0)
-        log.cull_eggs_crack = int(request.form.get('cull_eggs_crack') or 0)
-        log.egg_weight = float(request.form.get('egg_weight') or 0)
-        
-        # Body Weight Logic (Handle Partitions on Edit)
-        bw_m_val = float(request.form.get('body_weight_male') or 0)
-        bw_f_val = float(request.form.get('body_weight_female') or 0)
-        uni_m_val = float(request.form.get('uniformity_male') or 0)
-        uni_f_val = float(request.form.get('uniformity_female') or 0)
-
-        if log.flock.phase == 'Rearing':
-            # Clear existing partitions?
-            PartitionWeight.query.filter_by(log_id=log.id).delete()
-
-            f_parts = [f'F{i}' for i in range(1, 9)]
-            m_parts = [f'M{i}' for i in range(1, 9)]
-
-            sum_bw_f = 0; count_bw_f = 0
-            sum_uni_f = 0; count_uni_f = 0
-            sum_bw_m = 0; count_bw_m = 0
-            sum_uni_m = 0; count_uni_m = 0
-
-            for p in f_parts + m_parts:
-                bw = float(request.form.get(f'bw_{p}') or 0)
-                uni = float(request.form.get(f'uni_{p}') or 0)
-
-                if bw > 0:
-                    pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
-                    db.session.add(pw)
-
-                    if p.startswith('F'):
-                        sum_bw_f += bw; count_bw_f += 1
-                        if uni > 0: sum_uni_f += uni; count_uni_f += 1
-                    else:
-                        sum_bw_m += bw; count_bw_m += 1
-                        if uni > 0: sum_uni_m += uni; count_uni_m += 1
-
-            if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
-            if count_uni_f > 0: uni_f_val = sum_uni_f / count_uni_f
-            if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
-            if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
-
-        log.body_weight_male = bw_m_val
-        log.body_weight_female = bw_f_val
-        log.uniformity_male = uni_m_val
-        log.uniformity_female = uni_f_val
-        
-        log.is_weighing_day = 'is_weighing_day' in request.form
-        log.bw_male_p1 = float(request.form.get('bw_M1') or 0)
-        log.bw_male_p2 = float(request.form.get('bw_M2') or 0)
-        log.unif_male_p1 = float(request.form.get('uni_M1') or 0)
-        log.unif_male_p2 = float(request.form.get('uni_M2') or 0)
-        log.bw_female_p1 = float(request.form.get('bw_F1') or 0)
-        log.bw_female_p2 = float(request.form.get('bw_F2') or 0)
-        log.bw_female_p3 = float(request.form.get('bw_F3') or 0)
-        log.bw_female_p4 = float(request.form.get('bw_F4') or 0)
-        log.unif_female_p1 = float(request.form.get('uni_F1') or 0)
-        log.unif_female_p2 = float(request.form.get('uni_F2') or 0)
-        log.unif_female_p3 = float(request.form.get('uni_F3') or 0)
-        log.unif_female_p4 = float(request.form.get('uni_F4') or 0)
-        log.standard_bw_male = float(request.form.get('standard_bw_male') or 0)
-        log.standard_bw_female = float(request.form.get('standard_bw_female') or 0)
-
-        log.water_reading_1 = int(request.form.get('water_reading_1') or 0)
-        log.water_reading_2 = int(request.form.get('water_reading_2') or 0)
-        log.water_reading_3 = int(request.form.get('water_reading_3') or 0)
-        log.flushing = True if request.form.get('flushing') else False
-        
-        log.light_on_time = request.form.get('light_on_time')
-        log.light_off_time = request.form.get('light_off_time')
-        log.feed_cleanup_start = request.form.get('feed_cleanup_start')
-        log.feed_cleanup_end = request.form.get('feed_cleanup_end')
-        log.clinical_notes = request.form.get('clinical_notes')
-        
-        # Handle Photo Upload (Optional replace)
-        if 'photo' in request.files:
-            file = request.files['photo']
-            if file and file.filename != '':
-                date_str = log.date.strftime('%y%m%d')
-                raw_name = f"{log.flock.batch_id}_{date_str}_{file.filename}"
-                filename = secure_filename(raw_name)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                log.photo_path = filepath
-        
-        # Recalculate Water
-        from datetime import timedelta
-        yesterday = log.date - timedelta(days=1)
-        yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
-        
-        if yesterday_log:
-            r1_today_real = log.water_reading_1 / 100.0
-            r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
-            log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
-        
-        # Handle Medication (Optional) - Only if adding new
         med_name = request.form.get('med_drug_name')
         if med_name:
             start_date_val = request.form.get('med_start_date')
@@ -1720,18 +1455,13 @@ def import_data():
     return render_template('import.html')
 
 def process_import(file):
-    import pandas as pd
-    
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
     
     ignore_sheets = ['DASHBOARD', 'CHART', 'SUMMARY', 'TEMPLATE']
 
-    # Pre-fetch Houses: Name -> ID
     all_houses_map = {h.name: h.id for h in House.query.all()}
 
-    # Pre-fetch Flocks: (house_id, intake_date) -> flock_id
-    # Also track counts per house for batch_id generation
     flock_query = db.session.query(Flock.id, Flock.house_id, Flock.intake_date).all()
     all_flocks_map = {}
     flock_counts = {}
@@ -1745,7 +1475,6 @@ def process_import(file):
         if sheet_name.upper() in ignore_sheets:
             continue
             
-        # Read Metadata (unchanged)
         df_meta = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=10)
         
         def get_val(r, c):
@@ -1761,8 +1490,7 @@ def process_import(file):
             if hasattr(date_val, 'date'):
                 return date_val.date()
             if isinstance(date_val, str):
-                # Handle various formats
-                formats = ['%Y-%m-%d', '%d/%m/%y', '%d/%m/%Y', '%m/%d/%Y', '%m/%d/%y']
+                formats = ['%Y-%m-%d', '%d/%m/%y', '%d/%m/%Y', '%m/%d/%Y', '%m/%d/%Y']
                 for fmt in formats:
                     try:
                         return datetime.strptime(date_val, fmt).date()
@@ -1770,28 +1498,26 @@ def process_import(file):
                         continue
             return None
 
-        house_name_cell = str(get_val(1, 1)).strip() # B2
+        house_name_cell = str(get_val(1, 1)).strip()
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
         
-        intake_female = int(get_val(2, 1) or 0) # B3
-        intake_male = int(get_val(3, 1) or 0)   # B4
-        intake_date_val = get_val(4, 1)         # B5
+        intake_female = int(get_val(2, 1) or 0)
+        intake_male = int(get_val(3, 1) or 0)
+        intake_date_val = get_val(4, 1)
         
         if not intake_date_val:
             print(f"Skipping sheet {sheet_name}: No Intake Date found.")
             continue
             
-        # Find or Create House
         house_id = all_houses_map.get(house_name)
         if not house_id:
             house = House(name=house_name)
             db.session.add(house)
-            db.session.flush() # Get ID
+            db.session.flush()
             house_id = house.id
             all_houses_map[house_name] = house_id
             db.session.commit()
         
-        # Find or Create Flock
         intake_date = parse_date(intake_date_val)
         if not intake_date:
             print(f"Skipping sheet {sheet_name}: Invalid Date {intake_date_val}")
@@ -1814,7 +1540,7 @@ def process_import(file):
                 status='Active'
             )
             db.session.add(flock)
-            db.session.flush() # Get ID
+            db.session.flush()
             flock_id = flock.id
             all_flocks_map[(house_id, intake_date)] = flock_id
             flock_counts[house_id] = n
@@ -1822,25 +1548,12 @@ def process_import(file):
             
             initialize_sampling_schedule(flock_id)
 
-        # Cache existing logs for this flock to avoid N+1 queries
         existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock_id).all()}
 
-        # Read Data - STARTING ROW 11 (0-index 10)
-        df_data = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=10, nrows=490)
-        # Phase 1: Standard BW Extraction (Rows 508-571)
-        # Week number in Col A (Index 0), Male BW in Col AG (Index 32 - actually let's check), Female BW in Col AH (Index 33)
-        # Wait, header=8 means Row 9 is header.
-        # "row 508 - 571" in Excel means index 507 to 570 in 0-based index if reading whole file.
-        # Since we read from header=8 (row 9), the index in df_data will be (508 - 10) = ~498.
-        # But safest is to read these rows explicitly via skiprows/nrows or just scan df_data if it's large enough.
-
-        # Let's read standard BW separately to be robust.
-        df_std = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70) # 508 to ~578
+        df_std = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
         standard_bw_map = {}
         missing_std_weeks = []
 
-        # Optimized iteration using zip (avoid iterrows)
-        # Expected columns: 0 (Week), 32 (Male), 33 (Female)
         if df_std.shape[1] > 33:
             weeks = df_std[0]
             males = df_std[32]
@@ -1853,39 +1566,21 @@ def process_import(file):
                     f_val = float(f) if pd.notna(f) else 0.0
                     standard_bw_map[week_val] = (m_val, f_val)
                 except (ValueError, TypeError):
-                    # Track invalid weeks (if week is present but invalid, or week valid but data invalid?)
-                    # If week is invalid, we can't key it.
-                    # If data is invalid (e.g. string), float() fails.
                     if pd.notna(w):
                         missing_std_weeks.append(str(w))
                     continue
 
         if missing_std_weeks:
-            flash(f"Warning: Standard BW data invalid for weeks: {', '.join(missing_std_weeks[:10])}{'...' if len(missing_std_weeks)>10 else ''}. Please update manually.", "warning")
+            flash(f"Warning: Standard BW data invalid for weeks: {', '.join(missing_std_weeks[:10])}. Please update manually.", "warning")
 
-        # Phase 2: Read Data
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
         
-        # Track rows to skip logic for BW if they are part of a partition block
         partition_rows_indices = set()
-
-        # First Pass: Identify Partition Blocks
-        # We look for blocks where multiple consecutive rows have data in BW columns but maybe same date or special pattern?
-        # User said: "subsequent value before hitting blank cells is in week X... row 46-49".
-        # This implies we scan row by row. If we see BW data:
-        # Check if it is "Partition 1". How?
-        # If the *previous* row had NO BW data (or was a normal day without weighing?), this is start.
-        # Actually, simpler: Any row with BW data is potentially part of a block.
-        # User said "first row is the marking date for weighing date".
-
-        # Let's collect data first
         data_rows = []
         for index, row in df_data.iterrows():
-            # Date is Column 2 (Index 1)
             date_val = row.iloc[1]
             if pd.isna(date_val):
                 continue
-
             log_date = parse_date(date_val)
             if log_date:
                 data_rows.append(row)
@@ -1897,22 +1592,19 @@ def process_import(file):
                 i+=1
                 continue
 
-            # Date Handling
-            date_val = row.iloc[1] # Col B
+            date_val = row.iloc[1]
             log_date = parse_date(date_val)
 
             if not log_date:
                 i+=1
                 continue
 
-            # Ensure Log Exists - Using cache to avoid N+1 queries
             log = existing_logs_dict.get(log_date)
             if not log:
                 log = DailyLog(flock_id=flock_id, date=log_date)
                 db.session.add(log)
                 existing_logs_dict[log_date] = log
             
-            # Helper Helpers
             def get_float(r, idx):
                 if idx >= len(r): return 0.0
                 val = r.iloc[idx]
@@ -1935,7 +1627,6 @@ def process_import(file):
                 if isinstance(val, str): return val
                 return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
 
-            # Standard Data
             log.culls_male = get_int(row, 2)
             log.culls_female = get_int(row, 3)
             log.mortality_male = get_int(row, 4)
@@ -1963,8 +1654,6 @@ def process_import(file):
             val_rem = row.iloc[56] if len(row) > 56 else None
             log.clinical_notes = str(val_rem) if pd.notna(val_rem) else None
 
-            # --- Partition / Weighing Logic ---
-            # Check if this row has BW data
             bw_m = get_float(row, 39)
             bw_f = get_float(row, 41)
             unif_m = get_float(row, 40)
@@ -1972,39 +1661,19 @@ def process_import(file):
 
             has_bw = (bw_m > 0 or bw_f > 0)
 
-            # If we are already in a "consumed" row (detected previously as part of a block), skip BW processing?
-            # Actually, better approach:
-            # If has_bw is True, check if this is the START of a block.
-            # A block starts if:
-            # 1. It has BW data.
-            # 2. It is NOT identified as a continuation of a previous block.
-            # Since we iterate sequentially, we can just consume ahead.
-
             if has_bw:
-                # Assume this is P1 (Partition 1)
                 log.is_weighing_day = True
-
-                # Load Standard BW
-                # Calculate Week
                 days_diff = (log.date - intake_date).days
                 week_num = (days_diff // 7) + 1
                 if week_num in standard_bw_map:
                     log.standard_bw_male = standard_bw_map[week_num][0]
                     log.standard_bw_female = standard_bw_map[week_num][1]
 
-                # Male P1
                 log.bw_male_p1 = bw_m
                 log.unif_male_p1 = unif_m
-                # Female P1
                 log.bw_female_p1 = bw_f
                 log.unif_female_p1 = unif_f
 
-                # Now peek ahead for P2, P3, P4
-                # We expect up to 3 more rows to have BW data (total 4 for female, 2 for male)
-                # User: "row 46 is partition 1 until row 49 is partition 4"
-                # So next row is P2, next P3, next P4.
-
-                # Check next row (i+1) -> P2
                 if i + 1 < len(data_rows):
                     row2 = data_rows[i+1]
                     bw_m2 = get_float(row2, 39)
@@ -2012,20 +1681,10 @@ def process_import(file):
                     if bw_m2 > 0 or bw_f2 > 0:
                         log.bw_male_p2 = bw_m2
                         log.unif_male_p2 = get_float(row2, 40)
-
                         log.bw_female_p2 = bw_f2
                         log.unif_female_p2 = get_float(row2, 42)
-
-                        # Clear BW from that daily log to avoid duplicates?
-                        # We must update that day's log (which will be processed in next loop iteration)
-                        # to NOT treat it as a weighing day.
-                        # But wait, the next loop iteration will process `row2`.
-                        # We need to tell it "Skip BW for this row".
-                        # Let's modify the row in memory? Or set a flag?
-                        # Using `partition_rows_indices`
                         partition_rows_indices.add(i+1)
 
-                # Check next row (i+2) -> P3 (Female only usually, but let's see)
                 if i + 2 < len(data_rows):
                     row3 = data_rows[i+2]
                     bw_f3 = get_float(row3, 41)
@@ -2034,7 +1693,6 @@ def process_import(file):
                         log.unif_female_p3 = get_float(row3, 42)
                         partition_rows_indices.add(i+2)
 
-                # Check next row (i+3) -> P4
                 if i + 3 < len(data_rows):
                     row4 = data_rows[i+3]
                     bw_f4 = get_float(row4, 41)
@@ -2043,29 +1701,20 @@ def process_import(file):
                         log.unif_female_p4 = get_float(row4, 42)
                         partition_rows_indices.add(i+3)
 
-            # If this row was marked as a "Partition continuation row" (P2/P3/P4),
-            # ensure we DON'T overwrite the main BW fields with these partition chunks
-            # effectively treating them as 0 for the "Average" (which we will calculate later or ignore)
             if i in partition_rows_indices:
                 log.body_weight_male = 0
                 log.body_weight_female = 0
                 log.uniformity_male = 0
                 log.uniformity_female = 0
-                log.is_weighing_day = False # Ensure it doesn't trigger again
+                log.is_weighing_day = False
             else:
-                # If it's a normal weighing day (P1), we keep the values in `bw_male_p1` etc.
-                # Do we also keep `body_weight_male`?
-                # User wants "Average" to be calculated.
-                # If we just imported P1..P4, let's calculate the average NOW and store it in body_weight_male/female.
                 if has_bw:
-                    # Calculate Average Male
                     m_count = 0
                     m_sum = 0
                     if (log.bw_male_p1 or 0) > 0: m_sum += log.bw_male_p1; m_count += 1
                     if (log.bw_male_p2 or 0) > 0: m_sum += log.bw_male_p2; m_count += 1
                     log.body_weight_male = (m_sum / m_count) if m_count > 0 else 0
 
-                    # Calculate Average Female
                     f_count = 0
                     f_sum = 0
                     if (log.bw_female_p1 or 0) > 0: f_sum += log.bw_female_p1; f_count += 1
@@ -2074,7 +1723,6 @@ def process_import(file):
                     if (log.bw_female_p4 or 0) > 0: f_sum += log.bw_female_p4; f_count += 1
                     log.body_weight_female = (f_sum / f_count) if f_count > 0 else 0
 
-                    # Uniformity Average? (Simple average of %s)
                     m_u_sum = 0
                     if (log.unif_male_p1 or 0) > 0: m_u_sum += log.unif_male_p1
                     if (log.unif_male_p2 or 0) > 0: m_u_sum += log.unif_male_p2
@@ -2091,7 +1739,6 @@ def process_import(file):
 
         db.session.commit()
         
-        # Recalculate Water - Fetch once to avoid reloads after commit
         all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
         for i, log in enumerate(all_logs):
             if i > 0:
@@ -2107,10 +1754,6 @@ def process_import(file):
         verify_import_data(flock_obj, logs=all_logs)
 
 def update_log_from_request(log, req):
-    """
-    Helper function to update a DailyLog object from request form data.
-    """
-    # Scalar Fields
     log.mortality_male = int(req.form.get('mortality_male') or 0)
     log.mortality_female = int(req.form.get('mortality_female') or 0)
     log.mortality_male_hosp = int(req.form.get('mortality_male_hosp') or 0)
@@ -2121,8 +1764,18 @@ def update_log_from_request(log, req):
     log.males_moved_to_hosp = int(req.form.get('males_moved_to_hosp') or 0)
 
     log.feed_program = req.form.get('feed_program')
+
+    fc_m_id = req.form.get('feed_code_male_id')
+    log.feed_code_male_id = int(fc_m_id) if fc_m_id else None
+
+    fc_f_id = req.form.get('feed_code_female_id')
+    log.feed_code_female_id = int(fc_f_id) if fc_f_id else None
+
     fc_id = req.form.get('feed_code_id')
-    log.feed_code_id = int(fc_id) if fc_id else None
+    if fc_id and not log.feed_code_male_id:
+         log.feed_code_male_id = int(fc_id)
+    if fc_id and not log.feed_code_female_id:
+         log.feed_code_female_id = int(fc_id)
 
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
@@ -2134,13 +1787,11 @@ def update_log_from_request(log, req):
     log.cull_eggs_crack = int(req.form.get('cull_eggs_crack') or 0)
     log.egg_weight = float(req.form.get('egg_weight') or 0)
 
-    # Body Weight Logic
     bw_m_val = float(req.form.get('body_weight_male') or 0)
     bw_f_val = float(req.form.get('body_weight_female') or 0)
     uni_m_val = float(req.form.get('uniformity_male') or 0)
     uni_f_val = float(req.form.get('uniformity_female') or 0)
 
-    # Clean existing partitions if Rearing
     if log.flock.phase == 'Rearing':
         PartitionWeight.query.filter_by(log_id=log.id).delete()
 
@@ -2204,7 +1855,6 @@ def update_log_from_request(log, req):
     log.feed_cleanup_end = req.form.get('feed_cleanup_end')
     log.clinical_notes = req.form.get('clinical_notes')
 
-    # Handle Photo Upload
     if 'photo' in req.files:
         file = req.files['photo']
         if file and file.filename != '':
@@ -2215,7 +1865,6 @@ def update_log_from_request(log, req):
             file.save(filepath)
             log.photo_path = filepath
 
-    # Recalculate Water
     from datetime import timedelta
     yesterday = log.date - timedelta(days=1)
     yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
@@ -2227,16 +1876,12 @@ def update_log_from_request(log, req):
     else:
         log.water_intake_calculated = 0.0
 
-
 def verify_import_data(flock, logs=None):
-    # Compare ImportedWeeklyBenchmark with DailyLog Aggregates
     weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
     if logs is None:
         logs = DailyLog.query.filter_by(flock_id=flock.id).all()
 
     warnings = []
-
-    # Aggregate Logs by Week
     agg = {}
     for log in logs:
         delta = (log.date - flock.intake_date).days
@@ -2250,12 +1895,10 @@ def verify_import_data(flock, logs=None):
     for wd in weekly_records:
         if wd.week in agg:
             calc = agg[wd.week]
-            # Check Mortality Female
-            if abs(calc['mort_f'] - wd.mortality_female) > 1: # Tolerance of 1
+            if abs(calc['mort_f'] - wd.mortality_female) > 1:
                 warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
 
-            # Check Eggs
-            if abs(calc['eggs'] - wd.eggs_collected) > 5: # Tolerance
+            if abs(calc['eggs'] - wd.eggs_collected) > 5:
                 warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
 
     if warnings:
@@ -2268,9 +1911,7 @@ def health_log():
 
     today = date.today()
 
-    # --- HANDLE POST UPDATES ---
     if request.method == 'POST':
-        # Check for Medication Add
         if 'add_medication' in request.form:
              flock_id = request.form.get('flock_id')
              if flock_id:
@@ -2295,10 +1936,7 @@ def health_log():
                  except Exception as e:
                      flash(f'Error adding medication: {str(e)}', 'danger')
 
-        # Check for Bulk Updates (Vaccine/Sampling/Medication)
         updated_count = 0
-
-        # Collect IDs
         v_ids = set()
         s_ids = set()
         m_ids = set()
@@ -2310,7 +1948,6 @@ def health_log():
             elif key.startswith('m_') and key.split('_')[-1].isdigit():
                 m_ids.add(int(key.split('_')[-1]))
 
-        # Process Vaccines
         for vid in v_ids:
             v = Vaccine.query.get(vid)
             if not v: continue
@@ -2335,7 +1972,6 @@ def health_log():
                     if v.actual_date != d: v.actual_date = d; updated_count += 1
                 except: pass
 
-        # Process Sampling
         for sid in s_ids:
             s = SamplingEvent.query.get(sid)
             if not s: continue
@@ -2366,7 +2002,6 @@ def health_log():
                 s.age_week = (diff // 7) + 1
                 updated_count += 1
 
-        # Process Medication
         for mid in m_ids:
             m = Medication.query.get(mid)
             if not m: continue
@@ -2406,7 +2041,6 @@ def health_log():
         return redirect(url_for('health_log', year=request.args.get('year'), month=request.args.get('month')))
 
 
-    # --- VIEW LOGIC ---
     try:
         year = int(request.args.get('year', today.year))
         month = int(request.args.get('month', today.month))
@@ -2414,8 +2048,7 @@ def health_log():
         year = today.year
         month = today.month
 
-    # Calendar Navigation
-    cal = calendar.Calendar(firstweekday=6) # Sunday start
+    cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdatescalendar(year, month)
 
     prev_month = month - 1 if month > 1 else 12
@@ -2423,26 +2056,21 @@ def health_log():
     next_month = month + 1 if month < 12 else 1
     next_year = year if month < 12 else year + 1
 
-    # Fetch Events for the Month
     start_date = date(year, month, 1)
-    # End date: last day of month
     last_day = calendar.monthrange(year, month)[1]
     end_date = date(year, month, last_day)
 
     active_flocks = Flock.query.filter_by(status='Active').all()
     flock_ids = [f.id for f in active_flocks]
 
-    # Map Events to Date
-    events_by_date = {} # Date -> [List of items]
+    events_by_date = {}
 
-    # 1. Vaccines (Estimated Date in Range)
     vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).all()
     for v in vaccines:
         d = v.est_date
         if d not in events_by_date: events_by_date[d] = []
         events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock})
 
-    # 2. Sampling (Scheduled Date in Range)
     samplings = SamplingEvent.query.filter(SamplingEvent.flock_id.in_(flock_ids)).filter(SamplingEvent.scheduled_date >= start_date, SamplingEvent.scheduled_date <= end_date).all()
     for s in samplings:
         d = s.scheduled_date
@@ -2450,10 +2078,9 @@ def health_log():
              if d not in events_by_date: events_by_date[d] = []
              events_by_date[d].append({'type': 'Sampling', 'obj': s, 'flock': s.flock})
 
-    # Prepare List View (Grouped by House/Flock)
     selected_flock_id = request.args.get('flock_id')
 
-    flock_tasks = {} # Flock -> {'vaccines': [], 'sampling': [], 'medications': []}
+    flock_tasks = {}
 
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
 
@@ -2477,3 +2104,107 @@ def health_log():
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         flock_tasks=flock_tasks
     )
+
+@app.route('/api/metrics')
+def get_metrics_list():
+    return json.dumps(METRICS_REGISTRY)
+
+@app.route('/api/flock/<int:flock_id>/custom_data', methods=['POST'])
+def get_custom_data(flock_id):
+    flock = Flock.query.get_or_404(flock_id)
+    req_data = request.get_json()
+    metrics = req_data.get('metrics', [])
+
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    result = calculate_metrics(logs, flock, metrics)
+    return json.dumps(result)
+
+@app.route('/api/house/<int:house_id>/dashboard_config')
+def get_dashboard_config(house_id):
+    house = House.query.get_or_404(house_id)
+
+    charts = []
+    for c in house.charts:
+        charts.append({
+            'id': c.id,
+            'title': c.title,
+            'chart_type': c.chart_type,
+            'config': json.loads(c.config_json),
+            'is_template': c.is_template
+        })
+
+    overview_cols = []
+    if house.overview_config:
+        overview_cols = json.loads(house.overview_config.visible_metrics_json)
+
+    return json.dumps({'charts': charts, 'overview_columns': overview_cols})
+
+@app.route('/api/house/<int:house_id>/charts', methods=['POST'])
+def save_chart(house_id):
+    data = request.get_json()
+
+    chart_id = data.get('id')
+    title = data.get('title')
+    chart_type = data.get('chart_type', 'line')
+    config = data.get('config')
+    is_template = data.get('is_template', False)
+
+    if chart_id:
+        chart = ChartConfiguration.query.get_or_404(chart_id)
+        if chart.house_id != house_id:
+            return "Unauthorized", 403
+        chart.title = title
+        chart.chart_type = chart_type
+        chart.config_json = json.dumps(config)
+        chart.is_template = is_template
+    else:
+        chart = ChartConfiguration(
+            house_id=house_id,
+            title=title,
+            chart_type=chart_type,
+            config_json=json.dumps(config),
+            is_template=is_template
+        )
+        db.session.add(chart)
+
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/charts/<int:chart_id>', methods=['DELETE'])
+def delete_chart(chart_id):
+    chart = ChartConfiguration.query.get_or_404(chart_id)
+    db.session.delete(chart)
+    db.session.commit()
+    return "Deleted", 200
+
+@app.route('/api/house/<int:house_id>/overview', methods=['POST'])
+def save_overview_config(house_id):
+    data = request.get_json()
+    cols = data.get('columns', [])
+
+    config = OverviewConfiguration.query.filter_by(house_id=house_id).first()
+    if not config:
+        config = OverviewConfiguration(house_id=house_id)
+        db.session.add(config)
+
+    config.visible_metrics_json = json.dumps(cols)
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/templates')
+def get_templates():
+    templates = ChartConfiguration.query.filter_by(is_template=True).all()
+    res = []
+    for t in templates:
+        res.append({
+            'id': t.id,
+            'title': t.title,
+            'chart_type': t.chart_type,
+            'config': json.loads(t.config_json),
+            'house_name': t.house.name
+        })
+    return json.dumps(res)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

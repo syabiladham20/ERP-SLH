@@ -110,7 +110,7 @@
                 <select class="form-select" name="feed_code_id">
                     <option value="">-- Select Code --</option>
                     {% for fc in feed_codes %}
-                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_id == fc.id else '' }}>{{ fc.code }}</option>
+                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_male_id == fc.id else '' }}>{{ fc.code }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -413,9 +413,9 @@
         // Double check phase
         let houseSelect = document.getElementById('house_id');
         let phase = 'Rearing';
-        if (houseSelect) {
+        if (houseSelect && houseSelect.selectedIndex >= 0) {
              phase = houseSelect.options[houseSelect.selectedIndex].getAttribute('data-phase');
-        } else {
+        } else if (document.getElementById('phase_val')) {
              phase = document.getElementById('phase_val').value;
         }
 

@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Custom Dashboard: {{ flock.batch_id }}</h2>
+    <div>
+        <div class="btn-group me-2" role="group">
+            <input type="radio" class="btn-check" name="viewMode" id="viewCharts" autocomplete="off" checked>
+            <label class="btn btn-outline-primary" for="viewCharts">Charts</label>
+
+            <input type="radio" class="btn-check" name="viewMode" id="viewTable" autocomplete="off">
+            <label class="btn btn-outline-primary" for="viewTable">Overview Table</label>
+        </div>
+        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary">Back to Flock</a>
+    </div>
+</div>
+
+<!-- Controls Toolbar -->
+<div class="row mb-3" id="chartsToolbar">
+    <div class="col">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chartModal" onclick="prepareAddChart()">
+            <i class="bi bi-plus-lg"></i> Add Chart
+        </button>
+        <button class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#templatesModal" onclick="loadTemplates()">
+            Import Template
+        </button>
+    </div>
+</div>
+
+<div class="row mb-3 d-none" id="tableToolbar">
+    <div class="col">
+        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#tableConfigModal">
+            Configure Columns
+        </button>
+        <button class="btn btn-outline-success" onclick="exportTableToExcel()">
+            Export to Excel
+        </button>
+    </div>
+</div>
+
+<!-- Charts Container -->
+<div id="chartsContainer" class="row g-4">
+    <!-- Dynamic Charts -->
+</div>
+
+<!-- Table Container -->
+<div id="tableContainer" class="table-responsive d-none">
+    <table class="table table-striped table-bordered table-sm" id="overviewTable">
+        <thead class="table-dark">
+            <tr id="tableHeadRow">
+                <!-- Dynamic Headers -->
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Dynamic Rows -->
+        </tbody>
+    </table>
+</div>
+
+<!-- Add/Edit Chart Modal -->
+<div class="modal fade" id="chartModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalTitle">Add Chart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="chartForm">
+                    <input type="hidden" id="chartId">
+                    <div class="mb-3">
+                        <label class="form-label">Chart Title</label>
+                        <input type="text" class="form-control" id="chartTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Chart Type</label>
+                        <select class="form-select" id="chartType">
+                            <option value="line">Line Chart</option>
+                            <option value="bar">Bar Chart</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Left Axis Metrics</h6>
+                            <div class="list-group" id="leftAxisMetrics" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Dynamic Checkboxes -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Right Axis Metrics (Optional)</h6>
+                            <div class="list-group" id="rightAxisMetrics" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Dynamic Checkboxes -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isTemplate">
+                        <label class="form-check-label">Save as Global Template</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger me-auto" id="btnDeleteChart" style="display:none;" onclick="deleteChart()">Delete</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveChart()">Save Chart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Table Config Modal -->
+<div class="modal fade" id="tableConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Configure Overview Table</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="tableMetricsList" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Dynamic Checkboxes -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveTableConfig()">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates Modal -->
+<div class="modal fade" id="templatesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import from Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group" id="templatesList">
+                    <!-- Dynamic Templates -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const HOUSE_ID = {{ flock.house_id }};
+    const FLOCK_ID = {{ flock.id }};
+
+    let METRICS_META = {};
+    let CHART_INSTANCES = {};
+    let CURRENT_DATA = {};
+    let CONFIG = { charts: [], overview_columns: [] };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init View Toggles
+        document.getElementById('viewCharts').addEventListener('change', toggleView);
+        document.getElementById('viewTable').addEventListener('change', toggleView);
+
+        loadMetricsMeta().then(() => {
+            loadDashboardConfig();
+        });
+    });
+
+    function toggleView() {
+        const isCharts = document.getElementById('viewCharts').checked;
+        if (isCharts) {
+            document.getElementById('chartsContainer').classList.remove('d-none');
+            document.getElementById('chartsToolbar').classList.remove('d-none');
+            document.getElementById('tableContainer').classList.add('d-none');
+            document.getElementById('tableToolbar').classList.add('d-none');
+        } else {
+            document.getElementById('chartsContainer').classList.add('d-none');
+            document.getElementById('chartsToolbar').classList.add('d-none');
+            document.getElementById('tableContainer').classList.remove('d-none');
+            document.getElementById('tableToolbar').classList.remove('d-none');
+            renderTable(); // Refresh table
+        }
+    }
+
+    async function loadMetricsMeta() {
+        const res = await fetch('/api/metrics');
+        METRICS_META = await res.json();
+
+        // Populate Modal Lists
+        const leftList = document.getElementById('leftAxisMetrics');
+        const rightList = document.getElementById('rightAxisMetrics');
+        const tableList = document.getElementById('tableMetricsList');
+
+        leftList.innerHTML = '';
+        rightList.innerHTML = '';
+        tableList.innerHTML = '';
+
+        // Sort metrics by label
+        const sortedKeys = Object.keys(METRICS_META).sort((a,b) => METRICS_META[a].label.localeCompare(METRICS_META[b].label));
+
+        sortedKeys.forEach(key => {
+            const m = METRICS_META[key];
+            const item = (targetId, prefix) => `
+                <label class="list-group-item">
+                    <input class="form-check-input me-1" type="checkbox" value="${key}" id="${prefix}_${key}">
+                    ${m.label} <small class="text-muted">(${m.unit})</small>
+                </label>`;
+
+            leftList.insertAdjacentHTML('beforeend', item('leftAxisMetrics', 'left'));
+            rightList.insertAdjacentHTML('beforeend', item('rightAxisMetrics', 'right'));
+            tableList.insertAdjacentHTML('beforeend', item('tableMetricsList', 'tbl'));
+        });
+    }
+
+    async function loadDashboardConfig() {
+        const res = await fetch(`/api/house/${HOUSE_ID}/dashboard_config`);
+        CONFIG = await res.json();
+
+        // Identify all metrics needed
+        const metricsNeeded = new Set(['dates', 'weeks']); // always needed
+
+        CONFIG.charts.forEach(c => {
+            if (c.config.metrics) c.config.metrics.forEach(m => metricsNeeded.add(m));
+            if (c.config.metrics_right) c.config.metrics_right.forEach(m => metricsNeeded.add(m));
+        });
+
+        if (CONFIG.overview_columns) {
+            CONFIG.overview_columns.forEach(m => metricsNeeded.add(m));
+        } else {
+            // Default columns if none set
+            CONFIG.overview_columns = ['mortality_female_pct', 'egg_prod_pct', 'body_weight_female'];
+            CONFIG.overview_columns.forEach(m => metricsNeeded.add(m));
+        }
+
+        // Fetch Data
+        const dataRes = await fetch(`/api/flock/${FLOCK_ID}/custom_data`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ metrics: Array.from(metricsNeeded) })
+        });
+
+        CURRENT_DATA = await dataRes.json();
+
+        renderCharts();
+        renderTable();
+    }
+
+    function renderCharts() {
+        const container = document.getElementById('chartsContainer');
+        container.innerHTML = '';
+        CHART_INSTANCES = {};
+
+        CONFIG.charts.forEach(chart => {
+            const col = document.createElement('div');
+            col.className = 'col-md-6 col-lg-6';
+
+            col.innerHTML = `
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">${chart.title}</h6>
+                        <button class="btn btn-sm btn-outline-secondary" onclick='editChart(${JSON.stringify(chart)})'>
+                            <i class="bi bi-gear"></i> Edit
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartCanvas_${chart.id}"></canvas>
+                    </div>
+                </div>
+            `;
+            container.appendChild(col);
+
+            drawChart(chart, `chartCanvas_${chart.id}`);
+        });
+    }
+
+    function drawChart(chart, canvasId) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+
+        const datasets = [];
+        const leftMetrics = chart.config.metrics || [];
+        const rightMetrics = chart.config.metrics_right || [];
+
+        const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#20c997'];
+        let colorIdx = 0;
+
+        leftMetrics.forEach(m => {
+            if (!CURRENT_DATA[m]) return;
+            datasets.push({
+                label: METRICS_META[m]?.label || m,
+                data: CURRENT_DATA[m],
+                borderColor: colors[colorIdx % colors.length],
+                backgroundColor: colors[colorIdx % colors.length],
+                yAxisID: 'y',
+                tension: 0.1,
+                spanGaps: true,
+                fill: false
+            });
+            colorIdx++;
+        });
+
+        rightMetrics.forEach(m => {
+            if (!CURRENT_DATA[m]) return;
+            datasets.push({
+                label: METRICS_META[m]?.label || m,
+                data: CURRENT_DATA[m],
+                borderColor: colors[colorIdx % colors.length],
+                backgroundColor: colors[colorIdx % colors.length],
+                yAxisID: 'y1',
+                borderDash: [5, 5], // Dashed for secondary axis
+                tension: 0.1,
+                spanGaps: true,
+                fill: false
+            });
+            colorIdx++;
+        });
+
+        const hasRight = rightMetrics.length > 0;
+
+        CHART_INSTANCES[chart.id] = new Chart(ctx, {
+            type: chart.chart_type || 'line',
+            data: {
+                labels: CURRENT_DATA.dates, // Or weeks? Dates is better usually
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 20
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: hasRight,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    },
+                }
+            }
+        });
+    }
+
+    function renderTable() {
+        const thead = document.getElementById('tableHeadRow');
+        const tbody = document.getElementById('tableBody');
+
+        // Headers
+        let htmlHead = '<th>Date</th><th>Week</th>';
+        CONFIG.overview_columns.forEach(m => {
+            htmlHead += `<th>${METRICS_META[m]?.label || m}</th>`;
+        });
+        thead.innerHTML = htmlHead;
+
+        // Body
+        let htmlBody = '';
+        if (CURRENT_DATA.dates) {
+            for (let i = 0; i < CURRENT_DATA.dates.length; i++) {
+                htmlBody += `<tr>
+                    <td>${CURRENT_DATA.dates[i]}</td>
+                    <td>${CURRENT_DATA.weeks[i]}</td>`;
+
+                CONFIG.overview_columns.forEach(m => {
+                    let val = CURRENT_DATA[m] ? CURRENT_DATA[m][i] : '-';
+                    // Format
+                    if (typeof val === 'number') {
+                        // Check unit
+                        if (METRICS_META[m]?.unit === '%') val = val.toFixed(2) + '%';
+                        else if (METRICS_META[m]?.unit) val = val + ' ' + METRICS_META[m].unit;
+                    }
+                    htmlBody += `<td>${val}</td>`;
+                });
+
+                htmlBody += `</tr>`;
+            }
+        }
+        tbody.innerHTML = htmlBody;
+    }
+
+    // --- Modal Actions ---
+
+    function prepareAddChart() {
+        document.getElementById('chartForm').reset();
+        document.getElementById('chartId').value = '';
+        document.getElementById('chartModalTitle').innerText = 'Add Chart';
+        document.getElementById('btnDeleteChart').style.display = 'none';
+
+        // Uncheck all
+        document.querySelectorAll('#leftAxisMetrics input').forEach(c => c.checked = false);
+        document.querySelectorAll('#rightAxisMetrics input').forEach(c => c.checked = false);
+    }
+
+    function editChart(chart) {
+        prepareAddChart();
+        document.getElementById('chartId').value = chart.id;
+        document.getElementById('chartTitle').value = chart.title;
+        document.getElementById('chartType').value = chart.chart_type;
+        document.getElementById('isTemplate').checked = chart.is_template;
+        document.getElementById('chartModalTitle').innerText = 'Edit Chart';
+        document.getElementById('btnDeleteChart').style.display = 'block';
+
+        // Check boxes
+        if (chart.config.metrics) {
+            chart.config.metrics.forEach(m => {
+                const el = document.getElementById('left_' + m);
+                if (el) el.checked = true;
+            });
+        }
+        if (chart.config.metrics_right) {
+            chart.config.metrics_right.forEach(m => {
+                const el = document.getElementById('right_' + m);
+                if (el) el.checked = true;
+            });
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
+    }
+
+    async function saveChart() {
+        const id = document.getElementById('chartId').value;
+        const title = document.getElementById('chartTitle').value;
+        const type = document.getElementById('chartType').value;
+        const isTemplate = document.getElementById('isTemplate').checked;
+
+        const leftMetrics = Array.from(document.querySelectorAll('#leftAxisMetrics input:checked')).map(el => el.value);
+        const rightMetrics = Array.from(document.querySelectorAll('#rightAxisMetrics input:checked')).map(el => el.value);
+
+        if (!title || (leftMetrics.length === 0 && rightMetrics.length === 0)) {
+            alert("Please provide a title and select at least one metric.");
+            return;
+        }
+
+        const payload = {
+            id: id ? parseInt(id) : null,
+            title: title,
+            chart_type: type,
+            is_template: isTemplate,
+            config: {
+                metrics: leftMetrics,
+                metrics_right: rightMetrics
+            }
+        };
+
+        await fetch(`/api/house/${HOUSE_ID}/charts`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+
+        location.reload(); // Reload to refresh everything safely
+    }
+
+    async function deleteChart() {
+        const id = document.getElementById('chartId').value;
+        if (!id) return;
+        if (!confirm("Are you sure you want to delete this chart?")) return;
+
+        await fetch(`/api/charts/${id}`, { method: 'DELETE' });
+        location.reload();
+    }
+
+    async function saveTableConfig() {
+        const cols = Array.from(document.querySelectorAll('#tableMetricsList input:checked')).map(el => el.value);
+
+        await fetch(`/api/house/${HOUSE_ID}/overview`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ columns: cols })
+        });
+
+        location.reload();
+    }
+
+    // --- Templates ---
+    async function loadTemplates() {
+        const res = await fetch('/api/templates');
+        const templates = await res.json();
+
+        const list = document.getElementById('templatesList');
+        list.innerHTML = '';
+
+        if (templates.length === 0) {
+            list.innerHTML = '<div class="alert alert-info">No templates found. Save a chart as a template first.</div>';
+            return;
+        }
+
+        templates.forEach(t => {
+            const el = document.createElement('a');
+            el.className = 'list-group-item list-group-item-action';
+            el.href = '#';
+            el.innerHTML = `
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">${t.title}</h5>
+                    <small>from ${t.house_name}</small>
+                </div>
+                <p class="mb-1">Type: ${t.chart_type} | Metrics: ${t.config.metrics?.length || 0}</p>
+            `;
+            el.onclick = function() {
+                applyTemplate(t);
+            };
+            list.appendChild(el);
+        });
+    }
+
+    async function applyTemplate(template) {
+        if (!confirm(`Import chart "${template.title}"?`)) return;
+
+        const payload = {
+            id: null,
+            title: template.title,
+            chart_type: template.chart_type,
+            is_template: false, // Imported is not template by default
+            config: template.config
+        };
+
+        await fetch(`/api/house/${HOUSE_ID}/charts`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+
+        location.reload();
+    }
+
+    // --- Table Export ---
+    function exportTableToExcel() {
+        // Simple CSV export
+        let csv = [];
+        const rows = document.querySelectorAll("#overviewTable tr");
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = [], cols = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cols.length; j++)
+                row.push('"' + cols[j].innerText + '"');
+            csv.push(row.join(","));
+        }
+
+        const csvFile = new Blob([csv.join("\n")], {type: "text/csv"});
+        const link = document.createElement("a");
+        link.download = `Flock_${FLOCK_ID}_Overview.csv`;
+        link.href = window.URL.createObjectURL(csvFile);
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+{% endblock %}
