@@ -1,99 +1,8 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Health Log</h2>
-    <div>
-        <a href="{{ url_for('health_log', year=prev_year, month=prev_month, flock_id=selected_flock_id) }}" class="btn btn-outline-secondary btn-sm">&lt; Prev</a>
-        <span class="mx-3 fw-bold">{{ month_name }} {{ year }}</span>
-        <a href="{{ url_for('health_log', year=next_year, month=next_month, flock_id=selected_flock_id) }}" class="btn btn-outline-secondary btn-sm">Next &gt;</a>
-    </div>
-</div>
-
-<!-- Vaccine Schedule Calendar -->
-<div class="card mb-4">
-    <div class="card-header sticky-header bg-info text-white">Vaccine Schedule</div>
-    <div class="card-body p-0">
-        <table class="table table-bordered mb-0" style="table-layout: fixed;">
-            <thead class="table-light text-center">
-                <tr>
-                    <th style="width: 14.28%;">Sun</th>
-                    <th style="width: 14.28%;">Mon</th>
-                    <th style="width: 14.28%;">Tue</th>
-                    <th style="width: 14.28%;">Wed</th>
-                    <th style="width: 14.28%;">Thu</th>
-                    <th style="width: 14.28%;">Fri</th>
-                    <th style="width: 14.28%;">Sat</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for week in month_days %}
-                <tr>
-                    {% for day in week %}
-                    <td class="align-top" style="height: 100px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold {% if day == today %}text-primary{% endif %}">{{ day.day }}</span>
-                        </div>
-                        <div class="mt-1 overflow-auto" style="max-height: 80px;">
-                            {% if day in vaccine_events_by_date %}
-                                {% for event in vaccine_events_by_date[day] %}
-                                    <div class="mb-1 p-1 rounded bg-info text-dark" style="font-size: 0.75rem;">
-                                        <strong>{{ event.flock.house.name }}</strong> | W{{ event.age }}<br>
-                                        {{ event.obj.vaccine_name }}
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Sampling Schedule Calendar -->
-<div class="card mb-4">
-    <div class="card-header sticky-header bg-warning text-dark">Sampling Schedule</div>
-    <div class="card-body p-0">
-        <table class="table table-bordered mb-0" style="table-layout: fixed;">
-            <thead class="table-light text-center">
-                <tr>
-                    <th style="width: 14.28%;">Sun</th>
-                    <th style="width: 14.28%;">Mon</th>
-                    <th style="width: 14.28%;">Tue</th>
-                    <th style="width: 14.28%;">Wed</th>
-                    <th style="width: 14.28%;">Thu</th>
-                    <th style="width: 14.28%;">Fri</th>
-                    <th style="width: 14.28%;">Sat</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for week in month_days %}
-                <tr>
-                    {% for day in week %}
-                    <td class="align-top" style="height: 100px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
-                        <div class="d-flex justify-content-between">
-                            <span class="fw-bold {% if day == today %}text-primary{% endif %}">{{ day.day }}</span>
-                        </div>
-                        <div class="mt-1 overflow-auto" style="max-height: 80px;">
-                            {% if day in sampling_events_by_date %}
-                                {% for event in sampling_events_by_date[day] %}
-                                    <div class="mb-1 p-1 rounded bg-warning text-dark" style="font-size: 0.75rem;">
-                                        <strong>{{ event.flock.house.name }}</strong> | W{{ event.age }}<br>
-                                        {{ event.obj.test_type }}
-                                    </div>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<div id="calendar-container">
+    {% include 'partials/health_log_calendar.html' %}
 </div>
 
 <!-- Flock Selection -->
@@ -185,6 +94,7 @@
                         <tr>
                             <th>Age (Week)</th>
                             <th>Scheduled Date</th>
+                            <th>Actual Date</th>
                             <th>Test Type</th>
                             <th>Status</th>
                             <th>Results</th>
@@ -200,10 +110,15 @@
                                 <input type="date" name="s_date_{{ s.id }}" value="{{ s.scheduled_date }}" class="form-control form-control-sm" style="width: 130px;">
                             </td>
                             <td>
+                                <input type="date" name="s_actual_date_{{ s.id }}" value="{{ s.actual_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                            </td>
+                            <td>
                                 <input type="text" name="s_test_{{ s.id }}" value="{{ s.test_type }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <span class="badge {% if s.status == 'Completed' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ s.status }}</span>
+                                <span class="badge {% if s.actual_date or s.result_file or s.status == 'Completed' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {% if s.actual_date or s.result_file %}Completed{% else %}Pending{% endif %}
+                                </span>
                             </td>
                             <td>
                                 {% if s.result_file %}
@@ -294,4 +209,82 @@
     </div>
     </form>
     {% endfor %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('calendar-container');
+
+        // Function to attach listeners to dynamic elements
+        function attachListeners() {
+            // Navigation Links (Prev/Next)
+            container.querySelectorAll('.ajax-calendar-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = this.getAttribute('href');
+                    loadCalendar(url);
+                });
+            });
+
+            // Month/Year Selects
+            const monthSelect = container.querySelector('#calendar-month-select');
+            const yearSelect = container.querySelector('#calendar-year-select');
+
+            if (monthSelect && yearSelect) {
+                const handleSelectChange = () => {
+                    const month = monthSelect.value;
+                    const year = yearSelect.value;
+
+                    // Construct URL
+                    // We need to preserve selected_flock_id if present
+                    const urlParams = new URLSearchParams(window.location.search);
+                    urlParams.set('year', year);
+                    urlParams.set('month', month);
+
+                    // We use the base health_log URL
+                    // Assuming /health_log is the base
+                    const baseUrl = "{{ url_for('health_log') }}";
+                    const newUrl = `${baseUrl}?${urlParams.toString()}`;
+
+                    loadCalendar(newUrl);
+                };
+
+                monthSelect.addEventListener('change', handleSelectChange);
+                yearSelect.addEventListener('change', handleSelectChange);
+            }
+        }
+
+        // Initial attachment
+        attachListeners();
+
+        // AJAX Load Function
+        function loadCalendar(url) {
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                container.innerHTML = html;
+                attachListeners(); // Re-attach listeners to new content
+
+                // Update URL history
+                window.history.pushState({ path: url }, '', url);
+            })
+            .catch(error => console.error('Error loading calendar:', error));
+        }
+
+        // Handle Browser Back/Forward
+        window.addEventListener('popstate', function(e) {
+            // Reload the calendar for the current URL
+            // Or reload page if we want full state reset.
+            // Since detailed lists are static, reloading just calendar is fine
+            // AS LONG AS the detailed lists didn't depend on month (they don't).
+            loadCalendar(window.location.href);
+        });
+    });
+</script>
 {% endblock %}

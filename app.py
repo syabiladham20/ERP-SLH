@@ -227,6 +227,7 @@ class SamplingEvent(db.Model):
     status = db.Column(db.String(20), default='Pending') # 'Pending', 'Completed'
     result_file = db.Column(db.String(200), nullable=True) # Path to PDF
     upload_date = db.Column(db.Date, nullable=True)
+    actual_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
     scheduled_date = db.Column(db.Date, nullable=True)
 
@@ -2607,6 +2608,27 @@ def health_log():
                 s.age_week = (diff // 7) + 1
                 updated_count += 1
 
+            actual_str = request.form.get(f's_actual_date_{sid}')
+            if actual_str:
+                try:
+                    new_actual = datetime.strptime(actual_str, '%Y-%m-%d').date()
+                    if s.actual_date != new_actual:
+                        s.actual_date = new_actual
+                        updated_count += 1
+                except: pass
+            elif actual_str == '' and s.actual_date is not None:
+                s.actual_date = None
+                updated_count += 1
+
+            # Update Status based on Actual Date or Result File
+            new_status = 'Pending'
+            if s.actual_date or s.result_file:
+                new_status = 'Completed'
+
+            if s.status != new_status:
+                s.status = new_status
+                updated_count += 1
+
         for mid in m_ids:
             m = Medication.query.get(mid)
             if not m: continue
@@ -2701,6 +2723,21 @@ def health_log():
             'sampling': SamplingEvent.query.filter_by(flock_id=f.id).order_by(SamplingEvent.age_week).all(),
             'medications': Medication.query.filter_by(flock_id=f.id).order_by(Medication.start_date.desc()).all()
         }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('partials/health_log_calendar.html',
+            today=today,
+            year=year,
+            month=month,
+            month_name=calendar.month_name[month],
+            month_days=month_days,
+            prev_month=prev_month, prev_year=prev_year,
+            next_month=next_month, next_year=next_year,
+            vaccine_events_by_date=vaccine_events_by_date,
+            sampling_events_by_date=sampling_events_by_date,
+            active_flocks=active_flocks, # Might be needed if calendar logic changes
+            selected_flock_id=int(selected_flock_id) if selected_flock_id else None
+        )
 
     return render_template('health_log.html',
         today=today,
