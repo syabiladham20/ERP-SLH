@@ -1697,10 +1697,65 @@ def process_import(file):
 
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
         
+        # --- Column Mapping Logic ---
+        headers = [str(c).upper().strip() for c in df_data.columns]
+
+        def find_idx(candidates, default=None):
+            if isinstance(candidates, str): candidates = [candidates]
+
+            # 1. Exact Match
+            for cand in candidates:
+                cand = cand.upper()
+                if cand in headers:
+                    return headers.index(cand)
+
+            # 2. StartsWith Match
+            for cand in candidates:
+                cand = cand.upper()
+                for i, h in enumerate(headers):
+                    if h.startswith(cand):
+                        return i
+
+            return default
+
+        # Indices map
+        idx_date = find_idx(['DATE'], 1)
+
+        idx_cull_m = find_idx(['CULL MALE'], 2)
+        idx_cull_f = find_idx(['CULL FEMALE'], 3)
+        idx_dead_m = find_idx(['DEAD MALE'], 4)
+        idx_dead_f = find_idx(['DEAD FEMALE'], 5)
+
+        idx_feed_m = find_idx(['GIVEN MALE G/B', 'MALE FEED G/B'], 16)
+        idx_feed_f = find_idx(['GIVEN FEMALE G/B', 'FEMALE FEED G/B'], 17)
+
+        idx_eggs = find_idx(['EGG COLLECTED', 'EGGS COLLECTED'], 24)
+        idx_jumbo = find_idx(['JUMBO'], 25)
+        idx_small = find_idx(['SMALL'], 26)
+        idx_abnormal = find_idx(['ABNORMAL'], 27)
+        idx_crack = find_idx(['CRACK'], 28)
+        idx_egg_weight = find_idx(['GRAM EGG', 'EGG WEIGHT'], 29)
+
+        idx_bw_m = find_idx(['MALE BODY WEIGHT'], 39)
+        idx_unif_m = find_idx(['MALE UNIFORMITY'], 40)
+        idx_bw_f = find_idx(['FEMALE BODY WEIGHT'], 41)
+        idx_unif_f = find_idx(['FEMALE UNIFORMITY'], 42)
+
+        idx_w1 = find_idx(['8AM (m^3)', '8AM'], 43)
+        idx_w2 = find_idx(['11AM (m^3)', '11AM'], 44)
+        idx_w3 = find_idx(['5PM (m^3)', '5PM'], 45)
+
+        idx_light_on = find_idx(['LIGHT ON'], 50)
+        idx_light_off = find_idx(['LIGHT OFF'], 51)
+        idx_feed_start = find_idx(['FEED START'], 53)
+        idx_feed_end = find_idx(['FEED END'], 54)
+        idx_remarks = find_idx(['REMARKS'], 56)
+
         partition_rows_indices = set()
         data_rows = []
         for index, row in df_data.iterrows():
-            date_val = row.iloc[1]
+            if idx_date >= len(row): continue
+            date_val = row.iloc[idx_date]
             if pd.isna(date_val):
                 continue
             log_date = parse_date(date_val)
@@ -1710,14 +1765,50 @@ def process_import(file):
         i = 0
         while i < len(data_rows):
             row = data_rows[i]
+            # Ensure row is long enough for critical checks
             if len(row) < 2:
                 i+=1
                 continue
 
-            date_val = row.iloc[1]
+            if idx_date >= len(row):
+                i+=1
+                continue
+
+            date_val = row.iloc[idx_date]
             log_date = parse_date(date_val)
 
             if not log_date:
+                i+=1
+                continue
+            
+            def get_float(r, idx):
+                if idx is None or idx >= len(r): return 0.0
+                val = r.iloc[idx]
+                return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
+
+            def get_int(r, idx):
+                if idx is None or idx >= len(r): return 0
+                val = r.iloc[idx]
+                return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
+                
+            def get_str(r, idx):
+                if idx is None or idx >= len(r): return None
+                val = r.iloc[idx]
+                return str(val) if pd.notna(val) else None
+
+            def get_time(r, idx):
+                if idx is None or idx >= len(r): return None
+                val = r.iloc[idx]
+                if pd.isna(val): return None
+                if isinstance(val, str): return val
+                return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
+
+            # Check for Weekly Summary Rows (High Feed)
+            feed_check_m = get_float(row, idx_feed_m)
+            feed_check_f = get_float(row, idx_feed_f)
+
+            if feed_check_m > 500 or feed_check_f > 500:
+                # Likely a summary row with Total Feed instead of G/B
                 i+=1
                 continue
 
@@ -1726,60 +1817,38 @@ def process_import(file):
                 log = DailyLog(flock_id=flock_id, date=log_date)
                 db.session.add(log)
                 existing_logs_dict[log_date] = log
-            
-            def get_float(r, idx):
-                if idx >= len(r): return 0.0
-                val = r.iloc[idx]
-                return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
 
-            def get_int(r, idx):
-                if idx >= len(r): return 0
-                val = r.iloc[idx]
-                return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
-                
-            def get_str(r, idx):
-                if idx >= len(r): return None
-                val = r.iloc[idx]
-                return str(val) if pd.notna(val) else None
+            log.culls_male = get_int(row, idx_cull_m)
+            log.culls_female = get_int(row, idx_cull_f)
+            log.mortality_male = get_int(row, idx_dead_m)
+            log.mortality_female = get_int(row, idx_dead_f)
 
-            def get_time(r, idx):
-                if idx >= len(r): return None
-                val = r.iloc[idx]
-                if pd.isna(val): return None
-                if isinstance(val, str): return val
-                return val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)
+            log.feed_male_gp_bird = feed_check_m
+            log.feed_female_gp_bird = feed_check_f
 
-            log.culls_male = get_int(row, 2)
-            log.culls_female = get_int(row, 3)
-            log.mortality_male = get_int(row, 4)
-            log.mortality_female = get_int(row, 5)
+            log.eggs_collected = get_int(row, idx_eggs)
+            log.cull_eggs_jumbo = get_int(row, idx_jumbo)
+            log.cull_eggs_small = get_int(row, idx_small)
+            log.cull_eggs_abnormal = get_int(row, idx_abnormal)
+            log.cull_eggs_crack = get_int(row, idx_crack)
+            log.egg_weight = get_float(row, idx_egg_weight)
 
-            log.feed_male_gp_bird = get_float(row, 16)
-            log.feed_female_gp_bird = get_float(row, 17)
+            log.water_reading_1 = get_int(row, idx_w1)
+            log.water_reading_2 = get_int(row, idx_w2)
+            log.water_reading_3 = get_int(row, idx_w3)
 
-            log.eggs_collected = get_int(row, 24)
-            log.cull_eggs_jumbo = get_int(row, 25)
-            log.cull_eggs_small = get_int(row, 26)
-            log.cull_eggs_abnormal = get_int(row, 27)
-            log.cull_eggs_crack = get_int(row, 28)
-            log.egg_weight = get_float(row, 29)
+            log.light_on_time = get_time(row, idx_light_on)
+            log.light_off_time = get_time(row, idx_light_off)
+            log.feed_cleanup_start = get_time(row, idx_feed_start)
+            log.feed_cleanup_end = get_time(row, idx_feed_end)
 
-            log.water_reading_1 = get_int(row, 43)
-            log.water_reading_2 = get_int(row, 44)
-            log.water_reading_3 = get_int(row, 45)
-
-            log.light_on_time = get_time(row, 50)
-            log.light_off_time = get_time(row, 51)
-            log.feed_cleanup_start = get_time(row, 53)
-            log.feed_cleanup_end = get_time(row, 54)
-
-            val_rem = row.iloc[56] if len(row) > 56 else None
+            val_rem = row.iloc[idx_remarks] if (idx_remarks and len(row) > idx_remarks) else None
             log.clinical_notes = str(val_rem) if pd.notna(val_rem) else None
 
-            bw_m = get_float(row, 39)
-            bw_f = get_float(row, 41)
-            unif_m = get_float(row, 40)
-            unif_f = get_float(row, 42)
+            bw_m = get_float(row, idx_bw_m)
+            bw_f = get_float(row, idx_bw_f)
+            unif_m = get_float(row, idx_unif_m)
+            unif_f = get_float(row, idx_unif_f)
 
             has_bw = (bw_m > 0 or bw_f > 0)
 
@@ -1798,29 +1867,29 @@ def process_import(file):
 
                 if i + 1 < len(data_rows):
                     row2 = data_rows[i+1]
-                    bw_m2 = get_float(row2, 39)
-                    bw_f2 = get_float(row2, 41)
+                    bw_m2 = get_float(row2, idx_bw_m)
+                    bw_f2 = get_float(row2, idx_bw_f)
                     if bw_m2 > 0 or bw_f2 > 0:
                         log.bw_male_p2 = bw_m2
-                        log.unif_male_p2 = get_float(row2, 40)
+                        log.unif_male_p2 = get_float(row2, idx_unif_m)
                         log.bw_female_p2 = bw_f2
-                        log.unif_female_p2 = get_float(row2, 42)
+                        log.unif_female_p2 = get_float(row2, idx_unif_f)
                         partition_rows_indices.add(i+1)
 
                 if i + 2 < len(data_rows):
                     row3 = data_rows[i+2]
-                    bw_f3 = get_float(row3, 41)
+                    bw_f3 = get_float(row3, idx_bw_f)
                     if bw_f3 > 0:
                         log.bw_female_p3 = bw_f3
-                        log.unif_female_p3 = get_float(row3, 42)
+                        log.unif_female_p3 = get_float(row3, idx_unif_f)
                         partition_rows_indices.add(i+2)
 
                 if i + 3 < len(data_rows):
                     row4 = data_rows[i+3]
-                    bw_f4 = get_float(row4, 41)
+                    bw_f4 = get_float(row4, idx_bw_f)
                     if bw_f4 > 0:
                         log.bw_female_p4 = bw_f4
-                        log.unif_female_p4 = get_float(row4, 42)
+                        log.unif_female_p4 = get_float(row4, idx_unif_f)
                         partition_rows_indices.add(i+3)
 
             if i in partition_rows_indices:
