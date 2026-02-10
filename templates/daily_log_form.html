@@ -10,7 +10,7 @@
 {% else %}
   <form method="POST" enctype="multipart/form-data">
     <div class="card mb-3">
-      <div class="card-header bg-primary text-white">General Info</div>
+      <div class="card-header sticky-header bg-primary text-white">General Info</div>
       <div class="card-body">
         <div class="mb-3">
           <label for="house_id" class="form-label">House</label>
@@ -44,7 +44,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-info text-dark">Mortality, Culls & Transfers</div>
+      <div class="card-header sticky-header bg-info text-dark">Mortality, Culls & Transfers</div>
       <div class="card-body">
         <h5 class="card-title">Production (Male & Female)</h5>
         <div class="row">
@@ -95,7 +95,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-success text-white">Feed</div>
+      <div class="card-header sticky-header bg-success text-white">Feed</div>
       <div class="card-body">
         <div class="row mb-3">
             <div class="col-6">
@@ -139,7 +139,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-info text-white">Water Readings (Enter Whole Numbers)</div>
+      <div class="card-header sticky-header bg-info text-white">Water Readings (Enter Whole Numbers)</div>
       <div class="card-body">
         <div class="row">
           <div class="col-4 mb-2">
@@ -170,7 +170,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-warning text-dark">Production</div>
+      <div class="card-header sticky-header bg-warning text-dark">Production</div>
       <div class="card-body">
         <div class="mb-3">
           <label class="form-label">Eggs Collected</label>
@@ -191,7 +191,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+      <div class="card-header sticky-header bg-secondary text-white d-flex justify-content-between align-items-center">
         <span>Body Weight & Uniformity</span>
         <div class="form-check form-switch text-light">
            <input class="form-check-input" type="checkbox" id="is_weighing_day" name="is_weighing_day" onchange="togglePartitions()" {{ 'checked' if log and log.is_weighing_day else '' }}>
@@ -278,7 +278,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-dark text-white">Other & Clinical</div>
+      <div class="card-header sticky-header bg-dark text-white">Other & Clinical</div>
       <div class="card-body">
         <div class="row mb-3">
           <div class="col-6">
@@ -305,7 +305,7 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header bg-danger text-white">Medication Record (Optional)</div>
+      <div class="card-header sticky-header bg-danger text-white">Medication Record (Optional)</div>
       <div class="card-body">
         <div class="alert alert-light border small">
             Fill this section only if you want to record a NEW medication usage or program starting/occurring today.

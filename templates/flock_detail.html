@@ -4,7 +4,7 @@
 <h2>Flock Details: {{ flock.batch_id }}</h2>
 
 <div class="card mb-4">
-  <div class="card-header">
+  <div class="card-header sticky-header">
     Overview
   </div>
   <div class="card-body">
@@ -23,9 +23,9 @@
 
 {% if weekly_data %}
 <h3>Weekly Summary</h3>
-<div class="table-responsive mb-4">
+<div class="table-responsive table-responsive-sticky mb-4">
   <table class="table table-bordered table-sm">
-    <thead class="table-light">
+    <thead class="table-light sticky-table-header">
       <tr>
         <th>Week</th>
         <th>Mortality (M/F)</th>
@@ -51,7 +51,7 @@
 
 <!-- Male Chart -->
 <div class="card mb-4">
-  <div class="card-header d-flex justify-content-between align-items-center">
+  <div class="card-header sticky-header d-flex justify-content-between align-items-center">
     Performance Charts
     <div>
         <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
@@ -67,7 +67,7 @@
 
 <!-- Female Chart -->
 <div class="card mb-4">
-  <div class="card-header">Female Statistics (BW & Uniformity)</div>
+  <div class="card-header sticky-header">Female Statistics (BW & Uniformity)</div>
   <div class="card-body">
     <canvas id="femaleChart"></canvas>
   </div>
@@ -75,7 +75,7 @@
 
 <!-- General Performance Chart -->
 <div class="card mb-4">
-  <div class="card-header">General Performance</div>
+  <div class="card-header sticky-header">General Performance</div>
   <div class="card-body">
     <canvas id="generalChart"></canvas>
   </div>
@@ -299,9 +299,9 @@
 </script>
 
 <h3>Daily Logs</h3>
-<div class="table-responsive">
+<div class="table-responsive table-responsive-sticky">
   <table class="table table-striped table-sm">
-    <thead>
+    <thead class="sticky-table-header">
       <tr>
         <th>Date</th>
         <th>Mortality (M/F)</th>
