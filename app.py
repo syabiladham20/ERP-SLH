@@ -273,6 +273,44 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_male = db.Column(db.Float, default=0.0)
     bw_female = db.Column(db.Float, default=0.0)
 
+class Hatchability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    setting_date = db.Column(db.Date, nullable=False)
+    candling_date = db.Column(db.Date, nullable=False)
+    hatching_date = db.Column(db.Date, nullable=False)
+
+    egg_set = db.Column(db.Integer, default=0)
+    clear_eggs = db.Column(db.Integer, default=0) # Infertile
+    rotten_eggs = db.Column(db.Integer, default=0) # Contaminated
+    hatched_chicks = db.Column(db.Integer, default=0) # Total Hatched
+
+    male_ratio_pct = db.Column(db.Float, nullable=True) # Optional
+
+    flock = db.relationship('Flock', backref=db.backref('hatchability_data', lazy=True, cascade="all, delete-orphan"))
+
+    @property
+    def hatchable_eggs(self):
+        return self.egg_set - self.clear_eggs - self.rotten_eggs
+
+    @property
+    def hatchability_pct(self):
+        # Hatch of Total
+        return (self.hatched_chicks / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def fertile_egg_pct(self):
+        # Hatchable / Egg Set (or Fertility %)
+        return (self.hatchable_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def clear_egg_pct(self):
+        return (self.clear_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def rotten_egg_pct(self):
+        return (self.rotten_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
 # --- Initialization Helpers ---
 
 def initialize_sampling_schedule(flock_id):
@@ -1135,6 +1173,49 @@ def upload_sampling_result(id, event_id):
 def flock_custom_dashboard(id):
     flock = Flock.query.get_or_404(id)
     return render_template('flock_dashboard_custom.html', flock=flock)
+
+@app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
+def flock_hatchability(id):
+    flock = Flock.query.get_or_404(id)
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            try:
+                setting_date = datetime.strptime(request.form.get('setting_date'), '%Y-%m-%d').date()
+                candling_date = datetime.strptime(request.form.get('candling_date'), '%Y-%m-%d').date()
+                hatching_date = datetime.strptime(request.form.get('hatching_date'), '%Y-%m-%d').date()
+
+                h = Hatchability(
+                    flock_id=flock.id,
+                    setting_date=setting_date,
+                    candling_date=candling_date,
+                    hatching_date=hatching_date,
+                    egg_set=int(request.form.get('egg_set') or 0),
+                    clear_eggs=int(request.form.get('clear_eggs') or 0),
+                    rotten_eggs=int(request.form.get('rotten_eggs') or 0),
+                    hatched_chicks=int(request.form.get('hatched_chicks') or 0),
+                    male_ratio_pct=float(request.form.get('male_ratio_pct')) if request.form.get('male_ratio_pct') else None
+                )
+                db.session.add(h)
+                db.session.commit()
+                flash('Hatchability record added.', 'success')
+            except ValueError as e:
+                flash(f'Error adding record: {e}', 'danger')
+
+        return redirect(url_for('flock_hatchability', id=id))
+
+    records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
+    return render_template('flock_hatchability.html', flock=flock, records=records)
+
+@app.route('/flock/<int:id>/hatchability/delete/<int:record_id>', methods=['POST'])
+def delete_hatchability(id, record_id):
+    record = Hatchability.query.get_or_404(record_id)
+    if record.flock_id != id:
+        return "Unauthorized", 403
+    db.session.delete(record)
+    db.session.commit()
+    flash('Record deleted.', 'info')
+    return redirect(url_for('flock_hatchability', id=id))
 
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
@@ -2165,8 +2246,9 @@ def get_custom_data(flock_id):
         except ValueError: pass
 
     logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+    hatchability_data = Hatchability.query.filter_by(flock_id=flock_id).all()
 
-    result = calculate_metrics(logs, flock, metrics, start_date=start_date, end_date=end_date)
+    result = calculate_metrics(logs, flock, metrics, hatchability_data=hatchability_data, start_date=start_date, end_date=end_date)
     return json.dumps(result)
 
 @app.route('/api/house/<int:house_id>/dashboard_config')
