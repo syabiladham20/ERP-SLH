@@ -21,21 +21,60 @@
                 </div>
                 <div class="card-body">
                     <div class="row mb-2">
-                        <div class="col-6">Intake: {{ flock.intake_date }}</div>
-                        <div class="col-6">Start: {{ flock.intake_male }}M / {{ flock.intake_female }}F</div>
+                        <div class="col-6">
+                            Intake: {{ flock.intake_date }}<br>
+                            <small class="text-muted">Age: {{ flock.age_weeks }}W {{ flock.age_days }}D</small>
+                        </div>
+                        <div class="col-6 text-end">Start: {{ flock.intake_male }}M / {{ flock.intake_female }}F</div>
                     </div>
                     <hr>
                     <div class="row text-center">
+                        {% if flock.phase == 'Rearing' %}
                         <div class="col-6 border-end">
                             <small class="text-muted">Rearing Mort %</small><br>
                             <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
                             <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</strong>
                         </div>
                         <div class="col-6">
+                            <small class="text-muted">Daily Mort %</small><br>
+                            {% if flock.daily_stats.has_today %}
+                                M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                                <br>
+                                F: {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="col-4 border-end">
                             <small class="text-muted">Prod Mort %</small><br>
                             <strong>M: {{ "%.2f"|format(flock.prod_mort_m_pct) }}%</strong><br>
                             <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</strong>
                         </div>
+                        <div class="col-4 border-end">
+                            <small class="text-muted">Daily Mort %</small><br>
+                            {% if flock.daily_stats.has_today %}
+                                M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                                <br>
+                                F: {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">Egg Prod %</small><br>
+                            {% if flock.daily_stats.has_today %}
+                                <strong>{{ "%.2f"|format(flock.daily_stats.egg_pct) }}%</strong>
+                                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓</span>{% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card-footer d-flex justify-content-between">

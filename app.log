@@ -8,171 +8,37 @@
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:50:13] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:50:13] "GET /static/css/custom.css HTTP/1.1" 200 -
- * Detected change in '/app/verification/verify_custom_dashboard_features.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:50:40] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:50:40] "GET /static/css/custom.css HTTP/1.1" 200 -
- * Detected change in '/app/verification/verify_custom_dashboard_features.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:51:07] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:07] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:07] "GET /flock/2 HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:07] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:51:08] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:08] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:51:08] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:08] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:08] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:09] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:09] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:10] "POST /api/house/4/charts HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:51:10] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
- * Detected change in '/app/verification/verify_custom_dashboard_features.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:53:06] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:53:06] "GET /static/css/custom.css HTTP/1.1" 200 -
- * Detected change in '/app/verification/verify_custom_dashboard_features.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:54:04] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:04] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:04] "GET /flock/2 HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:04] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:05] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:05] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:05] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:05] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:05] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:06] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:06] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "POST /api/house/4/charts HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:07] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
- * Detected change in '/app/verification/verify_custom_dashboard_features.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:54:32] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:32] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:32] "GET /flock/2 HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:32] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:33] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:33] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:33] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:33] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:33] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:34] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:34] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "POST /api/house/4/charts HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "GET /flock/2/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:54:35] "POST /api/flock/2/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:56:06] "[35m[1mGET / HTTP/1.1[0m" 500 -
-Traceback (most recent call last):
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
-    cursor.execute(statement, parameters)
-sqlite3.OperationalError: no such table: flock
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 1536, in __call__
-    return self.wsgi_app(environ, start_response)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 1514, in wsgi_app
-    response = self.handle_exception(e)
-               ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 1511, in wsgi_app
-    response = self.full_dispatch_request()
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 919, in full_dispatch_request
-    rv = self.handle_user_exception(e)
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
-    rv = self.dispatch_request()
-         ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
-    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/app/app.py", line 406, in index
-    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2704, in all
-    return self._iter().all()  # type: ignore
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 2857, in _iter
-    result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
-                                                  ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
-    return self._execute_internal(
-           ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
-    result = conn.execute(
-             ^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
-    return meth(
-           ^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
-    ret = self._execute_context(
-          ^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
-    return self._exec_single_context(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
-    self._handle_dbapi_exception(
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
-    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
-    cursor.execute(statement, parameters)
-sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: flock
-[SQL: SELECT flock.id AS flock_id, flock.house_id AS flock_house_id, flock.batch_id AS flock_batch_id, flock.intake_date AS flock_intake_date, flock.intake_male AS flock_intake_male, flock.intake_female AS flock_intake_female, flock.doa_male AS flock_doa_male, flock.doa_female AS flock_doa_female, flock.status AS flock_status, flock.phase AS flock_phase, flock.production_start_date AS flock_production_start_date, flock.end_date AS flock_end_date, daily_log_1.id AS daily_log_1_id, daily_log_1.flock_id AS daily_log_1_flock_id, daily_log_1.date AS daily_log_1_date, daily_log_1.mortality_male AS daily_log_1_mortality_male, daily_log_1.mortality_female AS daily_log_1_mortality_female, daily_log_1.mortality_male_hosp AS daily_log_1_mortality_male_hosp, daily_log_1.culls_male_hosp AS daily_log_1_culls_male_hosp, daily_log_1.culls_male AS daily_log_1_culls_male, daily_log_1.culls_female AS daily_log_1_culls_female, daily_log_1.males_moved_to_prod AS daily_log_1_males_moved_to_prod, daily_log_1.males_moved_to_hosp AS daily_log_1_males_moved_to_hosp, daily_log_1.feed_program AS daily_log_1_feed_program, daily_log_1.feed_male_gp_bird AS daily_log_1_feed_male_gp_bird, daily_log_1.feed_female_gp_bird AS daily_log_1_feed_female_gp_bird, daily_log_1.eggs_collected AS daily_log_1_eggs_collected, daily_log_1.cull_eggs_jumbo AS daily_log_1_cull_eggs_jumbo, daily_log_1.cull_eggs_small AS daily_log_1_cull_eggs_small, daily_log_1.cull_eggs_abnormal AS daily_log_1_cull_eggs_abnormal, daily_log_1.cull_eggs_crack AS daily_log_1_cull_eggs_crack, daily_log_1.egg_weight AS daily_log_1_egg_weight, daily_log_1.body_weight_male AS daily_log_1_body_weight_male, daily_log_1.body_weight_female AS daily_log_1_body_weight_female, daily_log_1.uniformity_male AS daily_log_1_uniformity_male, daily_log_1.uniformity_female AS daily_log_1_uniformity_female, daily_log_1.is_weighing_day AS daily_log_1_is_weighing_day, daily_log_1.bw_male_p1 AS daily_log_1_bw_male_p1, daily_log_1.bw_male_p2 AS daily_log_1_bw_male_p2, daily_log_1.unif_male_p1 AS daily_log_1_unif_male_p1, daily_log_1.unif_male_p2 AS daily_log_1_unif_male_p2, daily_log_1.bw_female_p1 AS daily_log_1_bw_female_p1, daily_log_1.bw_female_p2 AS daily_log_1_bw_female_p2, daily_log_1.bw_female_p3 AS daily_log_1_bw_female_p3, daily_log_1.bw_female_p4 AS daily_log_1_bw_female_p4, daily_log_1.unif_female_p1 AS daily_log_1_unif_female_p1, daily_log_1.unif_female_p2 AS daily_log_1_unif_female_p2, daily_log_1.unif_female_p3 AS daily_log_1_unif_female_p3, daily_log_1.unif_female_p4 AS daily_log_1_unif_female_p4, daily_log_1.standard_bw_male AS daily_log_1_standard_bw_male, daily_log_1.standard_bw_female AS daily_log_1_standard_bw_female, daily_log_1.water_reading_1 AS daily_log_1_water_reading_1, daily_log_1.water_reading_2 AS daily_log_1_water_reading_2, daily_log_1.water_reading_3 AS daily_log_1_water_reading_3, daily_log_1.water_intake_calculated AS daily_log_1_water_intake_calculated, daily_log_1.light_on_time AS daily_log_1_light_on_time, daily_log_1.light_off_time AS daily_log_1_light_off_time, daily_log_1.feed_cleanup_start AS daily_log_1_feed_cleanup_start, daily_log_1.feed_cleanup_end AS daily_log_1_feed_cleanup_end, daily_log_1.clinical_notes AS daily_log_1_clinical_notes, daily_log_1.photo_path AS daily_log_1_photo_path, daily_log_1.flushing AS daily_log_1_flushing, daily_log_1.feed_code_male_id AS daily_log_1_feed_code_male_id, daily_log_1.feed_code_female_id AS daily_log_1_feed_code_female_id, house_1.id AS house_1_id, house_1.name AS house_1_name
-FROM flock LEFT OUTER JOIN daily_log AS daily_log_1 ON flock.id = daily_log_1.flock_id LEFT OUTER JOIN house AS house_1 ON house_1.id = flock.house_id
-WHERE flock.status = ?]
-[parameters: ('Active',)]
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
-127.0.0.1 - - [09/Feb/2026 07:56:06] "GET /?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:56:06] "GET /?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:56:06] "GET /?__debugger__=yes&cmd=resource&f=console.png&s=TqZLxO79wMUycbiELN0W HTTP/1.1" 200 -
- * Detected change in '/app/seed_flock.py', reloading
- * Restarting with stat
- * Debugger is active!
- * Debugger PIN: 410-907-091
-127.0.0.1 - - [09/Feb/2026 07:57:26] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:26] "GET /static/css/custom.css HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:26] "GET /flock/1 HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:57:27] "GET /flock/1/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:27] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:57:27] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:27] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:27] "POST /api/flock/1/custom_data HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "POST /api/house/4/charts HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "GET /flock/1/custom_dashboard HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "GET /api/metrics HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "GET /api/house/4/dashboard_config HTTP/1.1" 200 -
-127.0.0.1 - - [09/Feb/2026 07:57:28] "POST /api/flock/1/custom_data HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:25] "GET /flocks HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:25] "GET /static/css/custom.css HTTP/1.1" 200 -
+/app/app.py:347: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  flock = Flock.query.get(flock_id)
+/app/app.py:365: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  flock = Flock.query.get(flock_id)
+127.0.0.1 - - [10/Feb/2026 06:40:25] "[32mPOST /flocks HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log?house_id=1&date=2026-02-09 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log?house_id=4&date=2026-02-10 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log?house_id=4&date=2026-02-09 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[32mPOST /daily_log?house_id=4&date=2026-02-09 HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "GET /daily_log?house_id=4&date=2026-02-09 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:26] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:28] "[32mPOST /daily_log?house_id=4&date=2026-02-09 HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 06:40:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:28] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:28] "GET /daily_log?house_id=4&date=2026-02-10 HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:28] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:31] "[32mPOST /daily_log?house_id=4&date=2026-02-10 HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 06:40:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:31] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 06:40:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 06:40:31] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
