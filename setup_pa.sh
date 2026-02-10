@@ -32,6 +32,8 @@ python migrate_schema_v2.py
 python migrate_schema_v3.py
 python migrate_schema_v4.py
 python migrate_schema_v5.py
+python migrate_schema_v6.py
+python migrate_schema_v7.py
 python migrate_dashboard.py
 
 echo "Deployment setup complete!"
