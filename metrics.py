@@ -49,16 +49,32 @@ METRICS_REGISTRY = {
     'body_weight_male': {'label': 'Body Weight Male (g)', 'unit': 'g', 'type': 'raw'},
     'uniformity_female': {'label': 'Uniformity Female (%)', 'unit': '%', 'type': 'raw'},
     'uniformity_male': {'label': 'Uniformity Male (%)', 'unit': '%', 'type': 'raw'},
+
+    # --- Hatchability ---
+    'hatchability_pct': {'label': 'Hatchability (Hatch of Total) %', 'unit': '%', 'type': 'derived'},
+    'fertile_egg_pct': {'label': 'Fertile Egg % (Hatchable)', 'unit': '%', 'type': 'derived'},
+    'clear_egg_pct': {'label': 'Clear Egg %', 'unit': '%', 'type': 'derived'},
+    'rotten_egg_pct': {'label': 'Rotten Egg %', 'unit': '%', 'type': 'derived'},
+    'egg_set': {'label': 'Egg Set', 'unit': '', 'type': 'raw'},
+    'hatched_chicks': {'label': 'Hatched Chicks', 'unit': '', 'type': 'raw'},
+    'male_ratio_pct': {'label': 'Male Ratio %', 'unit': '%', 'type': 'raw'},
 }
 
-def calculate_metrics(logs, flock, requested_metrics):
+def calculate_metrics(logs, flock, requested_metrics, hatchability_data=None, start_date=None, end_date=None):
     """
     Process logs and return a dictionary of lists for requested metrics.
     Also returns 'dates' and 'weeks'.
+    If start_date/end_date provided, filters the output but maintains cumulative state.
     """
     data = {m: [] for m in requested_metrics}
     data['dates'] = []
     data['weeks'] = []
+
+    # Index Hatchability by Setting Date
+    hatch_map = {}
+    if hatchability_data:
+        for h in hatchability_data:
+            hatch_map[h.setting_date] = h
 
     # Init Cumulatives
     cum_mort_m = 0
@@ -70,10 +86,16 @@ def calculate_metrics(logs, flock, requested_metrics):
     start_f = flock.intake_female or 1
 
     for log in logs:
-        data['dates'].append(log.date.isoformat())
-        days_diff = (log.date - flock.intake_date).days
-        week = (days_diff // 7) + 1
-        data['weeks'].append(week)
+        # Check Date Range
+        in_range = True
+        if start_date and log.date < start_date: in_range = False
+        if end_date and log.date > end_date: in_range = False
+
+        if in_range:
+            data['dates'].append(log.date.isoformat())
+            days_diff = (log.date - flock.intake_date).days
+            week = (days_diff // 7) + 1
+            data['weeks'].append(week)
 
         # Update Stocks
         # Note: log.mortality is for THIS day. Stock is Start - Cum(Prev).
@@ -149,12 +171,33 @@ def calculate_metrics(logs, flock, requested_metrics):
         stock_total = curr_stock_m + curr_stock_f
         row_vals['water_per_bird'] = (log.water_intake_calculated * 1000) / stock_total if stock_total > 0 else 0
 
+        # Hatchability Mapping
+        if log.date in hatch_map:
+            h = hatch_map[log.date]
+            row_vals['hatchability_pct'] = h.hatchability_pct
+            row_vals['fertile_egg_pct'] = h.fertile_egg_pct
+            row_vals['clear_egg_pct'] = h.clear_egg_pct
+            row_vals['rotten_egg_pct'] = h.rotten_egg_pct
+            row_vals['egg_set'] = h.egg_set
+            row_vals['hatched_chicks'] = h.hatched_chicks
+            row_vals['male_ratio_pct'] = h.male_ratio_pct
+        else:
+             # Explicitly set to None for missing days to allow spanGaps or gaps
+            row_vals['hatchability_pct'] = None
+            row_vals['fertile_egg_pct'] = None
+            row_vals['clear_egg_pct'] = None
+            row_vals['rotten_egg_pct'] = None
+            row_vals['egg_set'] = None
+            row_vals['hatched_chicks'] = None
+            row_vals['male_ratio_pct'] = None
+
         # Fill Data
-        for m in requested_metrics:
-            val = row_vals.get(m, 0)
-            # Rounding
-            if isinstance(val, float):
-                val = round(val, 2)
-            data[m].append(val)
+        if in_range:
+            for m in requested_metrics:
+                val = row_vals.get(m, 0)
+                # Rounding
+                if isinstance(val, float):
+                    val = round(val, 2)
+                data[m].append(val)
 
     return data

@@ -107,6 +107,10 @@ class DailyLog(db.Model):
     feed_male_gp_bird = db.Column(db.Float, default=0.0)
     feed_female_gp_bird = db.Column(db.Float, default=0.0)
     
+    # Calculated Total Feed (Kg)
+    feed_male = db.Column(db.Float, default=0.0)
+    feed_female = db.Column(db.Float, default=0.0)
+
     eggs_collected = db.Column(db.Integer, default=0)
     
     cull_eggs_jumbo = db.Column(db.Integer, default=0)
@@ -273,6 +277,44 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_male = db.Column(db.Float, default=0.0)
     bw_female = db.Column(db.Float, default=0.0)
 
+class Hatchability(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    setting_date = db.Column(db.Date, nullable=False)
+    candling_date = db.Column(db.Date, nullable=False)
+    hatching_date = db.Column(db.Date, nullable=False)
+
+    egg_set = db.Column(db.Integer, default=0)
+    clear_eggs = db.Column(db.Integer, default=0) # Infertile
+    rotten_eggs = db.Column(db.Integer, default=0) # Contaminated
+    hatched_chicks = db.Column(db.Integer, default=0) # Total Hatched
+
+    male_ratio_pct = db.Column(db.Float, nullable=True) # Optional
+
+    flock = db.relationship('Flock', backref=db.backref('hatchability_data', lazy=True, cascade="all, delete-orphan"))
+
+    @property
+    def hatchable_eggs(self):
+        return self.egg_set - self.clear_eggs - self.rotten_eggs
+
+    @property
+    def hatchability_pct(self):
+        # Hatch of Total
+        return (self.hatched_chicks / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def fertile_egg_pct(self):
+        # Hatchable / Egg Set (or Fertility %)
+        return (self.hatchable_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def clear_egg_pct(self):
+        return (self.clear_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+    @property
+    def rotten_egg_pct(self):
+        return (self.rotten_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
 # --- Initialization Helpers ---
 
 def initialize_sampling_schedule(flock_id):
@@ -403,7 +445,16 @@ def initialize_vaccine_schedule(flock_id):
 
 @app.route('/')
 def index():
-    active_flocks = Flock.query.options(joinedload(Flock.logs)).filter_by(status='Active').all()
+    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+
+    # Helper for natural sorting (VA1, VA2, VA10)
+    import re
+    def natural_sort_key(flock):
+        s = flock.house.name
+        return [int(text) if text.isdigit() else text.lower()
+                for text in re.split('([0-9]+)', s)]
+
+    active_flocks.sort(key=natural_sort_key)
 
     # Enrich with today's status and cumulative mortality split
     today = date.today()
@@ -496,6 +547,16 @@ def index():
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
+        # Batch Name (ID) Update
+        new_batch_id = request.form.get('batch_id').strip()
+        if new_batch_id and new_batch_id != flock.batch_id:
+            # Check for uniqueness
+            existing = Flock.query.filter_by(batch_id=new_batch_id).first()
+            if existing:
+                flash(f'Error: Batch Name "{new_batch_id}" already exists.', 'danger')
+                return render_template('flock_edit.html', flock=flock)
+            flock.batch_id = new_batch_id
+
         intake_date_str = request.form.get('intake_date')
         if intake_date_str:
             flock.intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
@@ -1117,6 +1178,49 @@ def flock_custom_dashboard(id):
     flock = Flock.query.get_or_404(id)
     return render_template('flock_dashboard_custom.html', flock=flock)
 
+@app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
+def flock_hatchability(id):
+    flock = Flock.query.get_or_404(id)
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            try:
+                setting_date = datetime.strptime(request.form.get('setting_date'), '%Y-%m-%d').date()
+                candling_date = datetime.strptime(request.form.get('candling_date'), '%Y-%m-%d').date()
+                hatching_date = datetime.strptime(request.form.get('hatching_date'), '%Y-%m-%d').date()
+
+                h = Hatchability(
+                    flock_id=flock.id,
+                    setting_date=setting_date,
+                    candling_date=candling_date,
+                    hatching_date=hatching_date,
+                    egg_set=int(request.form.get('egg_set') or 0),
+                    clear_eggs=int(request.form.get('clear_eggs') or 0),
+                    rotten_eggs=int(request.form.get('rotten_eggs') or 0),
+                    hatched_chicks=int(request.form.get('hatched_chicks') or 0),
+                    male_ratio_pct=float(request.form.get('male_ratio_pct')) if request.form.get('male_ratio_pct') else None
+                )
+                db.session.add(h)
+                db.session.commit()
+                flash('Hatchability record added.', 'success')
+            except ValueError as e:
+                flash(f'Error adding record: {e}', 'danger')
+
+        return redirect(url_for('flock_hatchability', id=id))
+
+    records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
+    return render_template('flock_hatchability.html', flock=flock, records=records)
+
+@app.route('/flock/<int:id>/hatchability/delete/<int:record_id>', methods=['POST'])
+def delete_hatchability(id, record_id):
+    record = Hatchability.query.get_or_404(record_id)
+    if record.flock_id != id:
+        return "Unauthorized", 403
+    db.session.delete(record)
+    db.session.commit()
+    flash('Record deleted.', 'info')
+    return redirect(url_for('flock_hatchability', id=id))
+
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
     flock = Flock.query.get_or_404(id)
@@ -1299,31 +1403,40 @@ def daily_log():
 
         update_log_from_request(log, request)
 
-        med_name = request.form.get('med_drug_name')
-        if med_name:
-            start_date_val = request.form.get('med_start_date')
-            end_date_val = request.form.get('med_end_date')
+        # Handle Multiple Medications
+        med_names = request.form.getlist('med_drug_name[]')
+        med_dosages = request.form.getlist('med_dosage[]')
+        med_amounts = request.form.getlist('med_amount_used[]')
+        med_start_dates = request.form.getlist('med_start_date[]')
+        med_end_dates = request.form.getlist('med_end_date[]')
+        med_remarks = request.form.getlist('med_remarks[]')
+
+        for i, name in enumerate(med_names):
+            if not name or not name.strip():
+                continue
 
             s_date = log_date
-            if start_date_val:
+            s_date_val = med_start_dates[i] if i < len(med_start_dates) else None
+            if s_date_val:
                 try:
-                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                    s_date = datetime.strptime(s_date_val, '%Y-%m-%d').date()
                 except: pass
 
             e_date = None
-            if end_date_val:
+            e_date_val = med_end_dates[i] if i < len(med_end_dates) else None
+            if e_date_val:
                 try:
-                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                    e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
             med = Medication(
                 flock_id=flock.id,
-                drug_name=med_name,
-                dosage=request.form.get('med_dosage') or '',
-                amount_used=request.form.get('med_amount_used'),
+                drug_name=name,
+                dosage=med_dosages[i] if i < len(med_dosages) else '',
+                amount_used=med_amounts[i] if i < len(med_amounts) else '',
                 start_date=s_date,
                 end_date=e_date,
-                remarks=request.form.get('med_remarks')
+                remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
 
@@ -1380,31 +1493,40 @@ def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
     if request.method == 'POST':
-        med_name = request.form.get('med_drug_name')
-        if med_name:
-            start_date_val = request.form.get('med_start_date')
-            end_date_val = request.form.get('med_end_date')
+        # Handle Multiple Medications
+        med_names = request.form.getlist('med_drug_name[]')
+        med_dosages = request.form.getlist('med_dosage[]')
+        med_amounts = request.form.getlist('med_amount_used[]')
+        med_start_dates = request.form.getlist('med_start_date[]')
+        med_end_dates = request.form.getlist('med_end_date[]')
+        med_remarks = request.form.getlist('med_remarks[]')
+
+        for i, name in enumerate(med_names):
+            if not name or not name.strip():
+                continue
 
             s_date = log.date
-            if start_date_val:
+            s_date_val = med_start_dates[i] if i < len(med_start_dates) else None
+            if s_date_val:
                 try:
-                    s_date = datetime.strptime(start_date_val, '%Y-%m-%d').date()
+                    s_date = datetime.strptime(s_date_val, '%Y-%m-%d').date()
                 except: pass
 
             e_date = None
-            if end_date_val:
+            e_date_val = med_end_dates[i] if i < len(med_end_dates) else None
+            if e_date_val:
                 try:
-                    e_date = datetime.strptime(end_date_val, '%Y-%m-%d').date()
+                    e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
             med = Medication(
                 flock_id=log.flock_id,
-                drug_name=med_name,
-                dosage=request.form.get('med_dosage') or '',
-                amount_used=request.form.get('med_amount_used'),
+                drug_name=name,
+                dosage=med_dosages[i] if i < len(med_dosages) else '',
+                amount_used=med_amounts[i] if i < len(med_amounts) else '',
                 start_date=s_date,
                 end_date=e_date,
-                remarks=request.form.get('med_remarks')
+                remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
 
@@ -1771,6 +1893,7 @@ def update_log_from_request(log, req):
     fc_f_id = req.form.get('feed_code_female_id')
     log.feed_code_female_id = int(fc_f_id) if fc_f_id else None
 
+    # Fallback if only single select used (legacy)
     fc_id = req.form.get('feed_code_id')
     if fc_id and not log.feed_code_male_id:
          log.feed_code_male_id = int(fc_id)
@@ -1779,6 +1902,73 @@ def update_log_from_request(log, req):
 
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
+
+    # --- Calculate Feed Kg ---
+    # Need current stock for calculation.
+    # We must calculate stock BEFORE today's mortality?
+    # Usually: Feed is given to birds alive at start of day (or end of previous day).
+    # Mortality happens during the day.
+    # So stock = Intake - (Cum Mort + Culls up to YESTERDAY).
+
+    # Fetch previous logs to sum mortality
+    # Optimized: We can query the sum directly or iterate if in memory.
+    # Since we are in a request context, let's do a quick query.
+
+    stmt_m = db.session.query(
+        db.func.sum(DailyLog.mortality_male),
+        db.func.sum(DailyLog.culls_male),
+        db.func.sum(DailyLog.males_moved_to_hosp),
+        db.func.sum(DailyLog.males_moved_to_prod)
+    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
+
+    stmt_f = db.session.query(
+        db.func.sum(DailyLog.mortality_female),
+        db.func.sum(DailyLog.culls_female)
+    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
+
+    cum_mort_m = (stmt_m[0] or 0)
+    cum_culls_m = (stmt_m[1] or 0)
+    # Transfers logic: If moved to hosp, they are out of prod.
+    # But wait, males in hosp still eat?
+    # Assuming "Feed Male" covers all males in the house (Prod + Hosp)?
+    # Usually feed is tracked per house.
+    # If so, we just need Total Males Alive in House.
+    # Total Alive = Intake - Total Dead - Total Culled.
+    # Transfers between pens (Prod <-> Hosp) don't change house population.
+    # However, if 'males_moved_to_hosp' means moved OUT of house, that's different.
+    # Based on `DailyLog` model, `males_moved_to_hosp` seems internal.
+    # Let's assume total stock in house.
+
+    # Re-checking stock logic in `index()` route:
+    # curr_m_prod = ... - moved_to_hosp + moved_to_prod
+    # curr_m_hosp = ... + moved_to_hosp - moved_to_prod
+    # Total Males = curr_m_prod + curr_m_hosp.
+    # So transfers cancel out for total house stock.
+
+    start_m = log.flock.intake_male
+    start_f = log.flock.intake_female
+
+    current_stock_m = start_m - cum_mort_m - cum_culls_m
+    current_stock_f = start_f - (stmt_f[0] or 0) - (stmt_f[1] or 0)
+
+    # Feed Multiplier Logic
+    multiplier = 1.0
+    if log.feed_program == 'Skip-a-day':
+        multiplier = 2.0
+    elif log.feed_program == '2/1':
+        multiplier = 1.5
+
+    # Calculate Total Kg
+    # Formula: (g/bird * multiplier * stock) / 1000
+    if current_stock_m > 0:
+        log.feed_male = (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
+    else:
+        log.feed_male = 0.0
+
+    if current_stock_f > 0:
+        log.feed_female = (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
+    else:
+        log.feed_female = 0.0
 
     log.eggs_collected = int(req.form.get('eggs_collected') or 0)
     log.cull_eggs_jumbo = int(req.form.get('cull_eggs_jumbo') or 0)
@@ -2115,9 +2305,22 @@ def get_custom_data(flock_id):
     req_data = request.get_json()
     metrics = req_data.get('metrics', [])
 
-    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+    start_date = None
+    if req_data.get('start_date'):
+        try:
+            start_date = datetime.strptime(req_data.get('start_date'), '%Y-%m-%d').date()
+        except ValueError: pass
 
-    result = calculate_metrics(logs, flock, metrics)
+    end_date = None
+    if req_data.get('end_date'):
+        try:
+            end_date = datetime.strptime(req_data.get('end_date'), '%Y-%m-%d').date()
+        except ValueError: pass
+
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+    hatchability_data = Hatchability.query.filter_by(flock_id=flock_id).all()
+
+    result = calculate_metrics(logs, flock, metrics, hatchability_data=hatchability_data, start_date=start_date, end_date=end_date)
     return json.dumps(result)
 
 @app.route('/api/house/<int:house_id>/dashboard_config')
