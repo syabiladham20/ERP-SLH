@@ -39,10 +39,10 @@
                             <small class="text-muted">Daily Mort %</small><br>
                             {% if flock.daily_stats.has_today %}
                                 M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%
-                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
                                 <br>
                                 F: {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
-                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}

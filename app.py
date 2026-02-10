@@ -664,6 +664,7 @@ def index():
         f.daily_stats = {
             'mort_m_pct': 0, 'mort_f_pct': 0, 'egg_pct': 0,
             'mort_m_trend': 'flat', 'mort_f_trend': 'flat', 'egg_trend': 'flat',
+            'mort_m_diff': 0, 'mort_f_diff': 0, 'egg_diff': 0,
             'has_today': False
         }
 
@@ -689,8 +690,11 @@ def index():
                 yest_f_pct = (stats_yesterday['f_mort'] / sy_f) * 100
                 yest_egg_pct = (stats_yesterday['eggs'] / sy_f) * 100
 
+                f.daily_stats['mort_m_diff'] = today_m_pct - yest_m_pct
+                f.daily_stats['mort_f_diff'] = today_f_pct - yest_f_pct
+                f.daily_stats['egg_diff'] = today_egg_pct - yest_egg_pct
+
                 # Trends (Mortality: Increase = Bad/Red, Decrease = Good/Green)
-                # Note: In template, we will use trend 'up' (red) or 'down' (green) for mortality.
                 if today_m_pct > yest_m_pct: f.daily_stats['mort_m_trend'] = 'up'
                 elif today_m_pct < yest_m_pct: f.daily_stats['mort_m_trend'] = 'down'
 
