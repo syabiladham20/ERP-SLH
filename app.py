@@ -1110,39 +1110,113 @@ def flock_sampling(id):
 def flock_vaccines(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
-        vaccine_id = request.form.get('vaccine_id')
-        v = Vaccine.query.get_or_404(vaccine_id)
+        if 'load_standard' in request.form:
+            if Vaccine.query.filter_by(flock_id=id).count() == 0:
+                initialize_vaccine_schedule(id)
+                flash('Standard schedule loaded.', 'success')
+            else:
+                flash('Schedule is not empty. Cannot load standard.', 'warning')
 
-        actual_date_str = request.form.get('actual_date')
-        if actual_date_str:
-            v.actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
+        elif 'add_row' in request.form:
+            v = Vaccine(flock_id=id, age_code='', vaccine_name='')
+            db.session.add(v)
+            db.session.commit()
+            flash('New row added.', 'success')
 
-        remarks = request.form.get('remarks')
-        if remarks is not None:
-             v.remarks = remarks
+        elif 'delete_id' in request.form:
+            v_id = request.form.get('delete_id')
+            v = Vaccine.query.get(v_id)
+            if v and v.flock_id == id:
+                db.session.delete(v)
+                db.session.commit()
+                flash('Record deleted.', 'info')
 
-        db.session.commit()
-        flash('Vaccine record updated.', 'success')
+        elif 'save_changes' in request.form:
+            # Bulk Update
+            vaccine_ids = [k.split('_')[2] for k in request.form.keys() if k.startswith('v_id_')]
+            updated_count = 0
+
+            for vid in vaccine_ids:
+                v = Vaccine.query.get(vid)
+                if not v or v.flock_id != id: continue
+
+                age_code = request.form.get(f'age_code_{vid}')
+                name = request.form.get(f'vaccine_name_{vid}')
+                route = request.form.get(f'route_{vid}')
+                est_date_str = request.form.get(f'est_date_{vid}')
+                actual_date_str = request.form.get(f'actual_date_{vid}')
+                remarks = request.form.get(f'remarks_{vid}')
+
+                if age_code is not None: v.age_code = age_code
+                if name is not None: v.vaccine_name = name
+                if route is not None: v.route = route
+                if remarks is not None: v.remarks = remarks
+
+                if est_date_str:
+                    try:
+                        v.est_date = datetime.strptime(est_date_str, '%Y-%m-%d').date()
+                    except ValueError: pass
+
+                if actual_date_str:
+                    try:
+                        v.actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
+                    except ValueError: pass
+                elif actual_date_str == '':
+                    v.actual_date = None
+
+                updated_count += 1
+
+            db.session.commit()
+            flash(f'Updated {updated_count} records.', 'success')
+
         return redirect(url_for('flock_vaccines', id=id))
 
-    vaccines = Vaccine.query.filter_by(flock_id=id).order_by(Vaccine.id.asc()).all()
+    vaccines = Vaccine.query.filter_by(flock_id=id).order_by(Vaccine.est_date.asc(), Vaccine.id.asc()).all()
     return render_template('flock_vaccines.html', flock=flock, vaccines=vaccines)
 
 @app.route('/vaccine_schedule')
 def global_vaccine_schedule():
+    import calendar
+    today = date.today()
+
+    try:
+        year = int(request.args.get('year', today.year))
+        month = int(request.args.get('month', today.month))
+    except:
+        year = today.year
+        month = today.month
+
+    cal = calendar.Calendar(firstweekday=6)
+    month_days = cal.monthdatescalendar(year, month)
+
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    start_date = date(year, month, 1)
+    last_day = calendar.monthrange(year, month)[1]
+    end_date = date(year, month, last_day)
+
     active_flocks = Flock.query.filter_by(status='Active').all()
     flock_ids = [f.id for f in active_flocks]
-    vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).order_by(Vaccine.est_date.asc()).all()
 
-    schedule = {}
+    vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).order_by(Vaccine.est_date).all()
+
+    events_by_date = {}
     for v in vaccines:
-        if not v.est_date: continue
-        month_key = v.est_date.strftime('%Y-%m')
-        if month_key not in schedule:
-            schedule[month_key] = []
-        schedule[month_key].append(v)
+        d = v.est_date
+        if d not in events_by_date: events_by_date[d] = []
+        events_by_date[d].append(v)
 
-    return render_template('vaccine_schedule.html', schedule=schedule)
+    return render_template('vaccine_schedule.html',
+                           year=year, month=month,
+                           month_name=calendar.month_name[month],
+                           month_days=month_days,
+                           events_by_date=events_by_date,
+                           prev_month=prev_month, prev_year=prev_year,
+                           next_month=next_month, next_year=next_year,
+                           today=today)
 
 @app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
 def upload_sampling_result(id, event_id):

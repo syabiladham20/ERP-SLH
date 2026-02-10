@@ -3,50 +3,127 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Vaccine Program: {{ flock.batch_id }}</h2>
-    <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary">Back to Flock</a>
-</div>
-
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-sm align-middle">
-                <thead>
-                    <tr>
-                        <th>Age</th>
-                        <th>Est. Date</th>
-                        <th>Vaccine</th>
-                        <th>Route</th>
-                        <th>Doses (Est)</th>
-                        <th>Actual Date</th>
-                        <th>Remarks</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in vaccines %}
-                    <tr class="{{ 'table-success' if v.actual_date else '' }}">
-                        <td>{{ v.age_code }}</td>
-                        <td>{{ v.est_date }}</td>
-                        <td>{{ v.vaccine_name }}</td>
-                        <td>{{ v.route }}</td>
-                        <td>{{ v.dose_count }}</td>
-                        <form action="{{ url_for('flock_vaccines', id=flock.id) }}" method="POST">
-                            <input type="hidden" name="vaccine_id" value="{{ v.id }}">
-                            <td>
-                                <input type="date" name="actual_date" class="form-control form-control-sm" value="{{ v.actual_date or '' }}">
-                            </td>
-                            <td>
-                                <input type="text" name="remarks" class="form-control form-control-sm" value="{{ v.remarks or '' }}" placeholder="Remarks">
-                            </td>
-                            <td>
-                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
-                            </td>
-                        </form>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div>
+        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary">Back to Flock</a>
     </div>
 </div>
+
+<form method="POST" id="vaccineForm">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Schedule</h5>
+            <div>
+                {% if not vaccines %}
+                <button type="submit" name="load_standard" value="1" class="btn btn-warning btn-sm">Load Standard Schedule</button>
+                {% endif %}
+                <button type="submit" name="add_row" value="1" class="btn btn-info btn-sm text-white">+ Add Row</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm align-middle" id="vaccineTable" data-intake-date="{{ flock.intake_date }}">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Age</th>
+                            <th style="width: 140px;">Est. Date</th>
+                            <th>Vaccine</th>
+                            <th>Route</th>
+                            <th style="width: 100px;">Doses (Est)</th>
+                            <th style="width: 140px;">Actual Date</th>
+                            <th>Remarks</th>
+                            <th style="width: 80px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in vaccines %}
+                        <tr class="{{ 'table-success' if v.actual_date else '' }}">
+                            <td>
+                                <input type="hidden" name="v_id_{{ v.id }}" value="{{ v.id }}">
+                                <input type="text" name="age_code_{{ v.id }}" class="form-control form-control-sm age-input" value="{{ v.age_code }}" data-row-id="{{ v.id }}">
+                            </td>
+                            <td>
+                                <input type="date" name="est_date_{{ v.id }}" id="est_date_{{ v.id }}" class="form-control form-control-sm" value="{{ v.est_date or '' }}">
+                            </td>
+                            <td>
+                                <input type="text" name="vaccine_name_{{ v.id }}" class="form-control form-control-sm" value="{{ v.vaccine_name }}">
+                            </td>
+                            <td>
+                                <input type="text" name="route_{{ v.id }}" class="form-control form-control-sm" value="{{ v.route or '' }}">
+                            </td>
+                            <td>{{ v.dose_count }}</td>
+                            <td>
+                                <input type="date" name="actual_date_{{ v.id }}" class="form-control form-control-sm" value="{{ v.actual_date or '' }}">
+                            </td>
+                            <td>
+                                <input type="text" name="remarks_{{ v.id }}" class="form-control form-control-sm" value="{{ v.remarks or '' }}" placeholder="Remarks">
+                            </td>
+                            <td>
+                                <button type="submit" name="delete_id" value="{{ v.id }}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this row?');">Del</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">No vaccine schedule found. Click "Load Standard Schedule" or "Add Row".</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" name="save_changes" value="1" class="btn btn-primary">Save All Changes</button>
+        </div>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.getElementById('vaccineTable');
+        const intakeDateStr = table.getAttribute('data-intake-date');
+
+        if (!intakeDateStr) return;
+
+        const parts = intakeDateStr.split('-');
+        // Note: months are 0-based in JS Date
+        const intakeDate = new Date(parts[0], parts[1] - 1, parts[2]);
+
+        table.addEventListener('change', function(e) {
+            if (e.target.classList.contains('age-input')) {
+                const ageCode = e.target.value.trim().toUpperCase();
+                const rowId = e.target.getAttribute('data-row-id');
+                const estDateInput = document.getElementById('est_date_' + rowId);
+
+                if (!estDateInput) return;
+
+                let offsetDays = 0;
+                let valid = false;
+
+                if (ageCode.startsWith('D')) {
+                    const days = parseInt(ageCode.substring(1));
+                    if (!isNaN(days)) {
+                        offsetDays = days - 1;
+                        valid = true;
+                    }
+                } else if (ageCode.startsWith('W')) {
+                    const weeks = parseInt(ageCode.substring(1));
+                    if (!isNaN(weeks)) {
+                        offsetDays = weeks * 7;
+                        valid = true;
+                    }
+                }
+
+                if (valid) {
+                    const newDate = new Date(intakeDate);
+                    newDate.setDate(newDate.getDate() + offsetDays);
+
+                    const yyyy = newDate.getFullYear();
+                    const mm = String(newDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(newDate.getDate()).padStart(2, '0');
+
+                    estDateInput.value = `${yyyy}-${mm}-${dd}`;
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}

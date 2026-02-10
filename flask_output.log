@@ -1,0 +1,24 @@
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.2:5000
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 436-511-457
+127.0.0.1 - - [10/Feb/2026 03:21:13] "GET /flock/1/vaccines HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 03:21:13] "GET /static/css/custom.css HTTP/1.1" 200 -
+/app/app.py:365: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  flock = Flock.query.get(flock_id)
+127.0.0.1 - - [10/Feb/2026 03:21:14] "[32mPOST /flock/1/vaccines HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 03:21:14] "GET /flock/1/vaccines HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 03:21:15] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+/app/app.py:1140: LegacyAPIWarning: The Query.get() method is considered legacy as of the 1.x series of SQLAlchemy and becomes a legacy construct in 2.0. The method is now available as Session.get() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+  v = Vaccine.query.get(vid)
+127.0.0.1 - - [10/Feb/2026 03:21:18] "[32mPOST /flock/1/vaccines HTTP/1.1[0m" 302 -
+127.0.0.1 - - [10/Feb/2026 03:21:18] "GET /flock/1/vaccines HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 03:21:18] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [10/Feb/2026 03:21:19] "GET /vaccine_schedule HTTP/1.1" 200 -
+127.0.0.1 - - [10/Feb/2026 03:21:19] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
