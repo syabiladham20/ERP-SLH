@@ -1043,19 +1043,30 @@ def view_flock(id):
     start_m = flock.intake_male or 1
     start_f = flock.intake_female or 1
     
+    # Pre-fetch medications
+    medications = Medication.query.filter_by(flock_id=id).all()
+    enriched_logs = []
+
     for log in logs:
+        # --- Stock Calculation (Start of Day) ---
+        current_stock_m = start_m - cum_mort_m - cum_cull_m
+        current_stock_f = start_f - cum_mort_f - cum_cull_f
+
+        # Accumulate for Chart and Next Loop
         cum_mort_m += log.mortality_male
         cum_mort_f += log.mortality_female
         cum_cull_m += log.culls_male
         cum_cull_f += log.culls_female
 
-        current_stock_f = start_f - cum_mort_f - cum_cull_f
-        if current_stock_f <= 0: current_stock_f = 1
-        
+        # Safe stock for division
+        safe_stock_f = current_stock_f if current_stock_f > 0 else 1
+        safe_stock_m = current_stock_m if current_stock_m > 0 else 1
+
+        # --- Chart Data Population ---
         chart_data['mortality_cum_male'].append(round((cum_mort_m / start_m) * 100, 2))
         chart_data['mortality_cum_female'].append(round((cum_mort_f / start_f) * 100, 2))
         
-        egg_prod = (log.eggs_collected / current_stock_f) * 100
+        egg_prod = (log.eggs_collected / safe_stock_f) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
 
         def val_or_null(v):
@@ -1093,7 +1104,80 @@ def view_flock(id):
         chart_data['unif_male'].append(val_or_null(log.uniformity_male))
         chart_data['unif_female'].append(val_or_null(log.uniformity_female))
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(logs)), weekly_data=weekly_data, chart_data=chart_data)
+        # --- Enriched Log Calculation ---
+
+        # Lighting
+        lighting_hours = 0
+        if log.light_on_time and log.light_off_time:
+            try:
+                fmt = '%H:%M'
+                t1 = datetime.strptime(log.light_on_time, fmt)
+                t2 = datetime.strptime(log.light_off_time, fmt)
+                diff = (t2 - t1).total_seconds() / 3600
+                if diff < 0: diff += 24
+                lighting_hours = round(diff, 1)
+            except: pass
+
+        # Medications
+        active_meds = []
+        for m in medications:
+            if m.start_date <= log.date:
+                if m.end_date is None or m.end_date >= log.date:
+                    active_meds.append(m.drug_name)
+        meds_str = ", ".join(active_meds)
+
+        # Feed Calculation (Total Kg)
+        multiplier = 1.0
+        if log.feed_program == 'Skip-a-day':
+            multiplier = 2.0
+        elif log.feed_program == '2/1':
+            multiplier = 1.5
+
+        feed_total_kg = 0.0
+        if current_stock_m > 0:
+            feed_total_kg += (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
+        if current_stock_f > 0:
+            feed_total_kg += (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
+
+        # Cull Eggs & Percentages
+        jumbo = log.cull_eggs_jumbo
+        small = log.cull_eggs_small
+        crack = log.cull_eggs_crack
+        abnormal = log.cull_eggs_abnormal
+
+        total_culls = jumbo + small + crack + abnormal
+        hatching_eggs = log.eggs_collected - total_culls
+
+        def safe_pct(n, d):
+            return (n / d * 100) if d > 0 else 0.0
+
+        egg_data = {
+            'jumbo': jumbo,
+            'jumbo_pct': safe_pct(jumbo, log.eggs_collected),
+            'small': small,
+            'small_pct': safe_pct(small, log.eggs_collected),
+            'crack': crack,
+            'crack_pct': safe_pct(crack, log.eggs_collected),
+            'abnormal': abnormal,
+            'abnormal_pct': safe_pct(abnormal, log.eggs_collected),
+            'hatching': hatching_eggs,
+            'hatching_pct': safe_pct(hatching_eggs, log.eggs_collected),
+            'total_culls': total_culls,
+            'total_culls_pct': safe_pct(total_culls, log.eggs_collected)
+        }
+
+        enriched_logs.append({
+            'log': log,
+            'stock_male': current_stock_m,
+            'stock_female': current_stock_f,
+            'lighting_hours': lighting_hours,
+            'medications': meds_str,
+            'egg_data': egg_data,
+            'egg_prod_pct': egg_prod,
+            'total_feed': feed_total_kg
+        })
+
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data)
 
 @app.route('/flock/<int:id>/charts')
 def flock_charts(id):
