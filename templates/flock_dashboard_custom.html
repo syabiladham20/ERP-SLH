@@ -83,7 +83,10 @@
                         <label class="form-label">Chart Type</label>
                         <select class="form-select" id="chartType">
                             <option value="line">Line Chart</option>
-                            <option value="bar">Bar Chart</option>
+                            <option value="bar">Bar Chart (Clustered)</option>
+                            <option value="stacked_bar">Stacked Bar Chart</option>
+                            <option value="combo">Combo (Bar + Line)</option>
+                            <option value="combo_stacked">Combo (Stacked Bar + Line)</option>
                         </select>
                     </div>
 
@@ -216,9 +219,10 @@
                     <div class="d-flex align-items-center">
                         <input class="form-check-input me-2" type="checkbox" value="${key}" id="${prefix}_check_${key}">
                         <label class="form-check-label small flex-grow-1 text-wrap" for="${prefix}_check_${key}">
-                            ${m.label}
+                            ${m.label} <small class="text-muted">(${m.unit})</small>
                         </label>
                         <select class="form-select form-select-sm py-0 ps-1 pe-3" id="${prefix}_type_${key}" style="width: 70px; height: 24px; font-size: 0.75rem;">
+                            <option value="">Default</option>
                             <option value="line">Line</option>
                             <option value="bar">Bar</option>
                         </select>
@@ -332,10 +336,29 @@
         const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#20c997'];
         let colorIdx = 0;
 
-        function addDataset(m, axis) {
+        // Determine Defaults based on Chart Type
+        let mainType = 'line';
+        let leftTypeDefault = 'line';
+        let rightTypeDefault = 'line';
+        let isStacked = false;
+
+        if (chart.chart_type === 'bar') {
+            mainType = 'bar'; leftTypeDefault = 'bar'; rightTypeDefault = 'bar';
+        } else if (chart.chart_type === 'stacked_bar') {
+            mainType = 'bar'; leftTypeDefault = 'bar'; rightTypeDefault = 'bar'; isStacked = true;
+        } else if (chart.chart_type === 'combo') {
+            mainType = 'bar'; leftTypeDefault = 'bar'; rightTypeDefault = 'line';
+        } else if (chart.chart_type === 'combo_stacked') {
+            mainType = 'bar'; leftTypeDefault = 'bar'; rightTypeDefault = 'line'; isStacked = true;
+        }
+
+        function addDataset(m, axis, defaultType) {
             if (!CURRENT_DATA[m]) return;
 
-            const type = metricTypes[m] || chart.chart_type || 'line';
+            // Use per-metric type if set, otherwise default
+            let type = metricTypes[m] || defaultType;
+            if (type === '') type = defaultType;
+
             const color = colors[colorIdx % colors.length];
 
             datasets.push({
@@ -350,12 +373,13 @@
                 fill: false,
                 borderWidth: type === 'bar' ? 1 : 2,
                 pointRadius: type === 'line' ? 2 : 0,
+                stack: (isStacked && type === 'bar') ? 'stack0' : undefined
             });
             colorIdx++;
         }
 
-        leftMetrics.forEach(m => addDataset(m, 'y'));
-        rightMetrics.forEach(m => addDataset(m, 'y1'));
+        leftMetrics.forEach(m => addDataset(m, 'y', leftTypeDefault));
+        rightMetrics.forEach(m => addDataset(m, 'y1', rightTypeDefault));
 
         const hasRight = rightMetrics.length > 0;
 
@@ -366,7 +390,6 @@
         const weekRange = CURRENT_DATA.weeks.length > 0 ?
             `${CURRENT_DATA.weeks[0]}–${CURRENT_DATA.weeks[CURRENT_DATA.weeks.length-1]} wk` : '';
 
-        // "Metric Names - Flock (DateRange, WeekRange)"
         const dynamicTitle = `${metricNames} - {{ flock.batch_id }} (${dateRange}, ${weekRange})`;
 
         // Prepare X Labels (Date + Week/Age)
@@ -394,9 +417,7 @@
                 // Detect week changes
                 for (let i = 1; i < CURRENT_DATA.weeks.length; i++) {
                     if (CURRENT_DATA.weeks[i] !== CURRENT_DATA.weeks[i-1]) {
-                         // Week changed between i-1 and i. Draw line at i.
                          const x = xAxis.getPixelForValue(i);
-                         // Actually better to draw between ticks if possible, but at index i is fine
                          ctx.moveTo(x, top);
                          ctx.lineTo(x, bottom);
                     }
@@ -407,7 +428,7 @@
         };
 
         CHART_INSTANCES[chart.id] = new Chart(ctx, {
-            type: chart.chart_type || 'line', // Base type, datasets override
+            type: mainType,
             data: {
                 labels: xLabels,
                 datasets: datasets
@@ -430,13 +451,15 @@
                         ticks: {
                             maxTicksLimit: 20,
                             autoSkip: true
-                        }
+                        },
+                        stacked: isStacked
                     },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
-                        title: { display: true, text: 'Primary Axis' }
+                        title: { display: true, text: 'Primary Axis' },
+                        stacked: isStacked
                     },
                     y1: {
                         type: 'linear',
@@ -445,7 +468,8 @@
                         grid: {
                             drawOnChartArea: false,
                         },
-                        title: { display: true, text: 'Secondary Axis' }
+                        title: { display: true, text: 'Secondary Axis' },
+                        stacked: isStacked
                     },
                 }
             },
@@ -500,8 +524,8 @@
         // Uncheck all
         document.querySelectorAll('#leftAxisMetrics input').forEach(c => c.checked = false);
         document.querySelectorAll('#rightAxisMetrics input').forEach(c => c.checked = false);
-        // Reset types to line
-        document.querySelectorAll('select[id*="_type_"]').forEach(s => s.value = 'line');
+        // Reset types to default
+        document.querySelectorAll('select[id*="_type_"]').forEach(s => s.value = '');
     }
 
     function editChart(chartId) {
@@ -559,14 +583,14 @@
             const m = el.value;
             leftMetrics.push(m);
             const t = document.getElementById('left_type_' + m).value;
-            metricTypes[m] = t;
+            if (t) metricTypes[m] = t;
         });
 
         document.querySelectorAll('#rightAxisMetrics input:checked').forEach(el => {
             const m = el.value;
             rightMetrics.push(m);
             const t = document.getElementById('right_type_' + m).value;
-            metricTypes[m] = t;
+            if (t) metricTypes[m] = t;
         });
 
         if (!title || (leftMetrics.length === 0 && rightMetrics.length === 0)) {
