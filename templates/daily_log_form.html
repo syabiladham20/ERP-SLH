@@ -98,19 +98,29 @@
       <div class="card-header bg-success text-white">Feed</div>
       <div class="card-body">
         <div class="row mb-3">
-            <div class="col-6">
+            <div class="col-md-4">
                 <label class="form-label">Feed Program</label>
                 <select class="form-select" name="feed_program">
                     <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
                     <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
+                    <option value="2/1" {{ 'selected' if log and log.feed_program == '2/1' else '' }}>2/1</option>
                 </select>
             </div>
-            <div class="col-6">
-                <label class="form-label">Feed Code</label>
-                <select class="form-select" name="feed_code_id">
+            <div class="col-md-4">
+                <label class="form-label">Male Feed Code</label>
+                <select class="form-select" name="feed_code_male_id">
                     <option value="">-- Select Code --</option>
                     {% for fc in feed_codes %}
                     <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_male_id == fc.id else '' }}>{{ fc.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Female Feed Code</label>
+                <select class="form-select" name="feed_code_female_id">
+                    <option value="">-- Select Code --</option>
+                    {% for fc in feed_codes %}
+                    <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_female_id == fc.id else '' }}>{{ fc.code }}</option>
                     {% endfor %}
                 </select>
             </div>

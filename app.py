@@ -107,6 +107,10 @@ class DailyLog(db.Model):
     feed_male_gp_bird = db.Column(db.Float, default=0.0)
     feed_female_gp_bird = db.Column(db.Float, default=0.0)
     
+    # Calculated Total Feed (Kg)
+    feed_male = db.Column(db.Float, default=0.0)
+    feed_female = db.Column(db.Float, default=0.0)
+
     eggs_collected = db.Column(db.Integer, default=0)
     
     cull_eggs_jumbo = db.Column(db.Integer, default=0)
@@ -1889,6 +1893,7 @@ def update_log_from_request(log, req):
     fc_f_id = req.form.get('feed_code_female_id')
     log.feed_code_female_id = int(fc_f_id) if fc_f_id else None
 
+    # Fallback if only single select used (legacy)
     fc_id = req.form.get('feed_code_id')
     if fc_id and not log.feed_code_male_id:
          log.feed_code_male_id = int(fc_id)
@@ -1897,6 +1902,73 @@ def update_log_from_request(log, req):
 
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
+
+    # --- Calculate Feed Kg ---
+    # Need current stock for calculation.
+    # We must calculate stock BEFORE today's mortality?
+    # Usually: Feed is given to birds alive at start of day (or end of previous day).
+    # Mortality happens during the day.
+    # So stock = Intake - (Cum Mort + Culls up to YESTERDAY).
+
+    # Fetch previous logs to sum mortality
+    # Optimized: We can query the sum directly or iterate if in memory.
+    # Since we are in a request context, let's do a quick query.
+
+    stmt_m = db.session.query(
+        db.func.sum(DailyLog.mortality_male),
+        db.func.sum(DailyLog.culls_male),
+        db.func.sum(DailyLog.males_moved_to_hosp),
+        db.func.sum(DailyLog.males_moved_to_prod)
+    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
+
+    stmt_f = db.session.query(
+        db.func.sum(DailyLog.mortality_female),
+        db.func.sum(DailyLog.culls_female)
+    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
+
+    cum_mort_m = (stmt_m[0] or 0)
+    cum_culls_m = (stmt_m[1] or 0)
+    # Transfers logic: If moved to hosp, they are out of prod.
+    # But wait, males in hosp still eat?
+    # Assuming "Feed Male" covers all males in the house (Prod + Hosp)?
+    # Usually feed is tracked per house.
+    # If so, we just need Total Males Alive in House.
+    # Total Alive = Intake - Total Dead - Total Culled.
+    # Transfers between pens (Prod <-> Hosp) don't change house population.
+    # However, if 'males_moved_to_hosp' means moved OUT of house, that's different.
+    # Based on `DailyLog` model, `males_moved_to_hosp` seems internal.
+    # Let's assume total stock in house.
+
+    # Re-checking stock logic in `index()` route:
+    # curr_m_prod = ... - moved_to_hosp + moved_to_prod
+    # curr_m_hosp = ... + moved_to_hosp - moved_to_prod
+    # Total Males = curr_m_prod + curr_m_hosp.
+    # So transfers cancel out for total house stock.
+
+    start_m = log.flock.intake_male
+    start_f = log.flock.intake_female
+
+    current_stock_m = start_m - cum_mort_m - cum_culls_m
+    current_stock_f = start_f - (stmt_f[0] or 0) - (stmt_f[1] or 0)
+
+    # Feed Multiplier Logic
+    multiplier = 1.0
+    if log.feed_program == 'Skip-a-day':
+        multiplier = 2.0
+    elif log.feed_program == '2/1':
+        multiplier = 1.5
+
+    # Calculate Total Kg
+    # Formula: (g/bird * multiplier * stock) / 1000
+    if current_stock_m > 0:
+        log.feed_male = (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
+    else:
+        log.feed_male = 0.0
+
+    if current_stock_f > 0:
+        log.feed_female = (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
+    else:
+        log.feed_female = 0.0
 
     log.eggs_collected = int(req.form.get('eggs_collected') or 0)
     log.cull_eggs_jumbo = int(req.form.get('cull_eggs_jumbo') or 0)
