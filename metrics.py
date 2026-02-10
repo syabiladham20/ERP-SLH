@@ -66,6 +66,9 @@ def calculate_metrics(logs, flock, requested_metrics, hatchability_data=None, st
     Also returns 'dates' and 'weeks'.
     If start_date/end_date provided, filters the output but maintains cumulative state.
     """
+    # Filter out special keys that are handled explicitly to avoid double-appending (interleaved 0s)
+    requested_metrics = [m for m in requested_metrics if m not in ('dates', 'weeks')]
+
     data = {m: [] for m in requested_metrics}
     data['dates'] = []
     data['weeks'] = []
