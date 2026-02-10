@@ -35,6 +35,7 @@ python migrate_schema_v5.py
 python migrate_schema_v6.py
 python migrate_schema_v7.py
 python migrate_dashboard.py
+python migrate_schema_v8.py
 
 echo "Deployment setup complete!"
 echo "Please reload your web app in the PythonAnywhere 'Web' tab."
