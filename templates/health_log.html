@@ -10,9 +10,9 @@
     </div>
 </div>
 
-<!-- Calendar View -->
+<!-- Vaccine Schedule Calendar -->
 <div class="card mb-4">
-    <div class="card-header sticky-header bg-primary text-white">Monthly Schedule</div>
+    <div class="card-header sticky-header bg-info text-white">Vaccine Schedule</div>
     <div class="card-body p-0">
         <table class="table table-bordered mb-0" style="table-layout: fixed;">
             <thead class="table-light text-center">
@@ -30,20 +30,59 @@
                 {% for week in month_days %}
                 <tr>
                     {% for day in week %}
-                    <td class="align-top" style="height: 120px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
+                    <td class="align-top" style="height: 100px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
                         <div class="d-flex justify-content-between">
                             <span class="fw-bold {% if day == today %}text-primary{% endif %}">{{ day.day }}</span>
                         </div>
-                        <div class="mt-1 overflow-auto" style="max-height: 90px;">
-                            {% if day in events_by_date %}
-                                {% for event in events_by_date[day] %}
-                                    <div class="mb-1 p-1 rounded {% if event.type == 'Vaccine' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}" style="font-size: 0.75rem;">
-                                        <strong>{{ event.flock.batch_id }}</strong><br>
-                                        {% if event.type == 'Vaccine' %}
-                                            {{ event.obj.vaccine_name }}
-                                        {% else %}
-                                            {{ event.obj.test_type }}
-                                        {% endif %}
+                        <div class="mt-1 overflow-auto" style="max-height: 80px;">
+                            {% if day in vaccine_events_by_date %}
+                                {% for event in vaccine_events_by_date[day] %}
+                                    <div class="mb-1 p-1 rounded bg-info text-dark" style="font-size: 0.75rem;">
+                                        <strong>{{ event.flock.house.name }}</strong> | W{{ event.age }}<br>
+                                        {{ event.obj.vaccine_name }}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Sampling Schedule Calendar -->
+<div class="card mb-4">
+    <div class="card-header sticky-header bg-warning text-dark">Sampling Schedule</div>
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0" style="table-layout: fixed;">
+            <thead class="table-light text-center">
+                <tr>
+                    <th style="width: 14.28%;">Sun</th>
+                    <th style="width: 14.28%;">Mon</th>
+                    <th style="width: 14.28%;">Tue</th>
+                    <th style="width: 14.28%;">Wed</th>
+                    <th style="width: 14.28%;">Thu</th>
+                    <th style="width: 14.28%;">Fri</th>
+                    <th style="width: 14.28%;">Sat</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for week in month_days %}
+                <tr>
+                    {% for day in week %}
+                    <td class="align-top" style="height: 100px; font-size: 0.85rem; background-color: {% if day.month != month %}#f8f9fa{% else %}#fff{% endif %};">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold {% if day == today %}text-primary{% endif %}">{{ day.day }}</span>
+                        </div>
+                        <div class="mt-1 overflow-auto" style="max-height: 80px;">
+                            {% if day in sampling_events_by_date %}
+                                {% for event in sampling_events_by_date[day] %}
+                                    <div class="mb-1 p-1 rounded bg-warning text-dark" style="font-size: 0.75rem;">
+                                        <strong>{{ event.flock.house.name }}</strong> | W{{ event.age }}<br>
+                                        {{ event.obj.test_type }}
                                     </div>
                                 {% endfor %}
                             {% endif %}
@@ -62,11 +101,11 @@
     <form method="GET" action="{{ url_for('health_log') }}" class="d-flex align-items-center">
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
-        <label class="me-2 fw-bold">Select Flock:</label>
+        <label class="me-2 fw-bold">Select House:</label>
         <select name="flock_id" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
             <option value="">-- All Active Flocks --</option>
             {% for f in active_flocks %}
-                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.batch_id }} ({{ f.house.name }})</option>
+                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.house.name }}</option>
             {% endfor %}
         </select>
     </form>
@@ -75,25 +114,35 @@
 <!-- Detailed Lists (Editable) -->
     {% for flock, tasks in flock_tasks.items() %}
     <form method="POST" action="{{ url_for('health_log', year=year, month=month) }}">
+    <input type="hidden" name="flock_id" value="{{ flock.id }}">
     <div class="card mb-4 border-primary">
         <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 text-primary">{{ flock.batch_id }} ({{ flock.house.name }}) - Age: {{ flock.current_week }} Weeks</h5>
+            <h5 class="mb-0 text-primary">{{ flock.house.name }} - Age: {{ flock.current_week }} Weeks</h5>
             <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
         </div>
         <div class="card-body">
 
             <!-- Vaccines -->
-            <h6 class="text-secondary border-bottom pb-2">Vaccines</h6>
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <h6 class="text-secondary mb-0">Vaccines</h6>
+                <div>
+                    {% if not tasks.vaccines %}
+                    <button type="submit" name="load_vaccine_standard" value="1" class="btn btn-warning btn-sm py-0" style="font-size: 0.75rem;">Load Standard</button>
+                    {% endif %}
+                    <button type="submit" name="add_vaccine_row" value="1" class="btn btn-info btn-sm text-white py-0" style="font-size: 0.75rem;">+ Add Row</button>
+                </div>
+            </div>
             <div class="table-responsive table-responsive-sticky mb-3">
                 <table class="table table-sm table-hover align-middle">
                     <thead class="sticky-table-header-offset">
                         <tr>
-                            <th>Age</th>
-                            <th>Est. Date</th>
-                            <th>Actual Date</th>
+                            <th style="width: 70px;">Age</th>
+                            <th style="width: 130px;">Est. Date</th>
+                            <th style="width: 130px;">Actual Date</th>
                             <th>Vaccine Name</th>
-                            <th>Route</th>
-                            <th>Status</th>
+                            <th style="width: 100px;">Route</th>
+                            <th style="width: 80px;">Status</th>
+                            <th style="width: 50px;"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,10 +150,10 @@
                         <tr>
                             <td>{{ v.age_code }}</td>
                             <td>
-                                <input type="date" name="v_est_date_{{ v.id }}" value="{{ v.est_date }}" class="form-control form-control-sm" style="width: 130px;">
+                                <input type="date" name="v_est_date_{{ v.id }}" value="{{ v.est_date }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                                <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm">
                             </td>
                             <td>
                                 <input type="text" name="v_name_{{ v.id }}" value="{{ v.vaccine_name }}" class="form-control form-control-sm">
@@ -118,6 +167,9 @@
                                 {% else %}
                                     <span class="badge bg-secondary">Pending</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <button type="submit" name="delete_vaccine_id" value="{{ v.id }}" class="btn btn-xs btn-outline-danger border-0" onclick="return confirm('Delete?');">&times;</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -212,18 +264,17 @@
             <div class="bg-light p-3 rounded border">
                 <strong>Add New Medication Record</strong>
                 <div class="row g-2 mt-1">
-                    <input type="hidden" name="flock_id" value="{{ flock.id }}">
                     <div class="col-md-3">
-                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name" required>
+                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name">
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage" required>
+                        <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage">
                     </div>
                     <div class="col-md-2">
                         <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Used">
                     </div>
                     <div class="col-md-2">
-                        <input type="date" name="start_date" class="form-control form-control-sm" required>
+                        <input type="date" name="start_date" class="form-control form-control-sm">
                     </div>
                     <div class="col-md-2">
                         <input type="date" name="end_date" class="form-control form-control-sm" placeholder="End Date">

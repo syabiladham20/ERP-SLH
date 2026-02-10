@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Charts: {{ flock.batch_id }}</h2>
+    <h2>Charts: {{ flock.house.name }}</h2>
 
     <div class="filter-controls p-3 mb-4 bg-light rounded">
         <div class="row align-items-end">
@@ -86,7 +86,7 @@
         const element = document.querySelector('.container'); // Capture main container
         const opt = {
             margin:       0.3,
-            filename:     `Report_{{ flock.batch_id }}_${new Date().toISOString().split('T')[0]}.pdf`,
+            filename:     `Report_{{ flock.house.name }}_${new Date().toISOString().split('T')[0]}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2 },
             jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }

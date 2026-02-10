@@ -10,7 +10,7 @@
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>{{ flock.house.name }}</strong> - {{ flock.batch_id }}
+                        <strong>{{ flock.house.name }}</strong>
                         <span class="badge bg-{{ 'primary' if flock.phase == 'Rearing' else 'warning' }}">{{ flock.phase }}</span>
                         {% if flock.has_log_today %}
                             <span class="badge bg-success ms-1" title="Daily Entry Submitted">✅ Today</span>
@@ -96,7 +96,7 @@
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                   </div>
                                   <div class="modal-body">
-                                    <p>Please confirm the <strong>Production Start Date</strong> for {{ flock.batch_id }}.</p>
+                                    <p>Please confirm the <strong>Production Start Date</strong> for {{ flock.house.name }}.</p>
                                     <div class="mb-3">
                                         <label for="prodDate{{ flock.id }}" class="form-label">Start Date</label>
                                         <input type="date" class="form-control" id="prodDate{{ flock.id }}" name="production_start_date" value="{{ today }}" required>

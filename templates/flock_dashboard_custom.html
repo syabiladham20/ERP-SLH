@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Custom Dashboard: {{ flock.batch_id }}</h2>
+    <h2>Custom Dashboard: {{ flock.house.name }}</h2>
     <div>
         <div class="btn-group me-2" role="group">
             <input type="radio" class="btn-check" name="viewMode" id="viewCharts" autocomplete="off" checked>
@@ -390,7 +390,7 @@
         const weekRange = CURRENT_DATA.weeks.length > 0 ?
             `${CURRENT_DATA.weeks[0]}–${CURRENT_DATA.weeks[CURRENT_DATA.weeks.length-1]} wk` : '';
 
-        const dynamicTitle = `${metricNames} - {{ flock.batch_id }} (${dateRange}, ${weekRange})`;
+        const dynamicTitle = `${metricNames} - {{ flock.house.name }} (${dateRange}, ${weekRange})`;
 
         // Prepare X Labels (Date + Week/Age)
         const xLabels = CURRENT_DATA.dates.map((d, i) => {

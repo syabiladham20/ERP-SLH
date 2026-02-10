@@ -1143,7 +1143,7 @@ def toggle_phase(id):
 
 @app.route('/flock/<int:id>')
 def view_flock(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
     
     weekly_data = []
@@ -1345,18 +1345,18 @@ def view_flock(id):
 
 @app.route('/flock/<int:id>/charts')
 def flock_charts(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     return render_template('flock_charts.html', flock=flock)
 
 @app.route('/flock/<int:id>/sampling')
 def flock_sampling(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     events = SamplingEvent.query.filter_by(flock_id=id).order_by(SamplingEvent.age_week.asc()).all()
     return render_template('flock_sampling.html', flock=flock, events=events)
 
 @app.route('/flock/<int:id>/vaccines', methods=['GET', 'POST'])
 def flock_vaccines(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
         if 'load_standard' in request.form:
             if Vaccine.query.filter_by(flock_id=id).count() == 0:
@@ -1497,12 +1497,12 @@ def upload_sampling_result(id, event_id):
 
 @app.route('/flock/<int:id>/custom_dashboard')
 def flock_custom_dashboard(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
 def flock_hatchability(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'add':
@@ -1545,7 +1545,7 @@ def delete_hatchability(id, record_id):
 
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
-    flock = Flock.query.get_or_404(id)
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
 
     date_str = request.args.get('date')
     if date_str:
@@ -2493,9 +2493,10 @@ def health_log():
     today = date.today()
 
     if request.method == 'POST':
+        flock_id_param = request.form.get('flock_id')
+
         if 'add_medication' in request.form:
-             flock_id = request.form.get('flock_id')
-             if flock_id:
+             if flock_id_param:
                  try:
                      s_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
                      e_date = None
@@ -2503,7 +2504,7 @@ def health_log():
                          e_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
 
                      m = Medication(
-                         flock_id=flock_id,
+                         flock_id=flock_id_param,
                          drug_name=request.form.get('drug_name'),
                          dosage=request.form.get('dosage'),
                          amount_used=request.form.get('amount_used'),
@@ -2516,6 +2517,29 @@ def health_log():
                      flash('Medication added.', 'success')
                  except Exception as e:
                      flash(f'Error adding medication: {str(e)}', 'danger')
+
+        elif 'add_vaccine_row' in request.form:
+            if flock_id_param:
+                v = Vaccine(flock_id=flock_id_param, age_code='', vaccine_name='')
+                db.session.add(v)
+                db.session.commit()
+                flash('New vaccine row added.', 'success')
+
+        elif 'load_vaccine_standard' in request.form:
+            if flock_id_param:
+                if Vaccine.query.filter_by(flock_id=flock_id_param).count() == 0:
+                    initialize_vaccine_schedule(flock_id_param)
+                    flash('Standard vaccine schedule loaded.', 'success')
+                else:
+                    flash('Vaccine schedule is not empty. Cannot load standard.', 'warning')
+
+        elif 'delete_vaccine_id' in request.form:
+            v_id = request.form.get('delete_vaccine_id')
+            v = Vaccine.query.get(v_id)
+            if v:
+                db.session.delete(v)
+                db.session.commit()
+                flash('Vaccine record deleted.', 'info')
 
         updated_count = 0
         v_ids = set()
@@ -2619,7 +2643,8 @@ def health_log():
             db.session.commit()
             flash(f'Updated {updated_count} records.', 'success')
 
-        return redirect(url_for('health_log', year=request.args.get('year'), month=request.args.get('month')))
+        # Pass flock_id back to keep view context
+        return redirect(url_for('health_log', year=request.args.get('year'), month=request.args.get('month'), flock_id=request.args.get('flock_id') or flock_id_param))
 
 
     try:
@@ -2641,23 +2666,28 @@ def health_log():
     last_day = calendar.monthrange(year, month)[1]
     end_date = date(year, month, last_day)
 
-    active_flocks = Flock.query.filter_by(status='Active').all()
+    # Eager load house for name display
+    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     flock_ids = [f.id for f in active_flocks]
 
-    events_by_date = {}
+    vaccine_events_by_date = {}
+    sampling_events_by_date = {}
 
     vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).all()
     for v in vaccines:
         d = v.est_date
-        if d not in events_by_date: events_by_date[d] = []
-        events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock})
+        if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
+        # Calculate age
+        age_days = (d - v.flock.intake_date).days
+        age_week = (age_days // 7) + 1
+        vaccine_events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock, 'age': age_week})
 
     samplings = SamplingEvent.query.filter(SamplingEvent.flock_id.in_(flock_ids)).filter(SamplingEvent.scheduled_date >= start_date, SamplingEvent.scheduled_date <= end_date).all()
     for s in samplings:
         d = s.scheduled_date
         if d:
-             if d not in events_by_date: events_by_date[d] = []
-             events_by_date[d].append({'type': 'Sampling', 'obj': s, 'flock': s.flock})
+             if d not in sampling_events_by_date: sampling_events_by_date[d] = []
+             sampling_events_by_date[d].append({'type': 'Sampling', 'obj': s, 'flock': s.flock, 'age': s.age_week})
 
     selected_flock_id = request.args.get('flock_id')
 
@@ -2680,7 +2710,8 @@ def health_log():
         month_days=month_days,
         prev_month=prev_month, prev_year=prev_year,
         next_month=next_month, next_year=next_year,
-        events_by_date=events_by_date,
+        vaccine_events_by_date=vaccine_events_by_date,
+        sampling_events_by_date=sampling_events_by_date,
         active_flocks=active_flocks,
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         flock_tasks=flock_tasks
