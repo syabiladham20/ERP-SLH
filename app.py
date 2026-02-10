@@ -541,6 +541,170 @@ def index():
         days_age = (today - f.intake_date).days
         f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
 
+    # --- Daily Stats & Trends Calculation ---
+    yesterday = today - timedelta(days=1)
+
+    for f in active_flocks:
+        # Initialize Age Display
+        days_diff = (today - f.intake_date).days
+        f.age_weeks = days_diff // 7
+        f.age_days = days_diff % 7
+
+        # Initialize containers
+        stats_today = {'m_mort': 0, 'f_mort': 0, 'eggs': 0, 'stock_m': 0, 'stock_f': 0, 'exists': False}
+        stats_yesterday = {'m_mort': 0, 'f_mort': 0, 'eggs': 0, 'stock_m': 0, 'stock_f': 0, 'exists': False}
+
+        # Re-iterate logs? Or optimize the previous loop?
+        # Since the previous loop modifies stocks cumulatively, we can't easily jump in without re-simulating or modifying the previous loop.
+        # Let's modify the previous loop to capture snapshots.
+        pass # Placeholder to indicate we are modifying the logic above, but for cleanliness I will rewrite the loop block below.
+
+    # Rerunning the logic cleanly:
+
+    active_flocks.sort(key=natural_sort_key)
+
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    for f in active_flocks:
+        logs = sorted(f.logs, key=lambda l: l.date)
+
+        # Check if log exists for today
+        log_today = next((l for l in logs if l.date == today), None)
+        f.has_log_today = True if log_today else False
+
+        rearing_mort_m = 0
+        rearing_mort_f = 0
+        prod_mort_m = 0
+        prod_mort_f = 0
+
+        prod_start_stock_m = f.intake_male
+        prod_start_stock_f = f.intake_female
+
+        prod_start_date = f.production_start_date
+
+        curr_m_prod = f.intake_male
+        curr_m_hosp = 0
+        curr_f = f.intake_female
+
+        in_production = False
+
+        stats_today = {'exists': False}
+        stats_yesterday = {'exists': False}
+
+        for l in logs:
+            # Phase Check
+            if not in_production:
+                if prod_start_date and l.date >= prod_start_date:
+                    in_production = True
+                    prod_start_stock_m = curr_m_prod
+                    prod_start_stock_f = curr_f
+                elif not prod_start_date and l.eggs_collected > 0:
+                    in_production = True
+                    prod_start_stock_m = curr_m_prod
+                    prod_start_stock_f = curr_f
+
+            # Cumulative
+            if in_production:
+                prod_mort_m += l.mortality_male
+                prod_mort_f += l.mortality_female
+            else:
+                rearing_mort_m += l.mortality_male
+                rearing_mort_f += l.mortality_female
+
+            # Snapshot for Daily Stats (Start of Day Stock)
+            stock_m_now = curr_m_prod + curr_m_hosp
+            stock_f_now = curr_f
+
+            if l.date == today:
+                stats_today = {
+                    'm_mort': l.mortality_male, 'f_mort': l.mortality_female, 'eggs': l.eggs_collected,
+                    'stock_m': stock_m_now, 'stock_f': stock_f_now, 'exists': True
+                }
+            if l.date == yesterday:
+                stats_yesterday = {
+                    'm_mort': l.mortality_male, 'f_mort': l.mortality_female, 'eggs': l.eggs_collected,
+                    'stock_m': stock_m_now, 'stock_f': stock_f_now, 'exists': True
+                }
+
+            # Update Stocks
+            mort_m_prod = l.mortality_male
+            mort_m_hosp = l.mortality_male_hosp or 0
+            cull_m_prod = l.culls_male
+            cull_m_hosp = l.culls_male_hosp or 0
+            moved_to_hosp = l.males_moved_to_hosp or 0
+            moved_to_prod = l.males_moved_to_prod or 0
+
+            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
+            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
+
+            if curr_m_prod < 0: curr_m_prod = 0
+            if curr_m_hosp < 0: curr_m_hosp = 0
+
+            curr_f -= (l.mortality_female + l.culls_female)
+            if curr_f < 0: curr_f = 0
+
+        # Assign Cumulative Stats
+        f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
+        f.rearing_mort_f_pct = (rearing_mort_f / f.intake_female * 100) if f.intake_female else 0
+
+        f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
+        f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
+
+        f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
+        f.males_prod_count = curr_m_prod
+        f.males_hosp_count = curr_m_hosp
+
+        # Age
+        days_age = (today - f.intake_date).days
+        f.age_weeks = days_age // 7
+        f.age_days = days_age % 7
+
+        # Daily Stats & Trends
+        f.daily_stats = {
+            'mort_m_pct': 0, 'mort_f_pct': 0, 'egg_pct': 0,
+            'mort_m_trend': 'flat', 'mort_f_trend': 'flat', 'egg_trend': 'flat',
+            'mort_m_diff': 0, 'mort_f_diff': 0, 'egg_diff': 0,
+            'has_today': False
+        }
+
+        if stats_today['exists']:
+            f.daily_stats['has_today'] = True
+
+            s_m = stats_today['stock_m'] if stats_today['stock_m'] > 0 else 1
+            s_f = stats_today['stock_f'] if stats_today['stock_f'] > 0 else 1
+
+            today_m_pct = (stats_today['m_mort'] / s_m) * 100
+            today_f_pct = (stats_today['f_mort'] / s_f) * 100
+            today_egg_pct = (stats_today['eggs'] / s_f) * 100
+
+            f.daily_stats['mort_m_pct'] = today_m_pct
+            f.daily_stats['mort_f_pct'] = today_f_pct
+            f.daily_stats['egg_pct'] = today_egg_pct
+
+            if stats_yesterday['exists']:
+                sy_m = stats_yesterday['stock_m'] if stats_yesterday['stock_m'] > 0 else 1
+                sy_f = stats_yesterday['stock_f'] if stats_yesterday['stock_f'] > 0 else 1
+
+                yest_m_pct = (stats_yesterday['m_mort'] / sy_m) * 100
+                yest_f_pct = (stats_yesterday['f_mort'] / sy_f) * 100
+                yest_egg_pct = (stats_yesterday['eggs'] / sy_f) * 100
+
+                f.daily_stats['mort_m_diff'] = today_m_pct - yest_m_pct
+                f.daily_stats['mort_f_diff'] = today_f_pct - yest_f_pct
+                f.daily_stats['egg_diff'] = today_egg_pct - yest_egg_pct
+
+                # Trends (Mortality: Increase = Bad/Red, Decrease = Good/Green)
+                if today_m_pct > yest_m_pct: f.daily_stats['mort_m_trend'] = 'up'
+                elif today_m_pct < yest_m_pct: f.daily_stats['mort_m_trend'] = 'down'
+
+                if today_f_pct > yest_f_pct: f.daily_stats['mort_f_trend'] = 'up'
+                elif today_f_pct < yest_f_pct: f.daily_stats['mort_f_trend'] = 'down'
+
+                # Trends (Eggs: Increase = Good/Green, Decrease = Bad/Red)
+                if today_egg_pct > yest_egg_pct: f.daily_stats['egg_trend'] = 'up'
+                elif today_egg_pct < yest_egg_pct: f.daily_stats['egg_trend'] = 'down'
+
     return render_template('index.html', active_flocks=active_flocks, today=today)
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
