@@ -76,7 +76,10 @@
                         <label class="form-label">Chart Type</label>
                         <select class="form-select" id="chartType">
                             <option value="line">Line Chart</option>
-                            <option value="bar">Bar Chart</option>
+                            <option value="bar">Bar Chart (Clustered)</option>
+                            <option value="stacked_bar">Stacked Bar Chart</option>
+                            <option value="combo">Combo (Bar + Line)</option>
+                            <option value="combo_stacked">Combo (Stacked Bar + Line)</option>
                         </select>
                     </div>
 
@@ -285,6 +288,32 @@
         const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6610f2', '#fd7e14', '#20c997'];
         let colorIdx = 0;
 
+        // Determine Types
+        let mainType = 'line';
+        let leftType = 'line';
+        let rightType = 'line';
+        let isStacked = false;
+
+        if (chart.chart_type === 'bar') {
+            mainType = 'bar';
+            leftType = 'bar';
+            rightType = 'bar';
+        } else if (chart.chart_type === 'stacked_bar') {
+            mainType = 'bar';
+            leftType = 'bar';
+            rightType = 'bar';
+            isStacked = true;
+        } else if (chart.chart_type === 'combo') {
+            mainType = 'bar';
+            leftType = 'bar';
+            rightType = 'line';
+        } else if (chart.chart_type === 'combo_stacked') {
+            mainType = 'bar';
+            leftType = 'bar';
+            rightType = 'line';
+            isStacked = true;
+        }
+
         leftMetrics.forEach(m => {
             if (!CURRENT_DATA[m]) return;
             datasets.push({
@@ -293,9 +322,11 @@
                 borderColor: colors[colorIdx % colors.length],
                 backgroundColor: colors[colorIdx % colors.length],
                 yAxisID: 'y',
+                type: leftType,
                 tension: 0.1,
                 spanGaps: true,
-                fill: false
+                fill: false,
+                stack: isStacked ? 'stack0' : undefined
             });
             colorIdx++;
         });
@@ -308,10 +339,12 @@
                 borderColor: colors[colorIdx % colors.length],
                 backgroundColor: colors[colorIdx % colors.length],
                 yAxisID: 'y1',
-                borderDash: [5, 5], // Dashed for secondary axis
+                type: rightType,
+                borderDash: rightType === 'line' ? [5, 5] : [],
                 tension: 0.1,
                 spanGaps: true,
-                fill: false
+                fill: false,
+                stack: isStacked && rightType === 'bar' ? 'stack0' : undefined
             });
             colorIdx++;
         });
@@ -319,9 +352,9 @@
         const hasRight = rightMetrics.length > 0;
 
         CHART_INSTANCES[chart.id] = new Chart(ctx, {
-            type: chart.chart_type || 'line',
+            type: mainType,
             data: {
-                labels: CURRENT_DATA.dates, // Or weeks? Dates is better usually
+                labels: CURRENT_DATA.dates,
                 datasets: datasets
             },
             options: {
@@ -332,22 +365,21 @@
                 },
                 scales: {
                     x: {
-                        ticks: {
-                            maxTicksLimit: 20
-                        }
+                        ticks: { maxTicksLimit: 20 },
+                        stacked: isStacked
                     },
                     y: {
                         type: 'linear',
                         display: true,
                         position: 'left',
+                        stacked: isStacked
                     },
                     y1: {
                         type: 'linear',
                         display: hasRight,
                         position: 'right',
-                        grid: {
-                            drawOnChartArea: false,
-                        },
+                        stacked: isStacked && rightType === 'bar',
+                        grid: { drawOnChartArea: false },
                     },
                 }
             }
