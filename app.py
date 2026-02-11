@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 import os
@@ -1687,6 +1688,85 @@ def delete_hatchability(id, record_id):
     flash('Record deleted.', 'info')
     return redirect(url_for('flock_hatchability', id=id))
 
+@app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>')
+def hatchability_diagnosis(id, date_str):
+    flock = Flock.query.get_or_404(id)
+    try:
+        setting_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Invalid date format.', 'danger')
+        return redirect(url_for('flock_hatchability', id=id))
+
+    records = Hatchability.query.filter_by(flock_id=id, setting_date=setting_date).all()
+    if not records:
+        flash('No hatchability records found for this date.', 'warning')
+        return redirect(url_for('flock_hatchability', id=id))
+
+    # Calculate Collection Window
+    # Tue (1) -> Fri (4) to Mon (0) [Prev Fri, Sat, Sun, Mon]
+    # Fri (4) -> Tue (1) to Thu (3) [Tue, Wed, Thu]
+    weekday = setting_date.weekday() # Mon=0, Tue=1, ... Fri=4
+
+    start_date = None
+    end_date = None
+    window_desc = ""
+
+    if weekday == 1: # Tuesday
+        # Window: Previous Friday (-4 days) to Monday (-1 day)
+        start_date = setting_date - timedelta(days=4)
+        end_date = setting_date - timedelta(days=1)
+        window_desc = "Standard (Fri - Mon)"
+    elif weekday == 4: # Friday
+        # Window: Tuesday (-3 days) to Thursday (-1 day)
+        start_date = setting_date - timedelta(days=3)
+        end_date = setting_date - timedelta(days=1)
+        window_desc = "Standard (Tue - Thu)"
+    else:
+        # Fallback: Just take previous 3 days
+        start_date = setting_date - timedelta(days=3)
+        end_date = setting_date - timedelta(days=1)
+        window_desc = "Non-Standard Set Day (Assumed 3 days prior)"
+
+    daily_logs = DailyLog.query.filter(
+        DailyLog.flock_id == id,
+        DailyLog.date >= start_date,
+        DailyLog.date <= end_date
+    ).order_by(DailyLog.date).all()
+
+    # Active Medications
+    # Meds active ANY time during the window
+    # Med Start <= Window End AND (Med End is None OR Med End >= Window Start)
+    medications = Medication.query.filter(
+        Medication.flock_id == id,
+        Medication.start_date <= end_date,
+        or_(Medication.end_date == None, Medication.end_date >= start_date)
+    ).all()
+
+    # Aggregated Hatch Stats
+    total_set = sum(r.egg_set for r in records)
+    total_hatched = sum(r.hatched_chicks for r in records)
+    total_clear = sum(r.clear_eggs for r in records)
+    total_rotten = sum(r.rotten_eggs for r in records)
+
+    avg_hatchability = (total_hatched / total_set * 100) if total_set > 0 else 0
+    avg_clear = (total_clear / total_set * 100) if total_set > 0 else 0
+    avg_rotten = (total_rotten / total_set * 100) if total_set > 0 else 0
+
+    return render_template('hatchability_diagnosis.html',
+                           flock=flock,
+                           setting_date=setting_date,
+                           records=records,
+                           daily_logs=daily_logs,
+                           medications=medications,
+                           window_start=start_date,
+                           window_end=end_date,
+                           window_desc=window_desc,
+                           stats={
+                               'set': total_set, 'hatched': total_hatched,
+                               'hatch_pct': avg_hatchability,
+                               'clear_pct': avg_clear, 'rotten_pct': avg_rotten
+                           })
+
 @app.route('/flock/<int:id>/dashboard')
 def flock_dashboard(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
@@ -2118,6 +2198,144 @@ def import_data():
         return redirect(url_for('index'))
             
     return render_template('import.html')
+
+@app.route('/import_hatchability', methods=['POST'])
+def import_hatchability():
+    if 'file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('import_data'))
+
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file', 'danger')
+        return redirect(url_for('import_data'))
+
+    if file and file.filename.endswith('.xlsx'):
+        try:
+            process_hatchability_import(file)
+            flash('Hatchability data imported successfully.', 'success')
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            flash(f'Error importing hatchability: {str(e)}', 'danger')
+    else:
+        flash('Invalid file type. Please upload an Excel file (.xlsx).', 'danger')
+
+    return redirect(url_for('import_data'))
+
+def process_hatchability_import(file):
+    import pandas as pd
+    xls = pd.ExcelFile(file)
+    # Assume data is in the "Data" sheet or the first sheet if "Data" not found
+    sheet_name = "Data" if "Data" in xls.sheet_names else xls.sheet_names[0]
+
+    # Read header first to determine structure
+    df = pd.read_excel(xls, sheet_name=sheet_name)
+
+    # Required headers logic from template
+    # Template: A=Setting, B=Candling, C=Hatching, D=FlockID, E=EggSet, F=Clear, G=%, H=Rotten, I=%, J=Hatchable, K=%, L=TotalHatched, M=%, N=MaleRatio
+
+    # We will iterate row by row.
+    # Check for empty df
+    if df.empty:
+        return
+
+    # Check columns
+    # If headers are 'Setting Date', 'Flock ID' etc.
+
+    col_map = {}
+
+    def normalize(s):
+        return str(s).strip().lower().replace(' ', '_')
+
+    for i, col in enumerate(df.columns):
+        norm = normalize(col)
+        if 'setting' in norm and 'date' in norm: col_map['setting_date'] = i
+        elif 'candling' in norm and 'date' in norm: col_map['candling_date'] = i
+        elif 'hatching' in norm and 'date' in norm: col_map['hatching_date'] = i
+        elif 'flock' in norm and 'id' in norm: col_map['flock_id'] = i
+        elif 'egg' in norm and 'set' in norm: col_map['egg_set'] = i
+        elif 'clear' in norm and 'egg' in norm and '%' not in norm: col_map['clear_eggs'] = i
+        elif 'rotten' in norm and 'egg' in norm and '%' not in norm: col_map['rotten_eggs'] = i
+        elif 'hatched' in norm and ('total' in norm or 'chicks' in norm): col_map['hatched_chicks'] = i
+        elif 'male' in norm and 'ratio' in norm: col_map['male_ratio'] = i
+
+    # Fallback to fixed indices if not found (Template standard)
+    if 'setting_date' not in col_map: col_map['setting_date'] = 0
+    if 'candling_date' not in col_map: col_map['candling_date'] = 1
+    if 'hatching_date' not in col_map: col_map['hatching_date'] = 2
+    if 'flock_id' not in col_map: col_map['flock_id'] = 3
+    if 'egg_set' not in col_map: col_map['egg_set'] = 4
+    if 'clear_eggs' not in col_map: col_map['clear_eggs'] = 5
+    if 'rotten_eggs' not in col_map: col_map['rotten_eggs'] = 7 # H
+    if 'hatched_chicks' not in col_map: col_map['hatched_chicks'] = 11 # L
+    if 'male_ratio' not in col_map: col_map['male_ratio'] = 13 # N
+
+    def get_val(row, key, transform=None):
+        idx = col_map.get(key)
+        if idx is not None and idx < len(row):
+            val = row.iloc[idx]
+            if pd.isna(val): return None
+            if transform:
+                try: return transform(val)
+                except: return None
+            return val
+        return None
+
+    def parse_date(d):
+        if hasattr(d, 'date'): return d.date()
+        if isinstance(d, str):
+            for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y']:
+                try: return datetime.strptime(d, fmt).date()
+                except: continue
+        return None
+
+    batch_cache = {}
+
+    for index, row in df.iterrows():
+        # Validations
+        s_date = get_val(row, 'setting_date', parse_date)
+        f_id = get_val(row, 'flock_id', str)
+
+        if not s_date or not f_id:
+            continue
+
+        f_id = f_id.strip()
+
+        flock_id = batch_cache.get(f_id)
+        if not flock_id:
+            flock = Flock.query.filter_by(batch_id=f_id).first()
+            if flock:
+                flock_id = flock.id
+                batch_cache[f_id] = flock_id
+            else:
+                # Log warning?
+                continue
+
+        c_date = get_val(row, 'candling_date', parse_date) or (s_date + timedelta(days=18))
+        h_date = get_val(row, 'hatching_date', parse_date) or (s_date + timedelta(days=21))
+
+        e_set = get_val(row, 'egg_set', int) or 0
+        c_eggs = get_val(row, 'clear_eggs', int) or 0
+        r_eggs = get_val(row, 'rotten_eggs', int) or 0
+        h_chicks = get_val(row, 'hatched_chicks', int) or 0
+        m_ratio = get_val(row, 'male_ratio', float)
+
+        # Insert Record
+        h = Hatchability(
+            flock_id=flock_id,
+            setting_date=s_date,
+            candling_date=c_date,
+            hatching_date=h_date,
+            egg_set=e_set,
+            clear_eggs=c_eggs,
+            rotten_eggs=r_eggs,
+            hatched_chicks=h_chicks,
+            male_ratio_pct=m_ratio
+        )
+        db.session.add(h)
+
+    db.session.commit()
 
 def process_import(file):
     xls = pd.ExcelFile(file)
