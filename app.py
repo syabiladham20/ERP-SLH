@@ -61,6 +61,30 @@ class OverviewConfiguration(db.Model):
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, unique=True)
     visible_metrics_json = db.Column(db.Text, nullable=False) # JSON list of keys
 
+class InventoryItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50), nullable=False) # 'Vaccine', 'Medication'
+    unit = db.Column(db.String(20), nullable=False) # 'Bottle', 'Kg', 'Packet', 'Liter'
+    current_stock = db.Column(db.Float, default=0.0)
+    min_stock_level = db.Column(db.Float, default=0.0)
+    doses_per_unit = db.Column(db.Integer, nullable=True) # For vaccines
+    batch_number = db.Column(db.String(50), nullable=True)
+    expiry_date = db.Column(db.Date, nullable=True)
+    cost_per_unit = db.Column(db.Float, default=0.0)
+
+    transactions = db.relationship('InventoryTransaction', backref='item', lazy=True, cascade="all, delete-orphan")
+    vaccines = db.relationship('Vaccine', backref='inventory_item', lazy=True)
+    medications = db.relationship('Medication', backref='inventory_item', lazy=True)
+
+class InventoryTransaction(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=False)
+    transaction_type = db.Column(db.String(20), nullable=False) # 'Purchase', 'Usage', 'Adjustment', 'Waste'
+    quantity = db.Column(db.Float, nullable=False)
+    transaction_date = db.Column(db.Date, nullable=False, default=date.today)
+    notes = db.Column(db.String(255), nullable=True)
+
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False)
@@ -238,10 +262,12 @@ class Medication(db.Model):
     drug_name = db.Column(db.String(100), nullable=False)
     dosage = db.Column(db.String(50), nullable=False)
     amount_used = db.Column(db.String(100), nullable=True)
+    amount_used_qty = db.Column(db.Float, nullable=True)
     withdrawal_period_days = db.Column(db.Integer, default=0)
     start_date = db.Column(db.Date, nullable=False, default=date.today)
     end_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True)
 
     flock = db.relationship('Flock', backref=db.backref('medications', lazy=True, cascade="all, delete-orphan"))
 
@@ -258,6 +284,7 @@ class Vaccine(db.Model):
     actual_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
     doses_per_unit = db.Column(db.Integer, default=1000)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True)
 
     flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True, cascade="all, delete-orphan"))
 
@@ -290,7 +317,11 @@ class Vaccine(db.Model):
         if live_stock is None:
             live_stock = self.get_live_stock()
 
-        unit_size = self.doses_per_unit if self.doses_per_unit > 0 else 1000
+        dpu = self.doses_per_unit
+        if self.inventory_item and self.inventory_item.doses_per_unit:
+             dpu = self.inventory_item.doses_per_unit
+
+        unit_size = dpu if dpu > 0 else 1000
         import math
         units = math.ceil(live_stock / unit_size)
         return units * unit_size
@@ -299,7 +330,11 @@ class Vaccine(db.Model):
         if live_stock is None:
             live_stock = self.get_live_stock()
 
-        unit_size = self.doses_per_unit if self.doses_per_unit > 0 else 1000
+        dpu = self.doses_per_unit
+        if self.inventory_item and self.inventory_item.doses_per_unit:
+             dpu = self.inventory_item.doses_per_unit
+
+        unit_size = dpu if dpu > 0 else 1000
         import math
         return math.ceil(live_stock / unit_size)
 
@@ -514,6 +549,10 @@ def initialize_vaccine_schedule(flock_id):
 @app.route('/')
 def index():
     active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+
+    # Inventory Check for Dashboard
+    low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
+    low_stock_count = len(low_stock_items)
 
     # Helper for natural sorting (VA1, VA2, VA10)
     import re
@@ -773,7 +812,7 @@ def index():
                 if today_egg_pct > yest_egg_pct: f.daily_stats['egg_trend'] = 'up'
                 elif today_egg_pct < yest_egg_pct: f.daily_stats['egg_trend'] = 'down'
 
-    return render_template('index.html', active_flocks=active_flocks, today=today)
+    return render_template('index.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
 def edit_flock(id):
@@ -1495,12 +1534,25 @@ def flock_vaccines(id):
             vaccine_ids = [k.split('_')[2] for k in request.form.keys() if k.startswith('v_id_')]
             updated_count = 0
 
+            # Pre-fetch stock history for calculation
+            stock_history = get_flock_stock_history(id)
+            sorted_dates = sorted([d for d in stock_history.keys() if isinstance(d, date)])
+
             for vid in vaccine_ids:
                 v = Vaccine.query.get(vid)
                 if not v or v.flock_id != id: continue
 
+                was_completed = v.actual_date is not None
+
                 age_code = request.form.get(f'age_code_{vid}')
-                name = request.form.get(f'vaccine_name_{vid}')
+
+                # Handle Inventory
+                inv_id_val = request.form.get(f'v_inv_{vid}')
+                if inv_id_val and inv_id_val.isdigit():
+                    v.inventory_item_id = int(inv_id_val)
+                    item = InventoryItem.query.get(v.inventory_item_id)
+                    if item: v.vaccine_name = item.name
+
                 route = request.form.get(f'route_{vid}')
                 est_date_str = request.form.get(f'est_date_{vid}')
                 actual_date_str = request.form.get(f'actual_date_{vid}')
@@ -1508,11 +1560,11 @@ def flock_vaccines(id):
 
                 try:
                     dpu = int(request.form.get(f'doses_per_unit_{vid}') or 1000)
-                    v.doses_per_unit = dpu
+                    if not v.inventory_item_id:
+                        v.doses_per_unit = dpu
                 except: pass
 
                 if age_code is not None: v.age_code = age_code
-                if name is not None: v.vaccine_name = name
                 if route is not None: v.route = route
                 if remarks is not None: v.remarks = remarks
 
@@ -1521,12 +1573,39 @@ def flock_vaccines(id):
                         v.est_date = datetime.strptime(est_date_str, '%Y-%m-%d').date()
                     except ValueError: pass
 
+                new_actual_date = None
                 if actual_date_str:
                     try:
-                        v.actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
+                        new_actual_date = datetime.strptime(actual_date_str, '%Y-%m-%d').date()
+                        v.actual_date = new_actual_date
                     except ValueError: pass
                 elif actual_date_str == '':
                     v.actual_date = None
+
+                # Deduction Logic
+                if new_actual_date and not was_completed and v.inventory_item_id:
+                    # Calculate Units
+                    target_date = v.est_date or date.today()
+                    applicable_stock = flock.intake_male + flock.intake_female
+                    best_date = None
+                    for d in sorted_dates:
+                        if d <= target_date: best_date = d
+                        else: break
+                    if best_date: applicable_stock = stock_history[best_date]
+
+                    units = v.units_needed(applicable_stock)
+                    if units > 0:
+                        inv_item = InventoryItem.query.get(v.inventory_item_id)
+                        if inv_item:
+                            inv_item.current_stock -= units
+                            t = InventoryTransaction(
+                                inventory_item_id=v.inventory_item_id,
+                                transaction_type='Usage',
+                                quantity=units,
+                                transaction_date=new_actual_date,
+                                notes=f'Vaccine completed: {flock.batch_id} (Age {v.age_code})'
+                            )
+                            db.session.add(t)
 
                 updated_count += 1
 
@@ -2007,14 +2086,27 @@ def daily_log():
 
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
+        med_inventory_ids = request.form.getlist('med_inventory_id[]')
         med_dosages = request.form.getlist('med_dosage[]')
-        med_amounts = request.form.getlist('med_amount_used[]')
+        med_amounts = request.form.getlist('med_amount_used[]') # Legacy text
+        med_amount_qtys = request.form.getlist('med_amount_qty[]') # New numeric
         med_start_dates = request.form.getlist('med_start_date[]')
         med_end_dates = request.form.getlist('med_end_date[]')
         med_remarks = request.form.getlist('med_remarks[]')
 
-        for i, name in enumerate(med_names):
-            if not name or not name.strip():
+        for i, name_val in enumerate(med_names):
+            inv_id_val = med_inventory_ids[i] if i < len(med_inventory_ids) else None
+
+            # Determine Name: Inventory Name > Manual Name
+            item_name = name_val
+            inv_id = None
+
+            if inv_id_val and inv_id_val.isdigit():
+                inv_id = int(inv_id_val)
+                item = InventoryItem.query.get(inv_id)
+                if item: item_name = item.name
+
+            if not item_name and not inv_id:
                 continue
 
             s_date = log_date
@@ -2031,16 +2123,38 @@ def daily_log():
                     e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
+            qty = None
+            try:
+                qty_val = med_amount_qtys[i] if i < len(med_amount_qtys) else None
+                if qty_val: qty = float(qty_val)
+            except: pass
+
             med = Medication(
                 flock_id=flock.id,
-                drug_name=name,
+                drug_name=item_name,
+                inventory_item_id=inv_id,
                 dosage=med_dosages[i] if i < len(med_dosages) else '',
                 amount_used=med_amounts[i] if i < len(med_amounts) else '',
+                amount_used_qty=qty,
                 start_date=s_date,
                 end_date=e_date,
                 remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
+
+            # Auto-Deduct from Inventory
+            if inv_id and qty and qty > 0:
+                inv_item = InventoryItem.query.get(inv_id)
+                if inv_item:
+                    inv_item.current_stock -= qty
+                    t = InventoryTransaction(
+                        inventory_item_id=inv_id,
+                        transaction_type='Usage',
+                        quantity=qty,
+                        transaction_date=s_date,
+                        notes=f'Used in Daily Log: {flock.batch_id}'
+                    )
+                    db.session.add(t)
 
         db.session.commit()
         flash(flash_msg, 'success')
@@ -2102,6 +2216,9 @@ def daily_log():
         # Sort by est_date
         vaccines_due.sort(key=lambda x: x.est_date or date.max)
 
+    # Fetch Inventory Items (Medications)
+    medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
+
     return render_template('daily_log_form.html',
                            houses=active_houses,
                            flock_phases_json=json.dumps(flock_phases),
@@ -2109,7 +2226,8 @@ def daily_log():
                            log=log,
                            selected_house_id=int(selected_house_id) if selected_house_id and selected_house_id.isdigit() else None,
                            selected_date=selected_date_str,
-                           vaccines_due=vaccines_due)
+                           vaccines_due=vaccines_due,
+                           medication_inventory=medication_inventory)
 
 @app.context_processor
 def utility_processor():
@@ -2140,14 +2258,25 @@ def edit_daily_log(id):
 
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
+        med_inventory_ids = request.form.getlist('med_inventory_id[]')
         med_dosages = request.form.getlist('med_dosage[]')
         med_amounts = request.form.getlist('med_amount_used[]')
+        med_amount_qtys = request.form.getlist('med_amount_qty[]')
         med_start_dates = request.form.getlist('med_start_date[]')
         med_end_dates = request.form.getlist('med_end_date[]')
         med_remarks = request.form.getlist('med_remarks[]')
 
-        for i, name in enumerate(med_names):
-            if not name or not name.strip():
+        for i, name_val in enumerate(med_names):
+            inv_id_val = med_inventory_ids[i] if i < len(med_inventory_ids) else None
+
+            item_name = name_val
+            inv_id = None
+            if inv_id_val and inv_id_val.isdigit():
+                inv_id = int(inv_id_val)
+                item = InventoryItem.query.get(inv_id)
+                if item: item_name = item.name
+
+            if not item_name and not inv_id:
                 continue
 
             s_date = log.date
@@ -2164,16 +2293,37 @@ def edit_daily_log(id):
                     e_date = datetime.strptime(e_date_val, '%Y-%m-%d').date()
                 except: pass
 
+            qty = None
+            try:
+                qty_val = med_amount_qtys[i] if i < len(med_amount_qtys) else None
+                if qty_val: qty = float(qty_val)
+            except: pass
+
             med = Medication(
                 flock_id=log.flock_id,
-                drug_name=name,
+                drug_name=item_name,
+                inventory_item_id=inv_id,
                 dosage=med_dosages[i] if i < len(med_dosages) else '',
                 amount_used=med_amounts[i] if i < len(med_amounts) else '',
+                amount_used_qty=qty,
                 start_date=s_date,
                 end_date=e_date,
                 remarks=med_remarks[i] if i < len(med_remarks) else ''
             )
             db.session.add(med)
+
+            if inv_id and qty and qty > 0:
+                inv_item = InventoryItem.query.get(inv_id)
+                if inv_item:
+                    inv_item.current_stock -= qty
+                    t = InventoryTransaction(
+                        inventory_item_id=inv_id,
+                        transaction_type='Usage',
+                        quantity=qty,
+                        transaction_date=s_date,
+                        notes=f'Used in Daily Log: {log.flock.batch_id}'
+                    )
+                    db.session.add(t)
 
         update_log_from_request(log, request)
         db.session.commit()
@@ -2202,7 +2352,9 @@ def edit_daily_log(id):
 
     vaccines_due.sort(key=lambda x: x.est_date or date.max)
 
-    return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due)
+    medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
+
+    return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory)
 
 @app.route('/import', methods=['GET', 'POST'])
 def import_data():
@@ -2985,16 +3137,43 @@ def health_log():
                      if request.form.get('end_date'):
                          e_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
 
+                     inv_id = request.form.get('inventory_item_id')
+                     drug_name = request.form.get('drug_name')
+
+                     if inv_id and inv_id.isdigit():
+                         item = InventoryItem.query.get(int(inv_id))
+                         if item: drug_name = item.name
+                         inv_id = int(inv_id)
+                     else:
+                         inv_id = None
+
+                     qty = float(request.form.get('amount_used_qty') or 0)
+
                      m = Medication(
                          flock_id=flock_id_param,
-                         drug_name=request.form.get('drug_name'),
+                         drug_name=drug_name,
+                         inventory_item_id=inv_id,
                          dosage=request.form.get('dosage'),
                          amount_used=request.form.get('amount_used'),
+                         amount_used_qty=qty,
                          start_date=s_date,
                          end_date=e_date,
                          remarks=request.form.get('remarks')
                      )
                      db.session.add(m)
+
+                     if inv_id and qty > 0:
+                         inv_item = InventoryItem.query.get(inv_id)
+                         inv_item.current_stock -= qty
+                         t = InventoryTransaction(
+                             inventory_item_id=inv_id,
+                             transaction_type='Usage',
+                             quantity=qty,
+                             transaction_date=s_date,
+                             notes=f'Used in Health Log'
+                         )
+                         db.session.add(t)
+
                      db.session.commit()
                      flash('Medication added.', 'success')
                  except Exception as e:
@@ -3119,14 +3298,36 @@ def health_log():
             m = Medication.query.get(mid)
             if not m: continue
 
-            drug = request.form.get(f'm_drug_{mid}')
-            if drug and m.drug_name != drug: m.drug_name = drug; updated_count += 1
+            # Inventory Update logic for editing is complex.
+            # If we change the item, do we revert old stock?
+            # For simplicity, editing here might just update the reference, NOT trigger stock logic automatically?
+            # Or we can support stock logic if amount/item changes.
+            # Given constraints, let's just update the record details for now.
+            # If user wants to adjust stock, they use Inventory page.
+
+            # However, if we change the dropdown, we should update the ID.
+            inv_id_val = request.form.get(f'm_inv_{mid}')
+            if inv_id_val and inv_id_val.isdigit():
+                new_id = int(inv_id_val)
+                if m.inventory_item_id != new_id:
+                    m.inventory_item_id = new_id
+                    item = InventoryItem.query.get(new_id)
+                    if item: m.drug_name = item.name
+                    updated_count += 1
+
+            # Fallback text input if needed (if not using dropdown in edit?)
+            # I will use dropdown in edit.
 
             dosage = request.form.get(f'm_dosage_{mid}')
             if dosage is not None and m.dosage != dosage: m.dosage = dosage; updated_count += 1
 
             amount = request.form.get(f'm_amount_{mid}')
             if amount is not None and m.amount_used != amount: m.amount_used = amount; updated_count += 1
+
+            try:
+                qty_val = float(request.form.get(f'm_qty_{mid}') or 0)
+                if m.amount_used_qty != qty_val: m.amount_used_qty = qty_val; updated_count += 1
+            except: pass
 
             rem = request.form.get(f'm_rem_{mid}')
             if rem is not None and m.remarks != rem: m.remarks = rem; updated_count += 1
@@ -3246,6 +3447,10 @@ def health_log():
             selected_flock_id=int(selected_flock_id) if selected_flock_id else None
         )
 
+    # Fetch Inventory
+    medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
+    vaccine_inventory = InventoryItem.query.filter_by(type='Vaccine').order_by(InventoryItem.name).all()
+
     return render_template('health_log.html',
         today=today,
         year=year,
@@ -3258,7 +3463,9 @@ def health_log():
         sampling_events_by_date=sampling_events_by_date,
         active_flocks=active_flocks,
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
-        flock_tasks=flock_tasks
+        flock_tasks=flock_tasks,
+        medication_inventory=medication_inventory,
+        vaccine_inventory=vaccine_inventory
     )
 
 @app.route('/api/metrics')
@@ -3374,6 +3581,140 @@ def get_templates():
             'house_name': t.house.name
         })
     return json.dumps(res)
+
+# --- Inventory Routes ---
+
+@app.route('/inventory')
+def inventory():
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    transactions = InventoryTransaction.query.order_by(InventoryTransaction.transaction_date.desc(), InventoryTransaction.id.desc()).limit(50).all()
+
+    # Monthly Summary
+    today = date.today()
+    start_of_month = date(today.year, today.month, 1)
+
+    month_txs = InventoryTransaction.query.filter(InventoryTransaction.transaction_date >= start_of_month).all()
+
+    summary_map = {}
+    for t in month_txs:
+        if t.inventory_item_id not in summary_map:
+            summary_map[t.inventory_item_id] = {'purchase': 0, 'usage': 0, 'waste': 0}
+
+        type_key = t.transaction_type.lower()
+        if type_key in summary_map[t.inventory_item_id]:
+            summary_map[t.inventory_item_id][type_key] += t.quantity
+
+    summary_list = []
+    for item in items:
+        s = summary_map.get(item.id, {'purchase': 0, 'usage': 0, 'waste': 0})
+        summary_list.append({
+            'name': item.name,
+            'purchase': round(s['purchase'], 2),
+            'usage': round(s['usage'], 2),
+            'waste': round(s['waste'], 2)
+        })
+
+    return render_template('inventory.html', items=items, transactions=transactions, summary=summary_list, current_month=today.strftime('%B %Y'), today=today)
+
+@app.route('/inventory/add', methods=['POST'])
+def add_inventory_item():
+    name = request.form.get('name')
+    type_ = request.form.get('type')
+    unit = request.form.get('unit')
+    stock = float(request.form.get('current_stock') or 0)
+    min_stock = float(request.form.get('min_stock_level') or 0)
+    doses = int(request.form.get('doses_per_unit') or 0) if type_ == 'Vaccine' else None
+    batch = request.form.get('batch_number')
+    exp_str = request.form.get('expiry_date')
+    exp_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
+
+    item = InventoryItem(
+        name=name, type=type_, unit=unit, current_stock=stock,
+        min_stock_level=min_stock, doses_per_unit=doses,
+        batch_number=batch, expiry_date=exp_date
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    if stock > 0:
+        t = InventoryTransaction(
+            inventory_item_id=item.id,
+            transaction_type='Purchase',
+            quantity=stock,
+            transaction_date=date.today(),
+            notes='Initial Stock'
+        )
+        db.session.add(t)
+        db.session.commit()
+
+    flash(f'Added {name} to inventory.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction', methods=['POST'])
+def inventory_transaction():
+    item_id = int(request.form.get('inventory_item_id'))
+    type_ = request.form.get('transaction_type')
+    qty = float(request.form.get('quantity') or 0)
+    date_str = request.form.get('transaction_date')
+    date_val = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date.today()
+    notes = request.form.get('notes')
+
+    if qty <= 0:
+        flash('Quantity must be positive.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item = InventoryItem.query.get_or_404(item_id)
+
+    if type_ in ['Usage', 'Waste']:
+        item.current_stock -= qty
+    else: # Purchase, Adjustment
+        item.current_stock += qty
+
+    if item.current_stock < 0:
+        flash(f'Warning: Stock for {item.name} went negative.', 'warning')
+
+    t = InventoryTransaction(
+        inventory_item_id=item.id,
+        transaction_type=type_,
+        quantity=qty,
+        transaction_date=date_val,
+        notes=notes
+    )
+    db.session.add(t)
+    db.session.commit()
+
+    flash('Transaction recorded.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/edit/<int:id>', methods=['POST'])
+def edit_inventory_item(id):
+    item = InventoryItem.query.get_or_404(id)
+
+    if request.form.get('delete') == '1':
+        db.session.delete(item)
+        db.session.commit()
+        flash('Item deleted.', 'info')
+        return redirect(url_for('inventory'))
+
+    item.name = request.form.get('name')
+    item.type = request.form.get('type')
+    item.unit = request.form.get('unit')
+    item.min_stock_level = float(request.form.get('min_stock_level') or 0)
+
+    doses = request.form.get('doses_per_unit')
+    item.doses_per_unit = int(doses) if doses else None
+
+    item.batch_number = request.form.get('batch_number')
+
+    exp = request.form.get('expiry_date')
+    if exp:
+        item.expiry_date = datetime.strptime(exp, '%Y-%m-%d').date()
+    else:
+        item.expiry_date = None
+
+    db.session.commit()
+    flash('Item updated.', 'success')
+    return redirect(url_for('inventory'))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
