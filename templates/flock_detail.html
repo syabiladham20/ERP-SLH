@@ -101,6 +101,25 @@
   </div>
 </div>
 
+<!-- Note Modal -->
+<div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="noteModalPhoto" class="mb-3" style="display: none;">
+          <img src="" class="img-fluid rounded border" alt="Clinical Photo">
+        </div>
+        <p id="noteModalText" class="lead"></p>
+        <p id="noteModalDate" class="text-muted small"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
@@ -149,6 +168,9 @@
                           if (label) {
                               label += ': ';
                           }
+                          if (context.dataset.label === 'Clinical Notes') {
+                              return context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '');
+                          }
                           if (context.parsed.y !== null) {
                               if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
                                   label += parseFloat(context.parsed.y).toFixed(2) + '%';
@@ -157,6 +179,12 @@
                               }
                           }
                           return label;
+                      },
+                      afterBody: function(context) {
+                          const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
+                          if (noteItem && noteItem.raw && noteItem.raw.note) {
+                              return '\nNote: ' + noteItem.raw.note;
+                          }
                       }
                   }
               }
@@ -302,6 +330,41 @@
       });
 
       // --- General Chart ---
+
+      // Prepare Notes Dataset
+      const notesPoints = chartData.dates.map((d, i) => {
+          const n = chartData.notes ? chartData.notes[i] : null;
+          if (n) {
+              // Stick to Female Mortality line + slight offset for visibility
+              let yVal = chartData.mortality_cum_female[i];
+              if (yVal === undefined || yVal === null) yVal = 0;
+              return {
+                  x: d,
+                  y: yVal,
+                  note: n.note,
+                  photo: n.photo,
+                  date: d
+              };
+          }
+          return null;
+      }); // Sparse array is fine for line charts with aligned labels, but for scatter points we filter nulls?
+      // Actually, if we provide data array matching labels length, nulls are ignored.
+      // But for 'scatter' dataset on a category scale X axis, we can just provide objects {x: label, y: val}.
+
+      const notesDataset = {
+          label: 'Clinical Notes',
+          data: notesPoints,
+          type: 'scatter',
+          yAxisID: 'y1',
+          pointStyle: 'rectRot',
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          backgroundColor: 'purple',
+          borderColor: 'purple',
+          hidden: true, // Hidden initially
+          datalabels: { display: false }
+      };
+
       generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
         type: 'line',
         data: {
@@ -327,7 +390,8 @@
               borderColor: 'red',
               yAxisID: 'y1',
               datalabels: { display: false }
-            }
+            },
+            notesDataset
           ]
         },
         options: {
@@ -335,6 +399,22 @@
           interaction: {
             mode: 'index',
             intersect: false,
+          },
+          onClick: (e) => {
+              const points = generalChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+              if (points.length) {
+                  const firstPoint = points[0];
+                  const datasetIndex = firstPoint.datasetIndex;
+                  const index = firstPoint.index;
+                  const dataset = generalChart.data.datasets[datasetIndex];
+
+                  if (dataset.label === 'Clinical Notes') {
+                      const pt = dataset.data[index];
+                      if (pt) {
+                          showNoteModal(pt.date, pt.note, pt.photo);
+                      }
+                  }
+              }
           },
           scales: {
             y: {
@@ -364,10 +444,29 @@
             }
           },
           plugins: {
-              datalabels: { display: false }
+              datalabels: { display: false },
+              tooltip: commonOptions.plugins.tooltip // Share tooltip config
           }
         }
       });
+  }
+
+  function showNoteModal(date, text, photoUrl) {
+      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
+      document.getElementById('noteModalText').innerText = text;
+      document.getElementById('noteModalDate').innerText = date;
+
+      const imgDiv = document.getElementById('noteModalPhoto');
+      const img = imgDiv.querySelector('img');
+      if (photoUrl) {
+          img.src = photoUrl;
+          imgDiv.style.display = 'block';
+      } else {
+          imgDiv.style.display = 'none';
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
+      modal.show();
   }
 
   function switchMode(mode) {

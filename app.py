@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 import os
@@ -815,6 +815,45 @@ def index():
 
     return render_template('index.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
 
+@app.route('/clinical_notes')
+def clinical_notes():
+    house_id = request.args.get('house_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    search = request.args.get('search', '').strip()
+
+    # Base Query: Has notes OR photo
+    query = DailyLog.query.join(Flock).join(House).filter(
+        or_(
+            and_(DailyLog.clinical_notes != None, DailyLog.clinical_notes != ''),
+            DailyLog.photo_path != None
+        )
+    )
+
+    if house_id:
+        query = query.filter(Flock.house_id == house_id)
+
+    if start_date:
+        try:
+            s_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            query = query.filter(DailyLog.date >= s_date)
+        except ValueError: pass
+
+    if end_date:
+        try:
+            e_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            query = query.filter(DailyLog.date <= e_date)
+        except ValueError: pass
+
+    if search:
+        term = f"%{search}%"
+        query = query.filter(DailyLog.clinical_notes.ilike(term))
+
+    logs = query.order_by(DailyLog.date.desc()).all()
+    houses = House.query.order_by(House.name).all()
+
+    return render_template('clinical_notes.html', logs=logs, houses=houses)
+
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
@@ -1305,9 +1344,16 @@ def view_flock(id):
                 'bw_female_std_sum': 0.0, 'bw_female_std_count': 0,
 
                 # Partitions (Dynamic)
-                'partitions': {} # key: (sex, num) -> {sum, count}
+                'partitions': {}, # key: (sex, num) -> {sum, count}
+                'notes': [],
+                'photos': []
             }
         
+        if log.clinical_notes:
+            week_summary['notes'].append(f"{log.date.strftime('%d-%b')}: {log.clinical_notes}")
+        if log.photo_path:
+            week_summary['photos'].append(url_for('uploaded_file', filename=os.path.basename(log.photo_path)))
+
         week_summary['mortality_male'] += log.mortality_male
         week_summary['mortality_female'] += log.mortality_female
         week_summary['culls_male'] += log.culls_male
@@ -1421,7 +1467,8 @@ def view_flock(id):
         'egg_prod': [],
         'bw_male_std': [],
         'bw_female_std': [],
-        'unif_male': [], 'unif_female': []
+        'unif_male': [], 'unif_female': [],
+        'notes': []
     }
 
     # Initialize dynamic keys for partitions in weekly
@@ -1464,6 +1511,14 @@ def view_flock(id):
              chart_data_weekly[f'bw_M{i}'].append(val_m if val_m > 0 else None)
              chart_data_weekly[f'bw_F{i}'].append(val_f if val_f > 0 else None)
 
+        # Notes Concatenation
+        if w['notes'] or w['photos']:
+            note_text = " | ".join(w['notes'])
+            photo_url = w['photos'][0] if w['photos'] else None
+            chart_data_weekly['notes'].append({'note': note_text, 'photo': photo_url})
+        else:
+            chart_data_weekly['notes'].append(None)
+
     # Legacy keys for daily view compatibility (if needed)
     chart_data_weekly['bw_male_p1'] = chart_data_weekly['bw_M1']
     chart_data_weekly['bw_male_p2'] = chart_data_weekly['bw_M2']
@@ -1480,7 +1535,8 @@ def view_flock(id):
         'egg_prod': [],
         'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
         'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
-        'unif_male': [], 'unif_female': []
+        'unif_male': [], 'unif_female': [],
+        'notes': []
     }
     
     cum_mort_m = 0
@@ -1551,6 +1607,14 @@ def view_flock(id):
 
         chart_data['unif_male'].append(scale_pct(log.uniformity_male) if log.uniformity_male > 0 else None)
         chart_data['unif_female'].append(scale_pct(log.uniformity_female) if log.uniformity_female > 0 else None)
+
+        if log.clinical_notes or log.photo_path:
+            chart_data['notes'].append({
+                'note': log.clinical_notes,
+                'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+            })
+        else:
+            chart_data['notes'].append(None)
 
         # --- Enriched Log Calculation ---
 
@@ -3719,6 +3783,19 @@ def get_custom_data(flock_id):
     hatchability_data = Hatchability.query.filter_by(flock_id=flock_id).all()
 
     result = calculate_metrics(logs, flock, metrics, hatchability_data=hatchability_data, start_date=start_date, end_date=end_date)
+
+    result['events'] = []
+    for log in logs:
+        if start_date and log.date < start_date: continue
+        if end_date and log.date > end_date: continue
+
+        if log.clinical_notes or log.photo_path:
+             result['events'].append({
+                 'date': log.date.isoformat(),
+                 'note': log.clinical_notes,
+                 'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+             })
+
     return json.dumps(result)
 
 @app.route('/api/house/<int:house_id>/dashboard_config')
