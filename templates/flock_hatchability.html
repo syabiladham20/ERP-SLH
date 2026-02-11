@@ -87,6 +87,9 @@
                 <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
                 <td>{{ r.male_ratio_pct or '-' }}</td>
                 <td>
+                    <a href="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=r.setting_date) }}" class="btn btn-sm btn-info text-white" title="Diagnose Farm Data">
+                        Diagnose
+                    </a>
                     <form method="POST" action="{{ url_for('delete_hatchability', id=flock.id, record_id=r.id) }}" style="display:inline;" onsubmit="return confirm('Delete this record?');">
                         <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
                     </form>

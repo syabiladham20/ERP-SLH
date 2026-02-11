@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Hatchability Diagnosis</h2>
+    <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-secondary">Back to Hatchability</a>
+</div>
+
+<div class="row">
+    <!-- Hatchability Stats -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                Hatchability Summary (Set: {{ setting_date.strftime('%Y-%m-%d') }})
+            </div>
+            <div class="card-body">
+                <p><strong>Total Eggs Set:</strong> {{ stats['set'] }}</p>
+                <p><strong>Total Hatched:</strong> {{ stats['hatched'] }}</p>
+                <hr>
+                <h3 class="text-center {% if stats['hatch_pct'] < 80 %}text-danger{% else %}text-success{% endif %}">
+                    {{ "%.2f"|format(stats['hatch_pct']) }}%
+                </h3>
+                <p class="text-center text-muted">Hatchability</p>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <span class="text-warning">Clear: {{ "%.2f"|format(stats['clear_pct']) }}%</span>
+                    <span class="text-danger">Rotten: {{ "%.2f"|format(stats['rotten_pct']) }}%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                Collection Window
+            </div>
+            <div class="card-body">
+                <p><strong>Logic:</strong> {{ window_desc }}</p>
+                <p><strong>From:</strong> {{ window_start.strftime('%Y-%m-%d') }}</p>
+                <p><strong>To:</strong> {{ window_end.strftime('%Y-%m-%d') }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                Active Medications
+            </div>
+            <div class="card-body">
+                {% if medications %}
+                    <ul class="list-group">
+                        {% for med in medications %}
+                            <li class="list-group-item">
+                                <strong>{{ med.drug_name }}</strong><br>
+                                <small>{{ med.start_date }} - {{ med.end_date or 'Ongoing' }}</small><br>
+                                <small class="text-muted">{{ med.remarks }}</small>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No medications active during this period.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Farm Data Logs -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                Farm Daily Logs ({{ window_start }} to {{ window_end }})
+            </div>
+            <div class="card-body">
+                {% if daily_logs %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Age</th>
+                                <th>Mortality (M/F)</th>
+                                <th>Culls (M/F)</th>
+                                <th>Eggs Collected</th>
+                                <th>Clinical Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in daily_logs %}
+                            <tr>
+                                <td>{{ log.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ log.age_week_day }} W</td>
+                                <td>
+                                    <span class="{% if log.mortality_male > 0 %}text-danger{% endif %}">{{ log.mortality_male }}</span> /
+                                    <span class="{% if log.mortality_female > 0 %}text-danger{% endif %}">{{ log.mortality_female }}</span>
+                                </td>
+                                <td>{{ log.culls_male }} / {{ log.culls_female }}</td>
+                                <td>{{ log.eggs_collected }}</td>
+                                <td>
+                                    {% if log.clinical_notes %}
+                                        <span class="badge bg-warning text-dark">Note</span> {{ log.clinical_notes }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                    <div class="alert alert-warning">No Daily Logs found for this collection window.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
