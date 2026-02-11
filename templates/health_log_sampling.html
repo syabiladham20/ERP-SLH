@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="calendar-container">
+    {% include 'partials/health_log_calendar.html' %}
+</div>
+
+<!-- Flock Selection -->
+<div class="mb-4">
+    <form method="GET" action="{{ url_for('health_log_sampling') }}" class="d-flex align-items-center">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <label class="me-2 fw-bold">Select House:</label>
+        <select name="flock_id" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+            <option value="">-- All Active Flocks --</option>
+            {% for f in active_flocks %}
+                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.house.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Detailed Lists -->
+{% for flock, tasks in flock_tasks.items() %}
+    {% set is_editing = (edit_flock_id == flock.id) %}
+
+    <form method="POST" action="{{ url_for('health_log_sampling', year=year, month=month, flock_id=flock.id) }}">
+    <div class="card mb-4 border-primary">
+        <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary">{{ flock.house.name }} - Age: {{ flock.current_week }} Weeks</h5>
+            <div>
+                {% if is_editing %}
+                    <a href="{{ url_for('health_log_sampling', year=year, month=month, flock_id=selected_flock_id) }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                {% else %}
+                    <a href="{{ url_for('health_log_sampling', year=year, month=month, flock_id=selected_flock_id, edit_flock_id=flock.id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+
+            <!-- Sampling -->
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <h6 class="text-secondary mb-0">Sampling</h6>
+            </div>
+            <div class="table-responsive table-responsive-sticky mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="sticky-table-header-offset">
+                        <tr>
+                            <th>Age (Week)</th>
+                            <th>Scheduled Date</th>
+                            <th>Actual Date</th>
+                            <th>Test Type</th>
+                            <th>Status</th>
+                            <th>Results</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in tasks.sampling %}
+                        <tr>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="number" name="s_age_{{ s.id }}" value="{{ s.age_week }}" class="form-control form-control-sm" style="width: 60px;">
+                                {% else %}
+                                    {{ s.age_week }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="s_date_{{ s.id }}" value="{{ s.scheduled_date }}" class="form-control form-control-sm" style="width: 130px;">
+                                {% else %}
+                                    {{ s.scheduled_date }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="s_actual_date_{{ s.id }}" value="{{ s.actual_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                                {% else %}
+                                    {{ s.actual_date or '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="s_test_{{ s.id }}" value="{{ s.test_type }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ s.test_type }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if s.actual_date or s.result_file or s.status == 'Completed' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                    {% if s.actual_date or s.result_file %}Completed{% else %}Pending{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if s.result_file %}
+                                    <a href="{{ url_for('uploaded_file', filename=s.result_file|basename) }}" target="_blank">PDF</a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                                <a href="{{ url_for('flock_sampling', id=flock.id) }}" class="btn btn-xs btn-link p-0 ms-1">Upload</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+    </form>
+{% endfor %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('calendar-container');
+
+        function attachListeners() {
+            container.querySelectorAll('.ajax-calendar-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = this.getAttribute('href');
+                    loadCalendar(url);
+                });
+            });
+
+            const monthSelect = container.querySelector('#calendar-month-select');
+            const yearSelect = container.querySelector('#calendar-year-select');
+
+            if (monthSelect && yearSelect) {
+                const handleSelectChange = () => {
+                    const month = monthSelect.value;
+                    const year = yearSelect.value;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    urlParams.set('year', year);
+                    urlParams.set('month', month);
+
+                    const baseUrl = window.location.pathname;
+                    const newUrl = `${baseUrl}?${urlParams.toString()}`;
+
+                    loadCalendar(newUrl);
+                };
+
+                monthSelect.addEventListener('change', handleSelectChange);
+                yearSelect.addEventListener('change', handleSelectChange);
+            }
+        }
+
+        attachListeners();
+
+        function loadCalendar(url) {
+            fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                container.innerHTML = html;
+                attachListeners();
+                window.history.pushState({ path: url }, '', url);
+            })
+            .catch(error => console.error('Error loading calendar:', error));
+        }
+
+        window.addEventListener('popstate', function(e) {
+            loadCalendar(window.location.href);
+        });
+    });
+</script>
+{% endblock %}
