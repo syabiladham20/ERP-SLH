@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Medication Log</h2>
+</div>
+
+<!-- Flock Selection -->
+<div class="mb-4">
+    <form method="GET" action="{{ url_for('health_log_medication') }}" class="d-flex align-items-center">
+        <label class="me-2 fw-bold">Select House:</label>
+        <select name="flock_id" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+            <option value="">-- All Active Flocks --</option>
+            {% for f in active_flocks %}
+                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.house.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Detailed Lists -->
+{% for flock, tasks in flock_tasks.items() %}
+    {% set is_editing = (edit_flock_id == flock.id) %}
+
+    <form method="POST" action="{{ url_for('health_log_medication', flock_id=flock.id) }}">
+    <div class="card mb-4 border-primary">
+        <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary">{{ flock.house.name }} - Age: {{ flock.current_week }} Weeks</h5>
+            <div>
+                {% if is_editing %}
+                    <a href="{{ url_for('health_log_medication', flock_id=selected_flock_id) }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                {% else %}
+                    <a href="{{ url_for('health_log_medication', flock_id=selected_flock_id, edit_flock_id=flock.id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+
+            <!-- Medications -->
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <h6 class="text-secondary mb-0">Medications</h6>
+            </div>
+            <div class="table-responsive table-responsive-sticky mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="sticky-table-header-offset">
+                        <tr>
+                            <th>Drug Name</th>
+                            <th>Dosage</th>
+                            <th>Amount Used</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in tasks.medications %}
+                        <tr>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="m_drug_{{ m.id }}" value="{{ m.drug_name }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ m.drug_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="m_dosage_{{ m.id }}" value="{{ m.dosage }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ m.dosage }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="m_amount_{{ m.id }}" value="{{ m.amount_used or '' }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ m.amount_used or '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="m_start_{{ m.id }}" value="{{ m.start_date }}" class="form-control form-control-sm" style="width: 130px;">
+                                {% else %}
+                                    {{ m.start_date }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="m_end_{{ m.id }}" value="{{ m.end_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
+                                {% else %}
+                                    {{ m.end_date or '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="m_rem_{{ m.id }}" value="{{ m.remarks or '' }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ m.remarks or '-' }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add Medication Form -->
+            {% if is_editing %}
+            <div class="bg-light p-3 rounded border">
+                <strong>Add New Medication Record</strong>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-3">
+                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Used">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="start_date" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="end_date" class="form-control form-control-sm" placeholder="End Date">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" name="add_medication" value="1" class="btn btn-success btn-sm w-100">Add</button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                         <input type="text" name="remarks" class="form-control form-control-sm" placeholder="Remarks / Withdrawal Period">
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+    </form>
+{% endfor %}
+{% endblock %}

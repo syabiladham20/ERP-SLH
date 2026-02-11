@@ -1,8 +1,9 @@
 <!-- Navigation & Controls -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Health Log</h2>
+    <h2>{% if show_vaccine %}Vaccine{% elif show_sampling %}Sampling{% else %}Health{% endif %} Log</h2>
     <div class="d-flex align-items-center gap-2">
-        <a href="{{ url_for('health_log', year=prev_year, month=prev_month, flock_id=selected_flock_id) }}"
+        {% set route_name = request.endpoint %}
+        <a href="{{ url_for(route_name, year=prev_year, month=prev_month, flock_id=selected_flock_id) }}"
            class="btn btn-outline-secondary btn-sm ajax-calendar-link"
            title="Previous Month">
            &lt; Prev
@@ -23,7 +24,7 @@
             {% endfor %}
         </select>
 
-        <a href="{{ url_for('health_log', year=next_year, month=next_month, flock_id=selected_flock_id) }}"
+        <a href="{{ url_for(route_name, year=next_year, month=next_month, flock_id=selected_flock_id) }}"
            class="btn btn-outline-secondary btn-sm ajax-calendar-link"
            title="Next Month">
            Next &gt;
@@ -31,6 +32,7 @@
     </div>
 </div>
 
+{% if show_vaccine %}
 <!-- Vaccine Schedule Calendar -->
 <div class="card mb-4">
     <div class="card-header sticky-header bg-info text-white">Vaccine Schedule</div>
@@ -73,7 +75,9 @@
         </table>
     </div>
 </div>
+{% endif %}
 
+{% if show_sampling %}
 <!-- Sampling Schedule Calendar -->
 <div class="card mb-4">
     <div class="card-header sticky-header bg-warning text-dark">Sampling Schedule</div>
@@ -116,3 +120,4 @@
         </table>
     </div>
 </div>
+{% endif %}
