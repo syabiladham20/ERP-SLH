@@ -1214,7 +1214,23 @@ def view_flock(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
     
+    # --- Weekly Data Calculation ---
     weekly_data = []
+
+    # 1. Fetch Hatch Data
+    hatch_records = Hatchability.query.filter_by(flock_id=id).all()
+    hatch_by_week = {}
+    for h in hatch_records:
+        days = (h.hatching_date - flock.intake_date).days
+        w = (days // 7) + 1
+        if w not in hatch_by_week: hatch_by_week[w] = {'hatched': 0, 'set': 0}
+        hatch_by_week[w]['hatched'] += h.hatched_chicks
+        hatch_by_week[w]['set'] += h.egg_set
+
+    # 2. Iterate Logs
+    curr_m = flock.intake_male
+    curr_f = flock.intake_female
+
     current_week = None
     week_summary = None
     
@@ -1229,10 +1245,13 @@ def view_flock(id):
             current_week = week_num
             week_summary = {
                 'week': week_num,
+                'start_stock_m': curr_m, # Start of Week Stock
+                'start_stock_f': curr_f,
                 'mortality_male': 0, 'mortality_female': 0,
                 'culls_male': 0, 'culls_female': 0,
                 'feed_male_total': 0.0, 'feed_female_total': 0.0,
                 'eggs': 0,
+                'hen_days': 0,
                 'bw_male_sum': 0.0, 'bw_male_count': 0,
                 'bw_female_sum': 0.0, 'bw_female_count': 0
             }
@@ -1243,19 +1262,43 @@ def view_flock(id):
         week_summary['culls_female'] += log.culls_female
         week_summary['eggs'] += log.eggs_collected
         
+        week_summary['hen_days'] += curr_f
+
         if log.body_weight_male > 0:
             week_summary['bw_male_sum'] += log.body_weight_male
             week_summary['bw_male_count'] += 1
         if log.body_weight_female > 0:
             week_summary['bw_female_sum'] += log.body_weight_female
             week_summary['bw_female_count'] += 1
+
+        # Update Stock
+        curr_m -= (log.mortality_male + log.culls_male)
+        curr_f -= (log.mortality_female + log.culls_female)
+        if curr_m < 0: curr_m = 0
+        if curr_f < 0: curr_f = 0
             
     if week_summary:
         weekly_data.append(week_summary)
     
+    # 3. Final Calculations
     for w in weekly_data:
         w['avg_bw_male'] = w['bw_male_sum'] / w['bw_male_count'] if w['bw_male_count'] > 0 else 0
         w['avg_bw_female'] = w['bw_female_sum'] / w['bw_female_count'] if w['bw_female_count'] > 0 else 0
+
+        # Hatch Data
+        h_data = hatch_by_week.get(w['week'], {'hatched': 0, 'set': 0})
+        w['hatched_chicks'] = h_data['hatched']
+        w['eggs_set'] = h_data['set']
+        w['hatch_pct'] = (w['hatched_chicks'] / w['eggs_set'] * 100) if w['eggs_set'] > 0 else 0
+
+        # Percentages
+        w['mort_pct_m'] = (w['mortality_male'] / w['start_stock_m'] * 100) if w['start_stock_m'] > 0 else 0
+        w['mort_pct_f'] = (w['mortality_female'] / w['start_stock_f'] * 100) if w['start_stock_f'] > 0 else 0
+
+        w['cull_pct_m'] = (w['culls_male'] / w['start_stock_m'] * 100) if w['start_stock_m'] > 0 else 0
+        w['cull_pct_f'] = (w['culls_female'] / w['start_stock_f'] * 100) if w['start_stock_f'] > 0 else 0
+
+        w['egg_prod_pct'] = (w['eggs'] / w['hen_days'] * 100) if w['hen_days'] > 0 else 0
 
     chart_data = {
         'dates': [log.date.strftime('%Y-%m-%d') for log in logs],

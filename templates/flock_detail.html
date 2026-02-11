@@ -29,8 +29,13 @@
       <tr>
         <th>Week</th>
         <th>Mortality (M/F)</th>
+        <th>Mortality % (M/F)</th>
         <th>Culls (M/F)</th>
+        <th>Culls % (M/F)</th>
         <th>Eggs</th>
+        <th>Egg Prod %</th>
+        <th>Hatch</th>
+        <th>Hatch %</th>
         <th>Avg BW (M/F)</th>
       </tr>
     </thead>
@@ -39,8 +44,13 @@
       <tr>
         <td>{{ w.week }}</td>
         <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
+        <td>{{ "%.2f"|format(w.mort_pct_m) }} / {{ "%.2f"|format(w.mort_pct_f) }}</td>
         <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
+        <td>{{ "%.2f"|format(w.cull_pct_m) }} / {{ "%.2f"|format(w.cull_pct_f) }}</td>
         <td>{{ w.eggs }}</td>
+        <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
+        <td>{{ w.hatched_chicks }}</td>
+        <td>{{ "%.2f"|format(w.hatch_pct) }}</td>
         <td>{{ "%.2f"|format(w.avg_bw_male) }} / {{ "%.2f"|format(w.avg_bw_female) }}</td>
       </tr>
       {% endfor %}
