@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="calendar-container">
+    {% include 'partials/health_log_calendar.html' %}
+</div>
+
+<!-- Flock Selection -->
+<div class="mb-4">
+    <form method="GET" action="{{ url_for('health_log_vaccines') }}" class="d-flex align-items-center">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <label class="me-2 fw-bold">Select House:</label>
+        <select name="flock_id" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+            <option value="">-- All Active Flocks --</option>
+            {% for f in active_flocks %}
+                <option value="{{ f.id }}" {% if selected_flock_id == f.id %}selected{% endif %}>{{ f.house.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Detailed Lists -->
+{% for flock, tasks in flock_tasks.items() %}
+    {% set is_editing = (edit_flock_id == flock.id) %}
+
+    <form method="POST" action="{{ url_for('health_log_vaccines', year=year, month=month, flock_id=flock.id) }}">
+    <div class="card mb-4 border-primary">
+        <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary">{{ flock.house.name }} - Age: {{ flock.current_week }} Weeks</h5>
+            <div>
+                {% if is_editing %}
+                    <a href="{{ url_for('health_log_vaccines', year=year, month=month, flock_id=selected_flock_id) }}" class="btn btn-secondary btn-sm">Cancel</a>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                {% else %}
+                    <!-- Edit Button redirects to same view with edit_flock_id set -->
+                    <!-- We keep selected_flock_id in context if filtering is active -->
+                    <a href="{{ url_for('health_log_vaccines', year=year, month=month, flock_id=selected_flock_id, edit_flock_id=flock.id) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body">
+
+            <!-- Vaccines -->
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                <h6 class="text-secondary mb-0">Vaccines</h6>
+                {% if is_editing %}
+                <div>
+                    {% if not tasks.vaccines %}
+                    <button type="submit" name="load_vaccine_standard" value="1" class="btn btn-warning btn-sm py-0" style="font-size: 0.75rem;">Load Standard</button>
+                    {% endif %}
+                    <button type="submit" name="add_vaccine_row" value="1" class="btn btn-info btn-sm text-white py-0" style="font-size: 0.75rem;">+ Add Row</button>
+                </div>
+                {% endif %}
+            </div>
+            <div class="table-responsive table-responsive-sticky mb-3">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="sticky-table-header-offset">
+                        <tr>
+                            <th style="width: 70px;">Age</th>
+                            <th style="width: 130px;">Est. Date</th>
+                            <th style="width: 130px;">Actual Date</th>
+                            <th>Vaccine Name</th>
+                            <th style="width: 100px;">Route</th>
+                            <th style="width: 80px;">Doses/Unit</th>
+                            <th style="width: 60px;">Units</th>
+                            <th style="width: 80px;">Total</th>
+                            <th style="width: 80px;">Status</th>
+                            {% if is_editing %}<th style="width: 50px;"></th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in tasks.vaccines %}
+                        <tr>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="v_age_code_{{ v.id }}" value="{{ v.age_code }}" class="form-control form-control-sm" style="width: 60px;">
+                                {% else %}
+                                    {{ v.age_code }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="v_est_date_{{ v.id }}" value="{{ v.est_date }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ v.est_date }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ v.actual_date or '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="v_name_{{ v.id }}" value="{{ v.vaccine_name }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ v.vaccine_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="text" name="v_route_{{ v.id }}" value="{{ v.route }}" class="form-control form-control-sm">
+                                {% else %}
+                                    {{ v.route or '-' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_editing %}
+                                    <input type="number" name="v_dpu_{{ v.id }}" value="{{ v.doses_per_unit }}" class="form-control form-control-sm" style="width: 80px;">
+                                {% else %}
+                                    {{ v.doses_per_unit }}
+                                {% endif %}
+                            </td>
+                            <td class="text-center text-primary fw-bold">{{ v.calculated_units_needed }}</td>
+                            <td class="small">{{ v.calculated_dose_count }}</td>
+                            <td>
+                                {% if v.actual_date %}
+                                    <span class="badge bg-success">Done</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                {% endif %}
+                            </td>
+                            {% if is_editing %}
+                            <td>
+                                <button type="submit" name="delete_vaccine_id" value="{{ v.id }}" class="btn btn-xs btn-outline-danger border-0" onclick="return confirm('Delete?');">&times;</button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+    </form>
+{% endfor %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('calendar-container');
+
+        // Function to attach listeners to dynamic elements
+        function attachListeners() {
+            // Navigation Links (Prev/Next)
+            container.querySelectorAll('.ajax-calendar-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const url = this.getAttribute('href');
+                    loadCalendar(url);
+                });
+            });
+
+            // Month/Year Selects
+            const monthSelect = container.querySelector('#calendar-month-select');
+            const yearSelect = container.querySelector('#calendar-year-select');
+
+            if (monthSelect && yearSelect) {
+                const handleSelectChange = () => {
+                    const month = monthSelect.value;
+                    const year = yearSelect.value;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    urlParams.set('year', year);
+                    urlParams.set('month', month);
+
+                    // We use the current route name injected from backend or construct it
+                    // The simplest is to use the current pathname
+                    const baseUrl = window.location.pathname;
+                    const newUrl = `${baseUrl}?${urlParams.toString()}`;
+
+                    loadCalendar(newUrl);
+                };
+
+                monthSelect.addEventListener('change', handleSelectChange);
+                yearSelect.addEventListener('change', handleSelectChange);
+            }
+        }
+
+        attachListeners();
+
+        function loadCalendar(url) {
+            fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                container.innerHTML = html;
+                attachListeners();
+                window.history.pushState({ path: url }, '', url);
+            })
+            .catch(error => console.error('Error loading calendar:', error));
+        }
+
+        window.addEventListener('popstate', function(e) {
+            loadCalendar(window.location.href);
+        });
+    });
+</script>
+{% endblock %}
