@@ -110,19 +110,28 @@
                 <strong>Add New Medication Record</strong>
                 <div class="row g-2 mt-1">
                     <div class="col-md-3">
-                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name">
+                        <select name="inventory_item_id" class="form-select form-select-sm mb-1" onchange="if(this.value){this.form.drug_name.value=this.options[this.selectedIndex].text.split(' (')[0];}">
+                            <option value="">-- Select Inventory Item --</option>
+                            {% for item in medication_inventory %}
+                                <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.current_stock }})</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Or Type Drug Name">
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage">
+                        <input type="text" name="dosage" class="form-control form-control-sm mb-1" placeholder="Dosage">
+                        <input type="number" step="0.01" name="amount_used_qty" class="form-control form-control-sm" placeholder="Qty (Deduct)">
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Used">
+                        <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Text (e.g. 1 Bottle)">
                     </div>
                     <div class="col-md-2">
-                        <input type="date" name="start_date" class="form-control form-control-sm">
+                        <input type="date" name="start_date" class="form-control form-control-sm mb-1">
+                        <small class="text-muted d-block">Start Date</small>
                     </div>
                     <div class="col-md-2">
-                        <input type="date" name="end_date" class="form-control form-control-sm" placeholder="End Date">
+                        <input type="date" name="end_date" class="form-control form-control-sm mb-1">
+                        <small class="text-muted d-block">End Date (Optional)</small>
                     </div>
                     <div class="col-md-1">
                         <button type="submit" name="add_medication" value="1" class="btn btn-success btn-sm w-100">Add</button>

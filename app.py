@@ -3270,47 +3270,6 @@ def health_log_vaccines():
     selected_flock_id = request.args.get('flock_id')
     edit_flock_id = request.args.get('edit_flock_id', type=int)
 
-                     inv_id = request.form.get('inventory_item_id')
-                     drug_name = request.form.get('drug_name')
-
-                     if inv_id and inv_id.isdigit():
-                         item = InventoryItem.query.get(int(inv_id))
-                         if item: drug_name = item.name
-                         inv_id = int(inv_id)
-                     else:
-                         inv_id = None
-
-                     qty = float(request.form.get('amount_used_qty') or 0)
-
-                     m = Medication(
-                         flock_id=flock_id_param,
-                         drug_name=drug_name,
-                         inventory_item_id=inv_id,
-                         dosage=request.form.get('dosage'),
-                         amount_used=request.form.get('amount_used'),
-                         amount_used_qty=qty,
-                         start_date=s_date,
-                         end_date=e_date,
-                         remarks=request.form.get('remarks')
-                     )
-                     db.session.add(m)
-
-                     if inv_id and qty > 0:
-                         inv_item = InventoryItem.query.get(inv_id)
-                         inv_item.current_stock -= qty
-                         t = InventoryTransaction(
-                             inventory_item_id=inv_id,
-                             transaction_type='Usage',
-                             quantity=qty,
-                             transaction_date=s_date,
-                             notes=f'Used in Health Log'
-                         )
-                         db.session.add(t)
-
-                     db.session.commit()
-                     flash('Medication added.', 'success')
-                 except Exception as e:
-                     flash(f'Error adding medication: {str(e)}', 'danger')
     if request.method == 'POST':
         flock_id_param = request.form.get('flock_id') or selected_flock_id
 
@@ -3642,7 +3601,6 @@ def health_log_sampling():
     medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
     vaccine_inventory = InventoryItem.query.filter_by(type='Vaccine').order_by(InventoryItem.name).all()
 
-    return render_template('health_log.html',
     return render_template('health_log_sampling.html',
         show_sampling=True,
         today=today,
@@ -3657,9 +3615,8 @@ def health_log_sampling():
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         flock_tasks=flock_tasks,
         medication_inventory=medication_inventory,
-        vaccine_inventory=vaccine_inventory
-        edit_flock_id=edit_flock_id,
-        flock_tasks=flock_tasks
+        vaccine_inventory=vaccine_inventory,
+        edit_flock_id=edit_flock_id
     )
 
 @app.route('/health_log/medication', methods=['GET', 'POST'])
@@ -3679,16 +3636,46 @@ def health_log_medication():
                      if request.form.get('end_date'):
                          e_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
 
+                     inv_id = request.form.get('inventory_item_id')
+                     drug_name = request.form.get('drug_name')
+                     if inv_id and inv_id.isdigit():
+                         inv_id = int(inv_id)
+                         item = InventoryItem.query.get(inv_id)
+                         if item: drug_name = item.name
+                     else:
+                         inv_id = None
+
+                     qty = 0.0
+                     if request.form.get('amount_used_qty'):
+                         try: qty = float(request.form.get('amount_used_qty'))
+                         except: pass
+
                      m = Medication(
                          flock_id=flock_id_param,
-                         drug_name=request.form.get('drug_name'),
+                         drug_name=drug_name,
+                         inventory_item_id=inv_id,
                          dosage=request.form.get('dosage'),
                          amount_used=request.form.get('amount_used'),
+                         amount_used_qty=qty,
                          start_date=s_date,
                          end_date=e_date,
                          remarks=request.form.get('remarks')
                      )
                      db.session.add(m)
+
+                     if inv_id and qty > 0:
+                         inv_item = InventoryItem.query.get(inv_id)
+                         if inv_item:
+                             inv_item.current_stock -= qty
+                             t = InventoryTransaction(
+                                 inventory_item_id=inv_id,
+                                 transaction_type='Usage',
+                                 quantity=qty,
+                                 transaction_date=s_date,
+                                 notes=f'Used in Health Log'
+                             )
+                             db.session.add(t)
+
                      db.session.commit()
                      flash('Medication added.', 'success')
                  except Exception as e:
@@ -3749,11 +3736,14 @@ def health_log_medication():
     for f in target_flocks:
         flock_tasks[f] = {'medications': Medication.query.filter_by(flock_id=f.id).order_by(Medication.start_date.desc()).all()}
 
+    medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
+
     return render_template('health_log_medication.html',
         active_flocks=active_flocks,
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         edit_flock_id=edit_flock_id,
-        flock_tasks=flock_tasks
+        flock_tasks=flock_tasks,
+        medication_inventory=medication_inventory
     )
 
 @app.route('/api/metrics')
