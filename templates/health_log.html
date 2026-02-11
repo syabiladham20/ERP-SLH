@@ -50,6 +50,9 @@
                             <th style="width: 130px;">Actual Date</th>
                             <th>Vaccine Name</th>
                             <th style="width: 100px;">Route</th>
+                            <th style="width: 80px;">Doses/Unit</th>
+                            <th style="width: 60px;">Units</th>
+                            <th style="width: 80px;">Total</th>
                             <th style="width: 80px;">Status</th>
                             <th style="width: 50px;"></th>
                         </tr>
@@ -70,6 +73,11 @@
                             <td>
                                 <input type="text" name="v_route_{{ v.id }}" value="{{ v.route }}" class="form-control form-control-sm">
                             </td>
+                            <td>
+                                <input type="number" name="v_dpu_{{ v.id }}" value="{{ v.doses_per_unit }}" class="form-control form-control-sm" style="width: 80px;">
+                            </td>
+                            <td class="text-center text-primary fw-bold">{{ v.calculated_units_needed }}</td>
+                            <td class="small">{{ v.calculated_dose_count }}</td>
                             <td>
                                 {% if v.actual_date %}
                                     <span class="badge bg-success">Done</span>

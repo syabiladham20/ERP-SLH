@@ -314,6 +314,54 @@
       </div>
     </div>
 
+    {% if vaccines_due %}
+    <div class="card mb-3 border-info">
+      <div class="card-header sticky-header bg-info text-white">Vaccinations (Pending / Done Today)</div>
+      <div class="card-body">
+        <div class="alert alert-light border small mb-2">
+            Below are vaccines scheduled around this date or marked as completed today.
+            Check the box to mark as <strong>Completed on {{ log.date if log else selected_date }}</strong>.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Age</th>
+                        <th>Vaccine</th>
+                        <th>Est. Date</th>
+                        <th>Mark Completed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vaccines_due %}
+                    <tr class="{{ 'table-success' if v.actual_date else '' }}">
+                        <td>
+                            <input type="hidden" name="vaccine_present_ids" value="{{ v.id }}">
+                            {% if v.actual_date %}
+                                <span class="badge bg-success">Done</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ v.age_code }}</td>
+                        <td>{{ v.vaccine_name }}</td>
+                        <td>{{ v.est_date }}</td>
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="vaccine_completed_ids" value="{{ v.id }}" id="vac_{{ v.id }}" {{ 'checked' if v.actual_date else '' }}>
+                                <label class="form-check-label" for="vac_{{ v.id }}">Completed</label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card mb-3">
       <div class="card-header sticky-header bg-danger text-white">Medication Record (Optional)</div>
       <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">

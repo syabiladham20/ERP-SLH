@@ -256,16 +256,51 @@ class Vaccine(db.Model):
     est_date = db.Column(db.Date, nullable=True)
     actual_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
+    doses_per_unit = db.Column(db.Integer, default=1000)
 
     flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True, cascade="all, delete-orphan"))
 
-    @property
-    def dose_count(self):
+    def get_live_stock(self):
+        # Fallback query if not provided
         if not self.flock: return 0
-        count = self.flock.intake_female + self.flock.intake_male
+        if not self.est_date: return self.flock.intake_female + self.flock.intake_male
+
+        # Determine live stock at est_date
+        # Intake - (Mortality + Culls up to est_date - 1)
+        # Actually, "at time of vaccination" -> Start of Day of est_date.
+
+        # This query is slow inside loops, use enrichment where possible.
+        stmt = db.session.query(
+            db.func.sum(DailyLog.mortality_male),
+            db.func.sum(DailyLog.mortality_female),
+            db.func.sum(DailyLog.culls_male),
+            db.func.sum(DailyLog.culls_female)
+        ).filter(DailyLog.flock_id == self.flock_id, DailyLog.date < self.est_date).first()
+
+        mort_m = stmt[0] or 0
+        mort_f = stmt[1] or 0
+        cull_m = stmt[2] or 0
+        cull_f = stmt[3] or 0
+
+        current_stock = (self.flock.intake_male + self.flock.intake_female) - (mort_m + mort_f + cull_m + cull_f)
+        return max(0, current_stock)
+
+    def dose_count(self, live_stock=None):
+        if live_stock is None:
+            live_stock = self.get_live_stock()
+
+        unit_size = self.doses_per_unit if self.doses_per_unit > 0 else 1000
         import math
-        doses_needed = math.ceil(count / 1000.0) * 1000
-        return doses_needed
+        units = math.ceil(live_stock / unit_size)
+        return units * unit_size
+
+    def units_needed(self, live_stock=None):
+        if live_stock is None:
+            live_stock = self.get_live_stock()
+
+        unit_size = self.doses_per_unit if self.doses_per_unit > 0 else 1000
+        import math
+        return math.ceil(live_stock / unit_size)
 
 class ImportedWeeklyBenchmark(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -315,6 +350,37 @@ class Hatchability(db.Model):
     @property
     def rotten_egg_pct(self):
         return (self.rotten_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+
+def get_flock_stock_history(flock_id):
+    """
+    Returns a dictionary mapping date -> live_stock (start of day).
+    Useful for batch processing vaccines without N+1 queries.
+    """
+    flock = Flock.query.get(flock_id)
+    if not flock: return {}
+
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    stock_map = {}
+    current_stock = flock.intake_male + flock.intake_female
+
+    # We assume logs are contiguous or we handle gaps by carrying forward?
+    # Actually, we need stock AT any date.
+    # If we iterate logs, we get stock at Log Date.
+    # We can build a cumulative mortality map.
+
+    cum_loss = 0
+    # Map from Date -> Cumulative Loss BEFORE that date (Start of Day)
+
+    for log in logs:
+        stock_map[log.date] = max(0, (flock.intake_male + flock.intake_female) - cum_loss)
+        cum_loss += (log.mortality_male + log.mortality_female + log.culls_male + log.culls_female)
+
+    # Also add "today/future" if needed, but mostly we query by log dates or est_dates.
+    # If est_date is in future beyond logs, use last known stock.
+    stock_map['latest'] = max(0, (flock.intake_male + flock.intake_female) - cum_loss)
+
+    return stock_map
 
 # --- Initialization Helpers ---
 
@@ -1396,6 +1462,11 @@ def flock_vaccines(id):
                 actual_date_str = request.form.get(f'actual_date_{vid}')
                 remarks = request.form.get(f'remarks_{vid}')
 
+                try:
+                    dpu = int(request.form.get(f'doses_per_unit_{vid}') or 1000)
+                    v.doses_per_unit = dpu
+                except: pass
+
                 if age_code is not None: v.age_code = age_code
                 if name is not None: v.vaccine_name = name
                 if route is not None: v.route = route
@@ -1421,6 +1492,78 @@ def flock_vaccines(id):
         return redirect(url_for('flock_vaccines', id=id))
 
     vaccines = Vaccine.query.filter_by(flock_id=id).order_by(Vaccine.est_date.asc(), Vaccine.id.asc()).all()
+
+    # Enrich with calculated data
+    stock_history = get_flock_stock_history(id)
+    default_stock = flock.intake_male + flock.intake_female
+
+    for v in vaccines:
+        # Stock at est_date
+        stock = default_stock
+        if v.est_date:
+            stock = stock_history.get(v.est_date, stock_history.get('latest', default_stock))
+            # If est_date is before first log, use intake?
+            # get_flock_stock_history logic handles ranges implicitly by returning values for known log dates.
+            # If est_date is NOT in keys (no log for that specific date), we should find the nearest previous date.
+            # Since get_flock_stock_history returns only log dates, we need better lookup.
+
+            # Improvement: get_flock_stock_history returns discrete points.
+            # We need "Stock at Date X".
+            # Simple lookup:
+            #   Find max date in history <= est_date.
+
+            # Let's do simple search here since N=500 logs is small.
+            # Actually stock_history is dict.
+            # Optimization: Sort keys once.
+            pass
+
+    # Re-implement enrichment with efficient lookup
+    sorted_dates = sorted([d for d in stock_history.keys() if isinstance(d, date)])
+
+    for v in vaccines:
+        target_date = v.est_date or date.today()
+
+        # Find applicable stock
+        # Stock is valid for the day of log and subsequent days until next log?
+        # Actually DailyLog records mortality for that day.
+        # "Start of Day Stock" for Date X is: Intake - (Mortality BEFORE X).
+        # My get_flock_stock_history returns "Start of Day Stock" for each log date.
+
+        # If target_date matches a log date, use it.
+        # If not, find the last log date < target_date.
+        # If target_date < first log, use Intake.
+
+        applicable_stock = flock.intake_male + flock.intake_female
+
+        # Binary search or linear scan (dates are sorted)
+        # Find largest d <= target_date
+        best_date = None
+        for d in sorted_dates:
+            if d <= target_date:
+                best_date = d
+            else:
+                break
+
+        if best_date:
+            applicable_stock = stock_history[best_date]
+            # If best_date is exactly target_date, stock_history[best_date] is Start of Day stock. Correct.
+            # If best_date < target_date, stock_history[best_date] is start of that day.
+            # We should subtract mortality OF best_date and subsequent days?
+            # get_flock_stock_history returns start of day stock.
+            # If we have a gap, stock remains same? Yes, assuming no mortality on missing days.
+
+            # However, if best_date < target_date, we need to subtract mortality of best_date itself to get end of day?
+            # Actually, if logs are contiguous, we would have found a closer date.
+            # If logs have gaps (missing data), we assume stock stays same.
+            # But wait, stock_history[best_date] is stock at morning of best_date.
+            # If target_date > best_date, birds might have died on best_date.
+            # Effectively, we should use "End of Day" stock of best_date?
+            # For simplicity/safety (overestimate), Start of Day stock of last known log is fine.
+            pass
+
+        v.calculated_dose_count = v.dose_count(applicable_stock)
+        v.calculated_units_needed = v.units_needed(applicable_stock)
+
     return render_template('flock_vaccines.html', flock=flock, vaccines=vaccines)
 
 @app.route('/vaccine_schedule')
@@ -1726,6 +1869,19 @@ def daily_log():
 
         update_log_from_request(log, request)
 
+        # Handle Vaccines (Mark as Completed)
+        vaccine_present_ids = request.form.getlist('vaccine_present_ids')
+        vaccine_completed_ids = request.form.getlist('vaccine_completed_ids')
+
+        for vid in vaccine_present_ids:
+            vac = Vaccine.query.get(vid)
+            if vac and vac.flock_id == flock.id:
+                if vid in vaccine_completed_ids:
+                    vac.actual_date = log_date
+                elif vac.actual_date == log_date:
+                    # Only unset if it was set to THIS date (don't clear history if logic changes)
+                    vac.actual_date = None
+
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
         med_dosages = request.form.getlist('med_dosage[]')
@@ -1781,17 +1937,47 @@ def daily_log():
     selected_house_id = request.args.get('house_id')
     selected_date_str = request.args.get('date')
     log = None
+    vaccines_due = []
+
+    # If log exists, we use log.flock.id. If not, we try selected_house_id.
+    target_flock_id = None
+    target_date = date.today()
 
     if selected_house_id and selected_date_str:
         try:
              h_id = int(selected_house_id)
              d_obj = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+             target_date = d_obj
 
              target_flock = Flock.query.filter_by(house_id=h_id, status='Active').first()
              if target_flock:
+                 target_flock_id = target_flock.id
                  log = DailyLog.query.filter_by(flock_id=target_flock.id, date=d_obj).first()
         except:
              pass
+    elif log:
+        target_flock_id = log.flock_id
+        target_date = log.date
+
+    if target_flock_id:
+        # Fetch relevant vaccines
+        # Criteria: Actual Date is target_date OR (Actual is None AND Est Date <= target_date + 7)
+        all_vacs = Vaccine.query.filter_by(flock_id=target_flock_id).all()
+        lookahead = target_date + timedelta(days=7)
+
+        for v in all_vacs:
+            is_relevant = False
+            if v.actual_date == target_date:
+                is_relevant = True
+            elif v.actual_date is None:
+                if v.est_date and v.est_date <= lookahead:
+                    is_relevant = True
+
+            if is_relevant:
+                vaccines_due.append(v)
+
+        # Sort by est_date
+        vaccines_due.sort(key=lambda x: x.est_date or date.max)
 
     return render_template('daily_log_form.html',
                            houses=active_houses,
@@ -1799,7 +1985,8 @@ def daily_log():
                            feed_codes=feed_codes,
                            log=log,
                            selected_house_id=int(selected_house_id) if selected_house_id and selected_house_id.isdigit() else None,
-                           selected_date=selected_date_str)
+                           selected_date=selected_date_str,
+                           vaccines_due=vaccines_due)
 
 @app.context_processor
 def utility_processor():
@@ -1816,6 +2003,18 @@ def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
     if request.method == 'POST':
+        # Handle Vaccines
+        vaccine_present_ids = request.form.getlist('vaccine_present_ids')
+        vaccine_completed_ids = request.form.getlist('vaccine_completed_ids')
+
+        for vid in vaccine_present_ids:
+            vac = Vaccine.query.get(vid)
+            if vac and vac.flock_id == log.flock_id:
+                if vid in vaccine_completed_ids:
+                    vac.actual_date = log.date
+                elif vac.actual_date == log.date:
+                    vac.actual_date = None
+
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
         med_dosages = request.form.getlist('med_dosage[]')
@@ -1859,7 +2058,28 @@ def edit_daily_log(id):
         return redirect(url_for('view_flock', id=log.flock_id))
     
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
-    return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes)
+
+    vaccines_due = []
+    target_flock_id = log.flock_id
+    target_date = log.date
+
+    all_vacs = Vaccine.query.filter_by(flock_id=target_flock_id).all()
+    lookahead = target_date + timedelta(days=7)
+
+    for v in all_vacs:
+        is_relevant = False
+        if v.actual_date == target_date:
+            is_relevant = True
+        elif v.actual_date is None:
+            if v.est_date and v.est_date <= lookahead:
+                is_relevant = True
+
+        if is_relevant:
+            vaccines_due.append(v)
+
+    vaccines_due.sort(key=lambda x: x.est_date or date.max)
+
+    return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due)
 
 @app.route('/import', methods=['GET', 'POST'])
 def import_data():
@@ -2564,6 +2784,11 @@ def health_log():
             route = request.form.get(f'v_route_{vid}')
             if route and v.route != route: v.route = route; updated_count += 1
 
+            try:
+                dpu = int(request.form.get(f'v_dpu_{vid}') or 1000)
+                if v.doses_per_unit != dpu: v.doses_per_unit = dpu; updated_count += 1
+            except: pass
+
             est = request.form.get(f'v_est_date_{vid}')
             if est:
                 try:
@@ -2718,8 +2943,29 @@ def health_log():
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
 
     for f in target_flocks:
+        vaccines_list = Vaccine.query.filter_by(flock_id=f.id).order_by(Vaccine.est_date).all()
+
+        # Enrich vaccines
+        stock_history = get_flock_stock_history(f.id)
+        sorted_dates = sorted([d for d in stock_history.keys() if isinstance(d, date)])
+
+        for v in vaccines_list:
+            target_date = v.est_date or date.today()
+            applicable_stock = f.intake_male + f.intake_female
+
+            best_date = None
+            for d in sorted_dates:
+                if d <= target_date: best_date = d
+                else: break
+
+            if best_date:
+                applicable_stock = stock_history[best_date]
+
+            v.calculated_dose_count = v.dose_count(applicable_stock)
+            v.calculated_units_needed = v.units_needed(applicable_stock)
+
         flock_tasks[f] = {
-            'vaccines': Vaccine.query.filter_by(flock_id=f.id).order_by(Vaccine.est_date).all(),
+            'vaccines': vaccines_list,
             'sampling': SamplingEvent.query.filter_by(flock_id=f.id).order_by(SamplingEvent.age_week).all(),
             'medications': Medication.query.filter_by(flock_id=f.id).order_by(Medication.start_date.desc()).all()
         }
