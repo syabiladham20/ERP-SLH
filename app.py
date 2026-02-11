@@ -1234,6 +1234,9 @@ def view_flock(id):
     current_week = None
     week_summary = None
     
+    # Init Aggregators for Weekly Chart Data (Partitions, Uniformity, Std)
+    # We will store lists of values per week and average them later
+
     for log in logs:
         days_diff = (log.date - flock.intake_date).days
         week_num = (days_diff // 7) + 1
@@ -1253,7 +1256,16 @@ def view_flock(id):
                 'eggs': 0,
                 'hen_days': 0,
                 'bw_male_sum': 0.0, 'bw_male_count': 0,
-                'bw_female_sum': 0.0, 'bw_female_count': 0
+                'bw_female_sum': 0.0, 'bw_female_count': 0,
+
+                # Extended Aggregators
+                'unif_male_sum': 0.0, 'unif_male_count': 0,
+                'unif_female_sum': 0.0, 'unif_female_count': 0,
+                'bw_male_std_sum': 0.0, 'bw_male_std_count': 0,
+                'bw_female_std_sum': 0.0, 'bw_female_std_count': 0,
+
+                # Partitions (Dynamic)
+                'partitions': {} # key: (sex, num) -> {sum, count}
             }
         
         week_summary['mortality_male'] += log.mortality_male
@@ -1271,6 +1283,49 @@ def view_flock(id):
             week_summary['bw_female_sum'] += log.body_weight_female
             week_summary['bw_female_count'] += 1
 
+        # Uniformity Aggregation
+        if log.uniformity_male > 0:
+            week_summary['unif_male_sum'] += log.uniformity_male
+            week_summary['unif_male_count'] += 1
+        if log.uniformity_female > 0:
+            week_summary['unif_female_sum'] += log.uniformity_female
+            week_summary['unif_female_count'] += 1
+
+        # Std BW Aggregation
+        if log.standard_bw_male > 0:
+            week_summary['bw_male_std_sum'] += log.standard_bw_male
+            week_summary['bw_male_std_count'] += 1
+        if log.standard_bw_female > 0:
+            week_summary['bw_female_std_sum'] += log.standard_bw_female
+            week_summary['bw_female_std_count'] += 1
+
+        # Partition Aggregation
+        # Gather from PartitionWeight if available, else fields
+        p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
+
+        # Helper to aggregate
+        def agg_part(sex, num, val):
+            if val > 0:
+                key = f"{sex}{num}"
+                if key not in week_summary['partitions']:
+                    week_summary['partitions'][key] = {'sum': 0.0, 'count': 0}
+                week_summary['partitions'][key]['sum'] += val
+                week_summary['partitions'][key]['count'] += 1
+
+        # Male Partitions 1-8
+        for i in range(1, 9):
+            val_m = p_map.get(f'M{i}', 0)
+            if val_m == 0 and i <= 2:
+                val_m = getattr(log, f'bw_male_p{i}', 0)
+            agg_part('M', i, val_m)
+
+        # Female Partitions 1-8
+        for i in range(1, 9):
+            val_f = p_map.get(f'F{i}', 0)
+            if val_f == 0 and i <= 4:
+                val_f = getattr(log, f'bw_female_p{i}', 0)
+            agg_part('F', i, val_f)
+
         # Update Stock
         curr_m -= (log.mortality_male + log.culls_male)
         curr_f -= (log.mortality_female + log.culls_female)
@@ -1284,6 +1339,19 @@ def view_flock(id):
     for w in weekly_data:
         w['avg_bw_male'] = w['bw_male_sum'] / w['bw_male_count'] if w['bw_male_count'] > 0 else 0
         w['avg_bw_female'] = w['bw_female_sum'] / w['bw_female_count'] if w['bw_female_count'] > 0 else 0
+
+        # Uniformity Avg
+        w['avg_unif_male'] = w['unif_male_sum'] / w['unif_male_count'] if w['unif_male_count'] > 0 else 0
+        w['avg_unif_female'] = w['unif_female_sum'] / w['unif_female_count'] if w['unif_female_count'] > 0 else 0
+
+        # Std BW Avg
+        w['avg_bw_male_std'] = w['bw_male_std_sum'] / w['bw_male_std_count'] if w['bw_male_std_count'] > 0 else 0
+        w['avg_bw_female_std'] = w['bw_female_std_sum'] / w['bw_female_std_count'] if w['bw_female_std_count'] > 0 else 0
+
+        # Partition Avgs
+        w['partition_avgs'] = {}
+        for key, data in w['partitions'].items():
+            w['partition_avgs'][key] = data['sum'] / data['count'] if data['count'] > 0 else 0
 
         # Hatch Data
         h_data = hatch_by_week.get(w['week'], {'hatched': 0, 'set': 0})
@@ -1299,6 +1367,71 @@ def view_flock(id):
         w['cull_pct_f'] = (w['culls_female'] / w['start_stock_f'] * 100) if w['start_stock_f'] > 0 else 0
 
         w['egg_prod_pct'] = (w['eggs'] / w['hen_days'] * 100) if w['hen_days'] > 0 else 0
+
+        # Cumulative Mortality up to end of week?
+        # Actually, chart wants Cumulative Mortality.
+        # weekly_data has 'mortality_male' (this week).
+        # We need running sum for the chart.
+
+    # Build Weekly Chart Data
+    chart_data_weekly = {
+        'dates': [],
+        'mortality_cum_male': [],
+        'mortality_cum_female': [],
+        'egg_prod': [],
+        'bw_male_std': [],
+        'bw_female_std': [],
+        'unif_male': [], 'unif_female': []
+    }
+
+    # Initialize dynamic keys for partitions in weekly
+    for i in range(1, 9):
+        chart_data_weekly[f'bw_M{i}'] = []
+        chart_data_weekly[f'bw_F{i}'] = []
+
+    # Helper for Percentage Scaling
+    def scale_pct(val):
+        if val is None: return None
+        if 0 < val <= 1.0: return val * 100.0
+        return val
+
+    cum_mort_m_week = 0
+    cum_mort_f_week = 0
+
+    start_m = flock.intake_male or 1
+    start_f = flock.intake_female or 1
+
+    for w in weekly_data:
+        chart_data_weekly['dates'].append(f"Week {w['week']}")
+
+        cum_mort_m_week += w['mortality_male']
+        cum_mort_f_week += w['mortality_female']
+
+        chart_data_weekly['mortality_cum_male'].append(round((cum_mort_m_week / start_m) * 100, 2))
+        chart_data_weekly['mortality_cum_female'].append(round((cum_mort_f_week / start_f) * 100, 2))
+
+        chart_data_weekly['egg_prod'].append(round(w['egg_prod_pct'], 2))
+
+        chart_data_weekly['bw_male_std'].append(w['avg_bw_male_std'] if w['avg_bw_male_std'] > 0 else None)
+        chart_data_weekly['bw_female_std'].append(w['avg_bw_female_std'] if w['avg_bw_female_std'] > 0 else None)
+
+        chart_data_weekly['unif_male'].append(scale_pct(w['avg_unif_male']) if w['avg_unif_male'] > 0 else None)
+        chart_data_weekly['unif_female'].append(scale_pct(w['avg_unif_female']) if w['avg_unif_female'] > 0 else None)
+
+        for i in range(1, 9):
+             val_m = w['partition_avgs'].get(f'M{i}', 0)
+             val_f = w['partition_avgs'].get(f'F{i}', 0)
+             chart_data_weekly[f'bw_M{i}'].append(val_m if val_m > 0 else None)
+             chart_data_weekly[f'bw_F{i}'].append(val_f if val_f > 0 else None)
+
+    # Legacy keys for daily view compatibility (if needed)
+    chart_data_weekly['bw_male_p1'] = chart_data_weekly['bw_M1']
+    chart_data_weekly['bw_male_p2'] = chart_data_weekly['bw_M2']
+    chart_data_weekly['bw_female_p1'] = chart_data_weekly['bw_F1']
+    chart_data_weekly['bw_female_p2'] = chart_data_weekly['bw_F2']
+    chart_data_weekly['bw_female_p3'] = chart_data_weekly['bw_F3']
+    chart_data_weekly['bw_female_p4'] = chart_data_weekly['bw_F4']
+
 
     chart_data = {
         'dates': [log.date.strftime('%Y-%m-%d') for log in logs],
@@ -1376,8 +1509,8 @@ def view_flock(id):
             chart_data[key_m].append(val_or_null(val_m))
             chart_data[key_f].append(val_or_null(val_f))
 
-        chart_data['unif_male'].append(val_or_null(log.uniformity_male))
-        chart_data['unif_female'].append(val_or_null(log.uniformity_female))
+        chart_data['unif_male'].append(scale_pct(log.uniformity_male) if log.uniformity_male > 0 else None)
+        chart_data['unif_female'].append(scale_pct(log.uniformity_female) if log.uniformity_female > 0 else None)
 
         # --- Enriched Log Calculation ---
 
@@ -1452,7 +1585,7 @@ def view_flock(id):
             'total_feed': feed_total_kg
         })
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data)
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly)
 
 @app.route('/flock/<int:id>/charts')
 def flock_charts(id):
