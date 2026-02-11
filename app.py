@@ -3491,59 +3491,6 @@ def health_log_sampling():
                 s.status = new_status
                 updated_count += 1
 
-        for mid in m_ids:
-            m = Medication.query.get(mid)
-            if not m: continue
-
-            # Inventory Update logic for editing is complex.
-            # If we change the item, do we revert old stock?
-            # For simplicity, editing here might just update the reference, NOT trigger stock logic automatically?
-            # Or we can support stock logic if amount/item changes.
-            # Given constraints, let's just update the record details for now.
-            # If user wants to adjust stock, they use Inventory page.
-
-            # However, if we change the dropdown, we should update the ID.
-            inv_id_val = request.form.get(f'm_inv_{mid}')
-            if inv_id_val and inv_id_val.isdigit():
-                new_id = int(inv_id_val)
-                if m.inventory_item_id != new_id:
-                    m.inventory_item_id = new_id
-                    item = InventoryItem.query.get(new_id)
-                    if item: m.drug_name = item.name
-                    updated_count += 1
-
-            # Fallback text input if needed (if not using dropdown in edit?)
-            # I will use dropdown in edit.
-
-            dosage = request.form.get(f'm_dosage_{mid}')
-            if dosage is not None and m.dosage != dosage: m.dosage = dosage; updated_count += 1
-
-            amount = request.form.get(f'm_amount_{mid}')
-            if amount is not None and m.amount_used != amount: m.amount_used = amount; updated_count += 1
-
-            try:
-                qty_val = float(request.form.get(f'm_qty_{mid}') or 0)
-                if m.amount_used_qty != qty_val: m.amount_used_qty = qty_val; updated_count += 1
-            except: pass
-
-            rem = request.form.get(f'm_rem_{mid}')
-            if rem is not None and m.remarks != rem: m.remarks = rem; updated_count += 1
-
-            start = request.form.get(f'm_start_{mid}')
-            if start:
-                try:
-                    d = datetime.strptime(start, '%Y-%m-%d').date()
-                    if m.start_date != d: m.start_date = d; updated_count += 1
-                except: pass
-
-            end = request.form.get(f'm_end_{mid}')
-            if end:
-                try:
-                    d = datetime.strptime(end, '%Y-%m-%d').date()
-                    if m.end_date != d: m.end_date = d; updated_count += 1
-                except: pass
-            elif end == '' and m.end_date is not None:
-                m.end_date = None; updated_count += 1
 
         if updated_count > 0:
             db.session.commit()
