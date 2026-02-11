@@ -3,6 +3,24 @@
 {% block content %}
 <h2>Dashboard</h2>
 
+<ul class="nav nav-tabs mb-3" id="dashboardTabs" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#flocks">Flock Overview</button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link position-relative" data-bs-toggle="tab" data-bs-target="#inventory">
+        Inventory Status
+        {% if low_stock_count > 0 %}
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+            <span class="visually-hidden">New alerts</span>
+        </span>
+        {% endif %}
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane fade show active" id="flocks">
 <div class="row">
     {% if active_flocks %}
         {% for flock in active_flocks %}
@@ -135,4 +153,45 @@
         </div>
     {% endif %}
 </div>
+</div> <!-- End Flocks Tab -->
+
+<div class="tab-pane fade" id="inventory">
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Low Stock Alerts ({{ low_stock_count }})</h5>
+            <a href="{{ url_for('inventory') }}" class="btn btn-sm btn-light text-danger fw-bold">Manage Full Inventory</a>
+        </div>
+        <div class="card-body">
+            {% if low_stock_items %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Type</th>
+                                <th>Current</th>
+                                <th>Min Level</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in low_stock_items %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.type }}</td>
+                                <td class="fw-bold text-danger">{{ item.current_stock }} {{ item.unit }}</td>
+                                <td>{{ item.min_stock_level }} {{ item.unit }}</td>
+                                <td><span class="badge bg-danger">Low</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-success mb-0">All inventory items are above minimum stock levels.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</div> <!-- End Tab Content -->
 {% endblock %}

@@ -68,13 +68,25 @@
                                 <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <input type="text" name="v_name_{{ v.id }}" value="{{ v.vaccine_name }}" class="form-control form-control-sm">
+                                <select name="v_inv_{{ v.id }}" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    {% for item in vaccine_inventory %}
+                                        <option value="{{ item.id }}" {{ 'selected' if item.id == v.inventory_item_id else '' }}>{{ item.name }}</option>
+                                    {% endfor %}
+                                    {% if not v.inventory_item_id and v.vaccine_name %}
+                                        <option value="" selected disabled>Legacy: {{ v.vaccine_name }}</option>
+                                    {% endif %}
+                                </select>
                             </td>
                             <td>
                                 <input type="text" name="v_route_{{ v.id }}" value="{{ v.route }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <input type="number" name="v_dpu_{{ v.id }}" value="{{ v.doses_per_unit }}" class="form-control form-control-sm" style="width: 80px;">
+                                {% if v.inventory_item_id %}
+                                    <span class="badge bg-light text-dark border d-block">{{ v.doses_per_unit }}</span>
+                                {% else %}
+                                    <input type="number" name="v_dpu_{{ v.id }}" value="{{ v.doses_per_unit }}" class="form-control form-control-sm" style="width: 80px;">
+                                {% endif %}
                             </td>
                             <td class="text-center text-primary fw-bold">{{ v.calculated_units_needed }}</td>
                             <td class="small">{{ v.calculated_dose_count }}</td>
@@ -160,13 +172,26 @@
                         {% for m in tasks.medications %}
                         <tr>
                             <td>
-                                <input type="text" name="m_drug_{{ m.id }}" value="{{ m.drug_name }}" class="form-control form-control-sm">
+                                {% if m.inventory_item_id %}
+                                    <select name="m_inv_{{ m.id }}" class="form-select form-select-sm">
+                                        {% for item in medication_inventory %}
+                                            <option value="{{ item.id }}" {{ 'selected' if item.id == m.inventory_item_id else '' }}>{{ item.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    {# Legacy or Manual #}
+                                    <input type="text" name="m_drug_{{ m.id }}" value="{{ m.drug_name }}" class="form-control form-control-sm">
+                                    <small class="text-muted d-block" style="font-size: 0.7em;">(Not linked to Inventory)</small>
+                                {% endif %}
                             </td>
                             <td>
                                 <input type="text" name="m_dosage_{{ m.id }}" value="{{ m.dosage }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <input type="text" name="m_amount_{{ m.id }}" value="{{ m.amount_used or '' }}" class="form-control form-control-sm">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" step="0.01" name="m_qty_{{ m.id }}" value="{{ m.amount_used_qty or '' }}" class="form-control" placeholder="Qty">
+                                    <input type="text" name="m_amount_{{ m.id }}" value="{{ m.amount_used or '' }}" class="form-control" placeholder="Text">
+                                </div>
                             </td>
                             <td>
                                 <input type="date" name="m_start_{{ m.id }}" value="{{ m.start_date }}" class="form-control form-control-sm" style="width: 130px;">
@@ -188,13 +213,20 @@
                 <strong>Add New Medication Record</strong>
                 <div class="row g-2 mt-1">
                     <div class="col-md-3">
-                        <input type="text" name="drug_name" class="form-control form-control-sm" placeholder="Drug Name">
+                        <select name="inventory_item_id" class="form-select form-select-sm">
+                            <option value="">-- Select Inventory Item --</option>
+                            {% for item in medication_inventory %}
+                                <option value="{{ item.id }}">{{ item.name }} ({{ item.current_stock }} {{ item.unit }})</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" name="drug_name" class="form-control form-control-sm mt-1" placeholder="Or Enter Manually">
                     </div>
                     <div class="col-md-2">
                         <input type="text" name="dosage" class="form-control form-control-sm" placeholder="Dosage">
                     </div>
                     <div class="col-md-2">
-                        <input type="text" name="amount_used" class="form-control form-control-sm" placeholder="Amount Used">
+                        <input type="number" step="0.01" name="amount_used_qty" class="form-control form-control-sm" placeholder="Qty Used">
+                        <input type="text" name="amount_used" class="form-control form-control-sm mt-1" placeholder="Text (e.g. 500ml)">
                     </div>
                     <div class="col-md-2">
                         <input type="date" name="start_date" class="form-control form-control-sm">

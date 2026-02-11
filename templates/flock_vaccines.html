@@ -47,13 +47,26 @@
                                 <input type="date" name="est_date_{{ v.id }}" id="est_date_{{ v.id }}" class="form-control form-control-sm" value="{{ v.est_date or '' }}">
                             </td>
                             <td>
-                                <input type="text" name="vaccine_name_{{ v.id }}" class="form-control form-control-sm" value="{{ v.vaccine_name }}">
+                                <select name="v_inv_{{ v.id }}" class="form-select form-select-sm">
+                                    <option value="">-- Select --</option>
+                                    {% for item in vaccine_inventory %}
+                                        <option value="{{ item.id }}" {{ 'selected' if item.id == v.inventory_item_id else '' }}>{{ item.name }}</option>
+                                    {% endfor %}
+                                    {% if not v.inventory_item_id and v.vaccine_name %}
+                                        <option value="" selected disabled>Legacy: {{ v.vaccine_name }}</option>
+                                    {% endif %}
+                                </select>
                             </td>
                             <td>
                                 <input type="text" name="route_{{ v.id }}" class="form-control form-control-sm" value="{{ v.route or '' }}">
                             </td>
                             <td>
-                                <input type="number" name="doses_per_unit_{{ v.id }}" class="form-control form-control-sm" value="{{ v.doses_per_unit }}">
+                                {% if v.inventory_item_id %}
+                                    <span class="badge bg-light text-dark border">{{ v.inventory_item.doses_per_unit }}</span>
+                                    <input type="hidden" name="doses_per_unit_{{ v.id }}" value="{{ v.inventory_item.doses_per_unit }}">
+                                {% else %}
+                                    <input type="number" name="doses_per_unit_{{ v.id }}" class="form-control form-control-sm" value="{{ v.doses_per_unit }}">
+                                {% endif %}
                             </td>
                             <td class="text-center fw-bold text-primary">{{ v.calculated_units_needed }}</td>
                             <td>{{ v.calculated_dose_count }}</td>
