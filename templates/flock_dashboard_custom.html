@@ -158,6 +158,25 @@
     </div>
 </div>
 
+<!-- Note Modal -->
+<div class="modal fade" id="customNoteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="customNoteModalTitle">Clinical Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="customNoteModalPhoto" class="mb-3" style="display: none;">
+          <img src="" class="img-fluid rounded border" alt="Clinical Photo">
+        </div>
+        <p id="customNoteModalText" class="lead"></p>
+        <p id="customNoteModalDate" class="text-muted small"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const HOUSE_ID = {{ flock.house_id }};
@@ -383,6 +402,51 @@
 
         const hasRight = rightMetrics.length > 0;
 
+        // Prepare Notes Dataset (Scatter)
+        // We use xLabels (Category Scale) for X, and map Y to first available metric value.
+        const notesPoints = CURRENT_DATA.dates.map((d, i) => {
+            // Find event for this date
+            const ev = CURRENT_DATA.events ? CURRENT_DATA.events.find(e => e.date === d) : null;
+            if (ev) {
+                // Find a visible Y value to anchor to.
+                // Try left metrics first.
+                let yVal = 0;
+                let axisID = 'y';
+                if (leftMetrics.length > 0 && CURRENT_DATA[leftMetrics[0]]) {
+                     yVal = CURRENT_DATA[leftMetrics[0]][i] || 0;
+                     axisID = 'y';
+                } else if (rightMetrics.length > 0 && CURRENT_DATA[rightMetrics[0]]) {
+                     yVal = CURRENT_DATA[rightMetrics[0]][i] || 0;
+                     axisID = 'y1';
+                }
+
+                // If no metrics, yVal = 0
+                return {
+                    x: xLabels[i], // Align with X Axis Labels
+                    y: yVal,
+                    note: ev.note,
+                    photo: ev.photo,
+                    date: d
+                };
+            }
+            return null;
+        });
+
+        // Add Notes Dataset
+        datasets.push({
+            label: 'Clinical Notes',
+            data: notesPoints,
+            type: 'scatter',
+            yAxisID: 'y', // Just anchor to left axis for scaling
+            pointStyle: 'rectRot',
+            pointRadius: 6,
+            pointHoverRadius: 8,
+            backgroundColor: 'purple',
+            borderColor: 'purple',
+            hidden: true,
+            datalabels: { display: false }
+        });
+
         // Custom Title Construction
         const metricNames = [...leftMetrics, ...rightMetrics].map(m => METRICS_META[m]?.label || m).join(', ');
         const dateRange = CURRENT_DATA.dates.length > 0 ?
@@ -439,11 +503,46 @@
                     mode: 'index',
                     intersect: false,
                 },
+                onClick: (e, activeElements, chart) => {
+                    const points = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                    if (points.length) {
+                        const firstPoint = points[0];
+                        const datasetIndex = firstPoint.datasetIndex;
+                        const index = firstPoint.index;
+                        const dataset = chart.data.datasets[datasetIndex];
+
+                        if (dataset.label === 'Clinical Notes') {
+                            const pt = dataset.data[index];
+                            if (pt) {
+                                showCustomNoteModal(pt.date, pt.note, pt.photo);
+                            }
+                        }
+                    }
+                },
                 plugins: {
                     title: {
                         display: true,
                         text: dynamicTitle,
                         font: { size: 14 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if (context.dataset.label === 'Clinical Notes') {
+                                    return context.raw.note ? context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '') : 'Note';
+                                }
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += context.parsed.y;
+                                return label;
+                            },
+                            afterBody: function(context) {
+                                const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
+                                if (noteItem && noteItem.raw && noteItem.raw.note) {
+                                    return '\nNote: ' + noteItem.raw.note;
+                                }
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -712,6 +811,24 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    function showCustomNoteModal(date, text, photoUrl) {
+        document.getElementById('customNoteModalTitle').innerText = 'Clinical Note: ' + date;
+        document.getElementById('customNoteModalText').innerText = text;
+        document.getElementById('customNoteModalDate').innerText = date;
+
+        const imgDiv = document.getElementById('customNoteModalPhoto');
+        const img = imgDiv.querySelector('img');
+        if (photoUrl) {
+            img.src = photoUrl;
+            imgDiv.style.display = 'block';
+        } else {
+            imgDiv.style.display = 'none';
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('customNoteModal'));
+        modal.show();
     }
 </script>
 
