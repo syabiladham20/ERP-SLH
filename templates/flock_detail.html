@@ -16,8 +16,16 @@
       <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date }}</div>
     </div>
     <div class="row mt-2">
-      <div class="col-md-3"><strong>Start Population:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
+      <div class="col-md-3"><strong>Intake:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
       <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
+      <div class="col-md-3 border-start">
+          <strong>Current Prod:</strong> {{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F
+          <br>
+          <small class="text-muted">Male Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</small>
+      </div>
+      <div class="col-md-3">
+          <strong>Current Hosp:</strong> {{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F
+      </div>
     </div>
   </div>
   <div class="card-footer">
