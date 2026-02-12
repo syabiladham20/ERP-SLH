@@ -109,12 +109,29 @@ class ImportTestCase(unittest.TestCase):
             df_final.to_excel(writer, index=False, header=False)
         output.seek(0)
         
-        # Post to import
+        # Post to import (Step 1: Preview)
         response = self.app.post('/import', data={
             'files': (output, 'test.xlsx')
         }, content_type='multipart/form-data', follow_redirects=True)
         
-        self.assertIn(b'Successfully imported 1 files.', response.data)
+        self.assertIn(b'Import Preview', response.data)
+
+        # Extract filename from hidden input
+        import re
+        m = re.search(r'name="confirm_file" value="([^"]+)"', response.data.decode('utf-8'))
+        self.assertIsNotNone(m)
+        confirm_filename = m.group(1)
+
+        # Verify DB is NOT updated yet
+        house = House.query.filter_by(name='TEST_HOUSE_1').first()
+        self.assertIsNone(house)
+
+        # Post to import (Step 2: Confirm)
+        response = self.app.post('/import', data={
+            'confirm_file': confirm_filename
+        }, follow_redirects=True)
+
+        self.assertIn(b'Import confirmed', response.data)
         
         # Verify DB
         house = House.query.filter_by(name='TEST_HOUSE_1').first()
