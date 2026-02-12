@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 from datetime import datetime, date, timedelta
 import os
+import time
 from dotenv import load_dotenv
 import json
 import pandas as pd
@@ -421,7 +422,7 @@ def get_flock_stock_history(flock_id):
 
 # --- Initialization Helpers ---
 
-def initialize_sampling_schedule(flock_id):
+def initialize_sampling_schedule(flock_id, commit=True):
     # Updated Schedule based on user input
     schedule = {
         1: 'Serology & Salmonella',
@@ -463,9 +464,13 @@ def initialize_sampling_schedule(flock_id):
             scheduled_date=scheduled_date
         )
         db.session.add(event)
-    db.session.commit()
 
-def initialize_vaccine_schedule(flock_id):
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
+
+def initialize_vaccine_schedule(flock_id, commit=True):
     flock = Flock.query.get(flock_id)
     if not flock: return
 
@@ -543,7 +548,11 @@ def initialize_vaccine_schedule(flock_id):
             est_date=est_date
         )
         db.session.add(v)
-    db.session.commit()
+
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
 
 # --- Routes ---
 
@@ -2493,6 +2502,25 @@ def edit_daily_log(id):
 @app.route('/import', methods=['GET', 'POST'])
 def import_data():
     if request.method == 'POST':
+        # Check for Confirmation
+        confirm_filename = request.form.get('confirm_file')
+        if confirm_filename:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'temp', confirm_filename)
+            if not os.path.exists(filepath):
+                flash('Temporary import file not found. Please upload again.', 'danger')
+                return redirect(url_for('import_data'))
+
+            try:
+                process_import(filepath, commit=True, preview=False)
+                os.remove(filepath)
+                flash('Import confirmed and data saved successfully.', 'success')
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                flash(f'Error during import: {str(e)}', 'danger')
+
+            return redirect(url_for('index'))
+
         if 'files' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
@@ -2502,28 +2530,55 @@ def import_data():
             flash('No selected files', 'danger')
             return redirect(request.url)
 
-        success_count = 0
-        errors = []
+        # For Staging Step: We only handle single file preview nicely for now,
+        # or we iterate. The requirement implies "a table for me to Approve".
+        # If multiple files, we might need a more complex UI.
+        # Assuming single file for the "Staging" flow is safer or sequential.
+        # But existing code handled multiple.
+        # Let's handle the first valid file for preview to satisfy the requirement,
+        # or loop and append changes. Appending changes is better.
+
+        all_changes = []
+        all_warnings = []
+        temp_filenames = []
 
         for file in files:
             if file and file.filename.endswith('.xlsx'):
                 try:
-                    process_import(file)
-                    success_count += 1
+                    # Save to temp
+                    safe_name = secure_filename(f"{int(time.time())}_{file.filename}")
+                    temp_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'temp')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    filepath = os.path.join(temp_dir, safe_name)
+                    file.save(filepath)
+                    temp_filenames.append(safe_name)
+
+                    changes, warnings = process_import(filepath, commit=False, preview=True)
+                    all_changes.extend(changes)
+                    all_warnings.extend(warnings)
+
                 except Exception as e:
                     import traceback
                     traceback.print_exc()
-                    errors.append(f"{file.filename}: {str(e)}")
+                    flash(f"{file.filename}: {str(e)}", 'danger')
+                    return redirect(request.url)
             else:
                 if file.filename:
-                    errors.append(f"{file.filename}: Invalid type (must be .xlsx)")
+                    flash(f"{file.filename}: Invalid type (must be .xlsx)", 'danger')
+                    return redirect(request.url)
 
-        if success_count > 0:
-            flash(f'Successfully imported {success_count} files.', 'success')
+        if all_changes:
+            # We only support confirming one file at a time in the simple UI unless we handle list of files.
+            # But let's assume the user uploaded one file as is typical for this detailed review.
+            # If multiple, we just use the first filename for confirmation?
+            # Ideally we support only one file for this "Deep Review" mode.
+            if len(temp_filenames) > 1:
+                flash("Please upload only one file at a time for review.", "warning")
+                return redirect(request.url)
 
-        if errors:
-            flash(f'Errors occurred: {"; ".join(errors)}', 'danger')
+            return render_template('import_preview.html', changes=all_changes, warnings=all_warnings, filename=temp_filenames[0])
 
+        flash("No valid data found to import.", "warning")
         return redirect(url_for('index'))
             
     return render_template('import.html')
@@ -2666,7 +2721,7 @@ def process_hatchability_import(file):
 
     db.session.commit()
 
-def process_import(file):
+def process_import(file, commit=True, preview=False):
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
     
@@ -2683,6 +2738,9 @@ def process_import(file):
              all_flocks_map[(f_house_id, f_intake_date)] = f_id
         flock_counts[f_house_id] = flock_counts.get(f_house_id, 0) + 1
     
+    changes = []
+    all_warnings = []
+
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
             continue
@@ -2728,7 +2786,8 @@ def process_import(file):
             db.session.flush()
             house_id = house.id
             all_houses_map[house_name] = house_id
-            db.session.commit()
+            if commit:
+                db.session.commit()
         
         intake_date = parse_date(intake_date_val)
         if not intake_date:
@@ -2756,9 +2815,10 @@ def process_import(file):
             flock_id = flock.id
             all_flocks_map[(house_id, intake_date)] = flock_id
             flock_counts[house_id] = n
-            db.session.commit()
+            if commit:
+                db.session.commit()
             
-            initialize_sampling_schedule(flock_id)
+            initialize_sampling_schedule(flock_id, commit=commit)
 
         existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock_id).all()}
 
@@ -2783,7 +2843,11 @@ def process_import(file):
                     continue
 
         if missing_std_weeks:
-            flash(f"Warning: Standard BW data invalid for weeks: {', '.join(missing_std_weeks[:10])}. Please update manually.", "warning")
+            msg = f"Warning: Standard BW data invalid for weeks: {', '.join(missing_std_weeks[:10])}. Please update manually."
+            if preview:
+                all_warnings.append(msg)
+            else:
+                flash(msg, "warning")
 
         df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
         
@@ -2903,10 +2967,12 @@ def process_import(file):
                 continue
 
             log = existing_logs_dict.get(log_date)
+            is_new_log = False
             if not log:
                 log = DailyLog(flock_id=flock_id, date=log_date)
                 db.session.add(log)
                 existing_logs_dict[log_date] = log
+                is_new_log = True
 
             log.culls_male = get_int(row, idx_cull_m)
             log.culls_female = get_int(row, idx_cull_f)
@@ -3016,9 +3082,29 @@ def process_import(file):
                     if (log.unif_female_p4 or 0) > 0: f_u_sum += log.unif_female_p4
                     log.uniformity_female = (f_u_sum / f_count) if f_count > 0 else 0
 
+            if preview:
+                # Capture change for preview
+                changes.append({
+                    'date': log.date.strftime('%Y-%m-%d'),
+                    'house': house_name,
+                    'flock': batch_id if 'batch_id' in locals() else f"New Flock {house_name}",
+                    'type': 'New' if is_new_log else 'Update',
+                    'mortality_male': log.mortality_male,
+                    'mortality_female': log.mortality_female,
+                    'culls_male': log.culls_male,
+                    'culls_female': log.culls_female,
+                    'eggs': log.eggs_collected,
+                    'feed_male_gp_bird': log.feed_male_gp_bird,
+                    'feed_female_gp_bird': log.feed_female_gp_bird,
+                    'water_reading_1': log.water_reading_1
+                })
+
             i += 1
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         
         all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
         for i, log in enumerate(all_logs):
@@ -3029,10 +3115,23 @@ def process_import(file):
                     r1_prev = prev_log.water_reading_1 / 100.0
                     log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
                     db.session.add(log)
-        db.session.commit()
+
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
 
         flock_obj = Flock.query.get(flock_id)
-        verify_import_data(flock_obj, logs=all_logs)
+        warnings = verify_import_data(flock_obj, logs=all_logs)
+        if warnings:
+            if preview:
+                all_warnings.extend(warnings)
+            else:
+                flash(f"Import Verification Warnings for {house_name}: {'; '.join(warnings[:3])}...", 'warning')
+
+    if preview:
+        db.session.rollback()
+        return changes, all_warnings
 
 def update_log_from_request(log, req):
     log.mortality_male = int(req.form.get('mortality_male') or 0)
@@ -3250,8 +3349,7 @@ def verify_import_data(flock, logs=None):
             if abs(calc['eggs'] - wd.eggs_collected) > 5:
                 warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
 
-    if warnings:
-        flash(f"Import Verification Warnings: {'; '.join(warnings[:3])}...", 'warning')
+    return warnings
 
 @app.route('/health_log')
 def health_log():
