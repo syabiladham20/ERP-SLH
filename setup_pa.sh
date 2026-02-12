@@ -23,6 +23,9 @@ if [ -f instance/farm.db ]; then
     echo "Backup created at instance/farm.db.bak"
 fi
 
+echo "Checking migration status..."
+python fix_migration_conflict.py
+
 echo "Running migrations..."
 flask db upgrade
 
