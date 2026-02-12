@@ -128,11 +128,11 @@
         <div class="row">
           <div class="col-6 mb-2">
             <label class="form-label">Male Feed (g/bird)</label>
-            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
           </div>
           <div class="col-6 mb-2">
             <label class="form-label">Female Feed (g/bird)</label>
-            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
           </div>
         </div>
         <div class="row">
@@ -213,11 +213,11 @@
         <div class="row mb-3" id="standard_bw_section">
            <div class="col-6">
              <label class="form-label text-muted small">Std Male BW</label>
-             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_male" value="{{ log.standard_bw_male if log else 0 }}">
+             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_male" value="{{ log.standard_bw_male if log and log.standard_bw_male else '' }}">
            </div>
            <div class="col-6">
              <label class="form-label text-muted small">Std Female BW</label>
-             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_female" value="{{ log.standard_bw_female if log else 0 }}">
+             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_female" value="{{ log.standard_bw_female if log and log.standard_bw_female else '' }}">
            </div>
         </div>
 
@@ -237,8 +237,8 @@
                     {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 2) else 'display:none;' %}
                     <div class="row mb-2 partition-row-M" id="row_M{{i}}" style="{{ show_style }}">
                         <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">M{{i}}</span></div>
-                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" value="{{ bw_val or 0 }}" onchange="calcAvg()"></div>
-                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Unif" value="{{ uni_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" value="{{ bw_val or '' }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Unif" value="{{ uni_val or '' }}" onchange="calcAvg()"></div>
                         <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('M', {{i}})">&times;</button></div>
                     </div>
                     {% endfor %}
@@ -256,8 +256,8 @@
                     {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 4) else 'display:none;' %}
                     <div class="row mb-2 partition-row-F" id="row_F{{i}}" style="{{ show_style }}">
                         <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">F{{i}}</span></div>
-                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" value="{{ bw_val or 0 }}" onchange="calcAvg()"></div>
-                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Unif" value="{{ uni_val or 0 }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" value="{{ bw_val or '' }}" onchange="calcAvg()"></div>
+                        <div class="col-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Unif" value="{{ uni_val or '' }}" onchange="calcAvg()"></div>
                         <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('F', {{i}})">&times;</button></div>
                     </div>
                     {% endfor %}
@@ -269,19 +269,19 @@
         <div class="row" id="average_section">
           <div class="col-6 mb-2">
             <label class="form-label">Avg Male BW</label>
-            <input type="number" step="0.01" class="form-control" name="body_weight_male" id="body_weight_male" value="{{ log.body_weight_male if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="body_weight_male" id="body_weight_male" value="{{ log.body_weight_male if log and log.body_weight_male else '' }}">
           </div>
           <div class="col-6 mb-2">
             <label class="form-label">Avg Female BW</label>
-            <input type="number" step="0.01" class="form-control" name="body_weight_female" id="body_weight_female" value="{{ log.body_weight_female if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="body_weight_female" id="body_weight_female" value="{{ log.body_weight_female if log and log.body_weight_female else '' }}">
           </div>
           <div class="col-6 mb-2">
             <label class="form-label">Avg Male Unif %</label>
-            <input type="number" step="0.01" class="form-control" name="uniformity_male" id="uniformity_male" value="{{ log.uniformity_male if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="uniformity_male" id="uniformity_male" value="{{ log.uniformity_male if log and log.uniformity_male else '' }}">
           </div>
           <div class="col-6 mb-2">
             <label class="form-label">Avg Female Unif %</label>
-            <input type="number" step="0.01" class="form-control" name="uniformity_female" id="uniformity_female" value="{{ log.uniformity_female if log else 0 }}">
+            <input type="number" step="0.01" class="form-control" name="uniformity_female" id="uniformity_female" value="{{ log.uniformity_female if log and log.uniformity_female else '' }}">
           </div>
         </div>
       </div>
@@ -583,8 +583,8 @@
                 }
             }
         }
-        document.getElementById('body_weight_male').value = (m_cnt > 0 ? (m_sum / m_cnt) : 0).toFixed(2);
-        document.getElementById('uniformity_male').value = (m_cnt > 0 ? (mu_sum / m_cnt) : 0).toFixed(2);
+        document.getElementById('body_weight_male').value = m_cnt > 0 ? (m_sum / m_cnt).toFixed(2) : '';
+        document.getElementById('uniformity_male').value = m_cnt > 0 ? (mu_sum / m_cnt).toFixed(2) : '';
 
         // Female
         let f_sum = 0, f_cnt = 0;
@@ -602,8 +602,8 @@
                 }
             }
         }
-        document.getElementById('body_weight_female').value = (f_cnt > 0 ? (f_sum / f_cnt) : 0).toFixed(2);
-        document.getElementById('uniformity_female').value = (f_cnt > 0 ? (fu_sum / f_cnt) : 0).toFixed(2);
+        document.getElementById('body_weight_female').value = f_cnt > 0 ? (f_sum / f_cnt).toFixed(2) : '';
+        document.getElementById('uniformity_female').value = f_cnt > 0 ? (fu_sum / f_cnt).toFixed(2) : '';
     }
 
     // Medication Row Management
