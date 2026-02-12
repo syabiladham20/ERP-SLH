@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Flock Details: {{ flock.house.name }}</h2>
 
+<!-- Overview Card -->
 <div class="card mb-4">
   <div class="card-header sticky-header">
     Overview
@@ -19,86 +20,237 @@
       <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
     </div>
   </div>
+  <div class="card-footer">
+    <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
+    <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">Custom Dashboard</a>
+    <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
+    <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">Hatchability</a>
+    <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">Health Log</a>
+  </div>
 </div>
 
-{% if weekly_data %}
-<h3>Weekly Summary</h3>
-<div class="table-responsive table-responsive-sticky mb-4">
-  <table class="table table-bordered table-sm">
-    <thead class="table-light sticky-table-header">
-      <tr>
-        <th>Week</th>
-        <th>Mortality (M/F)</th>
-        <th>Mortality % (M/F)</th>
-        <th>Culls (M/F)</th>
-        <th>Culls % (M/F)</th>
-        <th>Eggs</th>
-        <th>Egg Prod %</th>
-        <th>Hatch</th>
-        <th>Hatch %</th>
-        <th>Avg BW (M/F)</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for w in weekly_data %}
-      <tr>
-        <td>{{ w.week }}</td>
-        <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
-        <td>{{ "%.2f"|format(w.mort_pct_m) }} / {{ "%.2f"|format(w.mort_pct_f) }}</td>
-        <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
-        <td>{{ "%.2f"|format(w.cull_pct_m) }} / {{ "%.2f"|format(w.cull_pct_f) }}</td>
-        <td>{{ w.eggs }}</td>
-        <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
-        <td>{{ w.hatched_chicks }}</td>
-        <td>{{ "%.2f"|format(w.hatch_pct) }}</td>
-        <td>{{ "%.2f"|format(w.avg_bw_male) }} / {{ "%.2f"|format(w.avg_bw_female) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% endif %}
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs mb-3" id="flockTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
+  </li>
+</ul>
 
-<!-- Male Chart -->
-<div class="card mb-4">
-  <div class="card-header sticky-header d-flex justify-content-between align-items-center">
-    <div class="d-flex align-items-center">
-      <span class="me-3">Performance Charts</span>
-      <div class="btn-group btn-group-sm" role="group">
-        <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-        <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+<!-- Tab Content -->
+<div class="tab-content" id="flockTabsContent">
 
-        <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-        <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+  <!-- Daily Logs Tab (Pane 1) -->
+  <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3>Daily Logs</h3>
+    </div>
+    <div class="table-responsive table-responsive-sticky">
+      <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
+        <thead class="sticky-table-header table-light">
+          <tr>
+            <th rowspan="2" class="align-middle">Date</th>
+            <th rowspan="2" class="align-middle">House</th>
+            <th rowspan="2" class="align-middle">Age</th>
+            <th colspan="2" class="bg-light">Stock</th>
+            <th colspan="2" class="bg-danger bg-opacity-10">Mortality</th>
+            <th colspan="2" class="bg-warning bg-opacity-10">Culls</th>
+            <th rowspan="2" class="align-middle">Feed<br>(Kg)</th>
+            <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
+            <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
+            <th rowspan="2" class="align-middle">Medication</th>
+            <th colspan="3" class="bg-info bg-opacity-10">Production</th>
+            <th colspan="2">Jumbo</th>
+            <th colspan="2">Small</th>
+            <th colspan="2">Crack</th>
+            <th colspan="2">Abnormal</th>
+            <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
+            <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
+            <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
+            <th rowspan="2" class="align-middle">Actions</th>
+          </tr>
+          <tr>
+            <th class="bg-light">M</th>
+            <th class="bg-light">F</th>
+            <th class="bg-danger bg-opacity-10">M</th>
+            <th class="bg-danger bg-opacity-10">F</th>
+            <th class="bg-warning bg-opacity-10">M</th>
+            <th class="bg-warning bg-opacity-10">F</th>
+            <th class="bg-success bg-opacity-10">M</th>
+            <th class="bg-success bg-opacity-10">F</th>
+            <th class="bg-info bg-opacity-10">%</th>
+            <th class="bg-info bg-opacity-10">Wt(g)</th>
+            <th class="bg-info bg-opacity-10">Qty</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th class="bg-primary bg-opacity-10">#</th>
+            <th class="bg-primary bg-opacity-10">%</th>
+            <th class="bg-secondary bg-opacity-10">#</th>
+            <th class="bg-secondary bg-opacity-10">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in logs %}
+          <tr>
+            <td class="text-nowrap fw-bold">{{ item.log.date.strftime('%d-%b') }}</td>
+            <td>{{ flock.house.name }}</td>
+            <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
+
+            <td class="fw-bold">{{ item.stock_male }}</td>
+            <td class="fw-bold">{{ item.stock_female }}</td>
+
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
+
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
+
+            <td class="fw-bold">{{ "%.1f"|format(item.total_feed) }}</td>
+
+            <td>{{ item.log.feed_male_gp_bird }}g</td>
+            <td>{{ item.log.feed_female_gp_bird }}g</td>
+
+            {% set total_birds = item.stock_male + item.stock_female %}
+            {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
+            <td>{{ "%.0f"|format(water_per_bird) }}</td>
+
+            <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
+                {% if item.medications %}
+                    <span class="badge bg-info text-dark">{{ item.medications }}</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+
+            <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
+                {{ "%.2f"|format(item.egg_prod_pct) }}%
+            </td>
+            <td>{{ item.log.egg_weight }}</td>
+            <td class="fw-bold">{{ item.log.eggs_collected }}</td>
+
+            <!-- Cull Details -->
+            <td class="small">{{ item.egg_data.jumbo }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.small }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.crack }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.abnormal }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
+
+            <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
+            <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
+
+            <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
+            <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
+
+            <td>{{ item.lighting_hours }} hour</td>
+
+            <td>
+              <a href="{{ url_for('edit_daily_log', id=item.log.id) }}" class="btn btn-sm btn-outline-primary py-0" style="font-size: 0.75rem;">Edit</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Weekly Summary Tab (Pane 2) -->
+  <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
+    {% if weekly_data %}
+    <h3>Weekly Summary</h3>
+    <div class="table-responsive table-responsive-sticky mb-4">
+      <table class="table table-bordered table-sm">
+        <thead class="table-light sticky-table-header">
+          <tr>
+            <th>Week</th>
+            <th>Mortality (M/F)</th>
+            <th>Mortality % (M/F)</th>
+            <th>Culls (M/F)</th>
+            <th>Culls % (M/F)</th>
+            <th>Eggs</th>
+            <th>Egg Prod %</th>
+            <th>Hatch</th>
+            <th>Hatch %</th>
+            <th>Avg BW (M/F)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in weekly_data %}
+          <tr>
+            <td>{{ w.week }}</td>
+            <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
+            <td>{{ "%.2f"|format(w.mort_pct_m) }} / {{ "%.2f"|format(w.mort_pct_f) }}</td>
+            <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
+            <td>{{ "%.2f"|format(w.cull_pct_m) }} / {{ "%.2f"|format(w.cull_pct_f) }}</td>
+            <td>{{ w.eggs }}</td>
+            <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
+            <td>{{ w.hatched_chicks }}</td>
+            <td>{{ "%.2f"|format(w.hatch_pct) }}</td>
+            <td>{{ "%.2f"|format(w.avg_bw_male) }} / {{ "%.2f"|format(w.avg_bw_female) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted p-3">No weekly data available.</p>
+    {% endif %}
+  </div>
+
+  <!-- Charts Tab (Pane 3) -->
+  <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
+    <!-- Male Chart -->
+    <div class="card mb-4 mt-3">
+      <div class="card-header sticky-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <span class="me-3">Performance Charts</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+            <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+
+            <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+            <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <canvas id="maleChart"></canvas>
       </div>
     </div>
-    <div>
-        <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
-        <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">Custom Dashboard</a>
-        <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
-        <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">Hatchability</a>
-        <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">Health Log</a>
+
+    <!-- Female Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header">Female Statistics (BW & Uniformity)</div>
+      <div class="card-body">
+        <canvas id="femaleChart"></canvas>
+      </div>
+    </div>
+
+    <!-- General Performance Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header">General Performance</div>
+      <div class="card-body">
+        <canvas id="generalChart"></canvas>
+      </div>
     </div>
   </div>
-  <div class="card-body">
-    <canvas id="maleChart"></canvas>
-  </div>
-</div>
 
-<!-- Female Chart -->
-<div class="card mb-4">
-  <div class="card-header sticky-header">Female Statistics (BW & Uniformity)</div>
-  <div class="card-body">
-    <canvas id="femaleChart"></canvas>
-  </div>
-</div>
-
-<!-- General Performance Chart -->
-<div class="card mb-4">
-  <div class="card-header sticky-header">General Performance</div>
-  <div class="card-body">
-    <canvas id="generalChart"></canvas>
-  </div>
 </div>
 
 <!-- Note Modal -->
@@ -130,6 +282,7 @@
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
 
   let maleChart, femaleChart, generalChart;
+  let currentChartMode = 'daily';
 
   function renderCharts(mode) {
       const chartData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
@@ -142,6 +295,7 @@
       // --- Common Options ---
       const commonOptions = {
           responsive: true,
+          maintainAspectRatio: false,
           spanGaps: true,
           interaction: {
             mode: 'index',
@@ -347,9 +501,7 @@
               };
           }
           return null;
-      }); // Sparse array is fine for line charts with aligned labels, but for scatter points we filter nulls?
-      // Actually, if we provide data array matching labels length, nulls are ignored.
-      // But for 'scatter' dataset on a category scale X axis, we can just provide objects {x: label, y: val}.
+      });
 
       const notesDataset = {
           label: 'Clinical Notes',
@@ -396,6 +548,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           interaction: {
             mode: 'index',
             intersect: false,
@@ -470,132 +623,26 @@
   }
 
   function switchMode(mode) {
+      currentChartMode = mode;
       renderCharts(mode);
   }
 
   // Initial Render
   document.addEventListener('DOMContentLoaded', function() {
+      // Tab Change Listener to handle Chart resizing
+      const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('shown.bs.tab', function (event) {
+          if (event.target.id === 'charts-tab') {
+            if (maleChart) maleChart.resize();
+            if (femaleChart) femaleChart.resize();
+            if (generalChart) generalChart.resize();
+          }
+        });
+      });
+
       renderCharts('daily');
   });
 </script>
 
-<h3>Daily Logs</h3>
-<div class="table-responsive table-responsive-sticky">
-  <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
-    <thead class="sticky-table-header table-light">
-      <tr>
-        <th rowspan="2" class="align-middle">Date</th>
-        <th rowspan="2" class="align-middle">House</th>
-        <th rowspan="2" class="align-middle">Age</th>
-        <th colspan="2" class="bg-light">Stock</th>
-        <th colspan="2" class="bg-danger bg-opacity-10">Mortality</th>
-        <th colspan="2" class="bg-warning bg-opacity-10">Culls</th>
-        <th rowspan="2" class="align-middle">Feed<br>(Kg)</th>
-        <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
-        <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
-        <th rowspan="2" class="align-middle">Medication</th>
-        <th colspan="3" class="bg-info bg-opacity-10">Production</th>
-        <th colspan="2">Jumbo</th>
-        <th colspan="2">Small</th>
-        <th colspan="2">Crack</th>
-        <th colspan="2">Abnormal</th>
-        <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
-        <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
-        <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
-        <th rowspan="2" class="align-middle">Actions</th>
-      </tr>
-      <tr>
-        <th class="bg-light">M</th>
-        <th class="bg-light">F</th>
-        <th class="bg-danger bg-opacity-10">M</th>
-        <th class="bg-danger bg-opacity-10">F</th>
-        <th class="bg-warning bg-opacity-10">M</th>
-        <th class="bg-warning bg-opacity-10">F</th>
-        <th class="bg-success bg-opacity-10">M</th>
-        <th class="bg-success bg-opacity-10">F</th>
-        <th class="bg-info bg-opacity-10">%</th>
-        <th class="bg-info bg-opacity-10">Wt(g)</th>
-        <th class="bg-info bg-opacity-10">Qty</th>
-        <th>#</th>
-        <th>%</th>
-        <th>#</th>
-        <th>%</th>
-        <th>#</th>
-        <th>%</th>
-        <th>#</th>
-        <th>%</th>
-        <th class="bg-primary bg-opacity-10">#</th>
-        <th class="bg-primary bg-opacity-10">%</th>
-        <th class="bg-secondary bg-opacity-10">#</th>
-        <th class="bg-secondary bg-opacity-10">%</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in logs %}
-      <tr>
-        <td class="text-nowrap fw-bold">{{ item.log.date.strftime('%d-%b') }}</td>
-        <td>{{ flock.house.name }}</td>
-        <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
-
-        <td class="fw-bold">{{ item.stock_male }}</td>
-        <td class="fw-bold">{{ item.stock_female }}</td>
-
-        <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
-        <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
-
-        <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
-        <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
-
-        <td class="fw-bold">{{ "%.1f"|format(item.total_feed) }}</td>
-
-        <td>{{ item.log.feed_male_gp_bird }}g</td>
-        <td>{{ item.log.feed_female_gp_bird }}g</td>
-
-        {% set total_birds = item.stock_male + item.stock_female %}
-        {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
-        <td>{{ "%.0f"|format(water_per_bird) }}</td>
-
-        <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
-            {% if item.medications %}
-                <span class="badge bg-info text-dark">{{ item.medications }}</span>
-            {% else %}
-                -
-            {% endif %}
-        </td>
-
-        <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
-            {{ "%.2f"|format(item.egg_prod_pct) }}%
-        </td>
-        <td>{{ item.log.egg_weight }}</td>
-        <td class="fw-bold">{{ item.log.eggs_collected }}</td>
-
-        <!-- Cull Details -->
-        <td class="small">{{ item.egg_data.jumbo }}</td>
-        <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
-
-        <td class="small">{{ item.egg_data.small }}</td>
-        <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
-
-        <td class="small">{{ item.egg_data.crack }}</td>
-        <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
-
-        <td class="small">{{ item.egg_data.abnormal }}</td>
-        <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
-
-        <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
-        <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
-
-        <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
-        <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
-
-        <td>{{ item.lighting_hours }} hour</td>
-
-        <td>
-          <a href="{{ url_for('edit_daily_log', id=item.log.id) }}" class="btn btn-sm btn-outline-primary py-0" style="font-size: 0.75rem;">Edit</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
 {% endblock %}
