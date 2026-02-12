@@ -23,21 +23,11 @@ if [ -f instance/farm.db ]; then
     echo "Backup created at instance/farm.db.bak"
 fi
 
+echo "Running migrations..."
+flask db upgrade
+
 echo "Initializing/Updating database..."
 python init_db.py
-
-echo "Running migrations..."
-python migrate_schema.py
-python migrate_schema_v2.py
-python migrate_schema_v3.py
-python migrate_schema_v4.py
-python migrate_schema_v5.py
-python migrate_schema_v6.py
-python migrate_schema_v7.py
-python migrate_dashboard.py
-python migrate_schema_v8.py
-python migrate_inventory.py
-python migrate_schema_v9.py
 
 echo "Deployment setup complete!"
 echo "Please reload your web app in the PythonAnywhere 'Web' tab."
