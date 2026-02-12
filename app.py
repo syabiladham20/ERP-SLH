@@ -1048,8 +1048,13 @@ def manage_standards():
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'add':
+            week_val = request.form.get('week')
+            if not week_val or not week_val.isdigit():
+                flash('Invalid or missing week number.', 'danger')
+                return redirect(url_for('manage_standards'))
+
             s = Standard(
-                week=int(request.form.get('week')),
+                week=int(week_val),
                 std_mortality_male=float(request.form.get('std_mortality_male') or 0),
                 std_mortality_female=float(request.form.get('std_mortality_female') or 0),
                 std_bw_male=float(request.form.get('std_bw_male') or 0),
