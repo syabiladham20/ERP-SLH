@@ -215,41 +215,65 @@
 
   <!-- Charts Tab (Pane 3) -->
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
-    <!-- Male Chart -->
-    <div class="card mb-4 mt-3">
-      <div class="card-header sticky-header d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-          <span class="me-3">Performance Charts</span>
-          <div class="btn-group btn-group-sm" role="group">
-            <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-            <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+<!-- General Performance Chart -->
+<div class="card mb-4">
+  <div class="card-header sticky-header d-flex justify-content-between align-items-center">
+    <span>General Performance</span>
+    <div>
+        <div class="btn-group btn-group-sm me-2" role="group">
+             <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+             <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
-            <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-            <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
-          </div>
+             <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+             <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
         </div>
-      </div>
-      <div class="card-body">
-        <canvas id="maleChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Female Chart -->
-    <div class="card mb-4">
-      <div class="card-header sticky-header">Female Statistics (BW & Uniformity)</div>
-      <div class="card-body">
-        <canvas id="femaleChart"></canvas>
-      </div>
-    </div>
-
-    <!-- General Performance Chart -->
-    <div class="card mb-4">
-      <div class="card-header sticky-header">General Performance</div>
-      <div class="card-body">
-        <canvas id="generalChart"></canvas>
-      </div>
+        <!-- Filter Controls -->
+        <div class="btn-group btn-group-sm" role="group" id="generalFilterControls">
+            <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'default')">Default (30d/10w)</button>
+            <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'all')">Show All</button>
+        </div>
     </div>
   </div>
+  <div class="card-body">
+    <canvas id="generalChart"></canvas>
+  </div>
+</div>
+
+<!-- Male Chart -->
+<div class="card mb-4">
+  <div class="card-header sticky-header d-flex justify-content-between align-items-center">
+    <span>Male Statistics (BW & Uniformity)</span>
+    <div>
+        <div class="btn-group btn-group-sm" role="group">
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
+        </div>
+        <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2 ms-3">KPI Dashboard</a>
+        <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">Custom Dashboard</a>
+        <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
+        <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">Hatchability</a>
+        <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">Health Log</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <canvas id="maleChart"></canvas>
+  </div>
+</div>
+
+<!-- Female Chart -->
+<div class="card mb-4">
+  <div class="card-header sticky-header">
+      <span>Female Statistics (BW & Uniformity)</span>
+      <div class="float-end btn-group btn-group-sm" role="group">
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
+      </div>
+  </div>
+  <div class="card-body">
+    <canvas id="femaleChart"></canvas>
+  </div>
+</div>
+    </div>
 
 </div>
 
@@ -275,17 +299,50 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
+
   // Register plugin
   Chart.register(ChartDataLabels);
 
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
+  const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
+  const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
 
   let maleChart, femaleChart, generalChart;
-  let currentChartMode = 'daily';
+  let currentMode = 'daily';
+
+  // Helper to slice data
+  function filterData(dataObj, count) {
+      if (count === 'all' || count >= dataObj.dates.length) return dataObj;
+      const start = dataObj.dates.length - count;
+      const newObj = {};
+      for (let key in dataObj) {
+          if (Array.isArray(dataObj[key])) {
+              newObj[key] = dataObj[key].slice(start);
+          } else {
+              newObj[key] = dataObj[key];
+          }
+      }
+      return newObj;
+  }
 
   function renderCharts(mode) {
-      const chartData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      currentMode = mode;
+      const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+
+      // Defaults: 30 for Daily, 10 for Weekly
+      // But for BodyWeight charts, we always use Weekly logic or filtered Daily logic?
+      // Requirement: "bodyweight chart, fixed to weekly view only"
+      // So Male/Female charts should ALWAYS use chartDataWeekly.
+
+      // Let's configure the General Chart first.
+      // Default Filter:
+      const defaultGeneralCount = mode === 'daily' ? 30 : 10;
+      const generalData = filterData(fullData, window.generalFilterState || defaultGeneralCount);
+
+      // Body Weight Charts (Fixed Weekly)
+      const bwData = filterData(chartDataWeekly, window.bwFilterState || 10);
+
 
       // Destroy existing
       if (maleChart) maleChart.destroy();
@@ -295,7 +352,6 @@
       // --- Common Options ---
       const commonOptions = {
           responsive: true,
-          maintainAspectRatio: false,
           spanGaps: true,
           interaction: {
             mode: 'index',
@@ -345,17 +401,33 @@
           }
       };
 
-      // --- Male Chart ---
+      // --- Male Chart (Weekly Fixed) ---
       const maleDatasets = [];
       const colorsM = ['#36A2EB', '#0056b3', '#4bc0c0', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384'];
 
+      // Avg BW
+      if (bwData.avg_bw_male && bwData.avg_bw_male.some(v => v !== null)) {
+           maleDatasets.push({
+                label: 'Avg BW Male',
+                data: bwData.avg_bw_male,
+                borderColor: '#000',
+                backgroundColor: '#000',
+                borderWidth: 2,
+                tension: 0.1,
+                yAxisID: 'y'
+           });
+      }
+
       // Dynamic Partitions 1-8
       for (let i = 1; i <= 8; i++) {
-          let key = 'bw_M' + i;
-          if (chartData[key] && chartData[key].some(val => val !== null)) {
+          let key = 'bw_M' + i; // Note: In weekly data this key needs to exist. Backend puts it there?
+          // Wait, backend `chart_data_weekly` had dynamic keys added in loop?
+          // Yes: chart_data_weekly[f'bw_M{i}'] = []
+
+          if (bwData[key] && bwData[key].some(val => val !== null)) {
               maleDatasets.push({
                 label: 'BW M' + i,
-                data: chartData[key],
+                data: bwData[key],
                 borderColor: colorsM[i-1] || '#333',
                 backgroundColor: colorsM[i-1] || '#333',
                 tension: 0.1,
@@ -366,18 +438,18 @@
 
       maleDatasets.push({
           label: 'Std BW',
-          data: chartData.bw_male_std,
+          data: bwData.bw_male_std,
           borderColor: '#000000',
           borderDash: [5, 5],
           pointRadius: 0,
-          borderWidth: 2,
+          borderWidth: 1,
           yAxisID: 'y',
           datalabels: { display: false }
       });
 
       maleDatasets.push({
           label: 'Uniformity %',
-          data: chartData.unif_male,
+          data: bwData.unif_male,
           borderColor: '#FFCE56',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
@@ -387,7 +459,7 @@
       maleChart = new Chart(document.getElementById('maleChart').getContext('2d'), {
         type: 'line',
         data: {
-          labels: chartData.dates,
+          labels: bwData.dates,
           datasets: maleDatasets
         },
         options: {
@@ -404,6 +476,8 @@
                     display: true,
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
+                    min: 0,
+                    max: 100,
                     grid: { drawOnChartArea: false },
                     ticks: {
                         callback: function(value) {
@@ -415,16 +489,29 @@
         }
       });
 
-      // --- Female Chart ---
+      // --- Female Chart (Weekly Fixed) ---
       const femaleDatasets = [];
       const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
 
+      // Avg BW
+      if (bwData.avg_bw_female && bwData.avg_bw_female.some(v => v !== null)) {
+           femaleDatasets.push({
+                label: 'Avg BW Female',
+                data: bwData.avg_bw_female,
+                borderColor: '#000',
+                backgroundColor: '#000',
+                borderWidth: 2,
+                tension: 0.1,
+                yAxisID: 'y'
+           });
+      }
+
       for (let i = 1; i <= 8; i++) {
           let key = 'bw_F' + i;
-          if (chartData[key] && chartData[key].some(val => val !== null)) {
+          if (bwData[key] && bwData[key].some(val => val !== null)) {
               femaleDatasets.push({
                 label: 'BW F' + i,
-                data: chartData[key],
+                data: bwData[key],
                 borderColor: colorsF[i-1] || '#333',
                 backgroundColor: colorsF[i-1] || '#333',
                 yAxisID: 'y'
@@ -434,18 +521,18 @@
 
       femaleDatasets.push({
           label: 'Std BW',
-          data: chartData.bw_female_std,
+          data: bwData.bw_female_std,
           borderColor: '#000000',
           borderDash: [5, 5],
           pointRadius: 0,
-          borderWidth: 2,
+          borderWidth: 1,
           yAxisID: 'y',
           datalabels: { display: false }
       });
 
       femaleDatasets.push({
           label: 'Uniformity %',
-          data: chartData.unif_female,
+          data: bwData.unif_female,
           borderColor: '#9966FF',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
@@ -455,7 +542,7 @@
       femaleChart = new Chart(document.getElementById('femaleChart').getContext('2d'), {
         type: 'line',
         data: {
-          labels: chartData.dates,
+          labels: bwData.dates,
           datasets: femaleDatasets
         },
         options: {
@@ -472,6 +559,8 @@
                     display: true,
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
+                    min: 0,
+                    max: 100,
                     grid: { drawOnChartArea: false },
                     ticks: {
                         callback: function(value) {
@@ -483,14 +572,24 @@
         }
       });
 
-      // --- General Chart ---
+      // --- General Chart (Dynamic Mode) ---
+
+      const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
+
+      // Determine keys based on mode
+      const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
+      const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
+      const cullMKey = mode === 'daily' ? 'culls_daily_male' : 'culls_weekly_male';
+      const cullFKey = mode === 'daily' ? 'culls_daily_female' : 'culls_weekly_female';
+
+      const baselineData = new Array(generalData.dates.length).fill(stdVal);
 
       // Prepare Notes Dataset
-      const notesPoints = chartData.dates.map((d, i) => {
-          const n = chartData.notes ? chartData.notes[i] : null;
+      const notesPoints = generalData.dates.map((d, i) => {
+          const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
               // Stick to Female Mortality line + slight offset for visibility
-              let yVal = chartData.mortality_cum_female[i];
+              let yVal = generalData.mortality_cum_female[i];
               if (yVal === undefined || yVal === null) yVal = 0;
               return {
                   x: d,
@@ -518,28 +617,50 @@
       };
 
       generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
-        type: 'line',
+        type: 'bar',
         data: {
-          labels: chartData.dates,
+          labels: generalData.dates,
           datasets: [
             {
               label: 'Egg Production %',
-              data: chartData.egg_prod,
+              data: generalData.egg_prod,
+              type: 'line',
               borderColor: 'green',
               yAxisID: 'y',
               datalabels: { display: false }
             },
             {
-              label: 'Cum. Mortality Male %',
-              data: chartData.mortality_cum_male,
-              borderColor: 'blue',
-              yAxisID: 'y1',
-              datalabels: { display: false }
+              label: 'Mortality Male %',
+              data: generalData[mortMKey],
+              backgroundColor: 'rgba(54, 162, 235, 0.6)',
+              yAxisID: 'y1'
             },
             {
-              label: 'Cum. Mortality Female %',
-              data: chartData.mortality_cum_female,
+              label: 'Mortality Female %',
+              data: generalData[mortFKey],
+              backgroundColor: 'rgba(255, 99, 132, 0.6)',
+              yAxisID: 'y1'
+            },
+            {
+              label: 'Culls Male %',
+              data: generalData[cullMKey],
+              backgroundColor: 'rgba(255, 206, 86, 0.6)',
+              yAxisID: 'y1'
+            },
+            {
+              label: 'Culls Female %',
+              data: generalData[cullFKey],
+              backgroundColor: 'rgba(75, 192, 192, 0.6)',
+              yAxisID: 'y1'
+            },
+            {
+              label: 'Standard Mort Limit',
+              data: baselineData,
+              type: 'line',
               borderColor: 'red',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
               yAxisID: 'y1',
               datalabels: { display: false }
             },
@@ -548,11 +669,6 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
           onClick: (e) => {
               const points = generalChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
               if (points.length) {
@@ -569,40 +685,67 @@
                   }
               }
           },
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
           scales: {
             y: {
               type: 'linear',
               display: true,
-              position: 'left',
-              title: { display: true, text: 'Egg Production' },
-              ticks: {
-                  callback: function(value) {
-                      return value + '%';
-                  }
-              }
+              position: 'right',
+              title: { display: true, text: 'Egg Production %' }
             },
             y1: {
               type: 'linear',
               display: true,
-              position: 'right',
-              title: { display: true, text: 'Mortality' },
-              grid: {
-                drawOnChartArea: false
-              },
-              ticks: {
-                  callback: function(value) {
-                      return value + '%';
-                  }
-              }
+              position: 'left',
+              title: { display: true, text: 'Mortality/Culls %' },
+              grid: { drawOnChartArea: false }
             }
           },
           plugins: {
-              datalabels: { display: false },
-              tooltip: commonOptions.plugins.tooltip // Share tooltip config
+              datalabels: { display: false }, // Only show on bars if space permits, but disabled global here
+              tooltip: commonOptions.plugins.tooltip
           }
         }
       });
   }
+
+  function applyDateFilter(chartName, filterType) {
+      if (chartName === 'general') {
+          if (filterType === 'default') window.generalFilterState = (currentMode === 'daily' ? 30 : 10);
+          else window.generalFilterState = 'all';
+      } else {
+          // Both male and female share the filter for bodyweight
+          if (filterType === 'default') window.bwFilterState = 10;
+          else window.bwFilterState = 'all';
+      }
+      renderCharts(currentMode);
+  }
+
+  function switchMode(mode) {
+      // Reset general filter when switching mode
+      window.generalFilterState = (mode === 'daily' ? 30 : 10);
+      renderCharts(mode);
+  }
+
+  // Initial Render
+  document.addEventListener('DOMContentLoaded', function() {
+      // Tab Change Listener to handle Chart resizing
+      const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('shown.bs.tab', function (event) {
+          if (event.target.id === 'charts-tab') {
+            if (maleChart) maleChart.resize();
+            if (femaleChart) femaleChart.resize();
+            if (generalChart) generalChart.resize();
+          }
+        });
+
+      renderCharts('daily');
+  });
+
 
   function showNoteModal(date, text, photoUrl) {
       document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
@@ -621,28 +764,6 @@
       const modal = new bootstrap.Modal(document.getElementById('noteModal'));
       modal.show();
   }
-
-  function switchMode(mode) {
-      currentChartMode = mode;
-      renderCharts(mode);
-  }
-
-  // Initial Render
-  document.addEventListener('DOMContentLoaded', function() {
-      // Tab Change Listener to handle Chart resizing
-      const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
-      tabEls.forEach(function(tabEl) {
-        tabEl.addEventListener('shown.bs.tab', function (event) {
-          if (event.target.id === 'charts-tab') {
-            if (maleChart) maleChart.resize();
-            if (femaleChart) femaleChart.resize();
-            if (generalChart) generalChart.resize();
-          }
-        });
-      });
-
-      renderCharts('daily');
-  });
 </script>
 
 {% endblock %}
