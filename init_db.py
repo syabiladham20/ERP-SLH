@@ -2,7 +2,7 @@ from app import app, db, House
 
 def init_db():
     with app.app_context():
-        db.create_all()
+        # db.create_all() # Schema is now managed by Flask-Migrate
         
         # Pre-populate Houses
         if House.query.count() == 0:
