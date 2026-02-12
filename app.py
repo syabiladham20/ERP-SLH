@@ -233,6 +233,11 @@ class Standard(db.Model):
     std_feed_male = db.Column(db.Float, default=0.0)
     std_feed_female = db.Column(db.Float, default=0.0)
 
+class GlobalStandard(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    std_mortality_daily = db.Column(db.Float, default=0.05)
+    std_mortality_weekly = db.Column(db.Float, default=0.3)
+
 class WeeklyData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
@@ -1005,11 +1010,25 @@ def manage_standards():
             db.session.add(s)
             db.session.commit()
             flash('Standard added.', 'success')
+        elif action == 'update_global':
+            gs = GlobalStandard.query.first()
+            if not gs:
+                gs = GlobalStandard()
+                db.session.add(gs)
+
+            gs.std_mortality_daily = float(request.form.get('std_mortality_daily') or 0.05)
+            gs.std_mortality_weekly = float(request.form.get('std_mortality_weekly') or 0.3)
+            db.session.commit()
+            flash('Global standards updated.', 'success')
 
         return redirect(url_for('manage_standards'))
 
     standards = Standard.query.order_by(Standard.week.asc()).all()
-    return render_template('standards.html', standards=standards)
+    global_std = GlobalStandard.query.first()
+    if not global_std:
+        global_std = GlobalStandard() # Default values from model
+
+    return render_template('standards.html', standards=standards, global_std=global_std)
 
 @app.route('/feed_codes', methods=['GET', 'POST'])
 def manage_feed_codes():
@@ -1307,6 +1326,12 @@ def toggle_phase(id):
 def view_flock(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+
+    gs = GlobalStandard.query.first()
+    if not gs:
+        gs = GlobalStandard()
+        db.session.add(gs)
+        db.session.commit()
     
     # --- Weekly Data Calculation ---
     weekly_data = []
@@ -1479,6 +1504,12 @@ def view_flock(id):
         'dates': [],
         'mortality_cum_male': [],
         'mortality_cum_female': [],
+        'mortality_weekly_male': [],
+        'mortality_weekly_female': [],
+        'culls_weekly_male': [],
+        'culls_weekly_female': [],
+        'avg_bw_male': [],
+        'avg_bw_female': [],
         'egg_prod': [],
         'bw_male_std': [],
         'bw_female_std': [],
@@ -1511,6 +1542,14 @@ def view_flock(id):
 
         chart_data_weekly['mortality_cum_male'].append(round((cum_mort_m_week / start_m) * 100, 2))
         chart_data_weekly['mortality_cum_female'].append(round((cum_mort_f_week / start_f) * 100, 2))
+
+        chart_data_weekly['mortality_weekly_male'].append(round(w['mort_pct_m'], 2))
+        chart_data_weekly['mortality_weekly_female'].append(round(w['mort_pct_f'], 2))
+        chart_data_weekly['culls_weekly_male'].append(round(w['cull_pct_m'], 2))
+        chart_data_weekly['culls_weekly_female'].append(round(w['cull_pct_f'], 2))
+
+        chart_data_weekly['avg_bw_male'].append(w['avg_bw_male'] if w['avg_bw_male'] > 0 else None)
+        chart_data_weekly['avg_bw_female'].append(w['avg_bw_female'] if w['avg_bw_female'] > 0 else None)
 
         chart_data_weekly['egg_prod'].append(round(w['egg_prod_pct'], 2))
 
@@ -1547,6 +1586,12 @@ def view_flock(id):
         'dates': [log.date.strftime('%Y-%m-%d') for log in logs],
         'mortality_cum_male': [],
         'mortality_cum_female': [],
+        'mortality_daily_male': [],
+        'mortality_daily_female': [],
+        'culls_daily_male': [],
+        'culls_daily_female': [],
+        'avg_bw_male': [],
+        'avg_bw_female': [],
         'egg_prod': [],
         'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
         'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
@@ -1584,6 +1629,13 @@ def view_flock(id):
         # --- Chart Data Population ---
         chart_data['mortality_cum_male'].append(round((cum_mort_m / start_m) * 100, 2))
         chart_data['mortality_cum_female'].append(round((cum_mort_f / start_f) * 100, 2))
+
+        chart_data['mortality_daily_male'].append(round((log.mortality_male / safe_stock_m) * 100, 2))
+        chart_data['mortality_daily_female'].append(round((log.mortality_female / safe_stock_f) * 100, 2))
+        chart_data['culls_daily_male'].append(round((log.culls_male / safe_stock_m) * 100, 2))
+        chart_data['culls_daily_female'].append(round((log.culls_female / safe_stock_f) * 100, 2))
+        chart_data['avg_bw_male'].append(log.body_weight_male if log.body_weight_male > 0 else None)
+        chart_data['avg_bw_female'].append(log.body_weight_female if log.body_weight_female > 0 else None)
         
         egg_prod = (log.eggs_collected / safe_stock_f) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
@@ -1704,7 +1756,7 @@ def view_flock(id):
             'total_feed': feed_total_kg
         })
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly)
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, global_std=gs)
 
 @app.route('/flock/<int:id>/charts')
 def flock_charts(id):
