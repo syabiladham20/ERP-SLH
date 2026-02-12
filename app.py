@@ -3170,7 +3170,7 @@ def process_import(file, commit=True, preview=False):
         else:
             db.session.flush()
         
-        all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
+        all_logs = sorted(existing_logs_dict.values(), key=lambda x: x.date)
         for i, log in enumerate(all_logs):
             if i > 0:
                 prev_log = all_logs[i-1]
