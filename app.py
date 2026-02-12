@@ -110,6 +110,13 @@ class Flock(db.Model):
     status = db.Column(db.String(20), default='Active', nullable=False) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
     production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
+
+    # Production Start Counts (New Baseline)
+    prod_start_male = db.Column(db.Integer, default=0)
+    prod_start_female = db.Column(db.Integer, default=0)
+    prod_start_male_hosp = db.Column(db.Integer, default=0)
+    prod_start_female_hosp = db.Column(db.Integer, default=0)
+
     end_date = db.Column(db.Date, nullable=True)
     
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
@@ -128,12 +135,18 @@ class DailyLog(db.Model):
     mortality_male_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
     culls_male_hosp = db.Column(db.Integer, default=0) # Hospital Culls
 
+    mortality_female_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
+    culls_female_hosp = db.Column(db.Integer, default=0) # Hospital Culls
+
     culls_male = db.Column(db.Integer, default=0) # Production Culls
     culls_female = db.Column(db.Integer, default=0)
     
     # Transfers
     males_moved_to_prod = db.Column(db.Integer, default=0)
     males_moved_to_hosp = db.Column(db.Integer, default=0)
+
+    females_moved_to_prod = db.Column(db.Integer, default=0)
+    females_moved_to_hosp = db.Column(db.Integer, default=0)
 
     feed_program = db.Column(db.String(50)) # 'Full Feed', 'Skip-a-day'
     # Feed (Grams per Bird)
@@ -713,7 +726,8 @@ def index():
 
         curr_m_prod = f.intake_male
         curr_m_hosp = 0
-        curr_f = f.intake_female
+        curr_f_prod = f.intake_female
+        curr_f_hosp = 0
 
         in_production = False
 
@@ -725,12 +739,23 @@ def index():
             if not in_production:
                 if prod_start_date and l.date >= prod_start_date:
                     in_production = True
-                    prod_start_stock_m = curr_m_prod
-                    prod_start_stock_f = curr_f
+                    # Reset to Production Baseline
+                    if f.prod_start_male > 0 or f.prod_start_female > 0:
+                        curr_m_prod = f.prod_start_male
+                        curr_f_prod = f.prod_start_female
+                        curr_m_hosp = f.prod_start_male_hosp
+                        curr_f_hosp = f.prod_start_female_hosp
+                        prod_start_stock_m = f.prod_start_male
+                        prod_start_stock_f = f.prod_start_female
+                    else:
+                        # Legacy fallback
+                        prod_start_stock_m = curr_m_prod
+                        prod_start_stock_f = curr_f_prod
+
                 elif not prod_start_date and l.eggs_collected > 0:
                     in_production = True
                     prod_start_stock_m = curr_m_prod
-                    prod_start_stock_f = curr_f
+                    prod_start_stock_f = curr_f_prod
 
             # Cumulative
             if in_production:
@@ -742,7 +767,7 @@ def index():
 
             # Snapshot for Daily Stats (Start of Day Stock)
             stock_m_now = curr_m_prod + curr_m_hosp
-            stock_f_now = curr_f
+            stock_f_now = curr_f_prod + curr_f_hosp
 
             if l.date == today:
                 stats_today = {
@@ -756,21 +781,42 @@ def index():
                 }
 
             # Update Stocks
+            # Male
             mort_m_prod = l.mortality_male
             mort_m_hosp = l.mortality_male_hosp or 0
             cull_m_prod = l.culls_male
             cull_m_hosp = l.culls_male_hosp or 0
-            moved_to_hosp = l.males_moved_to_hosp or 0
-            moved_to_prod = l.males_moved_to_prod or 0
+            moved_to_hosp_m = l.males_moved_to_hosp or 0
+            moved_to_prod_m = l.males_moved_to_prod or 0
 
-            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
-            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
+            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp_m + moved_to_prod_m
+            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp_m - moved_to_prod_m
+
+            # Female
+            mort_f_prod = l.mortality_female
+            mort_f_hosp = l.mortality_female_hosp or 0
+            cull_f_prod = l.culls_female
+            cull_f_hosp = l.culls_female_hosp or 0
+            moved_to_hosp_f = l.females_moved_to_hosp or 0
+            moved_to_prod_f = l.females_moved_to_prod or 0
+
+            curr_f_prod = curr_f_prod - mort_f_prod - cull_f_prod - moved_to_hosp_f + moved_to_prod_f
+            curr_f_hosp = curr_f_hosp - mort_f_hosp - cull_f_hosp + moved_to_hosp_f - moved_to_prod_f
 
             if curr_m_prod < 0: curr_m_prod = 0
             if curr_m_hosp < 0: curr_m_hosp = 0
+            if curr_f_prod < 0: curr_f_prod = 0
+            if curr_f_hosp < 0: curr_f_hosp = 0
 
-            curr_f -= (l.mortality_female + l.culls_female)
-            if curr_f < 0: curr_f = 0
+        if f.phase == 'Production' and not in_production:
+             if f.prod_start_male > 0 or f.prod_start_female > 0:
+                 curr_m_prod = f.prod_start_male
+                 curr_f_prod = f.prod_start_female
+                 curr_m_hosp = f.prod_start_male_hosp
+                 curr_f_hosp = f.prod_start_female_hosp
+
+                 prod_start_stock_m = f.prod_start_male
+                 prod_start_stock_f = f.prod_start_female
 
         # Assign Cumulative Stats
         f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
@@ -779,9 +825,12 @@ def index():
         f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
         f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
 
-        f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
+        # Male Ratio (Production Only)
+        f.male_ratio_pct = (curr_m_prod / curr_f_prod * 100) if curr_f_prod > 0 else 0
         f.males_prod_count = curr_m_prod
         f.males_hosp_count = curr_m_hosp
+        f.females_prod_count = curr_f_prod
+        f.females_hosp_count = curr_f_hosp
 
         # Age
         days_age = (today - f.intake_date).days
@@ -1314,7 +1363,42 @@ def toggle_phase(id):
         else:
             flock.production_start_date = date.today()
 
-        flash(f'Flock {flock.batch_id} switched to Production phase starting {flock.production_start_date}.', 'success')
+        # Capture Start Counts
+        prod_m = int(request.form.get('prod_start_male') or 0)
+        prod_f = int(request.form.get('prod_start_female') or 0)
+        hosp_m = int(request.form.get('prod_start_male_hosp') or 0)
+        hosp_f = int(request.form.get('prod_start_female_hosp') or 0)
+
+        flock.prod_start_male = prod_m
+        flock.prod_start_female = prod_f
+        flock.prod_start_male_hosp = hosp_m
+        flock.prod_start_female_hosp = hosp_f
+
+        # Calculate Loss Check (Expected vs Actual)
+        stmt = db.session.query(
+            db.func.sum(DailyLog.mortality_male),
+            db.func.sum(DailyLog.mortality_female),
+            db.func.sum(DailyLog.culls_male),
+            db.func.sum(DailyLog.culls_female)
+        ).filter(DailyLog.flock_id == id).first()
+
+        rearing_loss_m = (stmt[0] or 0) + (stmt[2] or 0)
+        rearing_loss_f = (stmt[1] or 0) + (stmt[3] or 0)
+
+        expected_m = flock.intake_male - rearing_loss_m
+        expected_f = flock.intake_female - rearing_loss_f
+
+        actual_m = prod_m + hosp_m
+        actual_f = prod_f + hosp_f
+
+        diff_m = expected_m - actual_m
+        diff_f = expected_f - actual_f
+
+        msg = f'Flock {flock.batch_id} switched to Production.'
+        if diff_m != 0 or diff_f != 0:
+            msg += f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.'
+
+        flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
     else:
         flock.phase = 'Rearing'
         flock.production_start_date = None
@@ -1347,8 +1431,14 @@ def view_flock(id):
         hatch_by_week[w]['set'] += h.egg_set
 
     # 2. Iterate Logs
-    curr_m = flock.intake_male
-    curr_f = flock.intake_female
+    curr_m_prod = flock.intake_male
+    curr_m_hosp = 0
+    curr_f_prod = flock.intake_female
+    curr_f_hosp = 0
+    in_prod = False
+
+    curr_m = curr_m_prod + curr_m_hosp
+    curr_f = curr_f_prod + curr_f_hosp
 
     current_week = None
     week_summary = None
@@ -1452,11 +1542,31 @@ def view_flock(id):
                 val_f = getattr(log, f'bw_female_p{i}', 0)
             agg_part('F', i, val_f)
 
-        # Update Stock
-        curr_m -= (log.mortality_male + log.culls_male)
-        curr_f -= (log.mortality_female + log.culls_female)
-        if curr_m < 0: curr_m = 0
-        if curr_f < 0: curr_f = 0
+        # Phase Switch Check
+        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
+             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+                 in_prod = True
+                 curr_m_prod = flock.prod_start_male
+                 curr_f_prod = flock.prod_start_female
+                 curr_m_hosp = flock.prod_start_male_hosp
+                 curr_f_hosp = flock.prod_start_female_hosp
+
+        # Update Stock (End of Day)
+        curr_m_prod -= (log.mortality_male + log.culls_male)
+        curr_m_prod += (log.males_moved_to_prod - log.males_moved_to_hosp)
+        curr_m_hosp -= (log.mortality_male_hosp + log.culls_male_hosp)
+        curr_m_hosp += (log.males_moved_to_hosp - log.males_moved_to_prod)
+
+        curr_f_prod -= (log.mortality_female + log.culls_female)
+        curr_f_prod += (log.females_moved_to_prod - log.females_moved_to_hosp)
+        curr_f_hosp -= (log.mortality_female_hosp + log.culls_female_hosp)
+        curr_f_hosp += (log.females_moved_to_hosp - log.females_moved_to_prod)
+
+        if curr_m_prod < 0: curr_m_prod = 0
+        if curr_f_prod < 0: curr_f_prod = 0
+
+        curr_m = curr_m_prod + curr_m_hosp
+        curr_f = curr_f_prod + curr_f_hosp
             
     if week_summary:
         weekly_data.append(week_summary)
@@ -1547,10 +1657,8 @@ def view_flock(id):
         chart_data_weekly['mortality_weekly_female'].append(round(w['mort_pct_f'], 2))
         chart_data_weekly['culls_weekly_male'].append(round(w['cull_pct_m'], 2))
         chart_data_weekly['culls_weekly_female'].append(round(w['cull_pct_f'], 2))
-
         chart_data_weekly['avg_bw_male'].append(w['avg_bw_male'] if w['avg_bw_male'] > 0 else None)
         chart_data_weekly['avg_bw_female'].append(w['avg_bw_female'] if w['avg_bw_female'] > 0 else None)
-
         chart_data_weekly['egg_prod'].append(round(w['egg_prod_pct'], 2))
 
         chart_data_weekly['bw_male_std'].append(w['avg_bw_male_std'] if w['avg_bw_male_std'] > 0 else None)
@@ -1593,52 +1701,132 @@ def view_flock(id):
         'avg_bw_male': [],
         'avg_bw_female': [],
         'egg_prod': [],
+        'male_ratio': [],
         'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
         'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
         'unif_male': [], 'unif_female': [],
         'notes': []
     }
     
-    cum_mort_m = 0
-    cum_mort_f = 0
-    cum_cull_m = 0
-    cum_cull_f = 0
+    # Detailed tracking for enriched logs
+    curr_m_prod = flock.intake_male
+    curr_m_hosp = 0
+    curr_f_prod = flock.intake_female
+    curr_f_hosp = 0
+    in_prod = False
+
+    # Cumulative for Charts (Lifetime or Phase?)
+    # Using simple lifetime counters for chart continuity, unless phase resets.
+    # To keep charts consistent with "Loss" reset:
+    # If phase resets, we start tracking from new baseline.
+    # So we track cumulative mortality WITHIN the current phase logic context?
+    # Or just use (Intake - Current) / Intake?
+    # With reset, Intake is replaced by Start Count.
+    # Let's use (Start - Current) / Start * 100.
 
     start_m = flock.intake_male or 1
     start_f = flock.intake_female or 1
-    
+
     # Pre-fetch medications
     medications = Medication.query.filter_by(flock_id=id).all()
     enriched_logs = []
 
     for log in logs:
-        # --- Stock Calculation (Start of Day) ---
-        current_stock_m = start_m - cum_mort_m - cum_cull_m
-        current_stock_f = start_f - cum_mort_f - cum_cull_f
+        # Phase Switch Check
+        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
+             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+                 in_prod = True
+                 curr_m_prod = flock.prod_start_male
+                 curr_f_prod = flock.prod_start_female
+                 curr_m_hosp = flock.prod_start_male_hosp
+                 curr_f_hosp = flock.prod_start_female_hosp
 
-        # Accumulate for Chart and Next Loop
-        cum_mort_m += log.mortality_male
-        cum_mort_f += log.mortality_female
-        cum_cull_m += log.culls_male
-        cum_cull_f += log.culls_female
+                 start_m = curr_m_prod + curr_m_hosp
+                 start_f = curr_f_prod + curr_f_hosp
 
-        # Safe stock for division
+        # Stock (Start of Day)
+        current_stock_m = curr_m_prod + curr_m_hosp
+        current_stock_f = curr_f_prod + curr_f_hosp
+
+        # Calculate derived stats
         safe_stock_f = current_stock_f if current_stock_f > 0 else 1
-        safe_stock_m = current_stock_m if current_stock_m > 0 else 1
+        safe_start_m = start_m if start_m > 0 else 1
+        safe_start_f = start_f if start_f > 0 else 1
 
-        # --- Chart Data Population ---
-        chart_data['mortality_cum_male'].append(round((cum_mort_m / start_m) * 100, 2))
-        chart_data['mortality_cum_female'].append(round((cum_mort_f / start_f) * 100, 2))
+        # Cumulative Mortality % (Relative to current baseline start)
+        # Mortality = Start - Current
+        # Note: This ignores transfers IN/OUT impacting "Mortality %" if we just do Start-Current.
+        # But Mortality should be strictly (Deaths / Start).
+        # Transfers change the stock but aren't deaths.
+        # So we should track Cumulative Deaths separately from Stock.
 
-        chart_data['mortality_daily_male'].append(round((log.mortality_male / safe_stock_m) * 100, 2))
-        chart_data['mortality_daily_female'].append(round((log.mortality_female / safe_stock_f) * 100, 2))
-        chart_data['culls_daily_male'].append(round((log.culls_male / safe_stock_m) * 100, 2))
-        chart_data['culls_daily_female'].append(round((log.culls_female / safe_stock_f) * 100, 2))
-        chart_data['avg_bw_male'].append(log.body_weight_male if log.body_weight_male > 0 else None)
-        chart_data['avg_bw_female'].append(log.body_weight_female if log.body_weight_female > 0 else None)
+        # This loop is tricky because we just reset 'curr' stock.
+        # Let's calculate mortality % based on (Start - Current) as a proxy for 'Loss' if we assume closed flock,
+        # but with transfers it's inaccurate.
+        # Let's accumulate deaths.
+        pass # Logic handled in replacement below
+
+    # Re-writing loop properly for cumulative tracking
+    cum_dead_m = 0
+    cum_dead_f = 0
+
+    # Reset counters for the loop
+    curr_m_prod = flock.intake_male
+    curr_m_hosp = 0
+    curr_f_prod = flock.intake_female
+    curr_f_hosp = 0
+    in_prod = False
+    start_m = flock.intake_male or 1
+    start_f = flock.intake_female or 1
+
+    for log in logs:
+        # Phase Switch
+        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
+             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+                 in_prod = True
+                 curr_m_prod = flock.prod_start_male
+                 curr_f_prod = flock.prod_start_female
+                 curr_m_hosp = flock.prod_start_male_hosp
+                 curr_f_hosp = flock.prod_start_female_hosp
+
+                 # Reset Cumulative Mortality counter for new phase?
+                 # If baseline resets, usually we track performance against new baseline.
+                 cum_dead_m = 0
+                 cum_dead_f = 0
+                 start_m = curr_m_prod + curr_m_hosp
+                 start_f = curr_f_prod + curr_f_hosp
+
+        current_stock_m = curr_m_prod + curr_m_hosp
+        current_stock_f = curr_f_prod + curr_f_hosp
         
-        egg_prod = (log.eggs_collected / safe_stock_f) * 100
+        # Accumulate Mortality
+        cum_dead_m += (log.mortality_male + log.mortality_male_hosp)
+        cum_dead_f += (log.mortality_female + log.mortality_female_hosp)
+
+        # Chart Data
+        chart_data['mortality_cum_male'].append(round((cum_dead_m / (start_m or 1)) * 100, 2))
+        chart_data['mortality_cum_female'].append(round((cum_dead_f / (start_f or 1)) * 100, 2))
+
+        egg_prod = (log.eggs_collected / (current_stock_f or 1)) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
+
+        # Male Ratio (Prod)
+        m_ratio = (curr_m_prod / (curr_f_prod or 1)) * 100
+        chart_data['male_ratio'].append(round(m_ratio, 2))
+
+        # Update (End of Day)
+        curr_m_prod -= (log.mortality_male + log.culls_male)
+        curr_m_prod += (log.males_moved_to_prod - log.males_moved_to_hosp)
+        curr_m_hosp -= (log.mortality_male_hosp + log.culls_male_hosp)
+        curr_m_hosp += (log.males_moved_to_hosp - log.males_moved_to_prod)
+
+        curr_f_prod -= (log.mortality_female + log.culls_female)
+        curr_f_prod += (log.females_moved_to_prod - log.females_moved_to_hosp)
+        curr_f_hosp -= (log.mortality_female_hosp + log.culls_female_hosp)
+        curr_f_hosp += (log.females_moved_to_hosp - log.females_moved_to_prod)
+
+        if curr_m_prod < 0: curr_m_prod = 0
+        if curr_f_prod < 0: curr_f_prod = 0
 
         def val_or_null(v):
             return v if v > 0 else None
@@ -1756,7 +1944,15 @@ def view_flock(id):
             'total_feed': feed_total_kg
         })
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, global_std=gs)
+    current_stats = {
+        'male_prod': curr_m_prod,
+        'female_prod': curr_f_prod,
+        'male_hosp': curr_m_hosp,
+        'female_hosp': curr_f_hosp,
+        'male_ratio': (curr_m_prod / curr_f_prod * 100) if curr_f_prod > 0 else 0
+    }
+
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs)
 
 @app.route('/flock/<int:id>/charts')
 def flock_charts(id):
@@ -3259,11 +3455,15 @@ def update_log_from_request(log, req):
     log.mortality_male = int(req.form.get('mortality_male') or 0)
     log.mortality_female = int(req.form.get('mortality_female') or 0)
     log.mortality_male_hosp = int(req.form.get('mortality_male_hosp') or 0)
+    log.mortality_female_hosp = int(req.form.get('mortality_female_hosp') or 0)
     log.culls_male_hosp = int(req.form.get('culls_male_hosp') or 0)
+    log.culls_female_hosp = int(req.form.get('culls_female_hosp') or 0)
     log.culls_male = int(req.form.get('culls_male') or 0)
     log.culls_female = int(req.form.get('culls_female') or 0)
     log.males_moved_to_prod = int(req.form.get('males_moved_to_prod') or 0)
     log.males_moved_to_hosp = int(req.form.get('males_moved_to_hosp') or 0)
+    log.females_moved_to_prod = int(req.form.get('females_moved_to_prod') or 0)
+    log.females_moved_to_hosp = int(req.form.get('females_moved_to_hosp') or 0)
 
     log.feed_program = req.form.get('feed_program')
 

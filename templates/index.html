@@ -64,6 +64,9 @@
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
+                            <br>
+                            <small class="text-muted">Male Ratio</small><br>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
                         </div>
                         {% else %}
                         <div class="col-4 border-end">
@@ -82,6 +85,9 @@
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
+                            <br>
+                            <small class="text-muted">Male Ratio</small><br>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
                         </div>
                         <div class="col-4">
                             <small class="text-muted">Egg Prod %</small><br>
@@ -119,7 +125,30 @@
                                         <label for="prodDate{{ flock.id }}" class="form-label">Start Date</label>
                                         <input type="date" class="form-control" id="prodDate{{ flock.id }}" name="production_start_date" value="{{ today }}" required>
                                     </div>
-                                    <p class="small text-muted">Statistics will be calculated as 'Production' starting from this date.</p>
+                                    <hr>
+                                    <h6 class="text-primary">Production Start Counts (Baseline)</h6>
+                                    <div class="row">
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small">Males (Prod)</label>
+                                            <input type="number" class="form-control form-control-sm" name="prod_start_male" required value="0">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small">Females (Prod)</label>
+                                            <input type="number" class="form-control form-control-sm" name="prod_start_female" required value="0">
+                                        </div>
+                                    </div>
+                                    <h6 class="text-danger">Hospital Start Counts</h6>
+                                    <div class="row">
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small">Males (Hosp)</label>
+                                            <input type="number" class="form-control form-control-sm" name="prod_start_male_hosp" value="0">
+                                        </div>
+                                        <div class="col-6 mb-2">
+                                            <label class="form-label small">Females (Hosp)</label>
+                                            <input type="number" class="form-control form-control-sm" name="prod_start_female_hosp" value="0">
+                                        </div>
+                                    </div>
+                                    <p class="small text-muted mt-2">Statistics will be calculated as 'Production' starting from this date using these counts as the new baseline.</p>
                                   </div>
                                   <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
