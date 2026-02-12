@@ -147,22 +147,30 @@ class FarmTestCase(unittest.TestCase):
         self.app.post('/daily_log', data={'house_id': 1, 'date': '2023-11-02', 'mortality_male': 5})
         log = DailyLog.query.first()
         
+        original_date = log.date
+        original_flock_id = log.flock_id
+
         # Edit log
         response = self.app.get(f'/daily_log/{log.id}/edit')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'value="5"', response.data) # Check pre-fill
         
-        # Submit update
+        # Submit update with attempted modification of house_id and date
+        # These fields should be ignored by the backend during an edit
         self.app.post(f'/daily_log/{log.id}/edit', data={
             'mortality_male': 10,
-            'house_id': 1, # Passed as hidden/disabled logic handled in backend?
-            # In update, we don't change house/date usually or if we do, form sends it.
-            # My edit form disables house input but sends hidden?
-            # Wait, my edit form has: <input type="hidden" name="house_id" ...>
+            'house_id': 2, # Attempt to change house (VA2 should be ID 2)
+            'date': '2023-11-05' # Attempt to change date
         }, follow_redirects=True)
         
         updated_log = DailyLog.query.get(log.id)
+
+        # Verify that editable fields are updated
         self.assertEqual(updated_log.mortality_male, 10)
+
+        # Verify that identity fields (flock/house, date) remain unchanged
+        self.assertEqual(updated_log.flock_id, original_flock_id, "Flock ID should not be changed by edit")
+        self.assertEqual(updated_log.date, original_date, "Date should not be changed by edit")
 
     def test_sampling_schedule_init(self):
         # Create flock
