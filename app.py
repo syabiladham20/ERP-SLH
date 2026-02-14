@@ -112,10 +112,10 @@ class Flock(db.Model):
     production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
 
     # Production Start Counts (New Baseline)
-    prod_start_male = db.Column(db.Integer, default=0)
-    prod_start_female = db.Column(db.Integer, default=0)
-    prod_start_male_hosp = db.Column(db.Integer, default=0)
-    prod_start_female_hosp = db.Column(db.Integer, default=0)
+    prod_start_male = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    prod_start_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    prod_start_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    prod_start_female_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
     end_date = db.Column(db.Date, nullable=True)
     
@@ -740,13 +740,13 @@ def index():
                 if prod_start_date and l.date >= prod_start_date:
                     in_production = True
                     # Reset to Production Baseline
-                    if f.prod_start_male > 0 or f.prod_start_female > 0:
-                        curr_m_prod = f.prod_start_male
-                        curr_f_prod = f.prod_start_female
-                        curr_m_hosp = f.prod_start_male_hosp
-                        curr_f_hosp = f.prod_start_female_hosp
-                        prod_start_stock_m = f.prod_start_male
-                        prod_start_stock_f = f.prod_start_female
+                    if (f.prod_start_male or 0) > 0 or (f.prod_start_female or 0) > 0:
+                        curr_m_prod = f.prod_start_male or 0
+                        curr_f_prod = f.prod_start_female or 0
+                        curr_m_hosp = f.prod_start_male_hosp or 0
+                        curr_f_hosp = f.prod_start_female_hosp or 0
+                        prod_start_stock_m = f.prod_start_male or 0
+                        prod_start_stock_f = f.prod_start_female or 0
                     else:
                         # Legacy fallback
                         prod_start_stock_m = curr_m_prod
@@ -809,14 +809,14 @@ def index():
             if curr_f_hosp < 0: curr_f_hosp = 0
 
         if f.phase == 'Production' and not in_production:
-             if f.prod_start_male > 0 or f.prod_start_female > 0:
-                 curr_m_prod = f.prod_start_male
-                 curr_f_prod = f.prod_start_female
-                 curr_m_hosp = f.prod_start_male_hosp
-                 curr_f_hosp = f.prod_start_female_hosp
+             if (f.prod_start_male or 0) > 0 or (f.prod_start_female or 0) > 0:
+                 curr_m_prod = f.prod_start_male or 0
+                 curr_f_prod = f.prod_start_female or 0
+                 curr_m_hosp = f.prod_start_male_hosp or 0
+                 curr_f_hosp = f.prod_start_female_hosp or 0
 
-                 prod_start_stock_m = f.prod_start_male
-                 prod_start_stock_f = f.prod_start_female
+                 prod_start_stock_m = f.prod_start_male or 0
+                 prod_start_stock_f = f.prod_start_female or 0
 
         # Assign Cumulative Stats
         f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
@@ -1549,12 +1549,12 @@ def view_flock(id):
 
         # Phase Switch Check
         if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
                  in_prod = True
-                 curr_m_prod = flock.prod_start_male
-                 curr_f_prod = flock.prod_start_female
-                 curr_m_hosp = flock.prod_start_male_hosp
-                 curr_f_hosp = flock.prod_start_female_hosp
+                 curr_m_prod = flock.prod_start_male or 0
+                 curr_f_prod = flock.prod_start_female or 0
+                 curr_m_hosp = flock.prod_start_male_hosp or 0
+                 curr_f_hosp = flock.prod_start_female_hosp or 0
 
         # Update Stock (End of Day)
         curr_m_prod -= (log.mortality_male + log.culls_male)
@@ -1739,12 +1739,12 @@ def view_flock(id):
     for log in logs:
         # Phase Switch Check
         if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
                  in_prod = True
-                 curr_m_prod = flock.prod_start_male
-                 curr_f_prod = flock.prod_start_female
-                 curr_m_hosp = flock.prod_start_male_hosp
-                 curr_f_hosp = flock.prod_start_female_hosp
+                 curr_m_prod = flock.prod_start_male or 0
+                 curr_f_prod = flock.prod_start_female or 0
+                 curr_m_hosp = flock.prod_start_male_hosp or 0
+                 curr_f_hosp = flock.prod_start_female_hosp or 0
 
                  start_m = curr_m_prod + curr_m_hosp
                  start_f = curr_f_prod + curr_f_hosp
@@ -1787,12 +1787,12 @@ def view_flock(id):
     for log in logs:
         # Phase Switch
         if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if flock.prod_start_male > 0 or flock.prod_start_female > 0:
+             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
                  in_prod = True
-                 curr_m_prod = flock.prod_start_male
-                 curr_f_prod = flock.prod_start_female
-                 curr_m_hosp = flock.prod_start_male_hosp
-                 curr_f_hosp = flock.prod_start_female_hosp
+                 curr_m_prod = flock.prod_start_male or 0
+                 curr_f_prod = flock.prod_start_female or 0
+                 curr_m_hosp = flock.prod_start_male_hosp or 0
+                 curr_f_hosp = flock.prod_start_female_hosp or 0
 
                  # Reset Cumulative Mortality counter for new phase?
                  # If baseline resets, usually we track performance against new baseline.
