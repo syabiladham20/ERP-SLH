@@ -119,13 +119,13 @@ def calculate_metrics(logs, flock, requested_metrics, hatchability_data=None, st
         def get_raw(field):
             return getattr(log, field, 0)
 
-        row_vals['mortality_female'] = log.mortality_female
-        row_vals['mortality_male'] = log.mortality_male
-        row_vals['culls_female'] = log.culls_female
-        row_vals['culls_male'] = log.culls_male
-        row_vals['eggs_collected'] = log.eggs_collected
-        row_vals['feed_female_gp_bird'] = log.feed_female_gp_bird
-        row_vals['feed_male_gp_bird'] = log.feed_male_gp_bird
+        row_vals['mortality_female'] = log.mortality_female or 0
+        row_vals['mortality_male'] = log.mortality_male or 0
+        row_vals['culls_female'] = log.culls_female or 0
+        row_vals['culls_male'] = log.culls_male or 0
+        row_vals['eggs_collected'] = log.eggs_collected or 0
+        row_vals['feed_female_gp_bird'] = log.feed_female_gp_bird or 0.0
+        row_vals['feed_male_gp_bird'] = log.feed_male_gp_bird or 0.0
 
         # BW/Uniformity: Return None if 0 to avoid chart drops
         row_vals['body_weight_female'] = log.body_weight_female if log.body_weight_female > 0 else None
@@ -133,46 +133,46 @@ def calculate_metrics(logs, flock, requested_metrics, hatchability_data=None, st
         row_vals['uniformity_female'] = log.uniformity_female if log.uniformity_female > 0 else None
         row_vals['uniformity_male'] = log.uniformity_male if log.uniformity_male > 0 else None
 
-        row_vals['egg_weight'] = log.egg_weight
-        row_vals['water_total'] = log.water_intake_calculated
-        row_vals['cull_eggs_jumbo'] = log.cull_eggs_jumbo
-        row_vals['cull_eggs_small'] = log.cull_eggs_small
-        row_vals['cull_eggs_abnormal'] = log.cull_eggs_abnormal
-        row_vals['cull_eggs_crack'] = log.cull_eggs_crack
+        row_vals['egg_weight'] = log.egg_weight or 0.0
+        row_vals['water_total'] = log.water_intake_calculated or 0.0
+        row_vals['cull_eggs_jumbo'] = log.cull_eggs_jumbo or 0
+        row_vals['cull_eggs_small'] = log.cull_eggs_small or 0
+        row_vals['cull_eggs_abnormal'] = log.cull_eggs_abnormal or 0
+        row_vals['cull_eggs_crack'] = log.cull_eggs_crack or 0
 
         # Derived
-        row_vals['mortality_female_pct'] = (log.mortality_female / curr_stock_f) * 100
-        row_vals['mortality_male_pct'] = (log.mortality_male / curr_stock_m) * 100
-        row_vals['culls_female_pct'] = (log.culls_female / curr_stock_f) * 100
-        row_vals['culls_male_pct'] = (log.culls_male / curr_stock_m) * 100
+        row_vals['mortality_female_pct'] = ((log.mortality_female or 0) / curr_stock_f) * 100
+        row_vals['mortality_male_pct'] = ((log.mortality_male or 0) / curr_stock_m) * 100
+        row_vals['culls_female_pct'] = ((log.culls_female or 0) / curr_stock_f) * 100
+        row_vals['culls_male_pct'] = ((log.culls_male or 0) / curr_stock_m) * 100
 
         # Update Cumulative for NEXT loop, but we need current cum for this row?
         # Cumulative Mortality usually includes today.
-        cum_mort_m += log.mortality_male
-        cum_mort_f += log.mortality_female
-        cum_cull_m += log.culls_male
-        cum_cull_f += log.culls_female
+        cum_mort_m += (log.mortality_male or 0)
+        cum_mort_f += (log.mortality_female or 0)
+        cum_cull_m += (log.culls_male or 0)
+        cum_cull_f += (log.culls_female or 0)
 
         row_vals['mortality_cum_female_pct'] = (cum_mort_f / start_f) * 100
         row_vals['mortality_cum_male_pct'] = (cum_mort_m / start_m) * 100
 
-        row_vals['egg_prod_pct'] = (log.eggs_collected / curr_stock_f) * 100
+        row_vals['egg_prod_pct'] = ((log.eggs_collected or 0) / curr_stock_f) * 100
 
-        total_cull_eggs = (log.cull_eggs_jumbo + log.cull_eggs_small +
-                           log.cull_eggs_abnormal + log.cull_eggs_crack)
+        total_cull_eggs = ((log.cull_eggs_jumbo or 0) + (log.cull_eggs_small or 0) +
+                           (log.cull_eggs_abnormal or 0) + (log.cull_eggs_crack or 0))
         row_vals['cull_eggs_total'] = total_cull_eggs
-        row_vals['cull_eggs_pct'] = (total_cull_eggs / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+        row_vals['cull_eggs_pct'] = (total_cull_eggs / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
 
-        row_vals['cull_eggs_jumbo_pct'] = (log.cull_eggs_jumbo / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
-        row_vals['cull_eggs_small_pct'] = (log.cull_eggs_small / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
-        row_vals['cull_eggs_crack_pct'] = (log.cull_eggs_crack / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
-        row_vals['cull_eggs_abnormal_pct'] = (log.cull_eggs_abnormal / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+        row_vals['cull_eggs_jumbo_pct'] = ((log.cull_eggs_jumbo or 0) / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
+        row_vals['cull_eggs_small_pct'] = ((log.cull_eggs_small or 0) / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
+        row_vals['cull_eggs_crack_pct'] = ((log.cull_eggs_crack or 0) / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
+        row_vals['cull_eggs_abnormal_pct'] = ((log.cull_eggs_abnormal or 0) / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
 
-        row_vals['hatch_eggs'] = log.eggs_collected - total_cull_eggs
-        row_vals['hatch_pct'] = (row_vals['hatch_eggs'] / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+        row_vals['hatch_eggs'] = (log.eggs_collected or 0) - total_cull_eggs
+        row_vals['hatch_pct'] = (row_vals['hatch_eggs'] / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
 
         stock_total = curr_stock_m + curr_stock_f
-        row_vals['water_per_bird'] = (log.water_intake_calculated * 1000) / stock_total if stock_total > 0 else 0
+        row_vals['water_per_bird'] = ((log.water_intake_calculated or 0) * 1000) / stock_total if stock_total > 0 else 0
 
         # Hatchability Mapping
         if log.date in hatch_map:
