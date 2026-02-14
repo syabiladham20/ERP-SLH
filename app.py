@@ -34,6 +34,13 @@ def basename_filter(s):
         return None
     return os.path.basename(str(s).replace('\\', '/'))
 
+def round_to_whole(val):
+    if val is None: return 0
+    try:
+        return int(float(val) + 0.5)
+    except (ValueError, TypeError):
+        return 0
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -167,30 +174,30 @@ class DailyLog(db.Model):
     egg_weight = db.Column(db.Float, default=0.0)
     
     # Body Weight (Split by Sex)
-    body_weight_male = db.Column(db.Float, default=0.0)
-    body_weight_female = db.Column(db.Float, default=0.0)
+    body_weight_male = db.Column(db.Integer, default=0)
+    body_weight_female = db.Column(db.Integer, default=0)
     uniformity_male = db.Column(db.Float, default=0.0)
     uniformity_female = db.Column(db.Float, default=0.0)
 
     # Partitions & Weighing Day
     is_weighing_day = db.Column(db.Boolean, default=False)
 
-    bw_male_p1 = db.Column(db.Float, default=0.0)
-    bw_male_p2 = db.Column(db.Float, default=0.0)
+    bw_male_p1 = db.Column(db.Integer, default=0)
+    bw_male_p2 = db.Column(db.Integer, default=0)
     unif_male_p1 = db.Column(db.Float, default=0.0)
     unif_male_p2 = db.Column(db.Float, default=0.0)
 
-    bw_female_p1 = db.Column(db.Float, default=0.0)
-    bw_female_p2 = db.Column(db.Float, default=0.0)
-    bw_female_p3 = db.Column(db.Float, default=0.0)
-    bw_female_p4 = db.Column(db.Float, default=0.0)
+    bw_female_p1 = db.Column(db.Integer, default=0)
+    bw_female_p2 = db.Column(db.Integer, default=0)
+    bw_female_p3 = db.Column(db.Integer, default=0)
+    bw_female_p4 = db.Column(db.Integer, default=0)
     unif_female_p1 = db.Column(db.Float, default=0.0)
     unif_female_p2 = db.Column(db.Float, default=0.0)
     unif_female_p3 = db.Column(db.Float, default=0.0)
     unif_female_p4 = db.Column(db.Float, default=0.0)
 
-    standard_bw_male = db.Column(db.Float, default=0.0)
-    standard_bw_female = db.Column(db.Float, default=0.0)
+    standard_bw_male = db.Column(db.Integer, default=0)
+    standard_bw_female = db.Column(db.Integer, default=0)
     
     # Water (Readings 1, 2, 3)
     water_reading_1 = db.Column(db.Integer, default=0)
@@ -232,7 +239,7 @@ class PartitionWeight(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
     partition_name = db.Column(db.String(10), nullable=False) # F1, F2, F3, F4, M1, M2
-    body_weight = db.Column(db.Float, default=0.0)
+    body_weight = db.Column(db.Integer, default=0)
     uniformity = db.Column(db.Float, default=0.0)
 
 class Standard(db.Model):
@@ -240,8 +247,8 @@ class Standard(db.Model):
     week = db.Column(db.Integer, unique=True, nullable=False)
     std_mortality_male = db.Column(db.Float, default=0.0)
     std_mortality_female = db.Column(db.Float, default=0.0)
-    std_bw_male = db.Column(db.Float, default=0.0)
-    std_bw_female = db.Column(db.Float, default=0.0)
+    std_bw_male = db.Column(db.Integer, default=0)
+    std_bw_female = db.Column(db.Integer, default=0)
     std_egg_prod = db.Column(db.Float, default=0.0)
     std_feed_male = db.Column(db.Float, default=0.0)
     std_feed_female = db.Column(db.Float, default=0.0)
@@ -263,8 +270,8 @@ class WeeklyData(db.Model):
 
     eggs_collected = db.Column(db.Integer, default=0)
 
-    bw_male = db.Column(db.Float, default=0.0)
-    bw_female = db.Column(db.Float, default=0.0)
+    bw_male = db.Column(db.Integer, default=0)
+    bw_female = db.Column(db.Integer, default=0)
 
     feed_male = db.Column(db.Float, default=0.0) # Total Kg
     feed_female = db.Column(db.Float, default=0.0) # Total Kg
@@ -372,8 +379,8 @@ class ImportedWeeklyBenchmark(db.Model):
     mortality_male = db.Column(db.Integer, default=0)
     mortality_female = db.Column(db.Integer, default=0)
     eggs_collected = db.Column(db.Integer, default=0)
-    bw_male = db.Column(db.Float, default=0.0)
-    bw_female = db.Column(db.Float, default=0.0)
+    bw_male = db.Column(db.Integer, default=0)
+    bw_female = db.Column(db.Integer, default=0)
 
 class Hatchability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1057,8 +1064,8 @@ def manage_standards():
                 week=int(week_val),
                 std_mortality_male=float(request.form.get('std_mortality_male') or 0),
                 std_mortality_female=float(request.form.get('std_mortality_female') or 0),
-                std_bw_male=float(request.form.get('std_bw_male') or 0),
-                std_bw_female=float(request.form.get('std_bw_female') or 0),
+                std_bw_male=round_to_whole(request.form.get('std_bw_male')),
+                std_bw_female=round_to_whole(request.form.get('std_bw_female')),
                 std_egg_prod=float(request.form.get('std_egg_prod') or 0)
             )
             db.session.add(s)
@@ -1331,8 +1338,8 @@ def get_chart_data(flock_id):
 
             hatch_pct = (a['hatch_eggs_sum'] / a['eggs_sum'] * 100) if a['eggs_sum'] > 0 else 0
 
-            avg_bw_f = a['bw_f_sum'] / a['bw_f_count'] if a['bw_f_count'] > 0 else 0
-            avg_bw_m = a['bw_m_sum'] / a['bw_m_count'] if a['bw_m_count'] > 0 else 0
+            avg_bw_f = round_to_whole(a['bw_f_sum'] / a['bw_f_count']) if a['bw_f_count'] > 0 else 0
+            avg_bw_m = round_to_whole(a['bw_m_sum'] / a['bw_m_count']) if a['bw_m_count'] > 0 else 0
             avg_uni_f = a['uni_f_sum'] / a['uni_f_count'] if a['uni_f_count'] > 0 else 0
             avg_uni_m = a['uni_m_sum'] / a['uni_m_count'] if a['uni_m_count'] > 0 else 0
 
@@ -1346,8 +1353,8 @@ def get_chart_data(flock_id):
             data['metrics']['mortality_m_pct'].append(round(mort_m_pct, 2))
             data['metrics']['egg_prod_pct'].append(round(egg_prod_pct, 2))
             data['metrics']['hatch_egg_pct'].append(round(hatch_pct, 2))
-            data['metrics']['bw_f'].append(round(avg_bw_f, 2))
-            data['metrics']['bw_m'].append(round(avg_bw_m, 2))
+            data['metrics']['bw_f'].append(avg_bw_f)
+            data['metrics']['bw_m'].append(avg_bw_m)
             data['metrics']['uni_f'].append(round(avg_uni_f, 2))
             data['metrics']['uni_m'].append(round(avg_uni_m, 2))
             data['metrics']['feed_f'].append(round(avg_feed_f, 2))
@@ -1578,21 +1585,21 @@ def view_flock(id):
     
     # 3. Final Calculations
     for w in weekly_data:
-        w['avg_bw_male'] = w['bw_male_sum'] / w['bw_male_count'] if w['bw_male_count'] > 0 else 0
-        w['avg_bw_female'] = w['bw_female_sum'] / w['bw_female_count'] if w['bw_female_count'] > 0 else 0
+        w['avg_bw_male'] = round_to_whole(w['bw_male_sum'] / w['bw_male_count']) if w['bw_male_count'] > 0 else 0
+        w['avg_bw_female'] = round_to_whole(w['bw_female_sum'] / w['bw_female_count']) if w['bw_female_count'] > 0 else 0
 
         # Uniformity Avg
         w['avg_unif_male'] = w['unif_male_sum'] / w['unif_male_count'] if w['unif_male_count'] > 0 else 0
         w['avg_unif_female'] = w['unif_female_sum'] / w['unif_female_count'] if w['unif_female_count'] > 0 else 0
 
         # Std BW Avg
-        w['avg_bw_male_std'] = w['bw_male_std_sum'] / w['bw_male_std_count'] if w['bw_male_std_count'] > 0 else 0
-        w['avg_bw_female_std'] = w['bw_female_std_sum'] / w['bw_female_std_count'] if w['bw_female_std_count'] > 0 else 0
+        w['avg_bw_male_std'] = round_to_whole(w['bw_male_std_sum'] / w['bw_male_std_count']) if w['bw_male_std_count'] > 0 else 0
+        w['avg_bw_female_std'] = round_to_whole(w['bw_female_std_sum'] / w['bw_female_std_count']) if w['bw_female_std_count'] > 0 else 0
 
         # Partition Avgs
         w['partition_avgs'] = {}
         for key, data in w['partitions'].items():
-            w['partition_avgs'][key] = data['sum'] / data['count'] if data['count'] > 0 else 0
+            w['partition_avgs'][key] = round_to_whole(data['sum'] / data['count']) if data['count'] > 0 else 0
 
         # Hatch Data
         h_data = hatch_by_week.get(w['week'], {'hatched': 0, 'set': 0})
@@ -3338,12 +3345,12 @@ def process_import(file, commit=True, preview=False):
                 days_diff = (log.date - intake_date).days
                 week_num = (days_diff // 7) + 1
                 if week_num in standard_bw_map:
-                    log.standard_bw_male = standard_bw_map[week_num][0]
-                    log.standard_bw_female = standard_bw_map[week_num][1]
+                    log.standard_bw_male = round_to_whole(standard_bw_map[week_num][0])
+                    log.standard_bw_female = round_to_whole(standard_bw_map[week_num][1])
 
-                log.bw_male_p1 = bw_m
+                log.bw_male_p1 = round_to_whole(bw_m)
                 log.unif_male_p1 = unif_m
-                log.bw_female_p1 = bw_f
+                log.bw_female_p1 = round_to_whole(bw_f)
                 log.unif_female_p1 = unif_f
 
                 if i + 1 < len(data_rows):
@@ -3351,9 +3358,9 @@ def process_import(file, commit=True, preview=False):
                     bw_m2 = get_float(row2, idx_bw_m)
                     bw_f2 = get_float(row2, idx_bw_f)
                     if bw_m2 > 0 or bw_f2 > 0:
-                        log.bw_male_p2 = bw_m2
+                        log.bw_male_p2 = round_to_whole(bw_m2)
                         log.unif_male_p2 = get_float(row2, idx_unif_m)
-                        log.bw_female_p2 = bw_f2
+                        log.bw_female_p2 = round_to_whole(bw_f2)
                         log.unif_female_p2 = get_float(row2, idx_unif_f)
                         partition_rows_indices.add(i+1)
 
@@ -3361,7 +3368,7 @@ def process_import(file, commit=True, preview=False):
                     row3 = data_rows[i+2]
                     bw_f3 = get_float(row3, idx_bw_f)
                     if bw_f3 > 0:
-                        log.bw_female_p3 = bw_f3
+                        log.bw_female_p3 = round_to_whole(bw_f3)
                         log.unif_female_p3 = get_float(row3, idx_unif_f)
                         partition_rows_indices.add(i+2)
 
@@ -3369,7 +3376,7 @@ def process_import(file, commit=True, preview=False):
                     row4 = data_rows[i+3]
                     bw_f4 = get_float(row4, idx_bw_f)
                     if bw_f4 > 0:
-                        log.bw_female_p4 = bw_f4
+                        log.bw_female_p4 = round_to_whole(bw_f4)
                         log.unif_female_p4 = get_float(row4, idx_unif_f)
                         partition_rows_indices.add(i+3)
 
@@ -3385,7 +3392,7 @@ def process_import(file, commit=True, preview=False):
                     m_sum = 0
                     if (log.bw_male_p1 or 0) > 0: m_sum += log.bw_male_p1; m_count += 1
                     if (log.bw_male_p2 or 0) > 0: m_sum += log.bw_male_p2; m_count += 1
-                    log.body_weight_male = (m_sum / m_count) if m_count > 0 else 0
+                    log.body_weight_male = round_to_whole(m_sum / m_count) if m_count > 0 else 0
 
                     f_count = 0
                     f_sum = 0
@@ -3393,7 +3400,7 @@ def process_import(file, commit=True, preview=False):
                     if (log.bw_female_p2 or 0) > 0: f_sum += log.bw_female_p2; f_count += 1
                     if (log.bw_female_p3 or 0) > 0: f_sum += log.bw_female_p3; f_count += 1
                     if (log.bw_female_p4 or 0) > 0: f_sum += log.bw_female_p4; f_count += 1
-                    log.body_weight_female = (f_sum / f_count) if f_count > 0 else 0
+                    log.body_weight_female = round_to_whole(f_sum / f_count) if f_count > 0 else 0
 
                     m_u_sum = 0
                     if (log.unif_male_p1 or 0) > 0: m_u_sum += log.unif_male_p1
@@ -3585,14 +3592,15 @@ def update_log_from_request(log, req):
             uni = float(req.form.get(f'uni_{p}') or 0)
 
             if bw > 0:
-                pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw, uniformity=uni)
+                bw_whole = round_to_whole(bw)
+                pw = PartitionWeight(log_id=log.id, partition_name=p, body_weight=bw_whole, uniformity=uni)
                 db.session.add(pw)
 
                 if p.startswith('F'):
-                    sum_bw_f += bw; count_bw_f += 1
+                    sum_bw_f += bw_whole; count_bw_f += 1
                     if uni > 0: sum_uni_f += uni; count_uni_f += 1
                 else:
-                    sum_bw_m += bw; count_bw_m += 1
+                    sum_bw_m += bw_whole; count_bw_m += 1
                     if uni > 0: sum_uni_m += uni; count_uni_m += 1
 
         if count_bw_f > 0: bw_f_val = sum_bw_f / count_bw_f
@@ -3600,26 +3608,26 @@ def update_log_from_request(log, req):
         if count_bw_m > 0: bw_m_val = sum_bw_m / count_bw_m
         if count_uni_m > 0: uni_m_val = sum_uni_m / count_uni_m
 
-    log.body_weight_male = bw_m_val
-    log.body_weight_female = bw_f_val
+    log.body_weight_male = round_to_whole(bw_m_val)
+    log.body_weight_female = round_to_whole(bw_f_val)
     log.uniformity_male = uni_m_val
     log.uniformity_female = uni_f_val
 
     log.is_weighing_day = 'is_weighing_day' in req.form
-    log.bw_male_p1 = float(req.form.get('bw_M1') or 0)
-    log.bw_male_p2 = float(req.form.get('bw_M2') or 0)
+    log.bw_male_p1 = round_to_whole(req.form.get('bw_M1'))
+    log.bw_male_p2 = round_to_whole(req.form.get('bw_M2'))
     log.unif_male_p1 = float(req.form.get('uni_M1') or 0)
     log.unif_male_p2 = float(req.form.get('uni_M2') or 0)
-    log.bw_female_p1 = float(req.form.get('bw_F1') or 0)
-    log.bw_female_p2 = float(req.form.get('bw_F2') or 0)
-    log.bw_female_p3 = float(req.form.get('bw_F3') or 0)
-    log.bw_female_p4 = float(req.form.get('bw_F4') or 0)
+    log.bw_female_p1 = round_to_whole(req.form.get('bw_F1'))
+    log.bw_female_p2 = round_to_whole(req.form.get('bw_F2'))
+    log.bw_female_p3 = round_to_whole(req.form.get('bw_F3'))
+    log.bw_female_p4 = round_to_whole(req.form.get('bw_F4'))
     log.unif_female_p1 = float(req.form.get('uni_F1') or 0)
     log.unif_female_p2 = float(req.form.get('uni_F2') or 0)
     log.unif_female_p3 = float(req.form.get('uni_F3') or 0)
     log.unif_female_p4 = float(req.form.get('uni_F4') or 0)
-    log.standard_bw_male = float(req.form.get('standard_bw_male') or 0)
-    log.standard_bw_female = float(req.form.get('standard_bw_female') or 0)
+    log.standard_bw_male = round_to_whole(req.form.get('standard_bw_male'))
+    log.standard_bw_female = round_to_whole(req.form.get('standard_bw_female'))
 
     log.water_reading_1 = int(req.form.get('water_reading_1') or 0)
     log.water_reading_2 = int(req.form.get('water_reading_2') or 0)
