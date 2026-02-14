@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>House Management</h1>
+        <a href="{{ url_for('admin_control_panel') }}" class="btn btn-secondary">Back to Panel</a>
+    </div>
+
+    <!-- Add House -->
+    <div class="card mb-4">
+        <div class="card-header">Add New House</div>
+        <div class="card-body">
+            <form action="{{ url_for('admin_house_add') }}" method="POST" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <label for="name" class="visually-hidden">House Name</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Enter House Name (e.g. VA1)" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Add House</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- List Houses -->
+    <div class="card">
+        <div class="card-header">Existing Houses</div>
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Active Flocks</th>
+                        <th>Can Delete?</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for house in houses %}
+                    <tr>
+                        <td>{{ house.id }}</td>
+                        <td>{{ house.name }}</td>
+                        <td>
+                            {% set active_count = house.flocks | selectattr('status', 'equalto', 'Active') | list | length %}
+                            {{ active_count }} Active
+                        </td>
+                        <td>
+                            {% if house.can_delete %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge bg-danger" title="Has existing flocks">No</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- Rename Button (Trigger Modal) -->
+                            <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#renameModal{{ house.id }}">
+                                Rename
+                            </button>
+
+                            <!-- Delete Form -->
+                            {% if house.can_delete %}
+                            <form action="{{ url_for('admin_house_delete', id=house.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete {{ house.name }}?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                            {% else %}
+                                <button class="btn btn-sm btn-secondary" disabled title="Cannot delete house with flocks">Delete</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No houses found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Modals (Outside Table) -->
+{% for house in houses %}
+<div class="modal fade" id="renameModal{{ house.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('admin_house_edit', id=house.id) }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rename House {{ house.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="rename{{ house.id }}" class="form-label">New Name</label>
+                        <input type="text" class="form-control" id="rename{{ house.id }}" name="name" value="{{ house.name }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

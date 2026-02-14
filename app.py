@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
@@ -1015,6 +1015,28 @@ def delete_feed_code(id):
     db.session.commit()
     flash(f'Feed Code {fc.code} deleted.', 'info')
     return redirect(url_for('manage_feed_codes'))
+
+@app.route('/daily_log/delete/<int:id>', methods=['POST'])
+def delete_daily_log(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    log = DailyLog.query.get_or_404(id)
+    flock_id = log.flock_id
+
+    # Cascade delete handles partitions, but maybe not Inventory Transactions (Usage)?
+    # We should probably revert usage if tracked?
+    # But usage is tracked via Medication start date or "Used in Daily Log" notes.
+    # The 'daily_log' submission creates 'Medication' records.
+    # We can try to find medications created on this date for this flock?
+    # But medication might span multiple days.
+    # Deleting a log is complex regarding side effects.
+    # For now, just delete the log record itself (metrics).
+    # Reverting inventory is too risky without explicit link.
+
+    db.session.delete(log)
+    db.session.commit()
+    flash("Daily Log deleted.", "info")
+    return redirect(url_for('view_flock', id=flock_id))
 
 @app.route('/api/chart_data/<int:flock_id>')
 def get_chart_data(flock_id):
@@ -2606,7 +2628,89 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    return dict(get_partition_val=get_partition_val)
+    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False))
+
+@app.route('/admin/toggle_mode')
+def toggle_admin_mode():
+    session['is_admin'] = not session.get('is_admin', False)
+    mode = "Admin" if session['is_admin'] else "Worker"
+    flash(f"Switched to {mode} Mode", "info")
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/admin/control-panel')
+def admin_control_panel():
+    if not session.get('is_admin'):
+        flash("Access Denied: Admin only.", "danger")
+        return redirect(url_for('index'))
+    return render_template('admin/control_panel.html')
+
+@app.route('/admin/houses')
+def admin_houses():
+    if not session.get('is_admin'):
+        flash("Access Denied: Admin only.", "danger")
+        return redirect(url_for('index'))
+
+    houses = House.query.order_by(House.name).all()
+    # Check if houses can be deleted (no flocks)
+    for h in houses:
+        h.can_delete = (Flock.query.filter_by(house_id=h.id).count() == 0)
+
+    return render_template('admin/houses.html', houses=houses)
+
+@app.route('/admin/houses/add', methods=['POST'])
+def admin_house_add():
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    name = request.form.get('name').strip()
+    if not name:
+        flash("House name is required.", "danger")
+    elif House.query.filter_by(name=name).first():
+        flash(f"House '{name}' already exists.", "warning")
+    else:
+        db.session.add(House(name=name))
+        db.session.commit()
+        flash(f"House '{name}' added.", "success")
+
+    return redirect(url_for('admin_houses'))
+
+@app.route('/admin/houses/edit/<int:id>', methods=['POST'])
+def admin_house_edit(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    house = House.query.get_or_404(id)
+    new_name = request.form.get('name').strip()
+
+    if not new_name:
+        flash("New name is required.", "danger")
+    elif new_name != house.name and House.query.filter_by(name=new_name).first():
+        flash(f"House '{new_name}' already exists.", "warning")
+    else:
+        old_name = house.name
+        house.name = new_name
+        db.session.commit()
+        flash(f"Renamed House '{old_name}' to '{new_name}'.", "success")
+
+    return redirect(url_for('admin_houses'))
+
+@app.route('/admin/houses/delete/<int:id>', methods=['POST'])
+def admin_house_delete(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    house = House.query.get_or_404(id)
+    if Flock.query.filter_by(house_id=id).count() > 0:
+        flash(f"Cannot delete House '{house.name}' because it has flocks associated with it.", "danger")
+    else:
+        # Also delete associated configs?
+        # OverviewConfig and ChartConfiguration have cascades?
+        # Models:
+        # charts = db.relationship(..., cascade="all, delete-orphan")
+        # overview_config = db.relationship(..., cascade="all, delete-orphan")
+        # So yes, they will be deleted.
+        db.session.delete(house)
+        db.session.commit()
+        flash(f"House '{house.name}' deleted.", "info")
+
+    return redirect(url_for('admin_houses'))
 
 @app.route('/daily_log/<int:id>/edit', methods=['GET', 'POST'])
 def edit_daily_log(id):
@@ -4281,6 +4385,67 @@ def edit_inventory_item(id):
 
     db.session.commit()
     flash('Item updated.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction/delete/<int:id>', methods=['POST'])
+def delete_inventory_transaction(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    t = InventoryTransaction.query.get_or_404(id)
+    item = InventoryItem.query.get(t.inventory_item_id)
+
+    # Revert Stock
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock += t.quantity
+        else: # Purchase, Adjustment
+            item.current_stock -= t.quantity
+
+    db.session.delete(t)
+    db.session.commit()
+    flash(f"Transaction deleted. Stock reverted.", "info")
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction/edit/<int:id>', methods=['POST'])
+def edit_inventory_transaction(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    t = InventoryTransaction.query.get_or_404(id)
+    item = InventoryItem.query.get(t.inventory_item_id)
+
+    new_qty = float(request.form.get('quantity') or 0)
+    new_date_str = request.form.get('transaction_date')
+    new_notes = request.form.get('notes')
+    # Allow changing type? Maybe too complex for now. Let's stick to Qty/Date/Notes.
+
+    if new_qty <= 0:
+        flash("Quantity must be positive.", "danger")
+        return redirect(url_for('inventory'))
+
+    # Revert Old Effect
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock += t.quantity
+        else:
+            item.current_stock -= t.quantity
+
+    # Update Transaction
+    t.quantity = new_qty
+    t.notes = new_notes
+    if new_date_str:
+        try:
+            t.transaction_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+        except: pass
+
+    # Apply New Effect
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock -= new_qty
+        else:
+            item.current_stock += new_qty
+
+    db.session.commit()
+    flash("Transaction updated.", "success")
     return redirect(url_for('inventory'))
 
 if __name__ == '__main__':

@@ -23,7 +23,9 @@
                 <div class="card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Inventory Items</h5>
+                        {% if is_admin %}
                         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addItemModal">+ Add New Item</button>
+                        {% endif %}
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -60,12 +62,16 @@
                                             {% endif %}
                                         </td>
                                         <td>
+                                            {% if is_admin %}
                                             <button class="btn btn-sm btn-outline-primary"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#editItemModal{{ item.id }}">Edit</button>
                                             <button class="btn btn-sm btn-outline-success"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#adjustStockModal{{ item.id }}">Adjust</button>
+                                            {% else %}
+                                            <span class="text-muted small">Read Only</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
 
@@ -194,6 +200,7 @@
                                         <th>Type</th>
                                         <th>Quantity</th>
                                         <th>Notes</th>
+                                        {% if is_admin %}<th>Actions</th>{% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -212,9 +219,17 @@
                                         </td>
                                         <td>{{ t.quantity }}</td>
                                         <td>{{ t.notes or '' }}</td>
+                                        {% if is_admin %}
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary py-0" data-bs-toggle="modal" data-bs-target="#editTransModal{{ t.id }}">Edit</button>
+                                            <form action="{{ url_for('delete_inventory_transaction', id=t.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete transaction? Stock will be reverted.');">
+                                                <button class="btn btn-sm btn-outline-danger py-0">Del</button>
+                                            </form>
+                                        </td>
+                                        {% endif %}
                                     </tr>
                                     {% else %}
-                                    <tr><td colspan="5" class="text-center text-muted">No transactions found.</td></tr>
+                                    <tr><td colspan="{{ '6' if is_admin else '5' }}" class="text-center text-muted">No transactions found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -321,4 +336,41 @@
     </div>
 </div>
 
+<!-- Edit Transaction Modals -->
+{% if is_admin %}
+{% for t in transactions %}
+<div class="modal fade" id="editTransModal{{ t.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form action="{{ url_for('edit_inventory_transaction', id=t.id) }}" method="POST">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Transaction #{{ t.id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Type: {{ t.transaction_type }} | Item: {{ t.item.name }}</p>
+                    <div class="mb-3">
+                        <label class="form-label">Quantity (Positive Value)</label>
+                        <input type="number" step="0.01" name="quantity" class="form-control" value="{{ t.quantity }}" required>
+                        <small class="text-muted">Current Stock will be adjusted by difference.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" name="transaction_date" class="form-control" value="{{ t.transaction_date }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <input type="text" name="notes" class="form-control" value="{{ t.notes or '' }}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
 {% endblock %}
