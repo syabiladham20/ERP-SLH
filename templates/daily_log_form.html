@@ -459,7 +459,12 @@
       </div>
     </div>
 
-    <button type="submit" class="btn btn-primary w-100 mb-5">{{ 'Update Log' if log else 'Submit Log' }}</button>
+    <div class="d-flex gap-2 mb-5">
+        <button type="submit" class="btn btn-primary flex-grow-1">{{ 'Update Log' if log else 'Submit Log' }}</button>
+        {% if log and is_admin %}
+        <button type="submit" formaction="{{ url_for('delete_daily_log', id=log.id) }}" class="btn btn-danger" onclick="return confirm('Delete this log permanently?');">Delete Log</button>
+        {% endif %}
+    </div>
   </form>
   
   <script>

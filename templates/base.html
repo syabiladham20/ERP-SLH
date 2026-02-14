@@ -36,13 +36,15 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
+          <ul class="navbar-nav me-auto">
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('index') }}">Dashboard</a>
             </li>
+            {% if is_admin %}
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('manage_flocks') }}">Manage Flocks</a>
+              <a class="nav-link" href="{{ url_for('admin_control_panel') }}">Admin Panel</a>
             </li>
+            {% endif %}
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('daily_log') }}">Daily Entry</a>
             </li>
@@ -59,16 +61,14 @@
               </ul>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('import_data') }}">Import</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('manage_standards') }}">Standards</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('manage_feed_codes') }}">Feed Codes</a>
-            </li>
-            <li class="nav-item">
               <a class="nav-link" href="{{ url_for('help') }}">Help</a>
+            </li>
+          </ul>
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+                <a class="nav-link btn btn-outline-secondary btn-sm" href="{{ url_for('toggle_admin_mode') }}">
+                    <small>Switch to {{ 'Worker' if is_admin else 'Admin' }}</small>
+                </a>
             </li>
           </ul>
         </div>

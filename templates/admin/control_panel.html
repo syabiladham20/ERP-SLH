@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Admin Control Panel</h1>
+
+    <div class="row">
+        <!-- Core System Config -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">System Configuration</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><a href="{{ url_for('admin_houses') }}">Manage Houses</a></li>
+                        <li class="list-group-item"><a href="{{ url_for('manage_flocks') }}">Manage Flocks (Create/Close)</a></li>
+                        <li class="list-group-item"><a href="{{ url_for('manage_standards') }}">Manage Standards</a></li>
+                        <li class="list-group-item"><a href="{{ url_for('manage_feed_codes') }}">Manage Feed Codes</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">Data Management</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item"><a href="{{ url_for('import_data') }}">Import Data (Excel)</a></li>
+                        <li class="list-group-item"><a href="{{ url_for('inventory') }}">Inventory Management</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Future: User Management -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">System Info</div>
+                <div class="card-body">
+                    <p>Current Mode: <strong>Admin</strong></p>
+                    <p class="text-muted">User management coming soon.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
