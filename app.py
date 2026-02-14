@@ -1735,6 +1735,17 @@ def view_flock(id):
         chart_data['mortality_cum_male'].append(round((cum_dead_m / (start_m or 1)) * 100, 2))
         chart_data['mortality_cum_female'].append(round((cum_dead_f / (start_f or 1)) * 100, 2))
 
+        # Daily Metrics (For General Chart)
+        daily_mort_m = ((log.mortality_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
+        daily_mort_f = ((log.mortality_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
+        daily_cull_m = ((log.culls_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
+        daily_cull_f = ((log.culls_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
+
+        chart_data['mortality_daily_male'].append(round(daily_mort_m, 2))
+        chart_data['mortality_daily_female'].append(round(daily_mort_f, 2))
+        chart_data['culls_daily_male'].append(round(daily_cull_m, 2))
+        chart_data['culls_daily_female'].append(round(daily_cull_f, 2))
+
         egg_prod = ((log.eggs_collected or 0) / (current_stock_f or 1)) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
 
