@@ -129,40 +129,40 @@ class DailyLog(db.Model):
     date = db.Column(db.Date, nullable=False, default=date.today)
     
     # Metrics
-    mortality_male = db.Column(db.Integer, default=0) # Production Mortality
-    mortality_female = db.Column(db.Integer, default=0)
+    mortality_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Mortality
+    mortality_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     
-    mortality_male_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
-    culls_male_hosp = db.Column(db.Integer, default=0) # Hospital Culls
+    mortality_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Mortality
+    culls_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Culls
 
-    mortality_female_hosp = db.Column(db.Integer, default=0) # Hospital Mortality
-    culls_female_hosp = db.Column(db.Integer, default=0) # Hospital Culls
+    mortality_female_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Mortality
+    culls_female_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Culls
 
-    culls_male = db.Column(db.Integer, default=0) # Production Culls
-    culls_female = db.Column(db.Integer, default=0)
+    culls_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Culls
+    culls_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     
     # Transfers
-    males_moved_to_prod = db.Column(db.Integer, default=0)
-    males_moved_to_hosp = db.Column(db.Integer, default=0)
+    males_moved_to_prod = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    males_moved_to_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
-    females_moved_to_prod = db.Column(db.Integer, default=0)
-    females_moved_to_hosp = db.Column(db.Integer, default=0)
+    females_moved_to_prod = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    females_moved_to_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
     feed_program = db.Column(db.String(50)) # 'Full Feed', 'Skip-a-day'
     # Feed (Grams per Bird)
-    feed_male_gp_bird = db.Column(db.Float, default=0.0)
-    feed_female_gp_bird = db.Column(db.Float, default=0.0)
+    feed_male_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
+    feed_female_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
     
     # Calculated Total Feed (Kg)
-    feed_male = db.Column(db.Float, default=0.0)
-    feed_female = db.Column(db.Float, default=0.0)
+    feed_male = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
+    feed_female = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
 
-    eggs_collected = db.Column(db.Integer, default=0)
+    eggs_collected = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     
-    cull_eggs_jumbo = db.Column(db.Integer, default=0)
-    cull_eggs_small = db.Column(db.Integer, default=0)
-    cull_eggs_abnormal = db.Column(db.Integer, default=0)
-    cull_eggs_crack = db.Column(db.Integer, default=0)
+    cull_eggs_jumbo = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    cull_eggs_small = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    cull_eggs_abnormal = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    cull_eggs_crack = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     
     egg_weight = db.Column(db.Float, default=0.0)
     
@@ -648,10 +648,10 @@ def index():
                 rearing_mort_f += l.mortality_female
 
             # Update Stocks
-            mort_m_prod = l.mortality_male
+            mort_m_prod = l.mortality_male or 0
             mort_m_hosp = l.mortality_male_hosp or 0
 
-            cull_m_prod = l.culls_male
+            cull_m_prod = l.culls_male or 0
             cull_m_hosp = l.culls_male_hosp or 0
 
             moved_to_hosp = l.males_moved_to_hosp or 0
@@ -664,7 +664,7 @@ def index():
             if curr_m_prod < 0: curr_m_prod = 0
             if curr_m_hosp < 0: curr_m_hosp = 0
 
-            curr_f -= (l.mortality_female + l.culls_female)
+            curr_f -= ((l.mortality_female or 0) + (l.culls_female or 0))
             if curr_f < 0: curr_f = 0
 
         f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
@@ -782,9 +782,9 @@ def index():
 
             # Update Stocks
             # Male
-            mort_m_prod = l.mortality_male
+            mort_m_prod = l.mortality_male or 0
             mort_m_hosp = l.mortality_male_hosp or 0
-            cull_m_prod = l.culls_male
+            cull_m_prod = l.culls_male or 0
             cull_m_hosp = l.culls_male_hosp or 0
             moved_to_hosp_m = l.males_moved_to_hosp or 0
             moved_to_prod_m = l.males_moved_to_prod or 0
@@ -793,9 +793,9 @@ def index():
             curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp_m - moved_to_prod_m
 
             # Female
-            mort_f_prod = l.mortality_female
+            mort_f_prod = l.mortality_female or 0
             mort_f_hosp = l.mortality_female_hosp or 0
-            cull_f_prod = l.culls_female
+            cull_f_prod = l.culls_female or 0
             cull_f_hosp = l.culls_female_hosp or 0
             moved_to_hosp_f = l.females_moved_to_hosp or 0
             moved_to_prod_f = l.females_moved_to_prod or 0
@@ -1159,14 +1159,14 @@ def get_chart_data(flock_id):
         curr_stock_f = start_f - cum_mort_f - cum_cull_f
         if curr_stock_f <= 0: curr_stock_f = 1
 
-        daily_mort_f_pct = ((log.mortality_female + log.culls_female) / curr_stock_f) * 100
-        daily_mort_m_pct = ((log.mortality_male + log.culls_male) / curr_stock_m) * 100
+        daily_mort_f_pct = (((log.mortality_female or 0) + (log.culls_female or 0)) / curr_stock_f) * 100
+        daily_mort_m_pct = (((log.mortality_male or 0) + (log.culls_male or 0)) / curr_stock_m) * 100
 
-        egg_prod_pct = (log.eggs_collected / curr_stock_f) * 100
+        egg_prod_pct = ((log.eggs_collected or 0) / curr_stock_f) * 100
 
-        total_cull_eggs = log.cull_eggs_jumbo + log.cull_eggs_small + log.cull_eggs_abnormal + log.cull_eggs_crack
-        hatch_eggs = log.eggs_collected - total_cull_eggs
-        hatch_pct = (hatch_eggs / log.eggs_collected * 100) if log.eggs_collected > 0 else 0
+        total_cull_eggs = (log.cull_eggs_jumbo or 0) + (log.cull_eggs_small or 0) + (log.cull_eggs_abnormal or 0) + (log.cull_eggs_crack or 0)
+        hatch_eggs = (log.eggs_collected or 0) - total_cull_eggs
+        hatch_pct = (hatch_eggs / (log.eggs_collected or 0) * 100) if (log.eggs_collected or 0) > 0 else 0
 
         water_per_bird_ml = (log.water_intake_calculated * 1000) / (curr_stock_m + curr_stock_f) if (curr_stock_m + curr_stock_f) > 0 else 0
 
@@ -1200,10 +1200,10 @@ def get_chart_data(flock_id):
                     'type': 'flushing' if log.flushing else 'note'
                 })
 
-        cum_mort_m += log.mortality_male
-        cum_mort_f += log.mortality_female
-        cum_cull_m += log.culls_male
-        cum_cull_f += log.culls_female
+        cum_mort_m += (log.mortality_male or 0)
+        cum_mort_f += (log.mortality_female or 0)
+        cum_cull_m += (log.culls_male or 0)
+        cum_cull_f += (log.culls_female or 0)
 
         days_diff = (log.date - flock.intake_date).days
         week_num = (days_diff // 7) + 1
@@ -1229,13 +1229,13 @@ def get_chart_data(flock_id):
         w = weekly_agg[week_num]
         w['count'] += 1
         w['date_end'] = log.date
-        w['mort_f_sum'] += log.mortality_female
-        w['mort_m_sum'] += log.mortality_male
-        w['cull_f_sum'] += log.culls_female
-        w['cull_m_sum'] += log.culls_male
-        w['eggs_sum'] += log.eggs_collected
+        w['mort_f_sum'] += (log.mortality_female or 0)
+        w['mort_m_sum'] += (log.mortality_male or 0)
+        w['cull_f_sum'] += (log.culls_female or 0)
+        w['cull_m_sum'] += (log.culls_male or 0)
+        w['eggs_sum'] += (log.eggs_collected or 0)
         w['hatch_eggs_sum'] += hatch_eggs
-        w['water_vol_sum'] += log.water_intake_calculated
+        w['water_vol_sum'] += (log.water_intake_calculated or 0)
 
         if log.body_weight_female > 0:
             w['bw_f_sum'] += log.body_weight_female
@@ -1276,13 +1276,13 @@ def get_chart_data(flock_id):
         m = monthly_agg[month_key]
         m['count'] += 1
         m['date_end'] = log.date
-        m['mort_f_sum'] += log.mortality_female
-        m['mort_m_sum'] += log.mortality_male
-        m['cull_f_sum'] += log.culls_female
-        m['cull_m_sum'] += log.culls_male
-        m['eggs_sum'] += log.eggs_collected
+        m['mort_f_sum'] += (log.mortality_female or 0)
+        m['mort_m_sum'] += (log.mortality_male or 0)
+        m['cull_f_sum'] += (log.culls_female or 0)
+        m['cull_m_sum'] += (log.culls_male or 0)
+        m['eggs_sum'] += (log.eggs_collected or 0)
         m['hatch_eggs_sum'] += hatch_eggs
-        m['water_vol_sum'] += log.water_intake_calculated
+        m['water_vol_sum'] += (log.water_intake_calculated or 0)
 
         if log.body_weight_female > 0:
             m['bw_f_sum'] += log.body_weight_female
@@ -1436,9 +1436,9 @@ def view_flock(id):
         hatch_by_week[w]['set'] += h.egg_set
 
     # 2. Iterate Logs
-    curr_m_prod = flock.intake_male
+    curr_m_prod = flock.intake_male or 0
     curr_m_hosp = 0
-    curr_f_prod = flock.intake_female
+    curr_f_prod = flock.intake_female or 0
     curr_f_hosp = 0
     in_prod = False
 
@@ -1489,11 +1489,11 @@ def view_flock(id):
         if log.photo_path:
             week_summary['photos'].append(url_for('uploaded_file', filename=os.path.basename(log.photo_path)))
 
-        week_summary['mortality_male'] += log.mortality_male
-        week_summary['mortality_female'] += log.mortality_female
-        week_summary['culls_male'] += log.culls_male
-        week_summary['culls_female'] += log.culls_female
-        week_summary['eggs'] += log.eggs_collected
+        week_summary['mortality_male'] += (log.mortality_male or 0)
+        week_summary['mortality_female'] += (log.mortality_female or 0)
+        week_summary['culls_male'] += (log.culls_male or 0)
+        week_summary['culls_female'] += (log.culls_female or 0)
+        week_summary['eggs'] += (log.eggs_collected or 0)
         
         week_summary['hen_days'] += curr_f
 
@@ -1557,15 +1557,15 @@ def view_flock(id):
                  curr_f_hosp = flock.prod_start_female_hosp or 0
 
         # Update Stock (End of Day)
-        curr_m_prod -= (log.mortality_male + log.culls_male)
-        curr_m_prod += (log.males_moved_to_prod - log.males_moved_to_hosp)
-        curr_m_hosp -= (log.mortality_male_hosp + log.culls_male_hosp)
-        curr_m_hosp += (log.males_moved_to_hosp - log.males_moved_to_prod)
+        curr_m_prod -= ((log.mortality_male or 0) + (log.culls_male or 0))
+        curr_m_prod += ((log.males_moved_to_prod or 0) - (log.males_moved_to_hosp or 0))
+        curr_m_hosp -= ((log.mortality_male_hosp or 0) + (log.culls_male_hosp or 0))
+        curr_m_hosp += ((log.males_moved_to_hosp or 0) - (log.males_moved_to_prod or 0))
 
-        curr_f_prod -= (log.mortality_female + log.culls_female)
-        curr_f_prod += (log.females_moved_to_prod - log.females_moved_to_hosp)
-        curr_f_hosp -= (log.mortality_female_hosp + log.culls_female_hosp)
-        curr_f_hosp += (log.females_moved_to_hosp - log.females_moved_to_prod)
+        curr_f_prod -= ((log.mortality_female or 0) + (log.culls_female or 0))
+        curr_f_prod += ((log.females_moved_to_prod or 0) - (log.females_moved_to_hosp or 0))
+        curr_f_hosp -= ((log.mortality_female_hosp or 0) + (log.culls_female_hosp or 0))
+        curr_f_hosp += ((log.females_moved_to_hosp or 0) - (log.females_moved_to_prod or 0))
 
         if curr_m_prod < 0: curr_m_prod = 0
         if curr_f_prod < 0: curr_f_prod = 0
@@ -1714,9 +1714,9 @@ def view_flock(id):
     }
     
     # Detailed tracking for enriched logs
-    curr_m_prod = flock.intake_male
+    curr_m_prod = flock.intake_male or 0
     curr_m_hosp = 0
-    curr_f_prod = flock.intake_female
+    curr_f_prod = flock.intake_female or 0
     curr_f_hosp = 0
     in_prod = False
 
@@ -1805,14 +1805,14 @@ def view_flock(id):
         current_stock_f = curr_f_prod + curr_f_hosp
         
         # Accumulate Mortality
-        cum_dead_m += (log.mortality_male + log.mortality_male_hosp)
-        cum_dead_f += (log.mortality_female + log.mortality_female_hosp)
+        cum_dead_m += ((log.mortality_male or 0) + (log.mortality_male_hosp or 0))
+        cum_dead_f += ((log.mortality_female or 0) + (log.mortality_female_hosp or 0))
 
         # Chart Data
         chart_data['mortality_cum_male'].append(round((cum_dead_m / (start_m or 1)) * 100, 2))
         chart_data['mortality_cum_female'].append(round((cum_dead_f / (start_f or 1)) * 100, 2))
 
-        egg_prod = (log.eggs_collected / (current_stock_f or 1)) * 100
+        egg_prod = ((log.eggs_collected or 0) / (current_stock_f or 1)) * 100
         chart_data['egg_prod'].append(round(egg_prod, 2))
 
         # Male Ratio (Prod)
@@ -1820,15 +1820,15 @@ def view_flock(id):
         chart_data['male_ratio'].append(round(m_ratio, 2))
 
         # Update (End of Day)
-        curr_m_prod -= (log.mortality_male + log.culls_male)
-        curr_m_prod += (log.males_moved_to_prod - log.males_moved_to_hosp)
-        curr_m_hosp -= (log.mortality_male_hosp + log.culls_male_hosp)
-        curr_m_hosp += (log.males_moved_to_hosp - log.males_moved_to_prod)
+        curr_m_prod -= ((log.mortality_male or 0) + (log.culls_male or 0))
+        curr_m_prod += ((log.males_moved_to_prod or 0) - (log.males_moved_to_hosp or 0))
+        curr_m_hosp -= ((log.mortality_male_hosp or 0) + (log.culls_male_hosp or 0))
+        curr_m_hosp += ((log.males_moved_to_hosp or 0) - (log.males_moved_to_prod or 0))
 
-        curr_f_prod -= (log.mortality_female + log.culls_female)
-        curr_f_prod += (log.females_moved_to_prod - log.females_moved_to_hosp)
-        curr_f_hosp -= (log.mortality_female_hosp + log.culls_female_hosp)
-        curr_f_hosp += (log.females_moved_to_hosp - log.females_moved_to_prod)
+        curr_f_prod -= ((log.mortality_female or 0) + (log.culls_female or 0))
+        curr_f_prod += ((log.females_moved_to_prod or 0) - (log.females_moved_to_hosp or 0))
+        curr_f_hosp -= ((log.mortality_female_hosp or 0) + (log.culls_female_hosp or 0))
+        curr_f_hosp += ((log.females_moved_to_hosp or 0) - (log.females_moved_to_prod or 0))
 
         if curr_m_prod < 0: curr_m_prod = 0
         if curr_f_prod < 0: curr_f_prod = 0
@@ -2385,10 +2385,10 @@ def flock_dashboard(id):
     start_f = flock.intake_female
 
     for l in all_logs:
-        cum_mort_m += l.mortality_male
-        cum_mort_f += l.mortality_female
-        cum_cull_m += l.culls_male
-        cum_cull_f += l.culls_female
+        cum_mort_m += (l.mortality_male or 0)
+        cum_mort_f += (l.mortality_female or 0)
+        cum_cull_m += (l.culls_male or 0)
+        cum_cull_f += (l.culls_female or 0)
 
     curr_stock_m = start_m - cum_mort_m - cum_cull_m
     curr_stock_f = start_f - cum_mort_f - cum_cull_f
@@ -2398,7 +2398,9 @@ def flock_dashboard(id):
     kpis = []
 
     def get_val(log, attr, default=0):
-        return getattr(log, attr) if log else default
+        if not log: return default
+        val = getattr(log, attr)
+        return val if val is not None else default
 
     def calc_pct(num, den):
         return (num / den * 100) if den > 0 else 0
@@ -2493,15 +2495,15 @@ def flock_dashboard(id):
         spike_count = 0
         temp_stock_f = curr_stock_f
 
-        m_pct = (last_3_logs[0].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        m_pct = ((last_3_logs[0].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
 
-        temp_stock_f += (last_3_logs[0].mortality_female + last_3_logs[0].culls_female)
-        m_pct = (last_3_logs[1].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        temp_stock_f += ((last_3_logs[0].mortality_female or 0) + (last_3_logs[0].culls_female or 0))
+        m_pct = ((last_3_logs[1].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
 
-        temp_stock_f += (last_3_logs[1].mortality_female + last_3_logs[1].culls_female)
-        m_pct = (last_3_logs[2].mortality_female / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        temp_stock_f += ((last_3_logs[1].mortality_female or 0) + (last_3_logs[1].culls_female or 0))
+        m_pct = ((last_3_logs[2].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
         if m_pct > 0.1: spike_count += 1
 
         if spike_count == 3:
