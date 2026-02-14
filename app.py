@@ -599,112 +599,6 @@ def index():
 
     # Enrich with today's status and cumulative mortality split
     today = date.today()
-    for f in active_flocks:
-        # Sort logs by date to ensure correct order for cumulative calculations
-        logs = sorted(f.logs, key=lambda l: l.date)
-
-        # Check if log exists for today
-        log_today = next((l for l in logs if l.date == today), None)
-        f.has_log_today = True if log_today else False
-
-        rearing_mort_m = 0
-        rearing_mort_f = 0
-        prod_mort_m = 0
-        prod_mort_f = 0
-
-        prod_start_stock_m = f.intake_male
-        prod_start_stock_f = f.intake_female
-
-        # Determine Production Start
-        prod_start_date = f.production_start_date
-
-        # Stock Tracking
-        curr_m_prod = f.intake_male
-        curr_m_hosp = 0
-        curr_f = f.intake_female
-
-        # Flag to indicate if we have reached production phase in the loop
-        in_production = False
-
-        for l in logs:
-            # Check Phase Transition
-            if not in_production:
-                if prod_start_date and l.date >= prod_start_date:
-                    in_production = True
-                    prod_start_stock_m = curr_m_prod # Snapshot at start of prod
-                    prod_start_stock_f = curr_f
-                elif not prod_start_date and l.eggs_collected > 0:
-                     # Fallback: First egg triggers production stats if no date set
-                    in_production = True
-                    prod_start_stock_m = curr_m_prod
-                    prod_start_stock_f = curr_f
-
-            # Cumulative Mortality/Culls calculation
-            if in_production:
-                prod_mort_m += l.mortality_male
-                prod_mort_f += l.mortality_female
-            else:
-                rearing_mort_m += l.mortality_male
-                rearing_mort_f += l.mortality_female
-
-            # Update Stocks
-            mort_m_prod = l.mortality_male
-            mort_m_hosp = l.mortality_male_hosp or 0
-
-            cull_m_prod = l.culls_male
-            cull_m_hosp = l.culls_male_hosp or 0
-
-            moved_to_hosp = l.males_moved_to_hosp or 0
-            moved_to_prod = l.males_moved_to_prod or 0
-
-            curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp + moved_to_prod
-            curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp - moved_to_prod
-
-            # Ensure no negative stock (safety)
-            if curr_m_prod < 0: curr_m_prod = 0
-            if curr_m_hosp < 0: curr_m_hosp = 0
-
-            curr_f -= (l.mortality_female + l.culls_female)
-            if curr_f < 0: curr_f = 0
-
-        f.rearing_mort_m_pct = (rearing_mort_m / f.intake_male * 100) if f.intake_male else 0
-        f.rearing_mort_f_pct = (rearing_mort_f / f.intake_female * 100) if f.intake_female else 0
-
-        f.prod_mort_m_pct = (prod_mort_m / prod_start_stock_m * 100) if prod_start_stock_m else 0
-        f.prod_mort_f_pct = (prod_mort_f / prod_start_stock_f * 100) if prod_start_stock_f else 0
-
-        # Male Ratio (Current)
-        f.male_ratio_pct = (curr_m_prod / curr_f * 100) if curr_f > 0 else 0
-        f.males_prod_count = curr_m_prod
-        f.males_hosp_count = curr_m_hosp
-
-        # Current Week
-        days_age = (today - f.intake_date).days
-        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
-
-    # --- Daily Stats & Trends Calculation ---
-    yesterday = today - timedelta(days=1)
-
-    for f in active_flocks:
-        # Initialize Age Display
-        days_diff = (today - f.intake_date).days
-        f.age_weeks = days_diff // 7
-        f.age_days = days_diff % 7
-
-        # Initialize containers
-        stats_today = {'m_mort': 0, 'f_mort': 0, 'eggs': 0, 'stock_m': 0, 'stock_f': 0, 'exists': False}
-        stats_yesterday = {'m_mort': 0, 'f_mort': 0, 'eggs': 0, 'stock_m': 0, 'stock_f': 0, 'exists': False}
-
-        # Re-iterate logs? Or optimize the previous loop?
-        # Since the previous loop modifies stocks cumulatively, we can't easily jump in without re-simulating or modifying the previous loop.
-        # Let's modify the previous loop to capture snapshots.
-        pass # Placeholder to indicate we are modifying the logic above, but for cleanliness I will rewrite the loop block below.
-
-    # Rerunning the logic cleanly:
-
-    active_flocks.sort(key=natural_sort_key)
-
-    today = date.today()
     yesterday = today - timedelta(days=1)
 
     for f in active_flocks:
@@ -836,6 +730,7 @@ def index():
         days_age = (today - f.intake_date).days
         f.age_weeks = days_age // 7
         f.age_days = days_age % 7
+        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
 
         # Daily Stats & Trends
         f.daily_stats = {
