@@ -210,7 +210,7 @@
             <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
             <td>{{ w.hatched_chicks }}</td>
             <td>{{ "%.2f"|format(w.hatch_pct) }}</td>
-            <td>{{ "%.2f"|format(w.avg_bw_male) }} / {{ "%.2f"|format(w.avg_bw_female) }}</td>
+            <td>{{ w.avg_bw_male }} / {{ w.avg_bw_female }}</td>
           </tr>
           {% endfor %}
         </tbody>

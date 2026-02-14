@@ -62,7 +62,15 @@
                 <tr>
                     <td>{{ k.label }}</td>
                     <td>
-                        <strong>{{ "%.4f"|format(k.value) if k.unit == '%' else "%.1f"|format(k.value) }}</strong> {{ k.unit }}
+                        <strong>
+                            {% if k.unit == '%' %}
+                                {{ "%.4f"|format(k.value) }}
+                            {% elif k.unit == 'g' %}
+                                {{ "%.0f"|format(k.value) }}
+                            {% else %}
+                                {{ "%.1f"|format(k.value) }}
+                            {% endif %}
+                        </strong> {{ k.unit }}
                     </td>
                     <td>
                         {% if k.diff > 0 %}
@@ -73,7 +81,15 @@
                             <span class="text-muted">–</span>
                         {% endif %}
                     </td>
-                    <td>{{ "%.4f"|format(k.prev) if k.unit == '%' else "%.1f"|format(k.prev) }}</td>
+                    <td>
+                        {% if k.unit == '%' %}
+                            {{ "%.4f"|format(k.prev) }}
+                        {% elif k.unit == 'g' %}
+                            {{ "%.0f"|format(k.prev) }}
+                        {% else %}
+                            {{ "%.1f"|format(k.prev) }}
+                        {% endif %}
+                    </td>
                     <td>{{ k.std if k.std else '-' }}</td>
                     <td>
                         {% if k.status == 'danger' %}
