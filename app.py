@@ -716,7 +716,13 @@ def logout():
 @app.route('/hatchery')
 @dept_required('Hatchery')
 def hatchery_dashboard():
-    return render_template('hatchery_dashboard.html')
+    active_flocks = Flock.query.filter_by(status='Active').all()
+    active_flocks.sort(key=natural_sort_key)
+    today = date.today()
+    for f in active_flocks:
+        days = (today - f.intake_date).days
+        f.current_week = (days // 7) + 1 if days >= 0 else 0
+    return render_template('hatchery_dashboard.html', active_flocks=active_flocks)
 
 @app.route('/')
 @dept_required('Farm')
@@ -1579,6 +1585,7 @@ def view_flock(id):
                 'culls_male': 0, 'culls_female': 0,
                 'feed_male_total': 0.0, 'feed_female_total': 0.0,
                 'eggs': 0,
+                'hatch_eggs_sum': 0,
                 'hen_days': 0,
                 'bw_male_sum': 0.0, 'bw_male_count': 0,
                 'bw_female_sum': 0.0, 'bw_female_count': 0,
@@ -1621,6 +1628,12 @@ def view_flock(id):
         week_summary['culls_male'] += (log.culls_male or 0)
         week_summary['culls_female'] += (log.culls_female or 0)
         week_summary['eggs'] += (log.eggs_collected or 0)
+
+        # Calculate hatching eggs for this log
+        total_culls = (log.cull_eggs_jumbo or 0) + (log.cull_eggs_small or 0) + (log.cull_eggs_abnormal or 0) + (log.cull_eggs_crack or 0)
+        h_eggs = (log.eggs_collected or 0) - total_culls
+        week_summary['hatch_eggs_sum'] += h_eggs
+
         week_summary['hen_days'] += current_stock_f
 
         if log.body_weight_male > 0:
@@ -1831,6 +1844,9 @@ def view_flock(id):
         w['hatched_chicks'] = h_data['hatched']
         w['eggs_set'] = h_data['set']
         w['hatch_pct'] = (w['hatched_chicks'] / w['eggs_set'] * 100) if w['eggs_set'] > 0 else 0
+
+        # Hatching Egg % (From Daily Logs)
+        w['hatching_egg_pct'] = (w['hatch_eggs_sum'] / w['eggs'] * 100) if w['eggs'] > 0 else 0
 
         # Percentages
         w['mort_pct_m'] = (w['mortality_male'] / w['start_stock_m'] * 100) if w['start_stock_m'] > 0 else 0
@@ -2205,10 +2221,17 @@ def flock_custom_dashboard(id):
     return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
-@dept_required('Farm')
 def flock_hatchability(id):
+    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
+        flash("Access Denied.", "danger")
+        return redirect(url_for('login'))
+
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
+        if session.get('user_dept') == 'Farm':
+            flash("Farm users have read-only access to Hatchability.", "warning")
+            return redirect(url_for('flock_hatchability', id=id))
+
         action = request.form.get('action')
         if action == 'add':
             try:
@@ -2239,7 +2262,7 @@ def flock_hatchability(id):
     return render_template('flock_hatchability.html', flock=flock, records=records)
 
 @app.route('/flock/<int:id>/hatchability/delete/<int:record_id>', methods=['POST'])
-@dept_required('Farm')
+@dept_required('Hatchery')
 def delete_hatchability(id, record_id):
     record = Hatchability.query.get_or_404(record_id)
     if record.flock_id != id:
@@ -2250,8 +2273,10 @@ def delete_hatchability(id, record_id):
     return redirect(url_for('flock_hatchability', id=id))
 
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>')
-@dept_required('Farm')
 def hatchability_diagnosis(id, date_str):
+    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
+        return redirect(url_for('login'))
+
     flock = Flock.query.get_or_404(id)
     try:
         setting_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -2974,7 +2999,7 @@ def import_data():
     return render_template('import.html')
 
 @app.route('/import_hatchability', methods=['POST'])
-@dept_required('Farm')
+@dept_required('Hatchery')
 def import_hatchability():
     if 'file' not in request.files:
         flash('No file part', 'danger')

@@ -22,23 +22,4 @@
   </div>
 </div>
 
-<div class="card mt-4">
-  <div class="card-body">
-    <h3>Import Hatchability Data</h3>
-    <p>Upload a Hatchability Excel file (Template format).</p>
-    <ul>
-      <li>Headers: Setting Date, Candling Date, Hatching Date, Flock ID, Egg Set, Clear Egg, Rotten Egg, Total Hatched, Male Ratio %.</li>
-      <li>Rows will be matched by <b>Flock ID</b> (Batch ID).</li>
-      <li>New records will be added.</li>
-    </ul>
-
-    <form method="POST" action="{{ url_for('import_hatchability') }}" enctype="multipart/form-data">
-      <div class="mb-3">
-        <label for="file_hatch" class="form-label">Hatchability Excel File</label>
-        <input class="form-control" type="file" id="file_hatch" name="file" accept=".xlsx" required>
-      </div>
-      <button type="submit" class="btn btn-success">Upload Hatchability</button>
-    </form>
-  </div>
-</div>
 {% endblock %}
