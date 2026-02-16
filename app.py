@@ -1400,35 +1400,86 @@ def view_flock(id):
         hatch_by_week[w]['hatched'] += h.hatched_chicks
         hatch_by_week[w]['set'] += h.egg_set
 
-    # 2. Iterate Logs
+    # --- Consolidated Loop for Weekly Data, Chart Data, and Logs ---
+
+    # 1. Weekly Data Structures
+    weekly_data = []
+    current_week = None
+    week_summary = None
+
+    # 2. Chart Data Structures
+    chart_data = {
+        'dates': [],
+        'mortality_cum_male': [], 'mortality_cum_female': [],
+        'mortality_daily_male': [], 'mortality_daily_female': [],
+        'culls_daily_male': [], 'culls_daily_female': [],
+        'avg_bw_male': [], 'avg_bw_female': [],
+        'egg_prod': [], 'male_ratio': [],
+        'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
+        'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
+        'unif_male': [], 'unif_female': [],
+        'notes': []
+    }
+    # Dynamic keys for partitions
+    for i in range(1, 9):
+        chart_data[f'bw_M{i}'] = []
+        chart_data[f'bw_F{i}'] = []
+
+    # 3. Enriched Logs List
+    enriched_logs = []
+
+    # 4. Stock Tracking Variables
     curr_m_prod = flock.intake_male or 0
     curr_m_hosp = 0
     curr_f_prod = flock.intake_female or 0
     curr_f_hosp = 0
     in_prod = False
 
-    curr_m = curr_m_prod + curr_m_hosp
-    curr_f = curr_f_prod + curr_f_hosp
+    # 5. Baseline for Cumulative Calculations
+    start_m = flock.intake_male or 1
+    start_f = flock.intake_female or 1
+    cum_dead_m = 0
+    cum_dead_f = 0
 
-    current_week = None
-    week_summary = None
-    
-    # Init Aggregators for Weekly Chart Data (Partitions, Uniformity, Std)
-    # We will store lists of values per week and average them later
+    # Pre-fetch medications
+    medications = Medication.query.filter_by(flock_id=id).all()
+
+    # Pre-compile Helpers
+    def scale_pct(val):
+        if val is None: return None
+        if 0 < val <= 1.0: return val * 100.0
+        return val
+
+    def val_or_null(v):
+        return v if v > 0 else None
+
+    def safe_pct(n, d):
+        return (n / d * 100) if d > 0 else 0.0
+
+    # Helper for Partition Aggregation
+    def agg_part(summary, sex, num, val):
+        if val > 0:
+            key = f"{sex}{num}"
+            if key not in summary['partitions']:
+                summary['partitions'][key] = {'sum': 0.0, 'count': 0}
+            summary['partitions'][key]['sum'] += val
+            summary['partitions'][key]['count'] += 1
 
     for log in logs:
         days_diff = (log.date - flock.intake_date).days
         week_num = (days_diff // 7) + 1
         
+        # --- A. Week Change Logic ---
         if current_week != week_num:
             if week_summary:
                 weekly_data.append(week_summary)
             
             current_week = week_num
+            # Note: We use CURRENT stock as Start of Week stock.
             week_summary = {
                 'week': week_num,
-                'start_stock_m': curr_m, # Start of Week Stock
-                'start_stock_f': curr_f,
+                'start_stock_m': curr_m_prod + curr_m_hosp,
+                'start_stock_f': curr_f_prod + curr_f_hosp,
                 'mortality_male': 0, 'mortality_female': 0,
                 'culls_male': 0, 'culls_female': 0,
                 'feed_male_total': 0.0, 'feed_female_total': 0.0,
@@ -1436,19 +1487,35 @@ def view_flock(id):
                 'hen_days': 0,
                 'bw_male_sum': 0.0, 'bw_male_count': 0,
                 'bw_female_sum': 0.0, 'bw_female_count': 0,
-
-                # Extended Aggregators
                 'unif_male_sum': 0.0, 'unif_male_count': 0,
                 'unif_female_sum': 0.0, 'unif_female_count': 0,
                 'bw_male_std_sum': 0.0, 'bw_male_std_count': 0,
                 'bw_female_std_sum': 0.0, 'bw_female_std_count': 0,
-
-                # Partitions (Dynamic)
-                'partitions': {}, # key: (sex, num) -> {sum, count}
+                'partitions': {},
                 'notes': [],
                 'photos': []
             }
-        
+
+        # --- B. Phase Switch Check ---
+        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
+             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
+                 in_prod = True
+                 curr_m_prod = flock.prod_start_male or 0
+                 curr_f_prod = flock.prod_start_female or 0
+                 curr_m_hosp = flock.prod_start_male_hosp or 0
+                 curr_f_hosp = flock.prod_start_female_hosp or 0
+
+                 # Reset Cumulative Counters for Charts (New Baseline)
+                 start_m = curr_m_prod + curr_m_hosp
+                 start_f = curr_f_prod + curr_f_hosp
+                 cum_dead_m = 0
+                 cum_dead_f = 0
+
+        # --- C. Current Stock Snapshot (Start of Day) ---
+        current_stock_m = curr_m_prod + curr_m_hosp
+        current_stock_f = curr_f_prod + curr_f_hosp
+
+        # --- D. Weekly Aggregation ---
         if log.clinical_notes:
             week_summary['notes'].append(f"{log.date.strftime('%d-%b')}: {log.clinical_notes}")
         if log.photo_path:
@@ -1459,8 +1526,7 @@ def view_flock(id):
         week_summary['culls_male'] += (log.culls_male or 0)
         week_summary['culls_female'] += (log.culls_female or 0)
         week_summary['eggs'] += (log.eggs_collected or 0)
-        
-        week_summary['hen_days'] += curr_f
+        week_summary['hen_days'] += current_stock_f
 
         if log.body_weight_male > 0:
             week_summary['bw_male_sum'] += log.body_weight_male
@@ -1469,7 +1535,6 @@ def view_flock(id):
             week_summary['bw_female_sum'] += log.body_weight_female
             week_summary['bw_female_count'] += 1
 
-        # Uniformity Aggregation
         if log.uniformity_male > 0:
             week_summary['unif_male_sum'] += log.uniformity_male
             week_summary['unif_male_count'] += 1
@@ -1477,7 +1542,6 @@ def view_flock(id):
             week_summary['unif_female_sum'] += log.uniformity_female
             week_summary['unif_female_count'] += 1
 
-        # Std BW Aggregation
         if log.standard_bw_male > 0:
             week_summary['bw_male_std_sum'] += log.standard_bw_male
             week_summary['bw_male_std_count'] += 1
@@ -1485,43 +1549,154 @@ def view_flock(id):
             week_summary['bw_female_std_sum'] += log.standard_bw_female
             week_summary['bw_female_std_count'] += 1
 
-        # Partition Aggregation
-        # Gather from PartitionWeight if available, else fields
+        # Partition Aggregation (Weekly)
         p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
 
-        # Helper to aggregate
-        def agg_part(sex, num, val):
-            if val > 0:
-                key = f"{sex}{num}"
-                if key not in week_summary['partitions']:
-                    week_summary['partitions'][key] = {'sum': 0.0, 'count': 0}
-                week_summary['partitions'][key]['sum'] += val
-                week_summary['partitions'][key]['count'] += 1
-
-        # Male Partitions 1-8
         for i in range(1, 9):
             val_m = p_map.get(f'M{i}', 0)
             if val_m == 0 and i <= 2:
                 val_m = getattr(log, f'bw_male_p{i}', 0)
-            agg_part('M', i, val_m)
+            agg_part(week_summary, 'M', i, val_m)
 
-        # Female Partitions 1-8
         for i in range(1, 9):
             val_f = p_map.get(f'F{i}', 0)
             if val_f == 0 and i <= 4:
                 val_f = getattr(log, f'bw_female_p{i}', 0)
-            agg_part('F', i, val_f)
+            agg_part(week_summary, 'F', i, val_f)
 
-        # Phase Switch Check
-        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
-                 in_prod = True
-                 curr_m_prod = flock.prod_start_male or 0
-                 curr_f_prod = flock.prod_start_female or 0
-                 curr_m_hosp = flock.prod_start_male_hosp or 0
-                 curr_f_hosp = flock.prod_start_female_hosp or 0
+        # --- E. Daily Chart Data & Enriched Logs ---
 
-        # Update Stock (End of Day)
+        # Cumulative Mortality
+        cum_dead_m += ((log.mortality_male or 0) + (log.mortality_male_hosp or 0))
+        cum_dead_f += ((log.mortality_female or 0) + (log.mortality_female_hosp or 0))
+
+        chart_data['dates'].append(log.date.strftime('%Y-%m-%d'))
+        chart_data['mortality_cum_male'].append(round((cum_dead_m / (start_m or 1)) * 100, 2))
+        chart_data['mortality_cum_female'].append(round((cum_dead_f / (start_f or 1)) * 100, 2))
+
+        # Daily Metrics
+        daily_mort_m = ((log.mortality_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
+        daily_mort_f = ((log.mortality_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
+        daily_cull_m = ((log.culls_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
+        daily_cull_f = ((log.culls_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
+
+        chart_data['mortality_daily_male'].append(round(daily_mort_m, 2))
+        chart_data['mortality_daily_female'].append(round(daily_mort_f, 2))
+        chart_data['culls_daily_male'].append(round(daily_cull_m, 2))
+        chart_data['culls_daily_female'].append(round(daily_cull_f, 2))
+
+        egg_prod = ((log.eggs_collected or 0) / (current_stock_f or 1)) * 100
+        chart_data['egg_prod'].append(round(egg_prod, 2))
+
+        m_ratio = (curr_m_prod / (curr_f_prod or 1)) * 100
+        chart_data['male_ratio'].append(round(m_ratio, 2))
+
+        chart_data['bw_male_p1'].append(val_or_null(log.bw_male_p1))
+        chart_data['bw_male_p2'].append(val_or_null(log.bw_male_p2))
+        chart_data['bw_male_std'].append(val_or_null(log.standard_bw_male))
+
+        chart_data['bw_female_p1'].append(val_or_null(log.bw_female_p1))
+        chart_data['bw_female_p2'].append(val_or_null(log.bw_female_p2))
+        chart_data['bw_female_p3'].append(val_or_null(log.bw_female_p3))
+        chart_data['bw_female_p4'].append(val_or_null(log.bw_female_p4))
+        chart_data['bw_female_std'].append(val_or_null(log.standard_bw_female))
+
+        # Dynamic Partitions for Charts (Same p_map)
+        for i in range(1, 9):
+            key_m = f'bw_M{i}'
+            key_f = f'bw_F{i}'
+
+            val_m = p_map.get(f'M{i}', 0)
+            if val_m == 0 and i <= 2:
+                val_m = getattr(log, f'bw_male_p{i}', 0)
+
+            val_f = p_map.get(f'F{i}', 0)
+            if val_f == 0 and i <= 4:
+                val_f = getattr(log, f'bw_female_p{i}', 0)
+
+            chart_data[key_m].append(val_or_null(val_m))
+            chart_data[key_f].append(val_or_null(val_f))
+
+        chart_data['unif_male'].append(scale_pct(log.uniformity_male) if log.uniformity_male > 0 else None)
+        chart_data['unif_female'].append(scale_pct(log.uniformity_female) if log.uniformity_female > 0 else None)
+
+        if log.clinical_notes or log.photo_path:
+            chart_data['notes'].append({
+                'note': log.clinical_notes,
+                'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+            })
+        else:
+            chart_data['notes'].append(None)
+
+        # Enriched Logs: Lighting
+        lighting_hours = 0
+        if log.light_on_time and log.light_off_time:
+            try:
+                fmt = '%H:%M'
+                t1 = datetime.strptime(log.light_on_time, fmt)
+                t2 = datetime.strptime(log.light_off_time, fmt)
+                diff = (t2 - t1).total_seconds() / 3600
+                if diff < 0: diff += 24
+                lighting_hours = round(diff, 1)
+            except: pass
+
+        # Enriched Logs: Medications
+        active_meds = []
+        for m in medications:
+            if m.start_date <= log.date:
+                if m.end_date is None or m.end_date >= log.date:
+                    active_meds.append(m.drug_name)
+        meds_str = ", ".join(active_meds)
+
+        # Enriched Logs: Feed
+        multiplier = 1.0
+        if log.feed_program == 'Skip-a-day':
+            multiplier = 2.0
+        elif log.feed_program == '2/1':
+            multiplier = 1.5
+
+        feed_total_kg = 0.0
+        if current_stock_m > 0:
+            feed_total_kg += (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
+        if current_stock_f > 0:
+            feed_total_kg += (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
+
+        # Enriched Logs: Eggs
+        jumbo = log.cull_eggs_jumbo
+        small = log.cull_eggs_small
+        crack = log.cull_eggs_crack
+        abnormal = log.cull_eggs_abnormal
+
+        total_culls = jumbo + small + crack + abnormal
+        hatching_eggs = log.eggs_collected - total_culls
+
+        egg_data = {
+            'jumbo': jumbo,
+            'jumbo_pct': safe_pct(jumbo, log.eggs_collected),
+            'small': small,
+            'small_pct': safe_pct(small, log.eggs_collected),
+            'crack': crack,
+            'crack_pct': safe_pct(crack, log.eggs_collected),
+            'abnormal': abnormal,
+            'abnormal_pct': safe_pct(abnormal, log.eggs_collected),
+            'hatching': hatching_eggs,
+            'hatching_pct': safe_pct(hatching_eggs, log.eggs_collected),
+            'total_culls': total_culls,
+            'total_culls_pct': safe_pct(total_culls, log.eggs_collected)
+        }
+
+        enriched_logs.append({
+            'log': log,
+            'stock_male': current_stock_m,
+            'stock_female': current_stock_f,
+            'lighting_hours': lighting_hours,
+            'medications': meds_str,
+            'egg_data': egg_data,
+            'egg_prod_pct': egg_prod,
+            'total_feed': feed_total_kg
+        })
+
+        # --- F. End of Day Stock Update ---
         curr_m_prod -= ((log.mortality_male or 0) + (log.culls_male or 0))
         curr_m_prod += ((log.males_moved_to_prod or 0) - (log.males_moved_to_hosp or 0))
         curr_m_hosp -= ((log.mortality_male_hosp or 0) + (log.culls_male_hosp or 0))
@@ -1535,9 +1710,6 @@ def view_flock(id):
         if curr_m_prod < 0: curr_m_prod = 0
         if curr_f_prod < 0: curr_f_prod = 0
 
-        curr_m = curr_m_prod + curr_m_hosp
-        curr_f = curr_f_prod + curr_f_hosp
-            
     if week_summary:
         weekly_data.append(week_summary)
     
@@ -1574,11 +1746,6 @@ def view_flock(id):
 
         w['egg_prod_pct'] = (w['eggs'] / w['hen_days'] * 100) if w['hen_days'] > 0 else 0
 
-        # Cumulative Mortality up to end of week?
-        # Actually, chart wants Cumulative Mortality.
-        # weekly_data has 'mortality_male' (this week).
-        # We need running sum for the chart.
-
     # Build Weekly Chart Data
     chart_data_weekly = {
         'dates': [],
@@ -1601,12 +1768,6 @@ def view_flock(id):
     for i in range(1, 9):
         chart_data_weekly[f'bw_M{i}'] = []
         chart_data_weekly[f'bw_F{i}'] = []
-
-    # Helper for Percentage Scaling
-    def scale_pct(val):
-        if val is None: return None
-        if 0 < val <= 1.0: return val * 100.0
-        return val
 
     cum_mort_m_week = 0
     cum_mort_f_week = 0
@@ -1658,272 +1819,6 @@ def view_flock(id):
     chart_data_weekly['bw_female_p2'] = chart_data_weekly['bw_F2']
     chart_data_weekly['bw_female_p3'] = chart_data_weekly['bw_F3']
     chart_data_weekly['bw_female_p4'] = chart_data_weekly['bw_F4']
-
-
-    chart_data = {
-        'dates': [log.date.strftime('%Y-%m-%d') for log in logs],
-        'mortality_cum_male': [],
-        'mortality_cum_female': [],
-        'mortality_daily_male': [],
-        'mortality_daily_female': [],
-        'culls_daily_male': [],
-        'culls_daily_female': [],
-        'avg_bw_male': [],
-        'avg_bw_female': [],
-        'egg_prod': [],
-        'male_ratio': [],
-        'bw_male_p1': [], 'bw_male_p2': [], 'bw_male_std': [],
-        'bw_female_p1': [], 'bw_female_p2': [], 'bw_female_p3': [], 'bw_female_p4': [], 'bw_female_std': [],
-        'unif_male': [], 'unif_female': [],
-        'notes': []
-    }
-    
-    # Detailed tracking for enriched logs
-    curr_m_prod = flock.intake_male or 0
-    curr_m_hosp = 0
-    curr_f_prod = flock.intake_female or 0
-    curr_f_hosp = 0
-    in_prod = False
-
-    # Cumulative for Charts (Lifetime or Phase?)
-    # Using simple lifetime counters for chart continuity, unless phase resets.
-    # To keep charts consistent with "Loss" reset:
-    # If phase resets, we start tracking from new baseline.
-    # So we track cumulative mortality WITHIN the current phase logic context?
-    # Or just use (Intake - Current) / Intake?
-    # With reset, Intake is replaced by Start Count.
-    # Let's use (Start - Current) / Start * 100.
-
-    start_m = flock.intake_male or 1
-    start_f = flock.intake_female or 1
-
-    # Pre-fetch medications
-    medications = Medication.query.filter_by(flock_id=id).all()
-    enriched_logs = []
-
-    for log in logs:
-        # Phase Switch Check
-        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
-                 in_prod = True
-                 curr_m_prod = flock.prod_start_male or 0
-                 curr_f_prod = flock.prod_start_female or 0
-                 curr_m_hosp = flock.prod_start_male_hosp or 0
-                 curr_f_hosp = flock.prod_start_female_hosp or 0
-
-                 start_m = curr_m_prod + curr_m_hosp
-                 start_f = curr_f_prod + curr_f_hosp
-
-        # Stock (Start of Day)
-        current_stock_m = curr_m_prod + curr_m_hosp
-        current_stock_f = curr_f_prod + curr_f_hosp
-
-        # Calculate derived stats
-        safe_stock_f = current_stock_f if current_stock_f > 0 else 1
-        safe_start_m = start_m if start_m > 0 else 1
-        safe_start_f = start_f if start_f > 0 else 1
-
-        # Cumulative Mortality % (Relative to current baseline start)
-        # Mortality = Start - Current
-        # Note: This ignores transfers IN/OUT impacting "Mortality %" if we just do Start-Current.
-        # But Mortality should be strictly (Deaths / Start).
-        # Transfers change the stock but aren't deaths.
-        # So we should track Cumulative Deaths separately from Stock.
-
-        # This loop is tricky because we just reset 'curr' stock.
-        # Let's calculate mortality % based on (Start - Current) as a proxy for 'Loss' if we assume closed flock,
-        # but with transfers it's inaccurate.
-        # Let's accumulate deaths.
-        pass # Logic handled in replacement below
-
-    # Re-writing loop properly for cumulative tracking
-    cum_dead_m = 0
-    cum_dead_f = 0
-
-    # Reset counters for the loop
-    curr_m_prod = flock.intake_male
-    curr_m_hosp = 0
-    curr_f_prod = flock.intake_female
-    curr_f_hosp = 0
-    in_prod = False
-    start_m = flock.intake_male or 1
-    start_f = flock.intake_female or 1
-
-    for log in logs:
-        # Phase Switch
-        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
-                 in_prod = True
-                 curr_m_prod = flock.prod_start_male or 0
-                 curr_f_prod = flock.prod_start_female or 0
-                 curr_m_hosp = flock.prod_start_male_hosp or 0
-                 curr_f_hosp = flock.prod_start_female_hosp or 0
-
-                 # Reset Cumulative Mortality counter for new phase?
-                 # If baseline resets, usually we track performance against new baseline.
-                 cum_dead_m = 0
-                 cum_dead_f = 0
-                 start_m = curr_m_prod + curr_m_hosp
-                 start_f = curr_f_prod + curr_f_hosp
-
-        current_stock_m = curr_m_prod + curr_m_hosp
-        current_stock_f = curr_f_prod + curr_f_hosp
-        
-        # Accumulate Mortality
-        cum_dead_m += ((log.mortality_male or 0) + (log.mortality_male_hosp or 0))
-        cum_dead_f += ((log.mortality_female or 0) + (log.mortality_female_hosp or 0))
-
-        # Chart Data
-        chart_data['mortality_cum_male'].append(round((cum_dead_m / (start_m or 1)) * 100, 2))
-        chart_data['mortality_cum_female'].append(round((cum_dead_f / (start_f or 1)) * 100, 2))
-
-        # Daily Metrics (For General Chart)
-        daily_mort_m = ((log.mortality_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
-        daily_mort_f = ((log.mortality_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
-        daily_cull_m = ((log.culls_male or 0) / current_stock_m * 100) if current_stock_m > 0 else 0
-        daily_cull_f = ((log.culls_female or 0) / current_stock_f * 100) if current_stock_f > 0 else 0
-
-        chart_data['mortality_daily_male'].append(round(daily_mort_m, 2))
-        chart_data['mortality_daily_female'].append(round(daily_mort_f, 2))
-        chart_data['culls_daily_male'].append(round(daily_cull_m, 2))
-        chart_data['culls_daily_female'].append(round(daily_cull_f, 2))
-
-        egg_prod = ((log.eggs_collected or 0) / (current_stock_f or 1)) * 100
-        chart_data['egg_prod'].append(round(egg_prod, 2))
-
-        # Male Ratio (Prod)
-        m_ratio = (curr_m_prod / (curr_f_prod or 1)) * 100
-        chart_data['male_ratio'].append(round(m_ratio, 2))
-
-        # Update (End of Day)
-        curr_m_prod -= ((log.mortality_male or 0) + (log.culls_male or 0))
-        curr_m_prod += ((log.males_moved_to_prod or 0) - (log.males_moved_to_hosp or 0))
-        curr_m_hosp -= ((log.mortality_male_hosp or 0) + (log.culls_male_hosp or 0))
-        curr_m_hosp += ((log.males_moved_to_hosp or 0) - (log.males_moved_to_prod or 0))
-
-        curr_f_prod -= ((log.mortality_female or 0) + (log.culls_female or 0))
-        curr_f_prod += ((log.females_moved_to_prod or 0) - (log.females_moved_to_hosp or 0))
-        curr_f_hosp -= ((log.mortality_female_hosp or 0) + (log.culls_female_hosp or 0))
-        curr_f_hosp += ((log.females_moved_to_hosp or 0) - (log.females_moved_to_prod or 0))
-
-        if curr_m_prod < 0: curr_m_prod = 0
-        if curr_f_prod < 0: curr_f_prod = 0
-
-        def val_or_null(v):
-            return v if v > 0 else None
-
-        chart_data['bw_male_p1'].append(val_or_null(log.bw_male_p1))
-        chart_data['bw_male_p2'].append(val_or_null(log.bw_male_p2))
-        chart_data['bw_male_std'].append(val_or_null(log.standard_bw_male))
-
-        chart_data['bw_female_p1'].append(val_or_null(log.bw_female_p1))
-        chart_data['bw_female_p2'].append(val_or_null(log.bw_female_p2))
-        chart_data['bw_female_p3'].append(val_or_null(log.bw_female_p3))
-        chart_data['bw_female_p4'].append(val_or_null(log.bw_female_p4))
-        chart_data['bw_female_std'].append(val_or_null(log.standard_bw_female))
-
-        p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
-
-        for i in range(1, 9):
-            key_m = f'bw_M{i}'
-            key_f = f'bw_F{i}'
-            if key_m not in chart_data: chart_data[key_m] = []
-            if key_f not in chart_data: chart_data[key_f] = []
-
-            val_m = p_map.get(f'M{i}', 0)
-            if val_m == 0 and i <= 2:
-                val_m = getattr(log, f'bw_male_p{i}', 0)
-
-            val_f = p_map.get(f'F{i}', 0)
-            if val_f == 0 and i <= 4:
-                val_f = getattr(log, f'bw_female_p{i}', 0)
-
-            chart_data[key_m].append(val_or_null(val_m))
-            chart_data[key_f].append(val_or_null(val_f))
-
-        chart_data['unif_male'].append(scale_pct(log.uniformity_male) if log.uniformity_male > 0 else None)
-        chart_data['unif_female'].append(scale_pct(log.uniformity_female) if log.uniformity_female > 0 else None)
-
-        if log.clinical_notes or log.photo_path:
-            chart_data['notes'].append({
-                'note': log.clinical_notes,
-                'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
-            })
-        else:
-            chart_data['notes'].append(None)
-
-        # --- Enriched Log Calculation ---
-
-        # Lighting
-        lighting_hours = 0
-        if log.light_on_time and log.light_off_time:
-            try:
-                fmt = '%H:%M'
-                t1 = datetime.strptime(log.light_on_time, fmt)
-                t2 = datetime.strptime(log.light_off_time, fmt)
-                diff = (t2 - t1).total_seconds() / 3600
-                if diff < 0: diff += 24
-                lighting_hours = round(diff, 1)
-            except: pass
-
-        # Medications
-        active_meds = []
-        for m in medications:
-            if m.start_date <= log.date:
-                if m.end_date is None or m.end_date >= log.date:
-                    active_meds.append(m.drug_name)
-        meds_str = ", ".join(active_meds)
-
-        # Feed Calculation (Total Kg)
-        multiplier = 1.0
-        if log.feed_program == 'Skip-a-day':
-            multiplier = 2.0
-        elif log.feed_program == '2/1':
-            multiplier = 1.5
-
-        feed_total_kg = 0.0
-        if current_stock_m > 0:
-            feed_total_kg += (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
-        if current_stock_f > 0:
-            feed_total_kg += (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
-
-        # Cull Eggs & Percentages
-        jumbo = log.cull_eggs_jumbo
-        small = log.cull_eggs_small
-        crack = log.cull_eggs_crack
-        abnormal = log.cull_eggs_abnormal
-
-        total_culls = jumbo + small + crack + abnormal
-        hatching_eggs = log.eggs_collected - total_culls
-
-        def safe_pct(n, d):
-            return (n / d * 100) if d > 0 else 0.0
-
-        egg_data = {
-            'jumbo': jumbo,
-            'jumbo_pct': safe_pct(jumbo, log.eggs_collected),
-            'small': small,
-            'small_pct': safe_pct(small, log.eggs_collected),
-            'crack': crack,
-            'crack_pct': safe_pct(crack, log.eggs_collected),
-            'abnormal': abnormal,
-            'abnormal_pct': safe_pct(abnormal, log.eggs_collected),
-            'hatching': hatching_eggs,
-            'hatching_pct': safe_pct(hatching_eggs, log.eggs_collected),
-            'total_culls': total_culls,
-            'total_culls_pct': safe_pct(total_culls, log.eggs_collected)
-        }
-
-        enriched_logs.append({
-            'log': log,
-            'stock_male': current_stock_m,
-            'stock_female': current_stock_f,
-            'lighting_hours': lighting_hours,
-            'medications': meds_str,
-            'egg_data': egg_data,
-            'egg_prod_pct': egg_prod,
-            'total_feed': feed_total_kg
-        })
 
     current_stats = {
         'male_prod': curr_m_prod,
