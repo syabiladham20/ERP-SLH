@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center mb-5">
+            <h1 class="display-4">Hidden Test Center</h1>
+            <p class="lead text-muted">Switch roles to verify permissions and workflows.</p>
+        </div>
+    </div>
+    <div class="row justify-content-center g-4">
+        <!-- Farm Dept -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-primary">
+                <div class="card-body text-center d-flex flex-column justify-content-center p-5">
+                    <h3 class="card-title mb-4">Farm Department</h3>
+                    <a href="{{ url_for('switchboard_set_role', dept='Farm', role='Worker') }}" class="btn btn-primary btn-lg stretched-link">Enter as Worker</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hatchery Dept -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-success">
+                <div class="card-body text-center d-flex flex-column justify-content-center p-5">
+                    <h3 class="card-title mb-4">Hatchery Department</h3>
+                    <a href="{{ url_for('switchboard_set_role', dept='Hatchery', role='Worker') }}" class="btn btn-success btn-lg stretched-link">Enter as Worker</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Admin -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-danger">
+                <div class="card-body text-center d-flex flex-column justify-content-center p-5">
+                    <h3 class="card-title mb-4">Super Admin</h3>
+                    <a href="{{ url_for('switchboard_set_role', dept='Admin', role='Admin') }}" class="btn btn-danger btn-lg stretched-link">Reset Permissions</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
