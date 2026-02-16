@@ -674,8 +674,9 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 @app.route('/debug/set_role/<dept>/<role>')
 def debug_set_role(dept, role):
-    if not app.debug:
-        return "Debug mode only", 403
+    is_god_mode = app.debug or os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
+    if not is_god_mode:
+        return "God Mode disabled", 403
 
     session['user_dept'] = dept
     session['user_role'] = role
@@ -2676,7 +2677,8 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug)
+    is_god_mode = app.debug or os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
+    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug, god_mode=is_god_mode)
 
 @app.route('/admin/toggle_mode')
 def toggle_admin_mode():

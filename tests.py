@@ -21,6 +21,12 @@ class FarmTestCase(unittest.TestCase):
             db.session.add(h2)
         db.session.commit()
 
+        # Login as Farm Admin for tests
+        with self.app.session_transaction() as sess:
+            sess['user_dept'] = 'Farm'
+            sess['user_role'] = 'Admin'
+            sess['is_admin'] = True
+
     def tearDown(self):
         db.session.remove()
         db.drop_all()

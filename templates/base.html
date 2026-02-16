@@ -23,7 +23,7 @@
     </style>
   </head>
   <body>
-    {% if is_debug %}
+    {% if god_mode %}
     <div class="bg-warning text-dark p-2 text-center" style="position: fixed; top: 0; width: 100%; z-index: 10000;">
         <strong>GOD MODE</strong> |
         Current: {{ session.get('user_dept', 'Guest') }} / {{ session.get('user_role', 'None') }} |
