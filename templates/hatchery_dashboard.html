@@ -1,14 +1,69 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <h1 class="display-4">Hatchery Dashboard</h1>
-            <p class="lead">Coming Soon</p>
-            <hr class="my-4">
-            <p>This section is under development.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Hatchery Dashboard</h2>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Active Flocks</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>House</th>
+                        <th>Batch ID</th>
+                        <th>Intake Date</th>
+                        <th>Age (Weeks)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flock in active_flocks %}
+                    <tr>
+                        <td>{{ flock.house.name }}</td>
+                        <td>{{ flock.batch_id }}</td>
+                        <td>{{ flock.intake_date }}</td>
+                        <td>{{ flock.current_week }}</td>
+                        <td>
+                            <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-primary">
+                                Manage Hatchability
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">No active flocks found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-success text-white">
+        <h5>Import Hatchability Data</h5>
+    </div>
+    <div class="card-body">
+        <p>Upload a Hatchability Excel file (Template format).</p>
+        <ul>
+          <li>Headers: Setting Date, Candling Date, Hatching Date, Flock ID, Egg Set, Clear Egg, Rotten Egg, Total Hatched, Male Ratio %.</li>
+          <li>Rows will be matched by <b>Flock ID</b> (Batch ID).</li>
+          <li>New records will be added.</li>
+        </ul>
+
+        <form method="POST" action="{{ url_for('import_hatchability') }}" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="file_hatch" class="form-label">Hatchability Excel File</label>
+            <input class="form-control" type="file" id="file_hatch" name="file" accept=".xlsx" required>
+          </div>
+          <button type="submit" class="btn btn-success">Upload Hatchability</button>
+        </form>
     </div>
 </div>
 {% endblock %}

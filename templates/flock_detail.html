@@ -198,8 +198,8 @@
             <th>Culls % (M/F)</th>
             <th>Eggs</th>
             <th>Egg Prod %</th>
-            <th>Hatch</th>
-            <th>Hatch %</th>
+            <th>Hatching Eggs</th>
+            <th>Hatching Egg %</th>
             <th>Avg BW (M/F)</th>
           </tr>
         </thead>
@@ -213,8 +213,8 @@
             <td>{{ "%.2f"|format(w.cull_pct_m) }} / {{ "%.2f"|format(w.cull_pct_f) }}</td>
             <td>{{ w.eggs }}</td>
             <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
-            <td>{{ w.hatched_chicks }}</td>
-            <td>{{ "%.2f"|format(w.hatch_pct) }}</td>
+            <td>{{ w.hatch_eggs_sum }}</td>
+            <td>{{ "%.2f"|format(w.hatching_egg_pct) }}</td>
             <td>{{ w.avg_bw_male }} / {{ w.avg_bw_female }}</td>
           </tr>
           {% endfor %}
