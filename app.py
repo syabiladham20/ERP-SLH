@@ -2299,16 +2299,28 @@ def flock_dashboard(id):
     else:
         target_date = date.today()
 
-    log_today = DailyLog.query.filter_by(flock_id=id, date=target_date).first()
+    all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
 
-    log_prev = DailyLog.query.filter_by(flock_id=id, date=target_date - timedelta(days=1)).first()
+    # Optimization: Filter from all_logs instead of DB queries
+    log_today = None
+    log_prev = None
+    prev_date = target_date - timedelta(days=1)
+
+    for l in reversed(all_logs):
+        if log_today is None and l.date == target_date:
+            log_today = l
+        elif log_prev is None and l.date == prev_date:
+            log_prev = l
+
+        if log_today and log_prev:
+            break
+        if l.date < prev_date:
+            break
 
     age_days = (target_date - flock.intake_date).days
     age_week = (age_days // 7) + 1
 
     standard = Standard.query.filter_by(week=age_week).first()
-
-    all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
 
     cum_mort_m = 0
     cum_mort_f = 0
