@@ -1337,7 +1337,7 @@ def toggle_phase(id):
 @app.route('/flock/<int:id>')
 def view_flock(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
-    logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
     gs = GlobalStandard.query.first()
     if not gs:
