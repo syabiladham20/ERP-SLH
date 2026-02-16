@@ -11,9 +11,18 @@ from dotenv import load_dotenv
 import json
 import pandas as pd
 import calendar
+import re
 from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
+
+# Pre-compile regex for natural sorting
+_ns_re = re.compile('([0-9]+)')
+
+def natural_sort_key(flock):
+    s = flock.house.name
+    return [int(text) if text.isdigit() else text.lower()
+            for text in _ns_re.split(s)]
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -594,13 +603,6 @@ def index():
     # Inventory Check for Dashboard
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
     low_stock_count = len(low_stock_items)
-
-    # Helper for natural sorting (VA1, VA2, VA10)
-    import re
-    def natural_sort_key(flock):
-        s = flock.house.name
-        return [int(text) if text.isdigit() else text.lower()
-                for text in re.split('([0-9]+)', s)]
 
     active_flocks.sort(key=natural_sort_key)
 
