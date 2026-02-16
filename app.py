@@ -672,12 +672,23 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 # --- Routes ---
 
-@app.route('/debug/set_role/<dept>/<role>')
-def debug_set_role(dept, role):
-    # is_god_mode = app.debug or os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
-    is_god_mode = True
-    if not is_god_mode:
-        return "God Mode disabled", 403
+def is_god_mode_enabled():
+    """Checks if God Mode is enabled via environment variable or debug mode."""
+    god_mode_env = os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
+    return app.debug or god_mode_env
+
+@app.route('/admin/switchboard')
+def admin_switchboard():
+    if not is_god_mode_enabled():
+        from flask import abort
+        abort(404)
+    return render_template('admin/switchboard.html')
+
+@app.route('/admin/switchboard/set_role/<dept>/<role>')
+def switchboard_set_role(dept, role):
+    if not is_god_mode_enabled():
+        from flask import abort
+        abort(404)
 
     session['user_dept'] = dept
     session['user_role'] = role
@@ -685,13 +696,17 @@ def debug_set_role(dept, role):
     # Is Admin?
     if role == 'Admin':
         session['is_admin'] = True
+        session['is_masquerading'] = False
     else:
         session['is_admin'] = False
+        session['is_masquerading'] = True
 
     flash(f"Switched to {dept} - {role}", 'success')
 
     if dept == 'Hatchery':
         return redirect(url_for('hatchery_dashboard'))
+    elif dept == 'Admin':
+        return redirect(url_for('index'))
     else:
         return redirect(url_for('index'))
 
@@ -2678,8 +2693,7 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    # is_god_mode = app.debug or os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
-    is_god_mode = True
+    is_god_mode = is_god_mode_enabled()
     return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug, god_mode=is_god_mode)
 
 @app.route('/admin/toggle_mode')
