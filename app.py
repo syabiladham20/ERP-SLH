@@ -460,6 +460,46 @@ def get_flock_stock_history(flock_id):
 
     return stock_map
 
+def get_flock_stock_history_bulk(flocks):
+    """
+    Returns a dictionary mapping flock_id -> {date -> live_stock (start of day)}.
+    Optimized for bulk processing.
+    """
+    if not flocks: return {}
+
+    flock_ids = [f.id for f in flocks]
+
+    # Fetch all logs in one query
+    logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids)).order_by(DailyLog.flock_id, DailyLog.date.asc()).all()
+
+    # Group logs by flock
+    logs_by_flock = {}
+    for log in logs:
+        if log.flock_id not in logs_by_flock:
+            logs_by_flock[log.flock_id] = []
+        logs_by_flock[log.flock_id].append(log)
+
+    result_map = {}
+
+    for f in flocks:
+        f_id = f.id
+        stock_map = {}
+        cum_loss = 0
+
+        # Get logs for this flock
+        f_logs = logs_by_flock.get(f_id, [])
+
+        # Calculate stock history
+        for log in f_logs:
+            stock_map[log.date] = max(0, (f.intake_male + f.intake_female) - cum_loss)
+            cum_loss += (log.mortality_male + log.mortality_female + log.culls_male + log.culls_female)
+
+        # Add "latest" entry
+        stock_map['latest'] = max(0, (f.intake_male + f.intake_female) - cum_loss)
+        result_map[f_id] = stock_map
+
+    return result_map
+
 # --- Initialization Helpers ---
 
 def initialize_sampling_schedule(flock_id, commit=True):
@@ -3829,9 +3869,22 @@ def health_log_vaccines():
     flock_tasks = {}
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
 
+    target_flock_ids = [f.id for f in target_flocks]
+
+    # Bulk fetch vaccines
+    all_vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(target_flock_ids)).order_by(Vaccine.est_date).all()
+    vaccines_by_flock = {}
+    for v in all_vaccines:
+        if v.flock_id not in vaccines_by_flock:
+            vaccines_by_flock[v.flock_id] = []
+        vaccines_by_flock[v.flock_id].append(v)
+
+    # Bulk fetch stock history
+    bulk_stock_history = get_flock_stock_history_bulk(target_flocks)
+
     for f in target_flocks:
-        vaccines_list = Vaccine.query.filter_by(flock_id=f.id).order_by(Vaccine.est_date).all()
-        stock_history = get_flock_stock_history(f.id)
+        vaccines_list = vaccines_by_flock.get(f.id, [])
+        stock_history = bulk_stock_history.get(f.id, {})
         sorted_dates = sorted([d for d in stock_history.keys() if isinstance(d, date)])
 
         for v in vaccines_list:
