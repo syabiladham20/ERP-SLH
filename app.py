@@ -12,6 +12,7 @@ import json
 import pandas as pd
 import calendar
 import re
+from functools import wraps
 from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
@@ -23,6 +24,41 @@ def natural_sort_key(flock):
     s = flock.house.name
     return [int(text) if text.isdigit() else text.lower()
             for text in _ns_re.split(s)]
+
+def dept_required(required_dept):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user_dept = session.get('user_dept')
+
+            # Super Admin can access everything
+            if user_dept == 'Admin':
+                return f(*args, **kwargs)
+
+            # If user matches required dept
+            if user_dept == required_dept:
+                return f(*args, **kwargs)
+
+            # If guest (None)
+            if user_dept is None:
+                if request.path == url_for('welcome'): # Avoid loop
+                    return f(*args, **kwargs)
+                flash("Please select a role to continue.", "info")
+                return redirect(url_for('welcome'))
+
+            # If user is logged in but wrong department
+            flash(f"Access Denied: You do not have permission to view the {required_dept} Department", "danger")
+
+            # Redirect to their own dashboard
+            if user_dept == 'Hatchery':
+                return redirect(url_for('hatchery_dashboard'))
+            elif user_dept == 'Farm':
+                return redirect(url_for('index'))
+            else:
+                return redirect(url_for('welcome')) # Fallback
+
+        return decorated_function
+    return decorator
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -636,7 +672,37 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 # --- Routes ---
 
+@app.route('/debug/set_role/<dept>/<role>')
+def debug_set_role(dept, role):
+    if not app.debug:
+        return "Debug mode only", 403
+
+    session['user_dept'] = dept
+    session['user_role'] = role
+
+    # Is Admin?
+    if role == 'Admin':
+        session['is_admin'] = True
+    else:
+        session['is_admin'] = False
+
+    flash(f"Switched to {dept} - {role}", 'success')
+
+    if dept == 'Hatchery':
+        return redirect(url_for('hatchery_dashboard'))
+    else:
+        return redirect(url_for('index'))
+
+@app.route('/hatchery')
+def hatchery_dashboard():
+    return render_template('hatchery_dashboard.html')
+
+@app.route('/welcome')
+def welcome():
+    return render_template('welcome.html')
+
 @app.route('/')
+@dept_required('Farm')
 def index():
     active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
 
@@ -828,6 +894,7 @@ def index():
     return render_template('index.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
 
 @app.route('/clinical_notes')
+@dept_required('Farm')
 def clinical_notes():
     house_id = request.args.get('house_id')
     start_date = request.args.get('start_date')
@@ -867,6 +934,7 @@ def clinical_notes():
     return render_template('clinical_notes.html', logs=logs, houses=houses)
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
+@dept_required('Farm')
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
@@ -902,6 +970,7 @@ def edit_flock(id):
     return render_template('flock_edit.html', flock=flock)
 
 @app.route('/flock/<int:id>/delete', methods=['POST'])
+@dept_required('Farm')
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
     db.session.delete(flock)
@@ -914,6 +983,7 @@ def help():
     return render_template('help.html')
 
 @app.route('/flocks', methods=['GET', 'POST'])
+@dept_required('Farm')
 def manage_flocks():
     if request.method == 'POST':
         house_name = request.form.get('house_name').strip()
@@ -978,6 +1048,7 @@ def manage_flocks():
     return render_template('flock_form.html', houses=houses, flocks=flocks)
 
 @app.route('/flock/<int:id>/close', methods=['POST'])
+@dept_required('Farm')
 def close_flock(id):
     flock = Flock.query.get_or_404(id)
     flock.status = 'Inactive'
@@ -987,6 +1058,7 @@ def close_flock(id):
     return redirect(url_for('index'))
 
 @app.route('/standards', methods=['GET', 'POST'])
+@dept_required('Farm')
 def manage_standards():
     if request.method == 'POST':
         action = request.form.get('action')
@@ -1028,6 +1100,7 @@ def manage_standards():
     return render_template('standards.html', standards=standards, global_std=global_std)
 
 @app.route('/feed_codes', methods=['GET', 'POST'])
+@dept_required('Farm')
 def manage_feed_codes():
     if request.method == 'POST':
         code = request.form.get('code').strip()
@@ -1051,6 +1124,7 @@ def manage_feed_codes():
     return render_template('feed_codes.html', codes=codes)
 
 @app.route('/feed_codes/delete/<int:id>', methods=['POST'])
+@dept_required('Farm')
 def delete_feed_code(id):
     fc = FeedCode.query.get_or_404(id)
     db.session.delete(fc)
@@ -1059,6 +1133,7 @@ def delete_feed_code(id):
     return redirect(url_for('manage_feed_codes'))
 
 @app.route('/daily_log/delete/<int:id>', methods=['POST'])
+@dept_required('Farm')
 def delete_daily_log(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 
@@ -1081,6 +1156,7 @@ def delete_daily_log(id):
     return redirect(url_for('view_flock', id=flock_id))
 
 @app.route('/api/chart_data/<int:flock_id>')
+@dept_required('Farm')
 def get_chart_data(flock_id):
     flock = Flock.query.get_or_404(flock_id)
 
@@ -1322,6 +1398,7 @@ def get_chart_data(flock_id):
     return data
 
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
+@dept_required('Farm')
 def toggle_phase(id):
     flock = Flock.query.get_or_404(id)
     if flock.phase == 'Rearing':
@@ -1377,6 +1454,7 @@ def toggle_phase(id):
     return redirect(url_for('index'))
 
 @app.route('/flock/<int:id>')
+@dept_required('Farm')
 def view_flock(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -1831,17 +1909,20 @@ def view_flock(id):
     return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs)
 
 @app.route('/flock/<int:id>/charts')
+@dept_required('Farm')
 def flock_charts(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     return render_template('flock_charts.html', flock=flock)
 
 @app.route('/flock/<int:id>/sampling')
+@dept_required('Farm')
 def flock_sampling(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     events = SamplingEvent.query.filter_by(flock_id=id).order_by(SamplingEvent.age_week.asc()).all()
     return render_template('flock_sampling.html', flock=flock, events=events)
 
 @app.route('/flock/<int:id>/vaccines', methods=['GET', 'POST'])
+@dept_required('Farm')
 def flock_vaccines(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
@@ -2071,6 +2152,7 @@ def global_vaccine_schedule():
                            today=today)
 
 @app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
+@dept_required('Farm')
 def upload_sampling_result(id, event_id):
     event = SamplingEvent.query.get_or_404(event_id)
 
@@ -2100,11 +2182,13 @@ def upload_sampling_result(id, event_id):
     return redirect(url_for('flock_sampling', id=id))
 
 @app.route('/flock/<int:id>/custom_dashboard')
+@dept_required('Farm')
 def flock_custom_dashboard(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
+@dept_required('Farm')
 def flock_hatchability(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
@@ -2138,6 +2222,7 @@ def flock_hatchability(id):
     return render_template('flock_hatchability.html', flock=flock, records=records)
 
 @app.route('/flock/<int:id>/hatchability/delete/<int:record_id>', methods=['POST'])
+@dept_required('Farm')
 def delete_hatchability(id, record_id):
     record = Hatchability.query.get_or_404(record_id)
     if record.flock_id != id:
@@ -2148,6 +2233,7 @@ def delete_hatchability(id, record_id):
     return redirect(url_for('flock_hatchability', id=id))
 
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>')
+@dept_required('Farm')
 def hatchability_diagnosis(id, date_str):
     flock = Flock.query.get_or_404(id)
     try:
@@ -2227,6 +2313,7 @@ def hatchability_diagnosis(id, date_str):
                            })
 
 @app.route('/flock/<int:id>/dashboard')
+@dept_required('Farm')
 def flock_dashboard(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
 
@@ -2395,6 +2482,7 @@ def flock_dashboard(id):
     return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days, diagnostic_hints=diagnostic_hints)
 
 @app.route('/daily_log', methods=['GET', 'POST'])
+@dept_required('Farm')
 def daily_log():
     if request.method == 'POST':
         house_id = request.form.get('house_id')
@@ -2588,7 +2676,7 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False))
+    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug)
 
 @app.route('/admin/toggle_mode')
 def toggle_admin_mode():
@@ -2673,6 +2761,7 @@ def admin_house_delete(id):
     return redirect(url_for('admin_houses'))
 
 @app.route('/daily_log/<int:id>/edit', methods=['GET', 'POST'])
+@dept_required('Farm')
 def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
     
@@ -2790,6 +2879,7 @@ def edit_daily_log(id):
     return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory)
 
 @app.route('/import', methods=['GET', 'POST'])
+@dept_required('Farm')
 def import_data():
     if request.method == 'POST':
         # Check for Confirmation
@@ -2874,6 +2964,7 @@ def import_data():
     return render_template('import.html')
 
 @app.route('/import_hatchability', methods=['POST'])
+@dept_required('Farm')
 def import_hatchability():
     if 'file' not in request.files:
         flash('No file part', 'danger')
@@ -4104,6 +4195,7 @@ def get_metrics_list():
     return json.dumps(METRICS_REGISTRY)
 
 @app.route('/api/flock/<int:flock_id>/custom_data', methods=['POST'])
+@dept_required('Farm')
 def get_custom_data(flock_id):
     flock = Flock.query.get_or_404(flock_id)
     req_data = request.get_json()
@@ -4161,6 +4253,7 @@ def get_dashboard_config(house_id):
     return json.dumps({'charts': charts, 'overview_columns': overview_cols})
 
 @app.route('/api/house/<int:house_id>/charts', methods=['POST'])
+@dept_required('Farm')
 def save_chart(house_id):
     data = request.get_json()
 
@@ -4192,6 +4285,7 @@ def save_chart(house_id):
     return "Saved", 200
 
 @app.route('/api/charts/<int:chart_id>', methods=['DELETE'])
+@dept_required('Farm')
 def delete_chart(chart_id):
     chart = ChartConfiguration.query.get_or_404(chart_id)
     db.session.delete(chart)
@@ -4199,6 +4293,7 @@ def delete_chart(chart_id):
     return "Deleted", 200
 
 @app.route('/api/house/<int:house_id>/overview', methods=['POST'])
+@dept_required('Farm')
 def save_overview_config(house_id):
     data = request.get_json()
     cols = data.get('columns', [])
@@ -4229,6 +4324,7 @@ def get_templates():
 # --- Inventory Routes ---
 
 @app.route('/inventory')
+@dept_required('Farm')
 def inventory():
     items = InventoryItem.query.order_by(InventoryItem.name).all()
     transactions = InventoryTransaction.query.order_by(InventoryTransaction.transaction_date.desc(), InventoryTransaction.id.desc()).limit(50).all()
@@ -4261,6 +4357,7 @@ def inventory():
     return render_template('inventory.html', items=items, transactions=transactions, summary=summary_list, current_month=today.strftime('%B %Y'), today=today)
 
 @app.route('/inventory/add', methods=['POST'])
+@dept_required('Farm')
 def add_inventory_item():
     name = request.form.get('name')
     type_ = request.form.get('type')
@@ -4295,6 +4392,7 @@ def add_inventory_item():
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction', methods=['POST'])
+@dept_required('Farm')
 def inventory_transaction():
     item_id = int(request.form.get('inventory_item_id'))
     type_ = request.form.get('transaction_type')
@@ -4331,6 +4429,7 @@ def inventory_transaction():
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
+@dept_required('Farm')
 def edit_inventory_item(id):
     item = InventoryItem.query.get_or_404(id)
 
@@ -4361,6 +4460,7 @@ def edit_inventory_item(id):
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction/delete/<int:id>', methods=['POST'])
+@dept_required('Farm')
 def delete_inventory_transaction(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 
@@ -4380,6 +4480,7 @@ def delete_inventory_transaction(id):
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction/edit/<int:id>', methods=['POST'])
+@dept_required('Farm')
 def edit_inventory_transaction(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 

@@ -23,6 +23,17 @@
     </style>
   </head>
   <body>
+    {% if is_debug %}
+    <div class="bg-warning text-dark p-2 text-center" style="position: fixed; top: 0; width: 100%; z-index: 10000;">
+        <strong>GOD MODE</strong> |
+        Current: {{ session.get('user_dept', 'Guest') }} / {{ session.get('user_role', 'None') }} |
+        <a href="{{ url_for('debug_set_role', dept='Farm', role='Worker') }}" class="btn btn-sm btn-dark ms-2">Test as Farm Worker</a>
+        <a href="{{ url_for('debug_set_role', dept='Hatchery', role='Worker') }}" class="btn btn-sm btn-dark ms-2">Test as Hatchery Worker</a>
+        <a href="{{ url_for('debug_set_role', dept='Admin', role='Admin') }}" class="btn btn-sm btn-danger ms-2">Test as Super Admin</a>
+    </div>
+    <div style="height: 50px;"></div> <!-- Spacer -->
+    {% endif %}
+
     <div id="loading-overlay">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -31,7 +42,7 @@
     </div>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('index') }}">SLH ERP</a>
+        <a class="navbar-brand" href="{{ url_for('index') }}">SLH ERP <small class="text-muted" style="font-size: 0.6em;">({{ session.get('user_dept', 'Guest') }})</small></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
@@ -65,11 +76,13 @@
             </li>
           </ul>
           <ul class="navbar-nav ms-auto">
+            {% if session.get('user_dept') %}
             <li class="nav-item">
-                <a class="nav-link btn btn-outline-secondary btn-sm" href="{{ url_for('toggle_admin_mode') }}">
-                    <small>Switch to {{ 'Worker' if is_admin else 'Admin' }}</small>
-                </a>
+                <span class="nav-link disabled text-light">
+                    {{ session.get('user_dept') }} | {{ session.get('user_role') }}
+                </span>
             </li>
+            {% endif %}
           </ul>
         </div>
       </div>
