@@ -17,6 +17,13 @@ from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
 
+# Mock User Database
+MOCK_USERS = {
+    'admin': {'password': 'admin123', 'dept': 'Admin', 'role': 'Admin'},
+    'farm_user': {'password': 'farm123', 'dept': 'Farm', 'role': 'Worker'},
+    'hatch_user': {'password': 'hatch123', 'dept': 'Hatchery', 'role': 'Worker'}
+}
+
 # Pre-compile regex for natural sorting
 _ns_re = re.compile('([0-9]+)')
 
@@ -41,10 +48,10 @@ def dept_required(required_dept):
 
             # If guest (None)
             if user_dept is None:
-                if request.path == url_for('welcome'): # Avoid loop
+                if request.path == url_for('login'): # Avoid loop
                     return f(*args, **kwargs)
-                flash("Please select a role to continue.", "info")
-                return redirect(url_for('welcome'))
+                flash("Please log in to continue.", "info")
+                return redirect(url_for('login'))
 
             # If user is logged in but wrong department
             flash(f"Access Denied: You do not have permission to view the {required_dept} Department", "danger")
@@ -55,7 +62,7 @@ def dept_required(required_dept):
             elif user_dept == 'Farm':
                 return redirect(url_for('index'))
             else:
-                return redirect(url_for('welcome')) # Fallback
+                return redirect(url_for('login')) # Fallback
 
         return decorated_function
     return decorator
@@ -672,51 +679,44 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 # --- Routes ---
 
-def is_god_mode_enabled():
-    """Checks if God Mode is enabled via environment variable or debug mode."""
-    god_mode_env = os.getenv('GOD_MODE', 'False').lower() in ('true', '1', 't')
-    return app.debug or god_mode_env
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-@app.route('/admin/switchboard')
-def admin_switchboard():
-    if not is_god_mode_enabled():
-        from flask import abort
-        abort(404)
-    return render_template('admin/switchboard.html')
+        user = MOCK_USERS.get(username)
+        if user and user['password'] == password:
+            session.clear()
+            session['user_id'] = username
+            session['user_dept'] = user['dept']
+            session['user_role'] = user['role']
+            # Set is_admin flag for template logic convenience
+            session['is_admin'] = (user['role'] == 'Admin')
 
-@app.route('/admin/switchboard/set_role/<dept>/<role>')
-def switchboard_set_role(dept, role):
-    if not is_god_mode_enabled():
-        from flask import abort
-        abort(404)
+            flash(f"Welcome back, {username}!", "success")
 
-    session['user_dept'] = dept
-    session['user_role'] = role
+            if user['dept'] == 'Hatchery':
+                return redirect(url_for('hatchery_dashboard'))
+            elif user['dept'] == 'Admin':
+                return redirect(url_for('index')) # Admin sees Farm by default but has access to all
+            else:
+                return redirect(url_for('index'))
+        else:
+            flash("Invalid username or password.", "danger")
 
-    # Is Admin?
-    if role == 'Admin':
-        session['is_admin'] = True
-        session['is_masquerading'] = False
-    else:
-        session['is_admin'] = False
-        session['is_masquerading'] = True
+    return render_template('login.html')
 
-    flash(f"Switched to {dept} - {role}", 'success')
-
-    if dept == 'Hatchery':
-        return redirect(url_for('hatchery_dashboard'))
-    elif dept == 'Admin':
-        return redirect(url_for('index'))
-    else:
-        return redirect(url_for('index'))
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for('login'))
 
 @app.route('/hatchery')
+@dept_required('Hatchery')
 def hatchery_dashboard():
     return render_template('hatchery_dashboard.html')
-
-@app.route('/welcome')
-def welcome():
-    return render_template('welcome.html')
 
 @app.route('/')
 @dept_required('Farm')
@@ -2693,15 +2693,7 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    is_god_mode = is_god_mode_enabled()
-    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug, god_mode=is_god_mode)
-
-@app.route('/admin/toggle_mode')
-def toggle_admin_mode():
-    session['is_admin'] = not session.get('is_admin', False)
-    mode = "Admin" if session['is_admin'] else "Worker"
-    flash(f"Switched to {mode} Mode", "info")
-    return redirect(request.referrer or url_for('index'))
+    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug)
 
 @app.route('/admin/control-panel')
 def admin_control_panel():
