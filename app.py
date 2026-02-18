@@ -3476,13 +3476,24 @@ def process_hatchability_import(file):
 
     for i, col in enumerate(df.columns):
         norm = normalize(col)
+
+        # Check for explicit percentage/ratio to EXCLUDE from count fields
+        is_pct = '%' in norm or norm.endswith('_p') or norm.endswith('_pct') or 'ratio' in norm or 'percentage' in norm
+
         if 'setting' in norm and 'date' in norm: col_map['setting_date'] = i
         elif 'candling' in norm and 'date' in norm: col_map['candling_date'] = i
         elif 'hatching' in norm and 'date' in norm: col_map['hatching_date'] = i
         elif 'flock' in norm: col_map['flock_id'] = i
         elif 'egg' in norm and 'set' in norm: col_map['egg_set'] = i
-        elif 'clear' in norm and '%' not in norm: col_map['clear_eggs'] = i
-        elif 'rotten' in norm and '%' not in norm: col_map['rotten_eggs'] = i
+
+        # Prefer FIRST match for counts (to handle duplicate 'Rotten Egg' headers where first is count)
+        # And strictly exclude percentage-like columns
+        elif 'clear' in norm and not is_pct:
+            if 'clear_eggs' not in col_map: col_map['clear_eggs'] = i
+
+        elif 'rotten' in norm and not is_pct:
+            if 'rotten_eggs' not in col_map: col_map['rotten_eggs'] = i
+
         elif 'hatched' in norm and ('total' in norm or 'chicks' in norm): col_map['hatched_chicks'] = i
         elif 'male' in norm and 'ratio' in norm: col_map['male_ratio'] = i
 
