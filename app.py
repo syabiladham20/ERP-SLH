@@ -3453,7 +3453,7 @@ def process_hatchability_import(file):
         if 'setting' in norm and 'date' in norm: col_map['setting_date'] = i
         elif 'candling' in norm and 'date' in norm: col_map['candling_date'] = i
         elif 'hatching' in norm and 'date' in norm: col_map['hatching_date'] = i
-        elif 'flock' in norm and 'id' in norm: col_map['flock_id'] = i
+        elif 'flock' in norm: col_map['flock_id'] = i
         elif 'egg' in norm and 'set' in norm: col_map['egg_set'] = i
         elif 'clear' in norm and 'egg' in norm and '%' not in norm: col_map['clear_eggs'] = i
         elif 'rotten' in norm and 'egg' in norm and '%' not in norm: col_map['rotten_eggs'] = i
@@ -3490,27 +3490,47 @@ def process_hatchability_import(file):
                 except: continue
         return None
 
-    batch_cache = {}
+    # Pre-fetch data for matching
+    all_houses = House.query.all()
+    house_map = {h.name: h.id for h in all_houses} # Name -> ID
+
+    # Fetch all flocks, organize by house
+    all_flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
+    flocks_by_house = {} # house_id -> list of Flock objects sorted desc
+    for f in all_flocks:
+        if f.house_id not in flocks_by_house:
+            flocks_by_house[f.house_id] = []
+        flocks_by_house[f.house_id].append(f)
 
     for index, row in df.iterrows():
         # Validations
         s_date = get_val(row, 'setting_date', parse_date)
-        f_id = get_val(row, 'flock_id', str)
+        f_name_input = get_val(row, 'flock_id', str)
 
-        if not s_date or not f_id:
+        if not s_date or not f_name_input:
             continue
 
-        f_id = f_id.strip()
+        f_name = f_name_input.strip()
 
-        flock_id = batch_cache.get(f_id)
-        if not flock_id:
-            flock = Flock.query.filter_by(flock_id=f_id).first()
-            if flock:
-                flock_id = flock.id
-                batch_cache[f_id] = flock_id
-            else:
-                # Log warning?
-                continue
+        # 1. Match House
+        house_id = house_map.get(f_name)
+        if not house_id:
+            # Skip if House not found (as per requirement)
+            continue
+
+        # 2. Match Flock in House by Date
+        # Find first flock where intake_date <= s_date
+        target_flock_id = None
+        candidates = flocks_by_house.get(house_id, [])
+
+        for f in candidates:
+            if f.intake_date <= s_date:
+                target_flock_id = f.id
+                break
+
+        if not target_flock_id:
+            # No valid flock found for this date
+            continue
 
         c_date = get_val(row, 'candling_date', parse_date) or (s_date + timedelta(days=18))
         h_date = get_val(row, 'hatching_date', parse_date) or (s_date + timedelta(days=21))
@@ -3521,19 +3541,31 @@ def process_hatchability_import(file):
         h_chicks = get_val(row, 'hatched_chicks', int) or 0
         m_ratio = get_val(row, 'male_ratio', float)
 
-        # Insert Record
-        h = Hatchability(
-            flock_id=flock_id,
-            setting_date=s_date,
-            candling_date=c_date,
-            hatching_date=h_date,
-            egg_set=e_set,
-            clear_eggs=c_eggs,
-            rotten_eggs=r_eggs,
-            hatched_chicks=h_chicks,
-            male_ratio_pct=m_ratio
-        )
-        db.session.add(h)
+        # Check existing record
+        existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()
+        if existing:
+            # Update
+            existing.candling_date = c_date
+            existing.hatching_date = h_date
+            existing.egg_set = e_set
+            existing.clear_eggs = c_eggs
+            existing.rotten_eggs = r_eggs
+            existing.hatched_chicks = h_chicks
+            existing.male_ratio_pct = m_ratio
+        else:
+            # Insert Record
+            h = Hatchability(
+                flock_id=target_flock_id,
+                setting_date=s_date,
+                candling_date=c_date,
+                hatching_date=h_date,
+                egg_set=e_set,
+                clear_eggs=c_eggs,
+                rotten_eggs=r_eggs,
+                hatched_chicks=h_chicks,
+                male_ratio_pct=m_ratio
+            )
+            db.session.add(h)
 
     db.session.commit()
 
