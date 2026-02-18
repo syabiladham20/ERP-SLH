@@ -551,6 +551,104 @@ def get_flock_stock_history_bulk(flocks):
 
     return result_map
 
+def calculate_male_ratio(flock_id, setting_date):
+    flock = Flock.query.get(flock_id)
+    if not flock: return None, False
+
+    weekday = setting_date.weekday() # Mon=0, Tue=1 ... Fri=4
+
+    start_date = None
+    end_date = setting_date - timedelta(days=1)
+
+    large_window = False
+
+    if weekday == 1: # Tuesday -> Fri, Sat, Sun, Mon (4 days)
+        start_date = setting_date - timedelta(days=4)
+    elif weekday == 4: # Friday -> Tue, Wed, Thu (3 days)
+        start_date = setting_date - timedelta(days=3)
+    else:
+        # Non-Standard
+        # Find LAST setting date for this flock BEFORE current setting_date
+        last_hatch = Hatchability.query.filter_by(flock_id=flock_id)\
+            .filter(Hatchability.setting_date < setting_date)\
+            .order_by(Hatchability.setting_date.desc()).first()
+
+        if last_hatch:
+            start_date = last_hatch.setting_date
+        else:
+            # First time catch
+            start_date = setting_date - timedelta(days=7)
+
+    days_count = (end_date - start_date).days + 1
+    if days_count > 10:
+        large_window = True
+
+    # Calculate ratios daily
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
+
+    # Init stocks (Production)
+    curr_m_prod = flock.intake_male or 0
+    curr_f_prod = flock.intake_female or 0
+    curr_m_hosp = 0
+    curr_f_hosp = 0
+
+    prod_start_date = flock.production_start_date
+    in_prod = False
+
+    ratios = []
+
+    for log in logs:
+        # Check Phase Switch (Reset Baseline)
+        if not in_prod:
+             if prod_start_date and log.date >= prod_start_date:
+                 in_prod = True
+                 if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
+                     curr_m_prod = flock.prod_start_male or 0
+                     curr_f_prod = flock.prod_start_female or 0
+                     curr_m_hosp = flock.prod_start_male_hosp or 0
+                     curr_f_hosp = flock.prod_start_female_hosp or 0
+
+        # Determine Ratio for this date (Start of Day)
+        # Use Prod Stocks
+        if start_date <= log.date <= end_date:
+             if curr_f_prod > 0:
+                 r = (curr_m_prod / curr_f_prod) * 100
+                 ratios.append(r)
+
+        # Update Stocks (End of Day)
+        # Male
+        mort_m_prod = log.mortality_male or 0
+        mort_m_hosp = log.mortality_male_hosp or 0
+        cull_m_prod = log.culls_male or 0
+        cull_m_hosp = log.culls_male_hosp or 0
+        moved_to_hosp_m = log.males_moved_to_hosp or 0
+        moved_to_prod_m = log.males_moved_to_prod or 0
+
+        curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp_m + moved_to_prod_m
+        curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp_m - moved_to_prod_m
+
+        # Female
+        mort_f_prod = log.mortality_female or 0
+        mort_f_hosp = log.mortality_female_hosp or 0
+        cull_f_prod = log.culls_female or 0
+        cull_f_hosp = log.culls_female_hosp or 0
+        moved_to_hosp_f = log.females_moved_to_hosp or 0
+        moved_to_prod_f = log.females_moved_to_prod or 0
+
+        curr_f_prod = curr_f_prod - mort_f_prod - cull_f_prod - moved_to_hosp_f + moved_to_prod_f
+        curr_f_hosp = curr_f_hosp - mort_f_hosp - cull_f_hosp + moved_to_hosp_f - moved_to_prod_f
+
+        if curr_m_prod < 0: curr_m_prod = 0
+        if curr_f_prod < 0: curr_f_prod = 0
+        if curr_m_hosp < 0: curr_m_hosp = 0
+        if curr_f_hosp < 0: curr_f_hosp = 0
+
+    if not ratios:
+        return None, large_window
+
+    avg = sum(ratios) / len(ratios)
+    return avg, large_window
+
 # --- Initialization Helpers ---
 
 def init_ui_elements(commit=True):
@@ -771,7 +869,20 @@ def hatchery_dashboard():
     for f in active_flocks:
         days = (today - f.intake_date).days
         f.current_week = (days // 7) + 1 if days >= 0 else 0
-    return render_template('hatchery_dashboard.html', active_flocks=active_flocks)
+
+    # Analytics: Current Month Hatchability (based on Hatch Date)
+    start_month = date(today.year, today.month, 1)
+    # Find records with hatching_date in current month
+    # Note: hatching_date >= start_month
+    # Ideally <= end_month, but >= start is fine for "current month so far"
+    monthly_records = Hatchability.query.filter(Hatchability.hatching_date >= start_month).all()
+
+    total_hatched = sum(r.hatched_chicks for r in monthly_records)
+    total_set = sum(r.egg_set for r in monthly_records)
+
+    avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
+
+    return render_template('hatchery_dashboard.html', active_flocks=active_flocks, avg_hatch_pct=avg_hatch_pct, current_month=today.strftime('%B %Y'))
 
 @app.route('/')
 @dept_required('Farm')
@@ -2288,6 +2399,9 @@ def flock_hatchability(id):
                 candling_date = datetime.strptime(request.form.get('candling_date'), '%Y-%m-%d').date()
                 hatching_date = datetime.strptime(request.form.get('hatching_date'), '%Y-%m-%d').date()
 
+                # Calculate Male Ratio
+                male_ratio, large_window = calculate_male_ratio(flock.id, setting_date)
+
                 h = Hatchability(
                     flock_id=flock.id,
                     setting_date=setting_date,
@@ -2297,11 +2411,16 @@ def flock_hatchability(id):
                     clear_eggs=int(request.form.get('clear_eggs') or 0),
                     rotten_eggs=int(request.form.get('rotten_eggs') or 0),
                     hatched_chicks=int(request.form.get('hatched_chicks') or 0),
-                    male_ratio_pct=float(request.form.get('male_ratio_pct')) if request.form.get('male_ratio_pct') else None
+                    male_ratio_pct=male_ratio
                 )
                 db.session.add(h)
                 db.session.commit()
-                flash('Hatchability record added.', 'success')
+
+                msg = 'Hatchability record added.'
+                if large_window:
+                    msg += ' Note: Large collection window detected. Average Male Ratio may be affected.'
+
+                flash(msg, 'success' if not large_window else 'warning')
             except ValueError as e:
                 flash(f'Error adding record: {e}', 'danger')
 
@@ -2320,6 +2439,42 @@ def delete_hatchability(id, record_id):
     db.session.commit()
     flash('Record deleted.', 'info')
     return redirect(url_for('flock_hatchability', id=id))
+
+@app.route('/hatchery/charts/<int:flock_id>')
+def hatchery_charts(flock_id):
+    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
+        flash("Access Denied.", "danger")
+        return redirect(url_for('login'))
+
+    flock = Flock.query.get_or_404(flock_id)
+    records = Hatchability.query.filter_by(flock_id=flock_id).order_by(Hatchability.setting_date.asc()).all()
+
+    data = {
+        'weeks': [],
+        'fertile_pct': [],
+        'clear_pct': [],
+        'rotten_pct': [],
+        'hatch_pct': []
+    }
+
+    for r in records:
+        age_days = (r.setting_date - flock.intake_date).days
+        week = (age_days // 7) + 1
+
+        data['weeks'].append(f"Week {week}")
+
+        e_set = r.egg_set or 1
+        clear_p = (r.clear_eggs / e_set) * 100
+        rotten_p = (r.rotten_eggs / e_set) * 100
+        fertile_p = ((r.egg_set - r.clear_eggs - r.rotten_eggs) / e_set) * 100
+        hatch_p = (r.hatched_chicks / e_set) * 100
+
+        data['clear_pct'].append(round(clear_p, 2))
+        data['rotten_pct'].append(round(rotten_p, 2))
+        data['fertile_pct'].append(round(fertile_p, 2))
+        data['hatch_pct'].append(round(hatch_p, 2))
+
+    return render_template('hatchery_charts.html', flock=flock, data=data)
 
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>')
 def hatchability_diagnosis(id, date_str):

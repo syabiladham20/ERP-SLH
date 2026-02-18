@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Hatchability Performance: {{ flock.house.name }} ({{ flock.batch_id }})</h2>
+        <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="card p-3 shadow-sm">
+        <canvas id="hatchChart" style="max-height: 600px;"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const chartData = {{ data | tojson }};
+
+    const ctx = document.getElementById('hatchChart').getContext('2d');
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartData.weeks,
+            datasets: [
+                {
+                    label: 'Fertile %',
+                    data: chartData.fertile_pct,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    stack: 'Stack 0',
+                    order: 2
+                },
+                {
+                    label: 'Clear %',
+                    data: chartData.clear_pct,
+                    backgroundColor: 'rgba(255, 205, 86, 0.7)',
+                    stack: 'Stack 0',
+                    order: 2
+                },
+                {
+                    label: 'Rotten %',
+                    data: chartData.rotten_pct,
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                    stack: 'Stack 0',
+                    order: 2
+                },
+                {
+                    label: 'Hatchability %',
+                    data: chartData.hatch_pct,
+                    type: 'line',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderWidth: 3,
+                    yAxisID: 'y1',
+                    order: 1,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Egg Breakdown & Hatchability Trend'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Flock Age'
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    stacked: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Egg Status %'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Hatchability %'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
