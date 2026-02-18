@@ -3565,13 +3565,9 @@ def process_hatchability_import(file):
         c_eggs = get_val(row, 'clear_eggs', int) or 0
         r_eggs = get_val(row, 'rotten_eggs', int) or 0
         h_chicks = get_val(row, 'hatched_chicks', int) or 0
-        m_ratio = get_val(row, 'male_ratio', float)
 
-        if m_ratio is None:
-            # Fallback Calculation
-            calc_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
-            if calc_ratio is not None:
-                m_ratio = calc_ratio
+        # Always fetch Male Ratio from Farm Database
+        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
 
         # Check existing record
         existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()
