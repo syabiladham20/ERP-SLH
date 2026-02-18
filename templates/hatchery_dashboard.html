@@ -5,6 +5,21 @@
     <h2>Hatchery Dashboard</h2>
 </div>
 
+<!-- Hatchery Analytics Card -->
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Hatchery Analytics: {{ current_month }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-12">
+                <h6 class="text-muted">Average Hatchability</h6>
+                <h2 class="display-4 text-primary">{{ "%.2f"|format(avg_hatch_pct) }}%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-header">
         <h5>Active Flocks</h5>
@@ -31,6 +46,9 @@
                         <td>
                             <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-primary">
                                 Manage Hatchability
+                            </a>
+                            <a href="{{ url_for('hatchery_charts', flock_id=flock.id) }}" class="btn btn-sm btn-info text-white">
+                                View Performance Charts
                             </a>
                         </td>
                     </tr>
