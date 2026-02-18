@@ -1783,6 +1783,9 @@ def toggle_phase(id):
 @app.route('/flock/<int:id>')
 @dept_required('Farm')
 def view_flock(id):
+    active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks.sort(key=natural_sort_key)
+
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
@@ -2243,7 +2246,9 @@ def view_flock(id):
         'male_ratio': (curr_m_prod / curr_f_prod * 100) if curr_f_prod > 0 else 0
     }
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs)
+    weekly_data.reverse()
+
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks)
 
 @app.route('/flock/<int:id>/charts')
 @dept_required('Farm')
