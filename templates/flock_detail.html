@@ -29,11 +29,19 @@
     </div>
   </div>
   <div class="card-footer">
-    <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">KPI Dashboard</a>
-    <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">Custom Dashboard</a>
-    <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">Advanced Charts</a>
-    <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">Hatchability</a>
-    <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">Health Log</a>
+    {% for item in get_ui_elements('flock_detail') %}
+        {% if item.key == 'detail_kpi' %}
+            <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">{{ item.label }}</a>
+        {% elif item.key == 'detail_custom' %}
+            <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">{{ item.label }}</a>
+        {% elif item.key == 'detail_charts' %}
+            <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">{{ item.label }}</a>
+        {% elif item.key == 'detail_hatch' %}
+            <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">{{ item.label }}</a>
+        {% elif item.key == 'detail_health' %}
+            <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">{{ item.label }}</a>
+        {% endif %}
+    {% endfor %}
   </div>
 </div>
 

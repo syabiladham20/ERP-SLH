@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>UI Manager</h2>
+    <p class="text-muted">Customize the labels, visibility, and order of UI elements for standard users.</p>
+
+    <form action="{{ url_for('admin_ui_update') }}" method="POST" id="uiForm">
+        <div class="d-flex justify-content-end mb-3">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" id="uiTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#nav-main">Main Navbar</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#nav-health">Health Dropdown</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#flock-card">Flock Card</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#flock-detail">Flock Details</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="uiTabContent">
+
+            <div class="tab-pane fade show active" id="nav-main">
+                <h4>Main Navbar</h4>
+                <ul class="list-group sortable-list" id="list-navbar_main">
+                    {% for item in elements.get('navbar_main', []) %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="me-3 text-muted drag-handle" style="cursor: move; font-size: 1.5rem;">☰</span>
+
+                            <!-- Hidden ID and Order -->
+                            <input type="hidden" name="id[]" value="{{ item.id }}">
+                            <input type="hidden" name="order_{{ item.id }}" class="order-input" value="{{ item.order_index }}">
+
+                            <!-- Visibility Toggle -->
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" name="visible_{{ item.id }}" {% if item.is_visible %}checked{% endif %}>
+                            </div>
+
+                            <!-- Label Input -->
+                            <input type="text" class="form-control" name="label_{{ item.id }}" value="{{ item.label }}">
+
+                            <!-- Key (Read-only) -->
+                            <span class="ms-2 text-muted small">({{ item.key }})</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="tab-pane fade" id="nav-health">
+                <h4>Health Dropdown</h4>
+                <ul class="list-group sortable-list" id="list-navbar_health">
+                    {% for item in elements.get('navbar_health', []) %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="me-3 text-muted drag-handle" style="cursor: move; font-size: 1.5rem;">☰</span>
+                            <input type="hidden" name="id[]" value="{{ item.id }}">
+                            <input type="hidden" name="order_{{ item.id }}" class="order-input" value="{{ item.order_index }}">
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" name="visible_{{ item.id }}" {% if item.is_visible %}checked{% endif %}>
+                            </div>
+                            <input type="text" class="form-control" name="label_{{ item.id }}" value="{{ item.label }}">
+                            <span class="ms-2 text-muted small">({{ item.key }})</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="tab-pane fade" id="flock-card">
+                <h4>Flock Card Actions</h4>
+                <ul class="list-group sortable-list" id="list-flock_card">
+                    {% for item in elements.get('flock_card', []) %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="me-3 text-muted drag-handle" style="cursor: move; font-size: 1.5rem;">☰</span>
+                            <input type="hidden" name="id[]" value="{{ item.id }}">
+                            <input type="hidden" name="order_{{ item.id }}" class="order-input" value="{{ item.order_index }}">
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" name="visible_{{ item.id }}" {% if item.is_visible %}checked{% endif %}>
+                            </div>
+                            <input type="text" class="form-control" name="label_{{ item.id }}" value="{{ item.label }}">
+                            <span class="ms-2 text-muted small">({{ item.key }})</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="tab-pane fade" id="flock-detail">
+                <h4>Flock Detail Footer</h4>
+                <ul class="list-group sortable-list" id="list-flock_detail">
+                    {% for item in elements.get('flock_detail', []) %}
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="me-3 text-muted drag-handle" style="cursor: move; font-size: 1.5rem;">☰</span>
+                            <input type="hidden" name="id[]" value="{{ item.id }}">
+                            <input type="hidden" name="order_{{ item.id }}" class="order-input" value="{{ item.order_index }}">
+                            <div class="form-check form-switch me-3">
+                                <input class="form-check-input" type="checkbox" name="visible_{{ item.id }}" {% if item.is_visible %}checked{% endif %}>
+                            </div>
+                            <input type="text" class="form-control" name="label_{{ item.id }}" value="{{ item.label }}">
+                            <span class="ms-2 text-muted small">({{ item.key }})</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sortables = document.querySelectorAll('.sortable-list');
+
+        function updateIndices(list) {
+            const items = list.querySelectorAll('li');
+            items.forEach((item, index) => {
+                const input = item.querySelector('.order-input');
+                if (input) input.value = index + 1;
+            });
+        }
+
+        sortables.forEach(el => {
+            new Sortable(el, {
+                animation: 150,
+                handle: '.drag-handle',
+                onEnd: function (evt) {
+                    updateIndices(evt.from);
+                }
+            });
+        });
+
+        // Initial update to ensure order indices are correct on load?
+        // Not strictly needed if backend serves sorted.
+    });
+</script>
+{% endblock %}

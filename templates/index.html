@@ -103,62 +103,66 @@
                 </div>
                 <div class="card-footer d-flex justify-content-between">
                     <div>
-                        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info">{% if session.get('is_admin') %}History{% else %}See Details{% endif %}</a>
-
-                        {% if flock.phase == 'Rearing' %}
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#startProdModal{{ flock.id }}">
-                                Start Prod
-                            </button>
-
-                            <!-- Modal -->
-                            <div class="modal fade" id="startProdModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
-                              <div class="modal-dialog">
-                                <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title">Start Production Phase</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body">
-                                    <p>Please confirm the <strong>Production Start Date</strong> for {{ flock.house.name }}.</p>
-                                    <div class="mb-3">
-                                        <label for="prodDate{{ flock.id }}" class="form-label">Start Date</label>
-                                        <input type="date" class="form-control" id="prodDate{{ flock.id }}" name="production_start_date" value="{{ today }}" required>
+                        {% for item in get_ui_elements('flock_card') %}
+                            {% if item.key == 'card_details' %}
+                                <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info me-1">{{ item.label }}</a>
+                            {% elif item.key == 'card_start_prod' and flock.phase == 'Rearing' %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#startProdModal{{ flock.id }}">
+                                    {{ item.label }}
+                                </button>
+                                <!-- Modal (kept inline for functionality) -->
+                                <div class="modal fade" id="startProdModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
+                                  <div class="modal-dialog">
+                                    <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
+                                    <div class="modal-content">
+                                      <div class="modal-header">
+                                        <h5 class="modal-title">Start Production Phase</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                      </div>
+                                      <div class="modal-body">
+                                        <p>Please confirm the <strong>Production Start Date</strong> for {{ flock.house.name }}.</p>
+                                        <div class="mb-3">
+                                            <label for="prodDate{{ flock.id }}" class="form-label">Start Date</label>
+                                            <input type="date" class="form-control" id="prodDate{{ flock.id }}" name="production_start_date" value="{{ today }}" required>
+                                        </div>
+                                        <hr>
+                                        <h6 class="text-primary">Production Start Counts (Baseline)</h6>
+                                        <div class="row">
+                                            <div class="col-6 mb-2">
+                                                <label class="form-label small">Males (Prod)</label>
+                                                <input type="number" class="form-control form-control-sm" name="prod_start_male" required value="0">
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <label class="form-label small">Females (Prod)</label>
+                                                <input type="number" class="form-control form-control-sm" name="prod_start_female" required value="0">
+                                            </div>
+                                        </div>
+                                        <h6 class="text-danger">Hospital Start Counts</h6>
+                                        <div class="row">
+                                            <div class="col-6 mb-2">
+                                                <label class="form-label small">Males (Hosp)</label>
+                                                <input type="number" class="form-control form-control-sm" name="prod_start_male_hosp" value="0">
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <label class="form-label small">Females (Hosp)</label>
+                                                <input type="number" class="form-control form-control-sm" name="prod_start_female_hosp" value="0">
+                                            </div>
+                                        </div>
+                                        <p class="small text-muted mt-2">Statistics will be calculated as 'Production' starting from this date using these counts as the new baseline.</p>
+                                      </div>
+                                      <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-success">Start Production</button>
+                                      </div>
                                     </div>
-                                    <hr>
-                                    <h6 class="text-primary">Production Start Counts (Baseline)</h6>
-                                    <div class="row">
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small">Males (Prod)</label>
-                                            <input type="number" class="form-control form-control-sm" name="prod_start_male" required value="0">
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small">Females (Prod)</label>
-                                            <input type="number" class="form-control form-control-sm" name="prod_start_female" required value="0">
-                                        </div>
-                                    </div>
-                                    <h6 class="text-danger">Hospital Start Counts</h6>
-                                    <div class="row">
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small">Males (Hosp)</label>
-                                            <input type="number" class="form-control form-control-sm" name="prod_start_male_hosp" value="0">
-                                        </div>
-                                        <div class="col-6 mb-2">
-                                            <label class="form-label small">Females (Hosp)</label>
-                                            <input type="number" class="form-control form-control-sm" name="prod_start_female_hosp" value="0">
-                                        </div>
-                                    </div>
-                                    <p class="small text-muted mt-2">Statistics will be calculated as 'Production' starting from this date using these counts as the new baseline.</p>
-                                  </div>
-                                  <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-success">Start Production</button>
+                                    </form>
                                   </div>
                                 </div>
-                                </form>
-                              </div>
-                            </div>
-                        {% else %}
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- Admin Actions (Hardcoded/Protected) -->
+                        {% if flock.phase != 'Rearing' %}
                              {% if session.get('is_admin') %}
                              <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Rearing? Production Start Date will be cleared.');">
                                <button type="submit" class="btn btn-sm btn-outline-warning">
