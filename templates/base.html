@@ -135,6 +135,8 @@
                     {{ session.get('user_id') }} ({{ session.get('user_dept') }})
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('change_password') }}">Change Password</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="{{ url_for('logout') }}">Log Out</a></li>
                 </ul>
             </li>

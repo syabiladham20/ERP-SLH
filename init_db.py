@@ -4,6 +4,10 @@ def init_db():
     with app.app_context():
         # db.create_all() # Schema is now managed by Flask-Migrate
         
+        # Pre-populate Users
+        initialize_users()
+        print("Users initialized.")
+
         # Pre-populate Houses
         if House.query.count() == 0:
             houses = ['VA1', 'VA2', 'VA3']
