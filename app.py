@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, g
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, and_
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
 import os
 import time
@@ -17,12 +18,12 @@ from metrics import METRICS_REGISTRY, calculate_metrics
 
 load_dotenv()
 
-# Mock User Database
-MOCK_USERS = {
-    'admin': {'password': 'admin123', 'dept': 'Admin', 'role': 'Admin'},
-    'farm_user': {'password': 'farm123', 'dept': 'Farm', 'role': 'Worker'},
-    'hatch_user': {'password': 'hatch123', 'dept': 'Hatchery', 'role': 'Worker'}
-}
+# Initial User Data for Seeding
+INITIAL_USERS = [
+    {'username': 'admin', 'password': 'admin123', 'dept': 'Admin', 'role': 'Admin'},
+    {'username': 'farm_user', 'password': 'farm123', 'dept': 'Farm', 'role': 'Worker'},
+    {'username': 'hatch_user', 'password': 'hatch123', 'dept': 'Hatchery', 'role': 'Worker'}
+]
 
 # Pre-compile regex for natural sorting
 _ns_re = re.compile('([0-9]+)')
@@ -76,6 +77,7 @@ if database_url and database_url.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
@@ -101,6 +103,19 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # --- Models ---
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    dept = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -593,6 +608,20 @@ def initialize_sampling_schedule(flock_id, commit=True):
     else:
         db.session.flush()
 
+def initialize_users():
+    # Helper to seed users if table is empty or missing specific users
+    for u_data in INITIAL_USERS:
+        user = User.query.filter_by(username=u_data['username']).first()
+        if not user:
+            user = User(
+                username=u_data['username'],
+                dept=u_data['dept'],
+                role=u_data['role']
+            )
+            user.set_password(u_data['password'])
+            db.session.add(user)
+    db.session.commit()
+
 def initialize_vaccine_schedule(flock_id, commit=True):
     flock = Flock.query.get(flock_id)
     if not flock: return
@@ -679,27 +708,50 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 # --- Routes ---
 
+@app.before_request
+def load_logged_in_user():
+    user_id = session.get('user_id')
+    if user_id:
+        # Optimization: storing simple details in session to avoid DB hit on every request?
+        # But for security (role changes), fetching from DB is better.
+        # However, sticking to original session-based design for now, but validating existence.
+        # Let's trust session for performance, but `g.user` is useful.
+        # Note: In session we stored 'username' as 'user_id' in previous code.
+        # Let's switch to storing Database ID in session['user_db_id'] maybe?
+        # Or stick to username for backward compat?
+        # The previous code used session['user_id'] = username.
+        # Let's keep using session['user_id'] = username to minimize disruption, but `g.user` will be the object.
+        g.user = User.query.filter_by(username=user_id).first()
+    else:
+        g.user = None
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        remember = True if request.form.get('remember') else False
 
-        user = MOCK_USERS.get(username)
-        if user and user['password'] == password:
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
             session.clear()
-            session['user_id'] = username
-            session['user_dept'] = user['dept']
-            session['user_role'] = user['role']
-            # Set is_admin flag for template logic convenience
-            session['is_admin'] = (user['role'] == 'Admin')
+            session['user_id'] = user.username
+            session['user_dept'] = user.dept
+            session['user_role'] = user.role
+            session['is_admin'] = (user.role == 'Admin')
 
-            flash(f"Welcome back, {username}!", "success")
+            if remember:
+                session.permanent = True
+            else:
+                session.permanent = False
 
-            if user['dept'] == 'Hatchery':
+            flash(f"Welcome back, {user.username}!", "success")
+
+            if user.dept == 'Hatchery':
                 return redirect(url_for('hatchery_dashboard'))
-            elif user['dept'] == 'Admin':
-                return redirect(url_for('index')) # Admin sees Farm by default but has access to all
+            elif user.dept == 'Admin':
+                return redirect(url_for('index'))
             else:
                 return redirect(url_for('index'))
         else:
@@ -712,6 +764,98 @@ def logout():
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
+
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        user = User.query.filter_by(username=session['user_id']).first()
+
+        if not user or not user.check_password(current_password):
+            flash("Incorrect current password.", "danger")
+        elif new_password != confirm_password:
+            flash("New passwords do not match.", "danger")
+        else:
+            user.set_password(new_password)
+            db.session.commit()
+            flash("Password updated successfully.", "success")
+            return redirect(url_for('index'))
+
+    return render_template('change_password.html')
+
+@app.route('/admin/users')
+def admin_users():
+    if not session.get('is_admin'):
+        flash("Access Denied.", "danger")
+        return redirect(url_for('index'))
+    users = User.query.order_by(User.username).all()
+    return render_template('admin/users.html', users=users)
+
+@app.route('/admin/users/add', methods=['POST'])
+def admin_user_add():
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    username = request.form.get('username')
+    password = request.form.get('password')
+    dept = request.form.get('dept')
+    role = request.form.get('role')
+
+    if User.query.filter_by(username=username).first():
+        flash(f"User {username} already exists.", "warning")
+    else:
+        u = User(username=username, dept=dept, role=role)
+        u.set_password(password)
+        db.session.add(u)
+        db.session.commit()
+        flash(f"User {username} added.", "success")
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/edit/<int:user_id>', methods=['POST'])
+def admin_user_edit(user_id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+    dept = request.form.get('dept')
+    role = request.form.get('role')
+
+    user.dept = dept
+    user.role = role
+    db.session.commit()
+    flash(f"User {user.username} updated.", "success")
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+def admin_user_delete(user_id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+    if user.username == session['user_id']:
+        flash("Cannot delete yourself.", "danger")
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User {user.username} deleted.", "info")
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/reset_password/<int:user_id>', methods=['POST'])
+def admin_user_reset_password(user_id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+    new_pass = request.form.get('new_password')
+    if new_pass:
+        user.set_password(new_pass)
+        db.session.commit()
+        flash(f"Password for {user.username} has been reset.", "success")
+    else:
+        flash("Password cannot be empty.", "danger")
+    return redirect(url_for('admin_users'))
 
 @app.route('/hatchery')
 @dept_required('Hatchery')
