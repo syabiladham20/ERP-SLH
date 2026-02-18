@@ -2625,7 +2625,7 @@ def hatchery_charts(flock_id):
 
     return render_template('hatchery_charts.html', flock=flock, data=data)
 
-@app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>')
+@app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>', methods=['GET', 'POST'])
 def hatchability_diagnosis(id, date_str):
     if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
         return redirect(url_for('login'))
@@ -2636,6 +2636,23 @@ def hatchability_diagnosis(id, date_str):
     except ValueError:
         flash('Invalid date format.', 'danger')
         return redirect(url_for('flock_hatchability', id=id))
+
+    if request.method == 'POST':
+        if session.get('user_dept') == 'Farm':
+            flash("Farm users have read-only access.", "warning")
+        else:
+            h_id = request.form.get('hatchability_id')
+            if h_id:
+                h_record = Hatchability.query.get(h_id)
+                if h_record and h_record.flock_id == id:
+                    try:
+                        h_record.clear_eggs = int(request.form.get('clear_eggs') or 0)
+                        h_record.rotten_eggs = int(request.form.get('rotten_eggs') or 0)
+                        db.session.commit()
+                        flash('Hatchability record updated.', 'success')
+                    except ValueError:
+                        flash('Invalid input.', 'danger')
+        return redirect(url_for('hatchability_diagnosis', id=id, date_str=date_str))
 
     records = Hatchability.query.filter_by(flock_id=id, setting_date=setting_date).all()
     if not records:
@@ -2692,6 +2709,8 @@ def hatchability_diagnosis(id, date_str):
     avg_clear = (total_clear / total_set * 100) if total_set > 0 else 0
     avg_rotten = (total_rotten / total_set * 100) if total_set > 0 else 0
 
+    total_collected = sum(l.eggs_collected for l in daily_logs)
+
     return render_template('hatchability_diagnosis.html',
                            flock=flock,
                            setting_date=setting_date,
@@ -2704,7 +2723,9 @@ def hatchability_diagnosis(id, date_str):
                            stats={
                                'set': total_set, 'hatched': total_hatched,
                                'hatch_pct': avg_hatchability,
-                               'clear_pct': avg_clear, 'rotten_pct': avg_rotten
+                               'clear_pct': avg_clear, 'rotten_pct': avg_rotten,
+                               'collected': total_collected,
+                               'diff': total_collected - total_set
                            })
 
 @app.route('/flock/<int:id>/dashboard')
@@ -3460,8 +3481,8 @@ def process_hatchability_import(file):
         elif 'hatching' in norm and 'date' in norm: col_map['hatching_date'] = i
         elif 'flock' in norm: col_map['flock_id'] = i
         elif 'egg' in norm and 'set' in norm: col_map['egg_set'] = i
-        elif 'clear' in norm and 'egg' in norm and '%' not in norm: col_map['clear_eggs'] = i
-        elif 'rotten' in norm and 'egg' in norm and '%' not in norm: col_map['rotten_eggs'] = i
+        elif 'clear' in norm and '%' not in norm: col_map['clear_eggs'] = i
+        elif 'rotten' in norm and '%' not in norm: col_map['rotten_eggs'] = i
         elif 'hatched' in norm and ('total' in norm or 'chicks' in norm): col_map['hatched_chicks'] = i
         elif 'male' in norm and 'ratio' in norm: col_map['male_ratio'] = i
 
@@ -3544,7 +3565,9 @@ def process_hatchability_import(file):
         c_eggs = get_val(row, 'clear_eggs', int) or 0
         r_eggs = get_val(row, 'rotten_eggs', int) or 0
         h_chicks = get_val(row, 'hatched_chicks', int) or 0
-        m_ratio = get_val(row, 'male_ratio', float)
+
+        # Always fetch Male Ratio from Farm Database
+        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
 
         # Check existing record
         existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()

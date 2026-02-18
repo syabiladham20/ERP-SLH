@@ -15,6 +15,12 @@
             </div>
             <div class="card-body">
                 <p><strong>Total Eggs Set:</strong> {{ stats['set'] }}</p>
+                <p><strong>Total Eggs Collected:</strong> {{ stats['collected'] }}</p>
+                <p><strong>Difference:</strong>
+                    <span class="{% if stats['diff'] != 0 %}text-danger fw-bold{% else %}text-success{% endif %}">
+                        {{ stats['diff'] }}
+                    </span>
+                </p>
                 <p><strong>Total Hatched:</strong> {{ stats['hatched'] }}</p>
                 <hr>
                 <h3 class="text-center {% if stats['hatch_pct'] < 80 %}text-danger{% else %}text-success{% endif %}">
@@ -60,6 +66,33 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if session.get('user_dept') != 'Farm' %}
+        <div class="card mb-3">
+            <div class="card-header bg-secondary text-white">
+                Update Hatchability Records
+            </div>
+            <div class="card-body">
+                {% for r in records %}
+                <form method="POST" action="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=setting_date.strftime('%Y-%m-%d')) }}" class="mb-3 border-bottom pb-3">
+                    <input type="hidden" name="hatchability_id" value="{{ r.id }}">
+                    <p class="mb-1"><strong>Record ID:</strong> {{ r.id }} (Set: {{ r.egg_set }})</p>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fs-6">Clear Eggs</label>
+                            <input type="number" class="form-control form-control-sm" name="clear_eggs" value="{{ r.clear_eggs }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fs-6">Rotten Eggs</label>
+                            <input type="number" class="form-control form-control-sm" name="rotten_eggs" value="{{ r.rotten_eggs }}">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary mt-2">Update</button>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Farm Data Logs -->
