@@ -170,7 +170,7 @@ class InventoryTransaction(db.Model):
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False)
-    batch_id = db.Column(db.String(100), unique=True, nullable=False)
+    flock_id = db.Column(db.String(100), unique=True, nullable=False)
     intake_date = db.Column(db.Date, nullable=False, default=date.today)
     
     # Intake Counts
@@ -1265,15 +1265,15 @@ def clinical_notes():
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
-        # Batch Name (ID) Update
-        new_batch_id = request.form.get('batch_id').strip()
-        if new_batch_id and new_batch_id != flock.batch_id:
+        # Flock ID (ID) Update
+        new_flock_id = request.form.get('flock_id').strip()
+        if new_flock_id and new_flock_id != flock.flock_id:
             # Check for uniqueness
-            existing = Flock.query.filter_by(batch_id=new_batch_id).first()
+            existing = Flock.query.filter_by(flock_id=new_flock_id).first()
             if existing:
-                flash(f'Error: Batch Name "{new_batch_id}" already exists.', 'danger')
+                flash(f'Error: Flock ID "{new_flock_id}" already exists.', 'danger')
                 return render_template('flock_edit.html', flock=flock)
-            flock.batch_id = new_batch_id
+            flock.flock_id = new_flock_id
 
         intake_date_str = request.form.get('intake_date')
         if intake_date_str:
@@ -1291,7 +1291,7 @@ def edit_flock(id):
         flock.doa_female = int(request.form.get('doa_female') or 0)
 
         db.session.commit()
-        flash(f'Flock {flock.batch_id} updated.', 'success')
+        flash(f'Flock {flock.flock_id} updated.', 'success')
         return redirect(url_for('index'))
 
     return render_template('flock_edit.html', flock=flock)
@@ -1302,7 +1302,7 @@ def delete_flock(id):
     flock = Flock.query.get_or_404(id)
     db.session.delete(flock)
     db.session.commit()
-    flash(f'Flock {flock.batch_id} deleted.', 'warning')
+    flash(f'Flock {flock.flock_id} deleted.', 'warning')
     return redirect(url_for('manage_flocks'))
 
 @app.route('/help')
@@ -1337,10 +1337,10 @@ def manage_flocks():
         # Validation: Check if House has active flock
         existing_active = Flock.query.filter_by(house_id=house.id, status='Active').first()
         if existing_active:
-            flash(f'Error: House {house.name} already has an active flock (Batch: {existing_active.batch_id})', 'danger')
+            flash(f'Error: House {house.name} already has an active flock (Batch: {existing_active.flock_id})', 'danger')
             return redirect(url_for('manage_flocks'))
         
-        # Generate Batch ID
+        # Generate Flock ID
         intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
         date_str = intake_date.strftime('%y%m%d')
         
@@ -1348,11 +1348,11 @@ def manage_flocks():
         house_flock_count = Flock.query.filter_by(house_id=house.id).count()
         n = house_flock_count + 1
         
-        batch_id = f"{house.name}_{date_str}_Batch{n}"
+        flock_id = f"{house.name}_{date_str}_Batch{n}"
         
         new_flock = Flock(
             house_id=house.id,
-            batch_id=batch_id,
+            flock_id=flock_id,
             intake_date=intake_date,
             intake_male=intake_male,
             intake_female=intake_female,
@@ -1367,7 +1367,7 @@ def manage_flocks():
         initialize_sampling_schedule(new_flock.id)
         initialize_vaccine_schedule(new_flock.id)
 
-        flash(f'Flock created successfully! Batch ID: {batch_id}', 'success')
+        flash(f'Flock created successfully! Flock ID: {flock_id}', 'success')
         return redirect(url_for('index'))
     
     houses = House.query.all()
@@ -1381,7 +1381,7 @@ def close_flock(id):
     flock.status = 'Inactive'
     flock.end_date = date.today()
     db.session.commit()
-    flash(f'Flock {flock.batch_id} closed.', 'info')
+    flash(f'Flock {flock.flock_id} closed.', 'info')
     return redirect(url_for('index'))
 
 @app.route('/standards', methods=['GET', 'POST'])
@@ -1501,7 +1501,7 @@ def get_chart_data(flock_id):
     all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
     data = {
-        'flock_batch': flock.batch_id,
+        'flock_id': flock.flock_id,
         'intake_date': flock.intake_date.isoformat(),
         'dates': [],
         'weeks': [],
@@ -1768,7 +1768,7 @@ def toggle_phase(id):
         diff_m = expected_m - actual_m
         diff_f = expected_f - actual_f
 
-        msg = f'Flock {flock.batch_id} switched to Production.'
+        msg = f'Flock {flock.flock_id} switched to Production.'
         if diff_m != 0 or diff_f != 0:
             msg += f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.'
 
@@ -1776,7 +1776,7 @@ def toggle_phase(id):
     else:
         flock.phase = 'Rearing'
         flock.production_start_date = None
-        flash(f'Flock {flock.batch_id} switched back to Rearing phase.', 'warning')
+        flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
     db.session.commit()
     return redirect(url_for('index'))
 
@@ -2358,7 +2358,7 @@ def flock_vaccines(id):
                                 transaction_type='Usage',
                                 quantity=units,
                                 transaction_date=new_actual_date,
-                                notes=f'Vaccine completed: {flock.batch_id} (Age {v.age_code})'
+                                notes=f'Vaccine completed: {flock.flock_id} (Age {v.age_code})'
                             )
                             db.session.add(t)
 
@@ -2501,7 +2501,7 @@ def upload_sampling_result(id, event_id):
         file = request.files['file']
         if file and file.filename != '':
             if file.filename.lower().endswith('.pdf'):
-                filename = secure_filename(f"{event.flock.batch_id}_W{event.age_week}_{file.filename}")
+                filename = secure_filename(f"{event.flock.flock_id}_W{event.age_week}_{file.filename}")
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                 file.save(filepath)
                 event.result_file = filepath
@@ -2981,7 +2981,7 @@ def daily_log():
                         transaction_type='Usage',
                         quantity=qty,
                         transaction_date=s_date,
-                        notes=f'Used in Daily Log: {flock.batch_id}'
+                        notes=f'Used in Daily Log: {flock.flock_id}'
                     )
                     db.session.add(t)
 
@@ -3278,7 +3278,7 @@ def edit_daily_log(id):
                         transaction_type='Usage',
                         quantity=qty,
                         transaction_date=s_date,
-                        notes=f'Used in Daily Log: {log.flock.batch_id}'
+                        notes=f'Used in Daily Log: {log.flock.flock_id}'
                     )
                     db.session.add(t)
 
@@ -3504,7 +3504,7 @@ def process_hatchability_import(file):
 
         flock_id = batch_cache.get(f_id)
         if not flock_id:
-            flock = Flock.query.filter_by(batch_id=f_id).first()
+            flock = Flock.query.filter_by(flock_id=f_id).first()
             if flock:
                 flock_id = flock.id
                 batch_cache[f_id] = flock_id
@@ -3616,11 +3616,11 @@ def process_import(file, commit=True, preview=False):
         if not flock_id:
             current_count = flock_counts.get(house_id, 0)
             n = current_count + 1
-            batch_id = f"{house_name}_{date_str}_Batch{n}"
+            flock_uid_str = f"{house_name}_{date_str}_Batch{n}"
             
             flock = Flock(
                 house_id=house_id,
-                batch_id=batch_id,
+                flock_id=flock_uid_str,
                 intake_date=intake_date,
                 intake_male=intake_male,
                 intake_female=intake_female,
@@ -3903,7 +3903,7 @@ def process_import(file, commit=True, preview=False):
                 changes.append({
                     'date': log.date.strftime('%Y-%m-%d'),
                     'house': house_name,
-                    'flock': batch_id if 'batch_id' in locals() else f"New Flock {house_name}",
+                    'flock': flock_uid_str if 'flock_uid_str' in locals() else f"New Flock {house_name}",
                     'type': 'New' if is_new_log else 'Update',
                     'mortality_male': log.mortality_male,
                     'mortality_female': log.mortality_female,
@@ -4128,7 +4128,7 @@ def update_log_from_request(log, req):
         file = req.files['photo']
         if file and file.filename != '':
             date_str = log.date.strftime('%y%m%d')
-            raw_name = f"{log.flock.batch_id}_{date_str}_{file.filename}"
+            raw_name = f"{log.flock.flock_id}_{date_str}_{file.filename}"
             filename = secure_filename(raw_name)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)

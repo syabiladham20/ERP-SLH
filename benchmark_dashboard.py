@@ -20,7 +20,7 @@ def setup_db():
     intake_date = date.today() - timedelta(days=500)
     flock = Flock(
         house_id=house.id,
-        batch_id='BenchmarkBatch',
+        flock_id='BenchmarkBatch',
         intake_date=intake_date,
         intake_male=1000,
         intake_female=10000,

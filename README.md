@@ -45,7 +45,7 @@ Access the application at `http://127.0.0.1:5000`.
 
 ### 1. Dashboard
 The home page displays all **Active Flocks**.
-*   **Batch ID:** {House}_{YYMMDD}_Batch{N}
+*   **Flock ID:** {House}_{YYMMDD}_Batch{N}
 *   **Phase:** Indicates if the flock is in Rearing or Production.
 *   **Actions:**
     *   **Start Prod / Revert Rearing:** Toggle the flock phase.
