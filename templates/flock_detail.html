@@ -1,7 +1,19 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Flock Details: {{ flock.house.name }}</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Flock Details: {{ flock.house.name }}</h2>
+  <div class="dropdown">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+      Switch House
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+      {% for f in active_flocks %}
+      <li><a class="dropdown-item" href="{{ url_for('view_flock', id=f.id) }}">{{ f.house.name }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
 
 <!-- Overview Card -->
 <div class="card mb-4">
