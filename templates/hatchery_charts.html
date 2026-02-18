@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Hatchability Performance: {{ flock.house.name }} ({{ flock.flock_id }})</h2>
+        <h2>Hatchability Performance: {{ flock.house.name }}</h2>
         <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
 
@@ -13,7 +13,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
+    Chart.register(ChartDataLabels);
     const chartData = {{ data | tojson }};
 
     const ctx = document.getElementById('hatchChart').getContext('2d');
@@ -28,21 +30,36 @@
                     data: chartData.fertile_pct,
                     backgroundColor: 'rgba(75, 192, 192, 0.7)',
                     stack: 'Stack 0',
-                    order: 2
+                    order: 2,
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        formatter: (value) => value > 0 ? value + '%' : ''
+                    }
                 },
                 {
                     label: 'Clear %',
                     data: chartData.clear_pct,
                     backgroundColor: 'rgba(255, 205, 86, 0.7)',
                     stack: 'Stack 0',
-                    order: 2
+                    order: 2,
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        formatter: (value) => value > 0 ? value + '%' : ''
+                    }
                 },
                 {
                     label: 'Rotten %',
                     data: chartData.rotten_pct,
                     backgroundColor: 'rgba(255, 99, 132, 0.7)',
                     stack: 'Stack 0',
-                    order: 2
+                    order: 2,
+                    datalabels: {
+                        anchor: 'center',
+                        align: 'center',
+                        formatter: (value) => value > 0 ? value + '%' : ''
+                    }
                 },
                 {
                     label: 'Hatchability %',
@@ -53,7 +70,12 @@
                     borderWidth: 3,
                     yAxisID: 'y1',
                     order: 1,
-                    tension: 0.3
+                    tension: 0.3,
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: (value) => value > 0 ? value + '%' : ''
+                    }
                 }
             ]
         },
@@ -68,6 +90,12 @@
                 tooltip: {
                     mode: 'index',
                     intersect: false
+                },
+                datalabels: {
+                    color: 'black',
+                    font: {
+                        weight: 'bold'
+                    }
                 }
             },
             scales: {

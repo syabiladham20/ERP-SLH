@@ -30,7 +30,6 @@
                 <thead>
                     <tr>
                         <th>House</th>
-                        <th>Flock ID</th>
                         <th>Intake Date</th>
                         <th>Age (Weeks)</th>
                         <th>Actions</th>
@@ -40,7 +39,6 @@
                     {% for flock in active_flocks %}
                     <tr>
                         <td>{{ flock.house.name }}</td>
-                        <td>{{ flock.flock_id }}</td>
                         <td>{{ flock.intake_date }}</td>
                         <td>{{ flock.current_week }}</td>
                         <td>

@@ -2648,6 +2648,7 @@ def hatchability_diagnosis(id, date_str):
                     try:
                         h_record.clear_eggs = int(request.form.get('clear_eggs') or 0)
                         h_record.rotten_eggs = int(request.form.get('rotten_eggs') or 0)
+                        h_record.hatched_chicks = int(request.form.get('hatched_chicks') or 0)
                         db.session.commit()
                         flash('Hatchability record updated.', 'success')
                     except ValueError:
