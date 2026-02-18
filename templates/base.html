@@ -46,22 +46,35 @@
                 <li class="nav-item"><span class="nav-link disabled">|</span></li>
                 <li class="nav-item"><span class="nav-link text-white fw-bold">FARM:</span></li>
 
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('index') }}">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('daily_log') }}">Daily Entry</a>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="healthLogDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Health Log</a>
-                    <ul class="dropdown-menu" aria-labelledby="healthLogDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_vaccines') }}">Vaccine</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_sampling') }}">Sampling</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_medication') }}">Medication</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('clinical_notes') }}">Clinical Notes</a></li>
-                    </ul>
-                </li>
+                {% for item in get_ui_elements('navbar_main') %}
+                    {% if item.key == 'nav_dashboard' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">{{ item.label }}</a>
+                    </li>
+                    {% elif item.key == 'nav_daily_entry' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('daily_log') }}">{{ item.label }}</a>
+                    </li>
+                    {% elif item.key == 'nav_health_log' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="healthLogDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ item.label }}</a>
+                        <ul class="dropdown-menu" aria-labelledby="healthLogDropdown">
+                            {% for h_item in get_ui_elements('navbar_health') %}
+                                {% if h_item.key == 'nav_health_vaccine' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_vaccines') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_sampling' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_sampling') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_medication' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_medication') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_notes' %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('clinical_notes') }}">{{ h_item.label }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                {% endfor %}
 
                 <li class="nav-item"><span class="nav-link disabled">|</span></li>
                 <li class="nav-item"><span class="nav-link text-white fw-bold">HATCHERY:</span></li>
@@ -72,22 +85,35 @@
 
             {% elif session.get('user_dept') == 'Farm' %}
                 <!-- Farm View -->
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('index') }}">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('daily_log') }}">Daily Entry</a>
-                </li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="healthLogDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Health Log</a>
-                    <ul class="dropdown-menu" aria-labelledby="healthLogDropdown">
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_vaccines') }}">Vaccine</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_sampling') }}">Sampling</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('health_log_medication') }}">Medication</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('clinical_notes') }}">Clinical Notes</a></li>
-                    </ul>
-                </li>
+                {% for item in get_ui_elements('navbar_main') %}
+                    {% if item.key == 'nav_dashboard' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">{{ item.label }}</a>
+                    </li>
+                    {% elif item.key == 'nav_daily_entry' %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('daily_log') }}">{{ item.label }}</a>
+                    </li>
+                    {% elif item.key == 'nav_health_log' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="healthLogDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">{{ item.label }}</a>
+                        <ul class="dropdown-menu" aria-labelledby="healthLogDropdown">
+                            {% for h_item in get_ui_elements('navbar_health') %}
+                                {% if h_item.key == 'nav_health_vaccine' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_vaccines') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_sampling' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_sampling') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_medication' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('health_log_medication') }}">{{ h_item.label }}</a></li>
+                                {% elif h_item.key == 'nav_health_notes' %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('clinical_notes') }}">{{ h_item.label }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                {% endfor %}
 
             {% elif session.get('user_dept') == 'Hatchery' %}
                 <!-- Hatchery View -->

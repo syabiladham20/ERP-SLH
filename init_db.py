@@ -1,4 +1,4 @@
-from app import app, db, House, initialize_users
+from app import app, db, House, init_ui_elements
 
 def init_db():
     with app.app_context():
@@ -15,6 +15,8 @@ def init_db():
                 db.session.add(House(name=name))
                 print(f"Added House: {name}")
         
+        init_ui_elements(commit=False)
+
         db.session.commit()
         print("Database initialized.")
 

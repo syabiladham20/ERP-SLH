@@ -325,6 +325,14 @@ class GlobalStandard(db.Model):
     std_mortality_daily = db.Column(db.Float, default=0.05)
     std_mortality_weekly = db.Column(db.Float, default=0.3)
 
+class UIElement(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    label = db.Column(db.String(100), nullable=False)
+    section = db.Column(db.String(50), nullable=False) # 'navbar_main', 'navbar_health', 'flock_card', 'flock_detail'
+    is_visible = db.Column(db.Boolean, default=True)
+    order_index = db.Column(db.Integer, default=0)
+
 class WeeklyData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
@@ -559,6 +567,47 @@ def get_flock_stock_history_bulk(flocks):
     return result_map
 
 # --- Initialization Helpers ---
+
+def init_ui_elements(commit=True):
+    default_elements = [
+        # Navbar Main
+        {'key': 'nav_dashboard', 'label': 'Dashboard', 'section': 'navbar_main', 'order': 1},
+        {'key': 'nav_daily_entry', 'label': 'Daily Entry', 'section': 'navbar_main', 'order': 2},
+        {'key': 'nav_health_log', 'label': 'Health Log', 'section': 'navbar_main', 'order': 3},
+
+        # Navbar Health Dropdown
+        {'key': 'nav_health_vaccine', 'label': 'Vaccine', 'section': 'navbar_health', 'order': 1},
+        {'key': 'nav_health_sampling', 'label': 'Sampling', 'section': 'navbar_health', 'order': 2},
+        {'key': 'nav_health_medication', 'label': 'Medication', 'section': 'navbar_health', 'order': 3},
+        {'key': 'nav_health_notes', 'label': 'Clinical Notes', 'section': 'navbar_health', 'order': 4},
+
+        # Flock Card (Dashboard)
+        {'key': 'card_details', 'label': 'See Details', 'section': 'flock_card', 'order': 1},
+        {'key': 'card_start_prod', 'label': 'Start Prod', 'section': 'flock_card', 'order': 2},
+
+        # Flock Detail (Overview Footer)
+        {'key': 'detail_kpi', 'label': 'KPI Dashboard', 'section': 'flock_detail', 'order': 1},
+        {'key': 'detail_custom', 'label': 'Custom Dashboard', 'section': 'flock_detail', 'order': 2},
+        {'key': 'detail_charts', 'label': 'Advanced Charts', 'section': 'flock_detail', 'order': 3},
+        {'key': 'detail_hatch', 'label': 'Hatchability', 'section': 'flock_detail', 'order': 4},
+        {'key': 'detail_health', 'label': 'Health Log', 'section': 'flock_detail', 'order': 5},
+    ]
+
+    for elem in default_elements:
+        existing = UIElement.query.filter_by(key=elem['key']).first()
+        if not existing:
+            new_elem = UIElement(
+                key=elem['key'],
+                label=elem['label'],
+                section=elem['section'],
+                order_index=elem['order']
+            )
+            db.session.add(new_elem)
+
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
 
 def initialize_sampling_schedule(flock_id, commit=True):
     # Updated Schedule based on user input
@@ -2862,7 +2911,59 @@ def utility_processor():
             if pw.partition_name == name:
                 return pw.body_weight if type_ == 'bw' else pw.uniformity
         return 0.0
-    return dict(get_partition_val=get_partition_val, is_admin=session.get('is_admin', False), is_debug=app.debug)
+
+    def get_ui_elements(section):
+        # Admin sees everything (sorted)
+        # Standard users see only visible
+        query = UIElement.query.filter_by(section=section).order_by(UIElement.order_index.asc())
+        if not session.get('is_admin'):
+            query = query.filter_by(is_visible=True)
+        return query.all()
+
+    return dict(get_partition_val=get_partition_val, get_ui_elements=get_ui_elements, is_admin=session.get('is_admin', False), is_debug=app.debug)
+
+@app.route('/admin/ui', methods=['GET', 'POST'])
+def admin_ui_update():
+    if not session.get('is_admin'):
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        # Process updates
+        # Form data: id[], order_{id}, label_{id}, visible_{id}
+        ids = request.form.getlist('id[]')
+
+        for id_str in ids:
+            eid = int(id_str)
+            elem = UIElement.query.get(eid)
+            if not elem: continue
+
+            # Update Label
+            label = request.form.get(f'label_{eid}')
+            if label: elem.label = label
+
+            # Update Order
+            order = request.form.get(f'order_{eid}')
+            if order and order.isdigit():
+                elem.order_index = int(order)
+
+            # Update Visibility
+            # Checkboxes only send value if checked.
+            is_vis = request.form.get(f'visible_{eid}')
+            elem.is_visible = (is_vis is not None)
+
+        db.session.commit()
+        flash('UI configuration updated.', 'success')
+        return redirect(url_for('admin_ui_update'))
+
+    # GET: Fetch all elements grouped by section
+    elements = {}
+    all_elems = UIElement.query.order_by(UIElement.order_index.asc()).all()
+    for e in all_elems:
+        if e.section not in elements:
+            elements[e.section] = []
+        elements[e.section].append(e)
+
+    return render_template('admin/ui_manager.html', elements=elements)
 
 @app.route('/admin/control-panel')
 def admin_control_panel():
