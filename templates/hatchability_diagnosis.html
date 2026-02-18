@@ -7,6 +7,38 @@
 </div>
 
 <div class="row">
+    <!-- Hatchability Update Section (Moved to Top) -->
+    {% if session.get('user_dept') != 'Farm' %}
+    <div class="col-12 mb-4">
+        <div class="card border-secondary">
+            <div class="card-header bg-secondary text-white">
+                Update Hatchability Records
+            </div>
+            <div class="card-body">
+                {% for r in records %}
+                <form method="POST" action="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=setting_date.strftime('%Y-%m-%d')) }}" class="mb-2">
+                    <input type="hidden" name="hatchability_id" value="{{ r.id }}">
+                    <div class="d-flex align-items-center flex-wrap gap-3">
+                        <div class="fw-bold text-nowrap">
+                            ID: {{ r.id }} (Set: {{ r.egg_set }})
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 text-nowrap">Clear Eggs:</label>
+                            <input type="number" class="form-control form-control-sm" style="width: 100px;" name="clear_eggs" value="{{ r.clear_eggs }}">
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label class="form-label mb-0 text-nowrap">Rotten Eggs:</label>
+                            <input type="number" class="form-control form-control-sm" style="width: 100px;" name="rotten_eggs" value="{{ r.rotten_eggs }}">
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                    </div>
+                </form>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Hatchability Stats -->
     <div class="col-md-4">
         <div class="card mb-3">
@@ -66,33 +98,6 @@
                 {% endif %}
             </div>
         </div>
-
-        {% if session.get('user_dept') != 'Farm' %}
-        <div class="card mb-3">
-            <div class="card-header bg-secondary text-white">
-                Update Hatchability Records
-            </div>
-            <div class="card-body">
-                {% for r in records %}
-                <form method="POST" action="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=setting_date.strftime('%Y-%m-%d')) }}" class="mb-3 border-bottom pb-3">
-                    <input type="hidden" name="hatchability_id" value="{{ r.id }}">
-                    <p class="mb-1"><strong>Record ID:</strong> {{ r.id }} (Set: {{ r.egg_set }})</p>
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label class="form-label fs-6">Clear Eggs</label>
-                            <input type="number" class="form-control form-control-sm" name="clear_eggs" value="{{ r.clear_eggs }}">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fs-6">Rotten Eggs</label>
-                            <input type="number" class="form-control form-control-sm" name="rotten_eggs" value="{{ r.rotten_eggs }}">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-primary mt-2">Update</button>
-                </form>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 
     <!-- Farm Data Logs -->

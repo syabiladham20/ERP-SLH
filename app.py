@@ -3438,8 +3438,8 @@ def import_hatchability():
 
     if file and file.filename.endswith('.xlsx'):
         try:
-            process_hatchability_import(file)
-            flash('Hatchability data imported successfully.', 'success')
+            created, updated = process_hatchability_import(file)
+            flash(f'Hatchability data imported successfully. Created: {created}, Updated: {updated}', 'success')
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -3464,7 +3464,7 @@ def process_hatchability_import(file):
     # We will iterate row by row.
     # Check for empty df
     if df.empty:
-        return
+        return 0, 0
 
     # Check columns
     # If headers are 'Setting Date', 'Flock ID' etc.
@@ -3501,7 +3501,12 @@ def process_hatchability_import(file):
         idx = col_map.get(key)
         if idx is not None and idx < len(row):
             val = row.iloc[idx]
-            if pd.isna(val): return None
+            if pd.isna(val): return None # Explicitly None for Blanks/NaN
+
+            # Check for Empty String or Whitespace
+            if isinstance(val, str) and not val.strip():
+                return None
+
             if transform:
                 try: return transform(val)
                 except: return None
@@ -3527,6 +3532,9 @@ def process_hatchability_import(file):
         if f.house_id not in flocks_by_house:
             flocks_by_house[f.house_id] = []
         flocks_by_house[f.house_id].append(f)
+
+    created_count = 0
+    updated_count = 0
 
     for index, row in df.iterrows():
         # Validations
@@ -3558,13 +3566,13 @@ def process_hatchability_import(file):
             # No valid flock found for this date
             continue
 
-        c_date = get_val(row, 'candling_date', parse_date) or (s_date + timedelta(days=18))
-        h_date = get_val(row, 'hatching_date', parse_date) or (s_date + timedelta(days=21))
-
-        e_set = get_val(row, 'egg_set', int) or 0
-        c_eggs = get_val(row, 'clear_eggs', int) or 0
-        r_eggs = get_val(row, 'rotten_eggs', int) or 0
-        h_chicks = get_val(row, 'hatched_chicks', int) or 0
+        # Extract values (None if blank)
+        c_date = get_val(row, 'candling_date', parse_date)
+        h_date = get_val(row, 'hatching_date', parse_date)
+        e_set = get_val(row, 'egg_set', int)
+        c_eggs = get_val(row, 'clear_eggs', int)
+        r_eggs = get_val(row, 'rotten_eggs', int)
+        h_chicks = get_val(row, 'hatched_chicks', int)
 
         # Always fetch Male Ratio from Farm Database
         m_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
@@ -3572,30 +3580,55 @@ def process_hatchability_import(file):
         # Check existing record
         existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()
         if existing:
-            # Update
-            existing.candling_date = c_date
-            existing.hatching_date = h_date
-            existing.egg_set = e_set
-            existing.clear_eggs = c_eggs
-            existing.rotten_eggs = r_eggs
-            existing.hatched_chicks = h_chicks
-            existing.male_ratio_pct = m_ratio
+            # Smart Patch Update
+            updated_fields = []
+
+            # Helper to update only if not None
+            def update_if_present(obj, attr, val, field_name):
+                if val is not None:
+                    old_val = getattr(obj, attr)
+                    if old_val != val:
+                        setattr(obj, attr, val)
+                        updated_fields.append(field_name)
+
+            update_if_present(existing, 'candling_date', c_date, 'Candling Date')
+            update_if_present(existing, 'hatching_date', h_date, 'Hatching Date')
+            update_if_present(existing, 'egg_set', e_set, 'Egg Set')
+            update_if_present(existing, 'clear_eggs', c_eggs, 'Clear Eggs')
+            update_if_present(existing, 'rotten_eggs', r_eggs, 'Rotten Eggs')
+            update_if_present(existing, 'hatched_chicks', h_chicks, 'Hatched Chicks')
+
+            # Implicit update of Male Ratio
+            if existing.male_ratio_pct != m_ratio:
+                 existing.male_ratio_pct = m_ratio
+
+            if updated_fields:
+                updated_count += 1
+                # Audit Log (Console for now)
+                print(f"[AUDIT] Hatchery Record updated via Excel Import (Fields: {', '.join(updated_fields)}) for Flock {target_flock_id} on {s_date}")
+
         else:
             # Insert Record
+            # Default dates if missing
+            final_c_date = c_date or (s_date + timedelta(days=18))
+            final_h_date = h_date or (s_date + timedelta(days=21))
+
             h = Hatchability(
                 flock_id=target_flock_id,
                 setting_date=s_date,
-                candling_date=c_date,
-                hatching_date=h_date,
-                egg_set=e_set,
-                clear_eggs=c_eggs,
-                rotten_eggs=r_eggs,
-                hatched_chicks=h_chicks,
+                candling_date=final_c_date,
+                hatching_date=final_h_date,
+                egg_set=e_set or 0,
+                clear_eggs=c_eggs or 0,
+                rotten_eggs=r_eggs or 0,
+                hatched_chicks=h_chicks or 0,
                 male_ratio_pct=m_ratio
             )
             db.session.add(h)
+            created_count += 1
 
     db.session.commit()
+    return created_count, updated_count
 
 def process_import(file, commit=True, preview=False):
     xls = pd.ExcelFile(file)
