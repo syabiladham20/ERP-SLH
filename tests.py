@@ -42,7 +42,7 @@ class FarmTestCase(unittest.TestCase):
         self.assertIn(b'Flock created successfully', response.data)
         
         flock = Flock.query.first()
-        self.assertEqual(flock.batch_id, 'VA1_231027_Batch1')
+        self.assertEqual(flock.flock_id, 'VA1_231027_Batch1')
         self.assertEqual(flock.status, 'Active')
 
     def test_prevent_duplicate_active_flock(self):

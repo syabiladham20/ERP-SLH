@@ -67,7 +67,7 @@
           <table class="table table-sm">
             <thead>
               <tr>
-                <th>Batch ID</th>
+                <th>Flock ID</th>
                 <th>Status</th>
                 <th>Intake Date</th>
                 <th>Actions</th>
@@ -76,7 +76,7 @@
             <tbody>
               {% for flock in flocks %}
               <tr>
-                <td><a href="{{ url_for('view_flock', id=flock.id) }}">{{ flock.batch_id }}</a></td>
+                <td><a href="{{ url_for('view_flock', id=flock.id) }}">{{ flock.flock_id }}</a></td>
                 <td>
                   <span class="badge bg-{{ 'success' if flock.status == 'Active' else 'secondary' }}">
                     {{ flock.status }}

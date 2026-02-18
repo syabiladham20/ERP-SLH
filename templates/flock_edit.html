@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>Edit Flock: {{ flock.batch_id }}</h2>
+<h2>Edit Flock: {{ flock.flock_id }}</h2>
 
 <div class="card">
   <div class="card-body">
@@ -12,8 +12,8 @@
       </div>
 
       <div class="mb-3">
-        <label for="batch_id" class="form-label">Batch Name (ID)</label>
-        <input type="text" class="form-control" id="batch_id" name="batch_id" value="{{ flock.batch_id }}" required>
+        <label for="flock_id" class="form-label">Flock ID (ID)</label>
+        <input type="text" class="form-control" id="flock_id" name="flock_id" value="{{ flock.flock_id }}" required>
       </div>
 
       <div class="mb-3">

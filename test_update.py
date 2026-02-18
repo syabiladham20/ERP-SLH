@@ -19,7 +19,7 @@ class FarmTestCase(unittest.TestCase):
         db.session.add(h)
         db.session.commit()
 
-        f = Flock(house_id=h.id, batch_id='Test_Batch_01', intake_date=date(2023, 1, 1), phase='Rearing')
+        f = Flock(house_id=h.id, flock_id='Test_Batch_01', intake_date=date(2023, 1, 1), phase='Rearing')
         db.session.add(f)
         db.session.commit()
 
