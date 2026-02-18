@@ -3478,7 +3478,7 @@ def process_hatchability_import(file):
         norm = normalize(col)
 
         # Check for explicit percentage/ratio to EXCLUDE from count fields
-        is_pct = '%' in norm or norm.endswith('_p') or norm.endswith('_pct') or 'ratio' in norm
+        is_pct = '%' in norm or norm.endswith('_p') or norm.endswith('_pct') or 'ratio' in norm or 'percentage' in norm
 
         if 'setting' in norm and 'date' in norm: col_map['setting_date'] = i
         elif 'candling' in norm and 'date' in norm: col_map['candling_date'] = i
