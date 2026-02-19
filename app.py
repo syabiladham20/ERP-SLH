@@ -1089,7 +1089,7 @@ def index():
                 f.prod_mort_f_pct = last['mortality_cum_female_pct']
 
             if last['male_ratio_stock']:
-                f.male_ratio_pct = last['male_ratio_stock'] * 100
+                f.male_ratio_pct = last['male_ratio_stock']
 
         # Daily Stats & Trends
         f.daily_stats = {
@@ -5175,7 +5175,7 @@ def additional_report():
                            current_month=current_month_name,
                            current_iso_week=current_iso_week)
 
-def get_iso_aggregated_data(flocks, start_date=None):
+def get_iso_aggregated_data(flocks, target_year=None):
     """
     Aggregates data across all given flocks into Weekly, Monthly, and Yearly ISO buckets.
     Returns:
@@ -5190,8 +5190,9 @@ def get_iso_aggregated_data(flocks, start_date=None):
 
     global_daily = {}
 
-    # Filter for Start Date
-    filter_start = start_date if start_date else date(2025, 3, 1)
+    # Default to current year if None, or handle differently?
+    # Requirement: Filter by year.
+    filter_year = target_year if target_year else date.today().year
 
     for flock in flocks:
         # Use relationship logs if available, else query
@@ -5202,7 +5203,8 @@ def get_iso_aggregated_data(flocks, start_date=None):
 
         for d in daily_stats:
             d_date = d['date']
-            if d_date < filter_start:
+            # Strict Year Filter
+            if d_date.year != filter_year:
                 continue
 
             if d_date not in global_daily:
@@ -5346,7 +5348,7 @@ def executive_dashboard():
                 f.prod_mort_f_pct = last['mortality_cum_female_pct']
 
             if last['male_ratio_stock']:
-                f.male_ratio_pct = last['male_ratio_stock'] * 100
+                f.male_ratio_pct = last['male_ratio_stock']
 
         # Daily Stats & Trends
         f.daily_stats = {
@@ -5388,7 +5390,17 @@ def executive_dashboard():
     avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
 
     # --- New ISO Reports ---
-    iso_data = get_iso_aggregated_data(active_flocks, start_date=date(2025, 3, 1))
+    # Year Filter Logic
+    available_years_query = db.session.query(func.extract('year', DailyLog.date)).distinct().all()
+    available_years = sorted([int(y[0]) for y in available_years_query if y[0]], reverse=True)
+    if not available_years:
+        available_years = [today.year]
+
+    selected_year = request.args.get('year', type=int)
+    if not selected_year:
+        selected_year = available_years[0] if available_years else today.year
+
+    iso_data = get_iso_aggregated_data(active_flocks, target_year=selected_year)
 
     return render_template('executive_dashboard.html',
                            active_flocks=active_flocks,
@@ -5396,7 +5408,9 @@ def executive_dashboard():
                            current_month=today.strftime('%B %Y'),
                            today=today,
                            low_stock_count=low_stock_count,
-                           iso_data=iso_data)
+                           iso_data=iso_data,
+                           available_years=available_years,
+                           selected_year=selected_year)
 
 
 if __name__ == '__main__':
