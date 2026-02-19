@@ -36,6 +36,8 @@
                         <th>Std BW Male (g)</th>
                         <th>Std BW Fem (g)</th>
                         <th>Std Egg Prod %</th>
+                        <th>Std Egg Wt (g)</th>
+                        <th>Std Hatch %</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -48,6 +50,8 @@
                         <td>{{ s.std_bw_male }}</td>
                         <td>{{ s.std_bw_female }}</td>
                         <td>{{ s.std_egg_prod }}</td>
+                        <td>{{ s.std_egg_weight }}</td>
+                        <td>{{ s.std_hatchability }}</td>
                         <td>
                             <!-- Minimal inline edit logic or just delete? -->
                             <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ s.id }}">Edit</a>
@@ -82,6 +86,8 @@
                         <td><input type="number" step="0.1" name="std_bw_male" class="form-control" placeholder="g"></td>
                         <td><input type="number" step="0.1" name="std_bw_female" class="form-control" placeholder="g"></td>
                         <td><input type="number" step="0.1" name="std_egg_prod" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_egg_weight" class="form-control" placeholder="g"></td>
+                        <td><input type="number" step="0.1" name="std_hatchability" class="form-control" placeholder="%"></td>
                         <td>
                             <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
                         </td>

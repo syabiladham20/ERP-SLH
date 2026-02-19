@@ -333,6 +333,8 @@ class Standard(db.Model):
     std_egg_prod = db.Column(db.Float, default=0.0)
     std_feed_male = db.Column(db.Float, default=0.0)
     std_feed_female = db.Column(db.Float, default=0.0)
+    std_egg_weight = db.Column(db.Float, default=0.0)
+    std_hatchability = db.Column(db.Float, default=0.0)
 
 class GlobalStandard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1305,7 +1307,9 @@ def manage_standards():
                 std_mortality_female=float(request.form.get('std_mortality_female') or 0),
                 std_bw_male=round_to_whole(request.form.get('std_bw_male')),
                 std_bw_female=round_to_whole(request.form.get('std_bw_female')),
-                std_egg_prod=float(request.form.get('std_egg_prod') or 0)
+                std_egg_prod=float(request.form.get('std_egg_prod') or 0),
+                std_egg_weight=float(request.form.get('std_egg_weight') or 0),
+                std_hatchability=float(request.form.get('std_hatchability') or 0)
             )
             db.session.add(s)
             db.session.commit()
