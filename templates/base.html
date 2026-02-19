@@ -123,6 +123,10 @@
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('hatchery_dashboard') }}">Dashboard</a>
                 </li>
+            {% elif session.get('user_dept') == 'Management' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('executive_dashboard') }}">Executive Dashboard</a>
+                </li>
             {% endif %}
 
             <li class="nav-item"><span class="nav-link disabled">|</span></li>

@@ -22,7 +22,8 @@ load_dotenv()
 INITIAL_USERS = [
     {'username': 'admin', 'password': 'admin123', 'dept': 'Admin', 'role': 'Admin'},
     {'username': 'farm_user', 'password': 'farm123', 'dept': 'Farm', 'role': 'Worker'},
-    {'username': 'hatch_user', 'password': 'hatch123', 'dept': 'Hatchery', 'role': 'Worker'}
+    {'username': 'hatch_user', 'password': 'hatch123', 'dept': 'Hatchery', 'role': 'Worker'},
+    {'username': 'manager', 'password': 'manager123', 'dept': 'Management', 'role': 'Management'}
 ]
 
 # Pre-compile regex for natural sorting
@@ -62,6 +63,8 @@ def dept_required(required_dept):
                 return redirect(url_for('hatchery_dashboard'))
             elif user_dept == 'Farm':
                 return redirect(url_for('index'))
+            elif user_dept == 'Management':
+                return redirect(url_for('executive_dashboard'))
             else:
                 return redirect(url_for('login')) # Fallback
 
@@ -916,6 +919,8 @@ def login():
                 return redirect(url_for('hatchery_dashboard'))
             elif user.dept == 'Admin':
                 return redirect(url_for('index'))
+            elif user.dept == 'Management':
+                return redirect(url_for('executive_dashboard'))
             else:
                 return redirect(url_for('index'))
         else:
