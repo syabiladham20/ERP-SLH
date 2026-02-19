@@ -59,13 +59,24 @@
                  <h6 class="text-success mb-2" style="font-size: 0.9rem; text-transform: uppercase; font-weight: bold;">Hatchery</h6>
                  <div class="small">
                    <div class="d-flex justify-content-between mb-1">
-                     <span>Hatch %:</span>
+                     <span title="Cumulative">Cum Hatch %:</span>
                      <strong>{{ flock.hatch_pct }}%</strong>
                    </div>
                    <div class="d-flex justify-content-between mb-1">
-                     <span>Fertility %:</span>
+                     <span title="Cumulative">Cum Fert %:</span>
                      <strong>{{ flock.fert_pct }}%</strong>
                    </div>
+                   {% if flock.latest_hatch_pct is not none %}
+                   <hr class="my-1">
+                   <div class="d-flex justify-content-between mb-1">
+                     <span title="Week {{ flock.latest_hatch_week }}">Hatch % (W{{ flock.latest_hatch_week }}):</span>
+                     <strong class="text-success">{{ flock.latest_hatch_pct }}%</strong>
+                   </div>
+                   <div class="d-flex justify-content-between mb-1">
+                     <span title="Week {{ flock.latest_hatch_week }}">Fert % (W{{ flock.latest_hatch_week }}):</span>
+                     <strong class="text-success">{{ flock.latest_fert_pct }}%</strong>
+                   </div>
+                   {% endif %}
                  </div>
                </div>
              </div>

@@ -1012,7 +1012,7 @@ def hatchery_dashboard():
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = (days // 7) + 1 if days >= 0 else 0
+        f.current_week = (days // 7) if days >= 0 else 0
 
     # Analytics: Current Month Hatchability (based on Hatch Date)
     start_month = date(today.year, today.month, 1)
@@ -5179,6 +5179,22 @@ def executive_dashboard():
         hatchable = total_set - total_clear - total_rotten
         fert_pct = (hatchable / total_set * 100) if total_set > 0 else 0
 
+        # Latest Hatch
+        latest_hatch = Hatchability.query.filter_by(flock_id=flock.id)\
+            .filter(Hatchability.hatched_chicks > 0)\
+            .order_by(Hatchability.hatching_date.desc()).first()
+
+        latest_hatch_week = None
+        latest_hatch_pct = 0
+        latest_fert_pct = 0
+
+        if latest_hatch:
+            days_diff = (latest_hatch.setting_date - flock.intake_date).days
+            latest_hatch_week = (days_diff // 7) if days_diff >= 0 else 0
+
+            latest_hatch_pct = latest_hatch.hatchability_pct
+            latest_fert_pct = latest_hatch.fertile_egg_pct
+
         dashboard_data.append({
             'house': flock.house.name,
             'flock_id': flock.flock_id,
@@ -5190,7 +5206,10 @@ def executive_dashboard():
             'egg_prod_pct': round(daily_egg_pct, 2),
             'male_ratio': round(male_ratio, 2),
             'hatch_pct': round(hatch_pct, 2),
-            'fert_pct': round(fert_pct, 2)
+            'fert_pct': round(fert_pct, 2),
+            'latest_hatch_pct': round(latest_hatch_pct, 2) if latest_hatch else None,
+            'latest_fert_pct': round(latest_fert_pct, 2) if latest_hatch else None,
+            'latest_hatch_week': latest_hatch_week
         })
 
     # --- 2. Inventory Usage (Monthly) ---
