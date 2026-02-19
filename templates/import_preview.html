@@ -46,7 +46,7 @@
             <tbody>
                 {% for change in changes %}
                 <tr class="{% if change.type == 'New' %}table-success{% endif %}">
-                    <td>{{ change.date }}</td>
+                    <td>{{ change.date | date_fmt }}</td>
                     <td>{{ change.house }}</td>
                     <td>{{ change.flock }}</td>
                     <td>

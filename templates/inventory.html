@@ -49,7 +49,7 @@
                                         <td>{{ item.type }}</td>
                                         <td>
                                             {% if item.batch_number %}<small class="d-block text-muted">Batch: {{ item.batch_number }}</small>{% endif %}
-                                            {% if item.expiry_date %}<small class="d-block text-muted">Exp: {{ item.expiry_date }}</small>{% endif %}
+                                            {% if item.expiry_date %}<small class="d-block text-muted">Exp: {{ item.expiry_date | date_fmt }}</small>{% endif %}
                                         </td>
                                         <td>{{ item.unit }}</td>
                                         <td class="fw-bold">{{ item.current_stock }}</td>
@@ -206,7 +206,7 @@
                                 <tbody>
                                     {% for t in transactions %}
                                     <tr>
-                                        <td>{{ t.transaction_date }}</td>
+                                        <td>{{ t.transaction_date | date_fmt }}</td>
                                         <td>{{ t.item.name }}</td>
                                         <td>
                                             <span class="badge

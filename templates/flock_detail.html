@@ -25,7 +25,7 @@
       <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
       <div class="col-md-3"><strong>Status:</strong> {{ flock.status }}</div>
       <div class="col-md-3"><strong>Phase:</strong> {{ flock.phase }}</div>
-      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date }}</div>
+      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date | date_fmt }}</div>
     </div>
     <div class="row mt-2">
       <div class="col-md-3"><strong>Intake:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
@@ -131,7 +131,7 @@
         <tbody>
           {% for item in logs %}
           <tr>
-            <td class="text-nowrap fw-bold">{{ item.log.date.strftime('%d-%b') }}</td>
+            <td class="text-nowrap fw-bold">{{ item.log.date | date_fmt }}</td>
             <td>{{ flock.house.name }}</td>
             <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
 

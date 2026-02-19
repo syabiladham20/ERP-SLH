@@ -77,8 +77,8 @@
         <tbody>
             {% for r in records %}
             <tr>
-                <td>{{ r.setting_date }}</td>
-                <td>{{ r.hatching_date }}</td>
+                <td>{{ r.setting_date | date_fmt }}</td>
+                <td>{{ r.hatching_date | date_fmt }}</td>
                 <td>{{ ((r.setting_date - flock.intake_date).days // 7) + 1 }}</td>
                 <td>{{ r.egg_set }}</td>
                 <td>{{ r.hatched_chicks }}</td>
