@@ -2603,7 +2603,9 @@ def hatchery_charts(flock_id):
         'fertile_pct': [],
         'clear_pct': [],
         'rotten_pct': [],
-        'hatch_pct': []
+        'hatch_pct': [],
+        'male_ratio_pct': [],
+        'notes': []
     }
 
     for r in records:
@@ -2622,6 +2624,36 @@ def hatchery_charts(flock_id):
         data['rotten_pct'].append(round(rotten_p, 2))
         data['fertile_pct'].append(round(fertile_p, 2))
         data['hatch_pct'].append(round(hatch_p, 2))
+        data['male_ratio_pct'].append(round(r.male_ratio_pct, 2) if r.male_ratio_pct else 0)
+
+        # Gather Notes & Medications for the week leading up to setting
+        end_date = r.setting_date
+        start_date = end_date - timedelta(days=7)
+
+        logs = DailyLog.query.filter(
+            DailyLog.flock_id == flock_id,
+            DailyLog.date >= start_date,
+            DailyLog.date <= end_date,
+            DailyLog.clinical_notes != None,
+            DailyLog.clinical_notes != ''
+        ).all()
+
+        meds = Medication.query.filter(
+            Medication.flock_id == flock_id,
+            Medication.start_date <= end_date,
+            or_(Medication.end_date == None, Medication.end_date >= start_date)
+        ).all()
+
+        notes_parts = []
+        if logs:
+            notes_str = "; ".join([f"{l.date.strftime('%d/%m')}: {l.clinical_notes}" for l in logs])
+            notes_parts.append(f"Notes: {notes_str}")
+
+        if meds:
+            meds_str = ", ".join([m.drug_name for m in meds]) # Just names to save space
+            notes_parts.append(f"Meds: {meds_str}")
+
+        data['notes'].append(" | ".join(notes_parts) if notes_parts else None)
 
     return render_template('hatchery_charts.html', flock=flock, data=data)
 
