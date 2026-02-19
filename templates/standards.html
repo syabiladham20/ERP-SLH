@@ -25,6 +25,16 @@
         </div>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-header">Seed Standards</div>
+        <div class="card-body">
+            <p>Seed standards from <strong>SLH Daily Aviagen.xlsx</strong> located on the server.</p>
+            <form method="POST" action="{{ url_for('manage_standards') }}">
+                <button type="submit" name="action" value="seed_standards" class="btn btn-warning" onclick="return confirm('This will update standards from the server file. Continue?');">Seed from File</button>
+            </form>
+        </div>
+    </div>
+
     <form method="POST" action="{{ url_for('manage_standards') }}">
         <div class="table-responsive">
             <table class="table table-striped table-bordered">

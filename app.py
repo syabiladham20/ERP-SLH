@@ -1325,6 +1325,13 @@ def manage_standards():
             db.session.commit()
             flash('Global standards updated.', 'success')
 
+        elif action == 'seed_standards':
+            success, message = seed_standards_from_file()
+            if success:
+                flash(message, 'success')
+            else:
+                flash(message, 'danger')
+
         return redirect(url_for('manage_standards'))
 
     standards = Standard.query.order_by(Standard.week.asc()).all()
@@ -3126,6 +3133,69 @@ def import_hatchability():
         flash('Invalid file type. Please upload an Excel file (.xlsx).', 'danger')
 
     return redirect(url_for('import_data'))
+
+def seed_standards_from_file():
+    filepath = os.path.join(basedir, 'SLH Daily Aviagen.xlsx')
+    if not os.path.exists(filepath):
+        return False, "File 'SLH Daily Aviagen.xlsx' not found."
+
+    try:
+        # Standard BW starts at row 507 (0-indexed 506? No, process_import uses skiprows=507 so row 508 is index 0?)
+        # Let's align with process_import logic: skiprows=507 means row 508 is index 0.
+        # But previous inspection showed valid data there.
+
+        df = pd.read_excel(filepath, sheet_name='TEMPLATE', header=None, skiprows=507, nrows=70)
+
+        # Columns based on inspection:
+        # 0: Week
+        # 14: Standard Mortality % (e.g. 0.003 for 0.3%)
+        # 32: Std Male BW
+        # 33: Std Female BW
+        # 19: Egg Prod % (Empty in file but mapped)
+        # 27: Egg Weight (Empty)
+        # 26: Hatchability (Empty)
+
+        count = 0
+        for index, row in df.iterrows():
+            try:
+                week_val = int(row[0])
+            except (ValueError, TypeError):
+                continue
+
+            std_mort = float(row[14]) * 100 if pd.notna(row[14]) else 0.0 # Convert 0.003 to 0.3 if needed?
+            # Wait, inspection showed 0.003. Usually displayed as %. 0.3% is reasonable daily? Or weekly?
+            # Header says "STANDARD MORTALITY%". 0.003 is 0.3%.
+            # app.py uses float. Let's store as percentage value (0.3).
+
+            std_bw_m = int(row[32]) if pd.notna(row[32]) else 0
+            std_bw_f = int(row[33]) if pd.notna(row[33]) else 0
+
+            # Missing Data placeholders
+            std_egg_prod = 0.0
+            std_egg_weight = 0.0
+            std_hatch = 0.0
+
+            # Check existing
+            s = Standard.query.filter_by(week=week_val).first()
+            if not s:
+                s = Standard(week=week_val)
+                db.session.add(s)
+
+            s.std_mortality_male = std_mort # Using same for both sexes if only one col
+            s.std_mortality_female = std_mort
+            s.std_bw_male = std_bw_m
+            s.std_bw_female = std_bw_f
+            s.std_egg_prod = std_egg_prod
+            s.std_egg_weight = std_egg_weight
+            s.std_hatchability = std_hatch
+
+            count += 1
+
+        db.session.commit()
+        return True, f"Seeded/Updated {count} weeks of standards."
+
+    except Exception as e:
+        return False, f"Error seeding standards: {str(e)}"
 
 def process_hatchability_import(file):
     import pandas as pd
