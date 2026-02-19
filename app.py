@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
@@ -5093,6 +5093,135 @@ def edit_inventory_transaction(id):
     db.session.commit()
     flash("Transaction updated.", "success")
     return redirect(url_for('inventory'))
+
+@app.route('/executive_dashboard')
+def executive_dashboard():
+    # Role Check: Admin or Management (Future proofing)
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        flash("Access Denied: Executive View Only.", "danger")
+        return redirect(url_for('index'))
+
+    # --- 1. Farm & Hatchery Overview (Cards) ---
+    active_flocks = Flock.query.filter_by(status='Active').all()
+    active_flocks.sort(key=natural_sort_key)
+
+    dashboard_data = []
+
+    today = date.today()
+
+    for flock in active_flocks:
+        # A. Farm Stats
+        # Age
+        age_days = (today - flock.intake_date).days
+        age_weeks = age_days // 7
+        age_days_rem = age_days % 7
+        age_str = f"{age_weeks}W {age_days_rem}D"
+
+        # Cumulative Mortality & Culls (SQL Sum for efficiency)
+        stmt_loss = db.session.query(
+            func.sum(DailyLog.mortality_male),
+            func.sum(DailyLog.mortality_female),
+            func.sum(DailyLog.culls_male),
+            func.sum(DailyLog.culls_female)
+        ).filter(DailyLog.flock_id == flock.id).first()
+
+        cum_mort_m = stmt_loss[0] or 0
+        cum_mort_f = stmt_loss[1] or 0
+        cum_cull_m = stmt_loss[2] or 0
+        cum_cull_f = stmt_loss[3] or 0
+
+        start_m = flock.intake_male or 1
+        start_f = flock.intake_female or 1
+
+        cum_mort_pct = ((cum_mort_m + cum_mort_f) / (start_m + start_f) * 100)
+
+        # Current Stock (Approx for Daily calc)
+        curr_stock_m = start_m - cum_mort_m - cum_cull_m
+        curr_stock_f = start_f - cum_mort_f - cum_cull_f
+
+        # Daily Stats (Latest Log)
+        last_log = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date.desc()).first()
+
+        daily_mort_pct = 0
+        daily_egg_pct = 0
+        male_ratio = 0
+
+        if last_log:
+            # Daily Mort
+            d_mort = (last_log.mortality_male or 0) + (last_log.mortality_female or 0)
+            d_stock = curr_stock_m + curr_stock_f # Approx stock
+            if d_stock > 0:
+                daily_mort_pct = (d_mort / d_stock) * 100
+
+            # Egg Prod
+            if curr_stock_f > 0:
+                daily_egg_pct = ((last_log.eggs_collected or 0) / curr_stock_f) * 100
+
+            # Male Ratio
+            if curr_stock_f > 0:
+                male_ratio = (curr_stock_m / curr_stock_f) * 100
+
+        # B. Hatchery Stats
+        hatch_stats = db.session.query(
+            func.sum(Hatchability.egg_set),
+            func.sum(Hatchability.hatched_chicks),
+            func.sum(Hatchability.clear_eggs),
+            func.sum(Hatchability.rotten_eggs)
+        ).filter(Hatchability.flock_id == flock.id).first()
+
+        total_set = hatch_stats[0] or 0
+        total_hatched = hatch_stats[1] or 0
+        total_clear = hatch_stats[2] or 0
+        total_rotten = hatch_stats[3] or 0
+
+        hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0
+
+        hatchable = total_set - total_clear - total_rotten
+        fert_pct = (hatchable / total_set * 100) if total_set > 0 else 0
+
+        dashboard_data.append({
+            'house': flock.house.name,
+            'flock_id': flock.flock_id,
+            'flock_id_pk': flock.id,
+            'phase': flock.phase,
+            'age': age_str,
+            'cum_mort_pct': round(cum_mort_pct, 2),
+            'daily_mort_pct': round(daily_mort_pct, 2),
+            'egg_prod_pct': round(daily_egg_pct, 2),
+            'male_ratio': round(male_ratio, 2),
+            'hatch_pct': round(hatch_pct, 2),
+            'fert_pct': round(fert_pct, 2)
+        })
+
+    # --- 2. Inventory Usage (Monthly) ---
+    usage_txs = InventoryTransaction.query.options(joinedload(InventoryTransaction.item)).filter(
+        InventoryTransaction.transaction_type == 'Usage'
+    ).order_by(InventoryTransaction.transaction_date.desc()).all()
+
+    inventory_usage = {} # Key: (MonthStr, ItemName, Unit) -> Sum
+
+    for tx in usage_txs:
+        month_str = tx.transaction_date.strftime('%Y-%m')
+        key = (month_str, tx.item.name, tx.item.unit)
+        if key not in inventory_usage:
+            inventory_usage[key] = 0.0
+        inventory_usage[key] += tx.quantity
+
+    usage_list = []
+    for (month, name, unit), qty in inventory_usage.items():
+        usage_list.append({
+            'month': month,
+            'name': name,
+            'unit': unit,
+            'qty': qty
+        })
+
+    usage_list.sort(key=lambda x: x['name'])
+    usage_list.sort(key=lambda x: x['month'], reverse=True)
+
+    return render_template('executive_dashboard.html',
+                           flocks_data=dashboard_data,
+                           inventory_usage=usage_list)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
