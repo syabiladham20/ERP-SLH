@@ -3482,6 +3482,278 @@ def import_hatchability():
 
     return redirect(url_for('import_data'))
 
+def get_projected_start_of_lay(flock):
+    """
+    Calculates the projected date when the flock will reach 5% egg production.
+    """
+    if not flock or not flock.intake_date:
+        return None, 0
+
+    # Find standard week where egg prod >= 5%
+    target_std = Standard.query.filter(Standard.std_egg_prod >= 5).order_by(Standard.week.asc()).first()
+
+    if not target_std:
+        # Default fallback if standard not found (e.g. 24 weeks)
+        target_week = 24
+    else:
+        target_week = target_std.week
+
+    days_to_add = (target_week * 7)
+    projected_date = flock.intake_date + timedelta(days=days_to_add)
+
+    days_remaining = (projected_date - date.today()).days
+
+    return projected_date, days_remaining
+
+def get_weekly_data_aggregated(flocks):
+    """
+    Aggregates data for the given flocks by ISO Week.
+    Returns a dictionary structure:
+    {
+        '2025-W40': {
+            'week_str': '2025-W40',
+            'start_date': date_obj,
+            'end_date': date_obj,
+            'flock_data': {
+                flock_id: { ... metrics ... }
+            }
+        }
+    }
+    """
+    if not flocks:
+        return {}
+
+    flock_ids = [f.id for f in flocks]
+
+    # 1. Fetch all Daily Logs
+    logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids))\
+        .order_by(DailyLog.date.desc()).all()
+
+    # 2. Fetch all Hatchability Data
+    hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids))\
+        .order_by(Hatchability.setting_date.desc()).all()
+
+    # 3. Fetch Standards
+    standards = Standard.query.all()
+    std_map = {s.week: s for s in standards}
+
+    weekly_agg = {}
+
+    # Helper to init week entry
+    def init_week(key, start_d, end_d):
+        if key not in weekly_agg:
+            weekly_agg[key] = {
+                'week_str': key,
+                'start_date': start_d,
+                'end_date': end_d,
+                'flock_data': {}
+            }
+        return weekly_agg[key]
+
+    # Process Logs
+    for log in logs:
+        # Determine ISO Week
+        isocal = log.date.isocalendar() # (Year, Week, Weekday)
+        year, week, _ = isocal
+        week_key = f"{year}-W{week:02d}"
+
+        # Filter Pre-March 2025 (Roughly Week 9 2025)
+        # If year < 2025, skip. If year == 2025 and week < 9, skip.
+        # Requirement: "ensure that weeks with no data (pre-March 2025) are hidden"
+        if year < 2025 or (year == 2025 and week < 9):
+            continue
+
+        # Start/End of that week
+        # ISO week starts on Monday
+        # Python's isocalendar usage
+        monday = log.date - timedelta(days=log.date.weekday())
+        sunday = monday + timedelta(days=6)
+
+        entry = init_week(week_key, monday, sunday)
+
+        f_id = log.flock_id
+        if f_id not in entry['flock_data']:
+            entry['flock_data'][f_id] = {
+                'mort_m': 0, 'mort_f': 0,
+                'cull_m': 0, 'cull_f': 0,
+                'eggs': 0,
+                'feed_total_kg': 0,
+                'feed_g_bird_sum_f': 0, 'feed_g_bird_count': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0,
+                'unif_f_sum': 0, 'unif_f_count': 0,
+                'stock_f_start': 0, # Need to estimate
+                'log_count': 0,
+                'logs': [] # Keep references for sparklines if needed
+            }
+
+        fd = entry['flock_data'][f_id]
+        fd['mort_m'] += (log.mortality_male or 0)
+        fd['mort_f'] += (log.mortality_female or 0)
+        fd['cull_m'] += (log.culls_male or 0)
+        fd['cull_f'] += (log.culls_female or 0)
+        fd['eggs'] += (log.eggs_collected or 0)
+        fd['feed_total_kg'] += ((log.feed_male or 0) + (log.feed_female or 0))
+
+        if log.feed_female_gp_bird > 0:
+            fd['feed_g_bird_sum_f'] += log.feed_female_gp_bird
+            fd['feed_g_bird_count'] += 1
+
+        if log.body_weight_female > 0:
+            fd['bw_f_sum'] += log.body_weight_female
+            fd['bw_f_count'] += 1
+
+        if log.uniformity_female > 0:
+            fd['unif_f_sum'] += log.uniformity_female
+            fd['unif_f_count'] += 1
+
+        fd['log_count'] += 1
+        fd['logs'].append(log)
+
+    # Process Hatch Data
+    # Link Hatch Data to Week of SETTING or HATCHING?
+    # Usually Hatchability is reported on Hatch Date week.
+    for h in hatch_records:
+        isocal = h.hatching_date.isocalendar()
+        year, week, _ = isocal
+        week_key = f"{year}-W{week:02d}"
+
+        if year < 2025 or (year == 2025 and week < 9): continue
+
+        monday = h.hatching_date - timedelta(days=h.hatching_date.weekday())
+        sunday = monday + timedelta(days=6)
+
+        entry = init_week(week_key, monday, sunday)
+        f_id = h.flock_id
+
+        if f_id not in entry['flock_data']:
+            entry['flock_data'][f_id] = {
+                # Init zeros for farm metrics if no logs exist this week
+                'mort_m': 0, 'mort_f': 0, 'cull_m': 0, 'cull_f': 0, 'eggs': 0,
+                'feed_total_kg': 0, 'feed_g_bird_sum_f': 0, 'feed_g_bird_count': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0, 'unif_f_sum': 0, 'unif_f_count': 0,
+                'log_count': 0, 'logs': [],
+                # Hatch Metrics
+                'hatched': 0, 'set': 0
+            }
+
+        fd = entry['flock_data'][f_id]
+        if 'hatched' not in fd:
+            fd['hatched'] = 0
+            fd['set'] = 0
+
+        fd['hatched'] += (h.hatched_chicks or 0)
+        fd['set'] += (h.egg_set or 0)
+
+    # Calculate Rates and Standard Deviations
+    # Need Stock history for Mortality %
+    stock_history_bulk = get_flock_stock_history_bulk(flocks)
+
+    flock_objs = {f.id: f for f in flocks}
+
+    # Sort weeks descending
+    sorted_weeks = sorted(weekly_agg.keys(), reverse=True)
+
+    final_data = []
+
+    for w_key in sorted_weeks:
+        w_data = weekly_agg[w_key]
+        row = {
+            'week': w_key,
+            'start_date': w_data['start_date'],
+            'end_date': w_data['end_date'],
+            'flocks': []
+        }
+
+        for f_id, data in w_data['flock_data'].items():
+            flock = flock_objs.get(f_id)
+            if not flock: continue
+
+            # Age Calculation (at end of week)
+            age_days = (w_data['end_date'] - flock.intake_date).days
+            age_week = (age_days // 7) + 1
+            if age_week < 1: age_week = 1
+
+            # Standards
+            std = std_map.get(age_week)
+
+            # Stock Calculation
+            # Use stock at start of week
+            stock_hist = stock_history_bulk.get(f_id, {})
+            # Find closest date <= start_date
+            start_stock_f = flock.intake_female # Default
+
+            # We can use the stock_history keys.
+            # stock_history map has date -> stock at start of that day.
+            # So start_stock_f should be stock at w_data['start_date']
+
+            # Use linear search on sorted keys as optimization
+            hist_dates = sorted([d for d in stock_hist.keys() if isinstance(d, date)])
+            best_date = None
+            for d in hist_dates:
+                if d <= w_data['start_date']:
+                    best_date = d
+                else:
+                    break
+
+            if best_date:
+                start_stock_f = stock_hist[best_date]
+
+            # Calculations
+            mort_f_pct = (data['mort_f'] / start_stock_f * 100) if start_stock_f > 0 else 0
+
+            hen_days = start_stock_f * 7 # Approximate
+            # Precise hen days = sum daily stock?
+            # If we have logs, we can sum daily stock.
+            # But we aggregated logs manually.
+            # Let's use simple approximation for Executive view speed.
+
+            egg_prod_pct = (data['eggs'] / hen_days * 100) if hen_days > 0 else 0
+
+            hatch_pct = (data.get('hatched', 0) / data.get('set', 0) * 100) if data.get('set', 0) > 0 else 0
+
+            avg_bw_f = (data['bw_f_sum'] / data['bw_f_count']) if data['bw_f_count'] > 0 else 0
+            avg_unif_f = (data['unif_f_sum'] / data['unif_f_count']) if data['unif_f_count'] > 0 else 0
+            avg_feed_f = (data['feed_g_bird_sum_f'] / data['feed_g_bird_count']) if data['feed_g_bird_count'] > 0 else 0
+
+            # Generate Sparkline Data (Daily within this week)
+            # data['logs'] contains daily logs.
+            # We need to sort them.
+            daily_logs = sorted(data['logs'], key=lambda x: x.date)
+            spark_bw = [l.body_weight_female for l in daily_logs if l.body_weight_female > 0]
+            spark_eggs = [((l.eggs_collected or 0)/(start_stock_f or 1)*100) for l in daily_logs] # Approx %
+
+            # Feed Code (Take last used)
+            feed_code = "N/A"
+            if daily_logs:
+                last_log = daily_logs[-1]
+                if last_log.feed_code_female:
+                    feed_code = last_log.feed_code_female.code
+                elif last_log.feed_code_male:
+                    feed_code = last_log.feed_code_male.code
+
+            flock_metrics = {
+                'flock_obj': flock,
+                'age_week': age_week,
+                'total_eggs': data['eggs'],
+                'mort_f_pct': round(mort_f_pct, 2),
+                'egg_prod_pct': round(egg_prod_pct, 2),
+                'hatch_pct': round(hatch_pct, 2),
+                'avg_bw_f': int(avg_bw_f),
+                'avg_unif_f': round(avg_unif_f, 1),
+                'avg_feed_f': int(avg_feed_f),
+                'feed_code': feed_code,
+                'std_bw_f': std.std_bw_female if std else None,
+                'std_egg_prod': std.std_egg_prod if std else None,
+                'spark_bw': spark_bw,
+                'spark_eggs': spark_eggs
+            }
+
+            row['flocks'].append(flock_metrics)
+
+        final_data.append(row)
+
+    return final_data
+
 def process_hatchability_import(file):
     import pandas as pd
     xls = pd.ExcelFile(file)
@@ -5096,151 +5368,97 @@ def edit_inventory_transaction(id):
 
 @app.route('/executive_dashboard')
 def executive_dashboard():
-    # Role Check: Admin or Management (Future proofing)
+    # Role Check: Admin or Management
     if not session.get('is_admin') and session.get('user_role') != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
         return redirect(url_for('index'))
 
-    # --- 1. Farm & Hatchery Overview (Cards) ---
-    active_flocks = Flock.query.filter_by(status='Active').all()
+    # Active Flocks
+    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     active_flocks.sort(key=natural_sort_key)
 
-    dashboard_data = []
+    prod_flocks = [f for f in active_flocks if f.phase == 'Production']
+    rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
 
-    today = date.today()
+    # Get Aggregated Data
+    # We fetch ALL data in one go or per group? One go is fine, then filter in template or here.
+    # Actually, the table structure differs.
 
-    for flock in active_flocks:
-        # A. Farm Stats
-        # Age
-        age_days = (today - flock.intake_date).days
-        age_weeks = age_days // 7
-        age_days_rem = age_days % 7
-        age_str = f"{age_weeks}W {age_days_rem}D"
+    prod_data_weekly = get_weekly_data_aggregated(prod_flocks)
+    rearing_data_weekly = get_weekly_data_aggregated(rearing_flocks)
 
-        # Cumulative Mortality & Culls (SQL Sum for efficiency)
-        stmt_loss = db.session.query(
-            func.sum(DailyLog.mortality_male),
-            func.sum(DailyLog.mortality_female),
-            func.sum(DailyLog.culls_male),
-            func.sum(DailyLog.culls_female)
-        ).filter(DailyLog.flock_id == flock.id).first()
-
-        cum_mort_m = stmt_loss[0] or 0
-        cum_mort_f = stmt_loss[1] or 0
-        cum_cull_m = stmt_loss[2] or 0
-        cum_cull_f = stmt_loss[3] or 0
-
-        start_m = flock.intake_male or 1
-        start_f = flock.intake_female or 1
-
-        cum_mort_pct = ((cum_mort_m + cum_mort_f) / (start_m + start_f) * 100)
-
-        # Current Stock (Approx for Daily calc)
-        curr_stock_m = start_m - cum_mort_m - cum_cull_m
-        curr_stock_f = start_f - cum_mort_f - cum_cull_f
-
-        # Daily Stats (Latest Log)
-        last_log = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date.desc()).first()
-
-        daily_mort_pct = 0
-        daily_egg_pct = 0
-        male_ratio = 0
-
-        if last_log:
-            # Daily Mort
-            d_mort = (last_log.mortality_male or 0) + (last_log.mortality_female or 0)
-            d_stock = curr_stock_m + curr_stock_f # Approx stock
-            if d_stock > 0:
-                daily_mort_pct = (d_mort / d_stock) * 100
-
-            # Egg Prod
-            if curr_stock_f > 0:
-                daily_egg_pct = ((last_log.eggs_collected or 0) / curr_stock_f) * 100
-
-            # Male Ratio
-            if curr_stock_f > 0:
-                male_ratio = (curr_stock_m / curr_stock_f) * 100
-
-        # B. Hatchery Stats
-        hatch_stats = db.session.query(
-            func.sum(Hatchability.egg_set),
-            func.sum(Hatchability.hatched_chicks),
-            func.sum(Hatchability.clear_eggs),
-            func.sum(Hatchability.rotten_eggs)
-        ).filter(Hatchability.flock_id == flock.id).first()
-
-        total_set = hatch_stats[0] or 0
-        total_hatched = hatch_stats[1] or 0
-        total_clear = hatch_stats[2] or 0
-        total_rotten = hatch_stats[3] or 0
-
-        hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0
-
-        hatchable = total_set - total_clear - total_rotten
-        fert_pct = (hatchable / total_set * 100) if total_set > 0 else 0
-
-        # Latest Hatch
-        latest_hatch = Hatchability.query.filter_by(flock_id=flock.id)\
-            .filter(Hatchability.hatched_chicks > 0)\
-            .order_by(Hatchability.hatching_date.desc()).first()
-
-        latest_hatch_week = None
-        latest_hatch_pct = 0
-        latest_fert_pct = 0
-
-        if latest_hatch:
-            days_diff = (latest_hatch.setting_date - flock.intake_date).days
-            latest_hatch_week = (days_diff // 7) if days_diff >= 0 else 0
-
-            latest_hatch_pct = latest_hatch.hatchability_pct
-            latest_fert_pct = latest_hatch.fertile_egg_pct
-
-        dashboard_data.append({
-            'house': flock.house.name,
-            'flock_id': flock.flock_id,
-            'flock_id_pk': flock.id,
-            'phase': flock.phase,
-            'age': age_str,
-            'cum_mort_pct': round(cum_mort_pct, 2),
-            'daily_mort_pct': round(daily_mort_pct, 2),
-            'egg_prod_pct': round(daily_egg_pct, 2),
-            'male_ratio': round(male_ratio, 2),
-            'hatch_pct': round(hatch_pct, 2),
-            'fert_pct': round(fert_pct, 2),
-            'latest_hatch_pct': round(latest_hatch_pct, 2) if latest_hatch else None,
-            'latest_fert_pct': round(latest_fert_pct, 2) if latest_hatch else None,
-            'latest_hatch_week': latest_hatch_week
+    # Countdown Logic for Rearing Flocks
+    countdowns = []
+    for f in rearing_flocks:
+        p_date, d_rem = get_projected_start_of_lay(f)
+        countdowns.append({
+            'flock': f,
+            'projected_date': p_date,
+            'days_remaining': d_rem
         })
 
-    # --- 2. Inventory Usage (Monthly) ---
+    # Leaderboard (Active Flocks)
+    # Top House (Best Egg Prod % - Current Week?)
+    # Let's use the most recent week in prod_data_weekly
+    top_house = None
+    best_prod = -1
+
+    top_hatch_batch = None
+    best_hatch = -1
+
+    # Iterate latest week of production data
+    if prod_data_weekly:
+        latest_week = prod_data_weekly[0] # Sorted descending
+        for f_metric in latest_week['flocks']:
+            # Egg Prod
+            if f_metric['egg_prod_pct'] > best_prod:
+                best_prod = f_metric['egg_prod_pct']
+                top_house = f_metric['flock_obj'].house.name
+
+            # Hatch
+            if f_metric['hatch_pct'] > best_hatch:
+                best_hatch = f_metric['hatch_pct']
+                top_hatch_batch = f_metric['flock_obj'].flock_id
+
+    leaderboard = {
+        'top_house': top_house,
+        'best_prod': best_prod,
+        'top_hatch_batch': top_hatch_batch,
+        'best_hatch': best_hatch
+    }
+
+    # Inventory Usage (Monthly) - Same as before
     usage_txs = InventoryTransaction.query.options(joinedload(InventoryTransaction.item)).filter(
         InventoryTransaction.transaction_type == 'Usage'
     ).order_by(InventoryTransaction.transaction_date.desc()).all()
 
-    inventory_usage = {} # Key: (MonthStr, ItemName, Unit) -> Sum
-
+    inventory_usage = {}
     for tx in usage_txs:
         month_str = tx.transaction_date.strftime('%Y-%m')
         key = (month_str, tx.item.name, tx.item.unit)
-        if key not in inventory_usage:
-            inventory_usage[key] = 0.0
+        if key not in inventory_usage: inventory_usage[key] = 0.0
         inventory_usage[key] += tx.quantity
 
     usage_list = []
     for (month, name, unit), qty in inventory_usage.items():
-        usage_list.append({
-            'month': month,
-            'name': name,
-            'unit': unit,
-            'qty': qty
-        })
+        usage_list.append({'month': month, 'name': name, 'unit': unit, 'qty': qty})
 
-    usage_list.sort(key=lambda x: x['name'])
     usage_list.sort(key=lambda x: x['month'], reverse=True)
 
+    # Date Header
+    today = date.today()
+    current_month_name = today.strftime('%B %Y')
+    isocal = today.isocalendar()
+    current_iso_week = f"{isocal[0]}-W{isocal[1]:02d}"
+
     return render_template('executive_dashboard.html',
-                           flocks_data=dashboard_data,
-                           inventory_usage=usage_list)
+                           prod_data=prod_data_weekly,
+                           rearing_data=rearing_data_weekly,
+                           countdowns=countdowns,
+                           leaderboard=leaderboard,
+                           inventory_usage=usage_list,
+                           current_month=current_month_name,
+                           current_iso_week=current_iso_week)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
