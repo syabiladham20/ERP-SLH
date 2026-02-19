@@ -4974,8 +4974,8 @@ def get_weekly_data_aggregated(flocks):
 
 
 
-@app.route('/executive_dashboard')
-def executive_dashboard():
+@app.route('/additional_report')
+def additional_report():
     # Role Check: Admin or Management
     if not session.get('is_admin') and session.get('user_role') != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
@@ -5059,7 +5059,7 @@ def executive_dashboard():
     isocal = today.isocalendar()
     current_iso_week = f"{isocal[0]}-W{isocal[1]:02d}"
 
-    return render_template('executive_dashboard.html',
+    return render_template('additional_report.html',
                            prod_data=prod_data_weekly,
                            rearing_data=rearing_data_weekly,
                            countdowns=countdowns,
@@ -5067,6 +5067,101 @@ def executive_dashboard():
                            inventory_usage=usage_list,
                            current_month=current_month_name,
                            current_iso_week=current_iso_week)
+
+@app.route('/executive_dashboard')
+def executive_dashboard():
+    # Role Check: Admin or Management
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        flash("Access Denied: Executive View Only.", "danger")
+        return redirect(url_for('index'))
+
+    # --- Farm Data ---
+    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks.sort(key=natural_sort_key)
+
+    today = date.today()
+
+    # Inventory Check
+    low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
+    low_stock_count = len(low_stock_items)
+
+    for f in active_flocks:
+        daily_stats = enrich_flock_data(f, f.logs)
+
+        f.rearing_mort_m_pct = 0
+        f.rearing_mort_f_pct = 0
+        f.prod_mort_m_pct = 0
+        f.prod_mort_f_pct = 0
+        f.male_ratio_pct = 0
+        f.has_log_today = False
+
+        # Age
+        days_age = (today - f.intake_date).days
+        f.age_weeks = days_age // 7
+        f.age_days = days_age % 7
+        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
+
+        # Stats
+        if daily_stats:
+            last = daily_stats[-1]
+            if last['date'] == today:
+                f.has_log_today = True
+
+            if f.phase == 'Rearing':
+                f.rearing_mort_m_pct = last['mortality_cum_male_pct']
+                f.rearing_mort_f_pct = last['mortality_cum_female_pct']
+            else:
+                f.prod_mort_m_pct = last['mortality_cum_male_pct']
+                f.prod_mort_f_pct = last['mortality_cum_female_pct']
+
+            if last['male_ratio_stock']:
+                f.male_ratio_pct = last['male_ratio_stock'] * 100
+
+        # Daily Stats & Trends
+        f.daily_stats = {
+            'mort_m_pct': 0, 'mort_f_pct': 0, 'egg_pct': 0,
+            'mort_m_trend': 'flat', 'mort_f_trend': 'flat', 'egg_trend': 'flat',
+            'mort_m_diff': 0, 'mort_f_diff': 0, 'egg_diff': 0,
+            'has_today': False
+        }
+
+        stats_map = { d['date']: d for d in daily_stats }
+        stats_today = stats_map.get(today)
+        stats_yest = stats_map.get(today - timedelta(days=1))
+
+        if stats_today:
+            f.daily_stats['has_today'] = True
+            f.daily_stats['mort_m_pct'] = stats_today['mortality_male_pct']
+            f.daily_stats['mort_f_pct'] = stats_today['mortality_female_pct']
+            f.daily_stats['egg_pct'] = stats_today['egg_prod_pct']
+
+            if stats_yest:
+                f.daily_stats['mort_m_diff'] = stats_today['mortality_male_pct'] - stats_yest['mortality_male_pct']
+                f.daily_stats['mort_f_diff'] = stats_today['mortality_female_pct'] - stats_yest['mortality_female_pct']
+                f.daily_stats['egg_diff'] = stats_today['egg_prod_pct'] - stats_yest['egg_prod_pct']
+
+                if f.daily_stats['mort_m_diff'] > 0: f.daily_stats['mort_m_trend'] = 'up'
+                elif f.daily_stats['mort_m_diff'] < 0: f.daily_stats['mort_m_trend'] = 'down'
+
+                if f.daily_stats['mort_f_diff'] > 0: f.daily_stats['mort_f_trend'] = 'up'
+                elif f.daily_stats['mort_f_diff'] < 0: f.daily_stats['mort_f_trend'] = 'down'
+
+                if f.daily_stats['egg_diff'] > 0: f.daily_stats['egg_trend'] = 'up'
+                elif f.daily_stats['egg_diff'] < 0: f.daily_stats['egg_trend'] = 'down'
+
+    # --- Hatchery Data ---
+    start_month = date(today.year, today.month, 1)
+    monthly_records = Hatchability.query.filter(Hatchability.hatching_date >= start_month).all()
+    total_hatched = sum(r.hatched_chicks for r in monthly_records)
+    total_set = sum(r.egg_set for r in monthly_records)
+    avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
+
+    return render_template('executive_dashboard.html',
+                           active_flocks=active_flocks,
+                           avg_hatch_pct=avg_hatch_pct,
+                           current_month=today.strftime('%B %Y'),
+                           today=today,
+                           low_stock_count=low_stock_count)
 
 
 if __name__ == '__main__':
