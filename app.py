@@ -5314,6 +5314,7 @@ def executive_dashboard():
 
         # Hatchery Enrichment
         latest_hatch = Hatchability.query.filter_by(flock_id=f.id).order_by(Hatchability.setting_date.desc()).first()
+        f.latest_hatch = latest_hatch
         f.latest_hatch_pct = latest_hatch.hatchability_pct if latest_hatch else 0.0
 
         stmt = db.session.query(func.sum(Hatchability.hatched_chicks), func.sum(Hatchability.egg_set)).filter_by(flock_id=f.id).first()

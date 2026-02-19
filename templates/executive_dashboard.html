@@ -152,7 +152,7 @@
                             </div>
                             {% endif %}
                         </div>
-                    </div>
+                        {% if flock.latest_hatch %}
                         <hr>
                         <div class="row text-center mt-2">
                             <div class="col-6 border-end">
@@ -164,6 +164,7 @@
                                 <strong>{{ "%.2f"|format(flock.cum_hatch_pct) }}%</strong>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                     <div class="card-footer d-flex justify-content-between">
                         <div>
