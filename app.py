@@ -5068,6 +5068,121 @@ def additional_report():
                            current_month=current_month_name,
                            current_iso_week=current_iso_week)
 
+def get_iso_aggregated_data(flocks, start_date=None):
+    """
+    Aggregates data across all given flocks into Weekly, Monthly, and Yearly ISO buckets.
+    Returns:
+    {
+        'weekly': [{period, avg_female_stock, total_eggs, total_chicks, mortality_pct, hatchability_pct, egg_prod_pct}, ...],
+        'monthly': [...],
+        'yearly': [...]
+    }
+    """
+    if not flocks:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
+
+    global_daily = {}
+
+    # Filter for Start Date
+    filter_start = start_date if start_date else date(2025, 3, 1)
+
+    for flock in flocks:
+        # Use relationship logs if available, else query
+        logs = flock.logs if flock.logs else DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date).all()
+        hatch_records = Hatchability.query.filter_by(flock_id=flock.id).all()
+
+        daily_stats = enrich_flock_data(flock, logs, hatch_records)
+
+        for d in daily_stats:
+            d_date = d['date']
+            if d_date < filter_start:
+                continue
+
+            if d_date not in global_daily:
+                global_daily[d_date] = {
+                    'stock_f': 0, 'eggs': 0, 'mort_f': 0,
+                    'chicks': 0, 'egg_set': 0,
+                    'active_flocks': 0
+                }
+
+            # Check for Production Phase Logic
+            is_prod = False
+            if flock.production_start_date and d_date >= flock.production_start_date:
+                is_prod = True
+            elif flock.phase == 'Production':
+                # Fallback: if no date set, assume phase is valid for all fetched logs?
+                # No, historical logs might be rearing.
+                # If eggs collected > 0, assume prod.
+                if d['eggs_collected'] > 0: is_prod = True
+
+            # Stock summation (Only if in production)
+            if is_prod:
+                global_daily[d_date]['stock_f'] += d['stock_female_start']
+                global_daily[d_date]['mort_f'] += d['mortality_female']
+
+            global_daily[d_date]['eggs'] += d['eggs_collected']
+
+            if d.get('hatched_chicks'):
+                global_daily[d_date]['chicks'] += d['hatched_chicks']
+            if d.get('egg_set'):
+                global_daily[d_date]['egg_set'] += d['egg_set']
+
+            global_daily[d_date]['active_flocks'] += 1
+
+    buckets = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    sorted_dates = sorted(global_daily.keys())
+
+    for d_date in sorted_dates:
+        day_data = global_daily[d_date]
+
+        isocal = d_date.isocalendar()
+        week_key = f"{isocal[0]}-W{isocal[1]:02d}"
+        month_key = d_date.strftime('%Y-%m')
+        year_key = str(d_date.year)
+
+        for p_type, p_key in [('weekly', week_key), ('monthly', month_key), ('yearly', year_key)]:
+            if p_key not in buckets[p_type]:
+                buckets[p_type][p_key] = {
+                    'period': p_key,
+                    'sum_stock_f': 0, 'days_with_stock': 0,
+                    'total_eggs': 0, 'total_mort_f': 0,
+                    'total_chicks': 0, 'total_set': 0,
+                    'data_days': 0
+                }
+
+            b = buckets[p_type][p_key]
+            b['total_eggs'] += day_data['eggs']
+            b['total_mort_f'] += day_data['mort_f']
+            b['total_chicks'] += day_data['chicks']
+            b['total_set'] += day_data['egg_set']
+            b['data_days'] += 1
+            b['sum_stock_f'] += day_data['stock_f']
+
+    results = {'weekly': [], 'monthly': [], 'yearly': []}
+
+    for p_type in ['weekly', 'monthly', 'yearly']:
+        sorted_keys = sorted(buckets[p_type].keys(), reverse=True)
+
+        for k in sorted_keys:
+            b = buckets[p_type][k]
+
+            avg_stock = b['sum_stock_f'] / b['data_days'] if b['data_days'] > 0 else 0
+            egg_prod_pct = (b['total_eggs'] / b['sum_stock_f'] * 100) if b['sum_stock_f'] > 0 else 0
+            mort_pct = (b['total_mort_f'] / avg_stock * 100) if avg_stock > 0 else 0
+            hatch_pct = (b['total_chicks'] / b['total_set'] * 100) if b['total_set'] > 0 else 0
+
+            results[p_type].append({
+                'period': b['period'],
+                'avg_female_stock': int(avg_stock),
+                'total_eggs': b['total_eggs'],
+                'total_chicks': b['total_chicks'],
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'egg_production_pct': round(egg_prod_pct, 2)
+            })
+
+    return results
+
 @app.route('/executive_dashboard')
 def executive_dashboard():
     # Role Check: Admin or Management
@@ -5087,6 +5202,15 @@ def executive_dashboard():
 
     for f in active_flocks:
         daily_stats = enrich_flock_data(f, f.logs)
+
+        # Hatchery Enrichment
+        latest_hatch = Hatchability.query.filter_by(flock_id=f.id).order_by(Hatchability.setting_date.desc()).first()
+        f.latest_hatch_pct = latest_hatch.hatchability_pct if latest_hatch else 0.0
+
+        stmt = db.session.query(func.sum(Hatchability.hatched_chicks), func.sum(Hatchability.egg_set)).filter_by(flock_id=f.id).first()
+        total_h = stmt[0] or 0
+        total_s = stmt[1] or 0
+        f.cum_hatch_pct = (total_h / total_s * 100) if total_s > 0 else 0.0
 
         f.rearing_mort_m_pct = 0
         f.rearing_mort_f_pct = 0
@@ -5149,19 +5273,23 @@ def executive_dashboard():
                 if f.daily_stats['egg_diff'] > 0: f.daily_stats['egg_trend'] = 'up'
                 elif f.daily_stats['egg_diff'] < 0: f.daily_stats['egg_trend'] = 'down'
 
-    # --- Hatchery Data ---
+    # --- Hatchery Data (Legacy Avg) ---
     start_month = date(today.year, today.month, 1)
     monthly_records = Hatchability.query.filter(Hatchability.hatching_date >= start_month).all()
     total_hatched = sum(r.hatched_chicks for r in monthly_records)
     total_set = sum(r.egg_set for r in monthly_records)
     avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
 
+    # --- New ISO Reports ---
+    iso_data = get_iso_aggregated_data(active_flocks, start_date=date(2025, 3, 1))
+
     return render_template('executive_dashboard.html',
                            active_flocks=active_flocks,
                            avg_hatch_pct=avg_hatch_pct,
                            current_month=today.strftime('%B %Y'),
                            today=today,
-                           low_stock_count=low_stock_count)
+                           low_stock_count=low_stock_count,
+                           iso_data=iso_data)
 
 
 if __name__ == '__main__':
