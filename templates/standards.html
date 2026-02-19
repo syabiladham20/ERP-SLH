@@ -11,13 +11,17 @@
             <form method="POST" action="{{ url_for('manage_standards') }}">
                 <input type="hidden" name="action" value="update_global">
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">Daily Mortality % Target</label>
                         <input type="number" step="0.01" name="std_mortality_daily" class="form-control" value="{{ global_std.std_mortality_daily }}">
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">Weekly Mortality % Target</label>
                         <input type="number" step="0.01" name="std_mortality_weekly" class="form-control" value="{{ global_std.std_mortality_weekly }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Hatching Egg % Target</label>
+                        <input type="number" step="0.1" name="std_hatching_egg_pct" class="form-control" value="{{ global_std.std_hatching_egg_pct }}">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary mt-3">Update Global Standards</button>

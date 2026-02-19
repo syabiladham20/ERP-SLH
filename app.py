@@ -340,6 +340,7 @@ class GlobalStandard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     std_mortality_daily = db.Column(db.Float, default=0.05)
     std_mortality_weekly = db.Column(db.Float, default=0.3)
+    std_hatching_egg_pct = db.Column(db.Float, default=96.0)
 
 class UIElement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1322,6 +1323,7 @@ def manage_standards():
 
             gs.std_mortality_daily = float(request.form.get('std_mortality_daily') or 0.05)
             gs.std_mortality_weekly = float(request.form.get('std_mortality_weekly') or 0.3)
+            gs.std_hatching_egg_pct = float(request.form.get('std_hatching_egg_pct') or 96.0)
             db.session.commit()
             flash('Global standards updated.', 'success')
 
@@ -3171,8 +3173,14 @@ def seed_standards_from_file():
             std_bw_f = int(row[33]) if pd.notna(row[33]) else 0
 
             # Missing Data placeholders
-            std_egg_prod = 0.0
-            std_egg_weight = 0.0
+            # Col 19: Egg Prod % (0.83 = 83%)
+            std_egg_prod = float(row[19]) * 100 if pd.notna(row[19]) else 0.0
+
+            # Col 27: Egg Weight (g)
+            std_egg_weight = float(row[27]) if pd.notna(row[27]) else 0.0
+
+            # Col 26 is H.E% (Hatching Egg %), NOT Hatchability.
+            # We do not map it to std_hatchability unless we add std_hatching_egg_pct to Standard model.
             std_hatch = 0.0
 
             # Check existing
