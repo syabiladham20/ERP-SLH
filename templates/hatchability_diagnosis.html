@@ -52,7 +52,8 @@
             <div class="card-body">
                 <p><strong>Total Eggs Set:</strong> {{ stats['set'] }}</p>
                 <p><strong>Total Eggs Collected:</strong> {{ stats['collected'] }}</p>
-                <p><strong>Difference:</strong>
+                <p><strong>Total Hatching Eggs:</strong> {{ stats['hatching_eggs'] }}</p>
+                <p><strong>Difference (Hatching vs Set):</strong>
                     <span class="{% if stats['diff'] != 0 %}text-danger fw-bold{% else %}text-success{% endif %}">
                         {{ stats['diff'] }}
                     </span>

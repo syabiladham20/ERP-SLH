@@ -2403,7 +2403,12 @@ def hatchability_diagnosis(id, date_str):
     avg_clear = (total_clear / total_set * 100) if total_set > 0 else 0
     avg_rotten = (total_rotten / total_set * 100) if total_set > 0 else 0
 
-    total_collected = sum(l.eggs_collected for l in daily_logs)
+    total_collected = 0
+    total_hatching_eggs = 0
+    for l in daily_logs:
+        total_collected += (l.eggs_collected or 0)
+        culls = (l.cull_eggs_jumbo or 0) + (l.cull_eggs_small or 0) + (l.cull_eggs_abnormal or 0) + (l.cull_eggs_crack or 0)
+        total_hatching_eggs += ((l.eggs_collected or 0) - culls)
 
     return render_template('hatchability_diagnosis.html',
                            flock=flock,
@@ -2419,7 +2424,8 @@ def hatchability_diagnosis(id, date_str):
                                'hatch_pct': avg_hatchability,
                                'clear_pct': avg_clear, 'rotten_pct': avg_rotten,
                                'collected': total_collected,
-                               'diff': total_collected - total_set
+                               'hatching_eggs': total_hatching_eggs,
+                               'diff': total_hatching_eggs - total_set
                            })
 
 @app.route('/flock/<int:id>/dashboard')
