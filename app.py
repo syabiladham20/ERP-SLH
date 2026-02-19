@@ -1585,13 +1585,56 @@ def view_flock(id):
         gs = GlobalStandard()
         db.session.add(gs)
         db.session.commit()
+
+    # --- Standards Setup for Shifted Comparison ---
+    all_standards = Standard.query.all()
+    std_map = {s.week: s for s in all_standards}
     
+    # Find Standard Start Week (first week with egg prod > 0)
+    # Default to 24 if not found
+    std_start_week = 24
+    sorted_stds = sorted(all_standards, key=lambda x: x.week)
+    for s in sorted_stds:
+        if s.std_egg_prod > 0:
+            std_start_week = s.week
+            break
+
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).all()
 
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
+
+    # --- Calculate Actual Start & Offset ---
+    actual_start_date = None
+    for d in daily_stats:
+        if d['eggs_collected'] > 0:
+            actual_start_date = d['date']
+            break
+
+    offset_weeks = 0
+    if actual_start_date:
+        actual_start_week = (actual_start_date - flock.intake_date).days // 7 + 1
+        offset_weeks = actual_start_week - std_start_week
+
+    # Inject Shifted Standard into daily_stats
+    for d in daily_stats:
+        current_age_week = d['week']
+        # Production Metrics use Shifted Standard
+        target_std_week = current_age_week - offset_weeks
+
+        std_obj = std_map.get(target_std_week)
+        d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+
     weekly_stats = aggregate_weekly_metrics(daily_stats)
+
+    # Inject Shifted Standard into weekly_stats (simple average of days or lookup by week?)
+    # Lookup by week is cleaner for the graph
+    for ws in weekly_stats:
+        current_age_week = ws['week']
+        target_std_week = current_age_week - offset_weeks
+        std_obj = std_map.get(target_std_week)
+        ws['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -1698,6 +1741,7 @@ def view_flock(id):
         'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
+        'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
         'male_ratio': [round(d['male_ratio_stock'] * 100, 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
         'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
         'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
@@ -1806,6 +1850,8 @@ def view_flock(id):
         chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] > 0 else None)
 
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
+        chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
+        chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
 
         # Standard BW - average of the week's standards? Or just take one? Average is fine.
         # ws doesn't have standard sum. We can take last day's standard.
@@ -2399,7 +2445,35 @@ def flock_dashboard(id):
     age_days = (target_date - flock.intake_date).days
     age_week = (age_days // 7) + 1
 
-    standard = Standard.query.filter_by(week=age_week).first()
+    # --- Offset Logic for KPI ---
+    # Find Standard Start
+    all_standards = Standard.query.all()
+    std_start_week = 24
+    sorted_stds = sorted(all_standards, key=lambda x: x.week)
+    std_map = {s.week: s for s in all_standards}
+    for s in sorted_stds:
+        if s.std_egg_prod > 0:
+            std_start_week = s.week
+            break
+
+    # Find Actual Start (First egg in logs)
+    # We need to query *all* logs to find the start, even though 'all_logs' is filtered by target_date.
+    # Optimization: Use 'all_logs' if it contains the start, otherwise do a quick query.
+    # Or just use all_logs since we likely need the start date which is usually BEFORE target_date.
+    actual_start_date = None
+    for log in all_logs:
+        if log.eggs_collected > 0:
+            actual_start_date = log.date
+            break
+
+    offset_weeks = 0
+    if actual_start_date:
+        actual_start_week = (actual_start_date - flock.intake_date).days // 7 + 1
+        offset_weeks = actual_start_week - std_start_week
+
+    standard = std_map.get(age_week) # Biological Standard
+    prod_standard_week = age_week - offset_weeks
+    prod_standard = std_map.get(prod_standard_week) # Production Standard
 
     kpis = []
 
@@ -2432,7 +2506,7 @@ def flock_dashboard(id):
         'reverse_bad': True
     })
 
-    std_egg = standard.std_egg_prod if standard else None
+    std_egg = prod_standard.std_egg_prod if prod_standard else None
     kpis.append({
         'label': 'Egg Production %',
         'value': today_stat.get('egg_prod_pct', 0),
@@ -4759,6 +4833,31 @@ def get_weekly_data_aggregated(flocks):
     standards = Standard.query.all()
     std_map = {s.week: s for s in standards}
 
+    # Pre-calculate Offsets for Shifted Standards
+    # Find Standard Start
+    std_start_week = 24
+    std_weeks_with_eggs = [s.week for s in standards if s.std_egg_prod > 0]
+    if std_weeks_with_eggs:
+        std_start_week = min(std_weeks_with_eggs)
+
+    # Find Actual Start per Flock
+    min_egg_dates = db.session.query(
+        DailyLog.flock_id,
+        func.min(DailyLog.date)
+    ).filter(
+        DailyLog.flock_id.in_(flock_ids),
+        DailyLog.eggs_collected > 0
+    ).group_by(DailyLog.flock_id).all()
+
+    offset_map = {}
+    flock_objs_temp = {f.id: f for f in flocks} # Temp map for offset calc
+
+    for fid, min_date in min_egg_dates:
+        if fid in flock_objs_temp:
+             f = flock_objs_temp[fid]
+             actual_start_week = (min_date - f.intake_date).days // 7 + 1
+             offset_map[fid] = actual_start_week - std_start_week
+
     weekly_agg = {}
 
     # Helper to init week entry
@@ -4896,7 +4995,11 @@ def get_weekly_data_aggregated(flocks):
             if age_week < 1: age_week = 1
 
             # Standards
-            std = std_map.get(age_week)
+            std_bio = std_map.get(age_week) # Biological Standard (BW)
+
+            offset = offset_map.get(f_id, 0)
+            prod_std_week = age_week - offset
+            std_prod = std_map.get(prod_std_week) # Production Standard (Eggs)
 
             # Stock Calculation
             # Use stock at start of week
@@ -4964,8 +5067,8 @@ def get_weekly_data_aggregated(flocks):
                 'avg_unif_f': round(avg_unif_f, 1),
                 'avg_feed_f': int(avg_feed_f),
                 'feed_code': feed_code,
-                'std_bw_f': std.std_bw_female if std else None,
-                'std_egg_prod': std.std_egg_prod if std else None,
+                'std_bw_f': std_bio.std_bw_female if std_bio else None,
+                'std_egg_prod': std_prod.std_egg_prod if std_prod else None,
                 'spark_bw': spark_bw,
                 'spark_eggs': spark_eggs
             }
