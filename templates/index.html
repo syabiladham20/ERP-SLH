@@ -40,7 +40,7 @@
                 <div class="card-body">
                     <div class="row mb-2">
                         <div class="col-6">
-                            Intake: {{ flock.intake_date }}<br>
+                            Intake: {{ flock.intake_date | date_fmt }}<br>
                             <small class="text-muted">Age: {{ flock.age_weeks }}W {{ flock.age_days }}D</small>
                         </div>
                         <div class="col-6 text-end">Start: {{ flock.intake_male }}M / {{ flock.intake_female }}F</div>

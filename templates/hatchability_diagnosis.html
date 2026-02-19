@@ -47,7 +47,7 @@
     <div class="col-md-4">
         <div class="card mb-3">
             <div class="card-header bg-primary text-white">
-                Hatchability Summary (Set: {{ setting_date.strftime('%Y-%m-%d') }})
+                Hatchability Summary (Set: {{ setting_date | date_fmt }})
             </div>
             <div class="card-body">
                 <p><strong>Total Eggs Set:</strong> {{ stats['set'] }}</p>
@@ -77,8 +77,8 @@
             </div>
             <div class="card-body">
                 <p><strong>Logic:</strong> {{ window_desc }}</p>
-                <p><strong>From:</strong> {{ window_start.strftime('%Y-%m-%d') }}</p>
-                <p><strong>To:</strong> {{ window_end.strftime('%Y-%m-%d') }}</p>
+                <p><strong>From:</strong> {{ window_start | date_fmt }}</p>
+                <p><strong>To:</strong> {{ window_end | date_fmt }}</p>
             </div>
         </div>
 
@@ -92,7 +92,7 @@
                         {% for med in medications %}
                             <li class="list-group-item">
                                 <strong>{{ med.drug_name }}</strong><br>
-                                <small>{{ med.start_date }} - {{ med.end_date or 'Ongoing' }}</small><br>
+                                <small>{{ med.start_date | date_fmt }} - {{ med.end_date | date_fmt if med.end_date else 'Ongoing' }}</small><br>
                                 <small class="text-muted">{{ med.remarks }}</small>
                             </li>
                         {% endfor %}
@@ -127,7 +127,7 @@
                         <tbody>
                             {% for log in daily_logs %}
                             <tr>
-                                <td>{{ log.date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ log.date | date_fmt }}</td>
                                 <td>{{ log.age_week_day }} W</td>
                                 <td>
                                     <span class="{% if log.mortality_male > 0 %}text-danger{% endif %}">{{ log.mortality_male }}</span> /

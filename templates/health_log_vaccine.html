@@ -83,14 +83,14 @@
                                 {% if is_editing %}
                                     <input type="date" name="v_est_date_{{ v.id }}" value="{{ v.est_date }}" class="form-control form-control-sm">
                                 {% else %}
-                                    {{ v.est_date }}
+                                    {{ v.est_date | date_fmt }}
                                 {% endif %}
                             </td>
                             <td>
                                 {% if is_editing %}
                                     <input type="date" name="v_actual_date_{{ v.id }}" value="{{ v.actual_date or '' }}" class="form-control form-control-sm">
                                 {% else %}
-                                    {{ v.actual_date or '-' }}
+                                    {{ v.actual_date | date_fmt if v.actual_date else '-' }}
                                 {% endif %}
                             </td>
                             <td>

@@ -81,14 +81,14 @@
                                 {% if is_editing %}
                                     <input type="date" name="m_start_{{ m.id }}" value="{{ m.start_date }}" class="form-control form-control-sm" style="width: 130px;">
                                 {% else %}
-                                    {{ m.start_date }}
+                                    {{ m.start_date | date_fmt }}
                                 {% endif %}
                             </td>
                             <td>
                                 {% if is_editing %}
                                     <input type="date" name="m_end_{{ m.id }}" value="{{ m.end_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
                                 {% else %}
-                                    {{ m.end_date or '-' }}
+                                    {{ m.end_date | date_fmt if m.end_date else '-' }}
                                 {% endif %}
                             </td>
                             <td>

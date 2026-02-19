@@ -39,7 +39,7 @@
                     {% for flock in active_flocks %}
                     <tr>
                         <td>{{ flock.house.name }}</td>
-                        <td>{{ flock.intake_date }}</td>
+                        <td>{{ flock.intake_date | date_fmt }}</td>
                         <td>{{ flock.current_week }}</td>
                         <td>
                             <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-primary">

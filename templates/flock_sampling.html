@@ -23,7 +23,7 @@
                 {% for event in events %}
                 <tr>
                     <td>{{ event.age_week }}</td>
-                    <td>{{ event.scheduled_date }}</td>
+                    <td>{{ event.scheduled_date | date_fmt }}</td>
                     <td>{{ event.test_type }}</td>
                     <td>
                         {% if event.status == 'Completed' %}
@@ -36,7 +36,7 @@
                         {% if event.result_file %}
                             <a href="{{ url_for('uploaded_file', filename=event.result_file|basename) }}" target="_blank">View PDF</a>
                             <br>
-                            <small class="text-muted">{{ event.upload_date }}</small>
+                            <small class="text-muted">{{ event.upload_date | date_fmt }}</small>
                         {% else %}
                             -
                         {% endif %}

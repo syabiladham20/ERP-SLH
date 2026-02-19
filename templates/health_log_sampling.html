@@ -69,14 +69,14 @@
                                 {% if is_editing %}
                                     <input type="date" name="s_date_{{ s.id }}" value="{{ s.scheduled_date }}" class="form-control form-control-sm" style="width: 130px;">
                                 {% else %}
-                                    {{ s.scheduled_date }}
+                                    {{ s.scheduled_date | date_fmt }}
                                 {% endif %}
                             </td>
                             <td>
                                 {% if is_editing %}
                                     <input type="date" name="s_actual_date_{{ s.id }}" value="{{ s.actual_date or '' }}" class="form-control form-control-sm" style="width: 130px;">
                                 {% else %}
-                                    {{ s.actual_date or '-' }}
+                                    {{ s.actual_date | date_fmt if s.actual_date else '-' }}
                                 {% endif %}
                             </td>
                             <td>

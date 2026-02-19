@@ -352,7 +352,7 @@
       <div class="card-body">
         <div class="alert alert-light border small mb-2">
             Below are vaccines scheduled around this date or marked as completed today.
-            Check the box to mark as <strong>Completed on {{ log.date if log else selected_date }}</strong>.
+            Check the box to mark as <strong>Completed on {{ (log.date if log else selected_date) | date_fmt }}</strong>.
         </div>
         <div class="table-responsive">
             <table class="table table-sm table-striped">
