@@ -8,6 +8,7 @@
     </div>
     <form method="get" class="d-flex align-items-center">
         <label for="year" class="me-2 fw-bold">Year:</label>
+        <input type="hidden" name="active_tab" id="active_tab_input" value="{{ active_tab }}">
         <select name="year" id="year" class="form-select" onchange="this.form.submit()">
             {% for y in available_years %}
             <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
@@ -18,22 +19,22 @@
 
 <ul class="nav nav-tabs mb-3" id="execDashTabs" role="tablist">
   <li class="nav-item">
-    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#overview">Overview</button>
+    <button class="nav-link {% if active_tab == 'overview' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#overview">Overview</button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#weekly_iso">Weekly ISO</button>
+    <button class="nav-link {% if active_tab == 'weekly_iso' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#weekly_iso">Weekly ISO</button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#monthly_iso">Monthly ISO</button>
+    <button class="nav-link {% if active_tab == 'monthly_iso' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#monthly_iso">Monthly ISO</button>
   </li>
   <li class="nav-item">
-    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#yearly_iso">Yearly ISO</button>
+    <button class="nav-link {% if active_tab == 'yearly_iso' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#yearly_iso">Yearly ISO</button>
   </li>
 </ul>
 
 <div class="tab-content">
   <!-- Overview Tab -->
-  <div class="tab-pane fade show active" id="overview">
+  <div class="tab-pane fade {% if active_tab == 'overview' %}show active{% endif %}" id="overview">
 
       <!-- Hatchery Analytics Card -->
       <div class="card mb-4 border-primary">
@@ -182,7 +183,7 @@
 
 
   <!-- Weekly ISO Tab -->
-  <div class="tab-pane fade" id="weekly_iso">
+  <div class="tab-pane fade {% if active_tab == 'weekly_iso' %}show active{% endif %}" id="weekly_iso">
       <div class="card">
           <div class="card-header">
               <h5>Weekly ISO Report</h5>
@@ -223,7 +224,7 @@
   </div>
 
   <!-- Monthly ISO Tab -->
-  <div class="tab-pane fade" id="monthly_iso">
+  <div class="tab-pane fade {% if active_tab == 'monthly_iso' %}show active{% endif %}" id="monthly_iso">
       <div class="card">
           <div class="card-header">
               <h5>Monthly ISO Report</h5>
@@ -264,7 +265,7 @@
   </div>
 
   <!-- Yearly ISO Tab -->
-  <div class="tab-pane fade" id="yearly_iso">
+  <div class="tab-pane fade {% if active_tab == 'yearly_iso' %}show active{% endif %}" id="yearly_iso">
       <div class="card">
           <div class="card-header">
               <h5>Yearly ISO Report</h5>
@@ -305,4 +306,17 @@
   </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#execDashTabs button[data-bs-toggle="tab"]'))
+        triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('shown.bs.tab', function (event) {
+                // event.target is the active tab
+                var targetId = event.target.getAttribute('data-bs-target').substring(1); // remove #
+                document.getElementById('active_tab_input').value = targetId;
+            })
+        })
+    });
+</script>
 {% endblock %}
