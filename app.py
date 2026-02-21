@@ -5544,17 +5544,38 @@ def executive_dashboard():
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
     low_stock_count = len(low_stock_items)
 
+    # Pre-fetch Hatchability Data (Optimization: Bulk Fetch)
+    flock_ids = [f.id for f in active_flocks]
+    all_hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids)).order_by(Hatchability.setting_date.desc()).all()
+
+    flock_hatch_map = {}
+    for h in all_hatch_records:
+        if h.flock_id not in flock_hatch_map:
+            flock_hatch_map[h.flock_id] = {
+                'latest': h,  # First record is latest due to ordering
+                'hatched_sum': 0,
+                'set_sum': 0
+            }
+        flock_hatch_map[h.flock_id]['hatched_sum'] += (h.hatched_chicks or 0)
+        flock_hatch_map[h.flock_id]['set_sum'] += (h.egg_set or 0)
+
     for f in active_flocks:
         daily_stats = enrich_flock_data(f, f.logs)
 
         # Hatchery Enrichment
-        latest_hatch = Hatchability.query.filter_by(flock_id=f.id).order_by(Hatchability.setting_date.desc()).first()
+        h_data = flock_hatch_map.get(f.id)
+        if h_data:
+            latest_hatch = h_data['latest']
+            total_h = h_data['hatched_sum']
+            total_s = h_data['set_sum']
+        else:
+            latest_hatch = None
+            total_h = 0
+            total_s = 0
+
         f.latest_hatch = latest_hatch
         f.latest_hatch_pct = latest_hatch.hatchability_pct if latest_hatch else 0.0
 
-        stmt = db.session.query(func.sum(Hatchability.hatched_chicks), func.sum(Hatchability.egg_set)).filter_by(flock_id=f.id).first()
-        total_h = stmt[0] or 0
-        total_s = stmt[1] or 0
         f.cum_hatch_pct = (total_h / total_s * 100) if total_s > 0 else 0.0
 
         f.rearing_mort_m_pct = 0
