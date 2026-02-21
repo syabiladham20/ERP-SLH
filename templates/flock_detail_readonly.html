@@ -448,12 +448,6 @@
       if(bwData[maleKey]) {
           maleDatasets.push({ label: 'Avg BW', data: bwData[maleKey], borderColor: 'blue', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
       }
-      for (let i = 1; i <= 8; i++) {
-          let key = 'bw_M' + i;
-          if (bwData[key] && bwData[key].some(v => v!==null)) {
-              maleDatasets.push({ label: 'M'+i, data: bwData[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
-          }
-      }
       maleDatasets.push({ label: 'Std BW', data: bwData.bw_male_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
       maleDatasets.push({ label: 'Uniformity %', data: bwData.unif_male, borderColor: 'orange', borderDash:[2,2], yAxisID: 'y1' });
 
@@ -474,12 +468,6 @@
       const femaleKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
       if(bwData[femaleKey]) {
           femaleDatasets.push({ label: 'Avg BW', data: bwData[femaleKey], borderColor: 'pink', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
-      }
-      for (let i = 1; i <= 8; i++) {
-          let key = 'bw_F' + i;
-          if (bwData[key] && bwData[key].some(v => v!==null)) {
-              femaleDatasets.push({ label: 'F'+i, data: bwData[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
-          }
       }
       femaleDatasets.push({ label: 'Std BW', data: bwData.bw_female_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
       femaleDatasets.push({ label: 'Uniformity %', data: bwData.unif_female, borderColor: 'purple', borderDash:[2,2], yAxisID: 'y1' });
