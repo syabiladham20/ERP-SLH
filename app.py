@@ -4930,10 +4930,14 @@ def edit_inventory_transaction(id):
     new_qty = float(request.form.get('quantity') or 0)
     new_date_str = request.form.get('transaction_date')
     new_notes = request.form.get('notes')
-    # Allow changing type? Maybe too complex for now. Let's stick to Qty/Date/Notes.
+    new_type = request.form.get('transaction_type')
 
     if new_qty <= 0:
         flash("Quantity must be positive.", "danger")
+        return redirect(url_for('inventory'))
+
+    if new_type and new_type not in ['Purchase', 'Usage', 'Adjustment', 'Waste']:
+        flash("Invalid transaction type.", "danger")
         return redirect(url_for('inventory'))
 
     # Revert Old Effect
@@ -4946,6 +4950,9 @@ def edit_inventory_transaction(id):
     # Update Transaction
     t.quantity = new_qty
     t.notes = new_notes
+    if new_type:
+        t.transaction_type = new_type
+
     if new_date_str:
         try:
             t.transaction_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
