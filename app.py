@@ -1659,6 +1659,7 @@ def view_flock(id):
 
         std_obj = std_map.get(target_std_week)
         d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        d['std_mortality'] = std_obj.std_mortality_male if std_obj else 0.0
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
@@ -1669,6 +1670,7 @@ def view_flock(id):
         target_std_week = current_age_week - offset_weeks
         std_obj = std_map.get(target_std_week)
         ws['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        ws['std_mortality'] = std_obj.std_mortality_male if std_obj else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -1776,6 +1778,7 @@ def view_flock(id):
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
         'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
+        'std_mortality': [round(d['std_mortality'], 3) for d in daily_stats],
         'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
         'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
         'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
@@ -1886,6 +1889,9 @@ def view_flock(id):
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+
+        chart_data_weekly['std_mortality'] = chart_data_weekly.get('std_mortality', [])
+        chart_data_weekly['std_mortality'].append(round(ws['std_mortality'], 3))
 
         # Standard BW - Use Biological Age (w)
         std_bio = std_map.get(w)
@@ -5793,6 +5799,7 @@ def executive_flock_detail(id):
         d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
         d['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
         d['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
+        d['std_mortality'] = std_obj.std_mortality_male if std_obj else 0.0
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
@@ -5830,6 +5837,7 @@ def executive_flock_detail(id):
         # Let's inject `std_mortality_male` as is (Weekly Standard) and handle in JS scaling.
         ws['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
         ws['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
+        ws['std_mortality'] = std_obj.std_mortality_male if std_obj else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -5918,6 +5926,7 @@ def executive_flock_detail(id):
         'mortality_daily_female': [round(d['mortality_female_pct'], 2) for d in daily_stats],
         'std_mortality_male': [round(d['std_mortality_male'], 3) for d in daily_stats],
         'std_mortality_female': [round(d['std_mortality_female'], 3) for d in daily_stats],
+        'std_mortality': [round(d['std_mortality'], 3) for d in daily_stats],
         'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
@@ -5964,7 +5973,7 @@ def executive_flock_detail(id):
         'ages': [],
         'mortality_cum_male': [], 'mortality_cum_female': [],
         'mortality_weekly_male': [], 'mortality_weekly_female': [],
-        'std_mortality_male': [], 'std_mortality_female': [],
+        'std_mortality_male': [], 'std_mortality_female': [], 'std_mortality': [],
         'culls_weekly_male': [], 'culls_weekly_female': [],
         'avg_bw_male': [], 'avg_bw_female': [],
         'egg_prod': [],
@@ -5992,6 +6001,9 @@ def executive_flock_detail(id):
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+
+        chart_data_weekly['std_mortality'] = chart_data_weekly.get('std_mortality', [])
+        chart_data_weekly['std_mortality'].append(round(ws['std_mortality'], 3))
 
         # Standard BW - Use Biological Age (w)
         std_bio = std_map.get(w)
