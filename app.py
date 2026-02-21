@@ -1887,24 +1887,42 @@ def view_flock(id):
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
 
-        # Standard BW - average of the week's standards? Or just take one? Average is fine.
-        # ws doesn't have standard sum. We can take last day's standard.
-        chart_data_weekly['bw_male_std'].append(last_day['log'].standard_bw_male if last_day['log'].standard_bw_male > 0 else None)
-        chart_data_weekly['bw_female_std'].append(last_day['log'].standard_bw_female if last_day['log'].standard_bw_female > 0 else None)
+        # Standard BW - Use Biological Age (w)
+        std_bio = std_map.get(w)
+        chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
+        chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
 
         chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
         chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
 
-        # Partitions (Need to aggregate if we want weekly partition bars)
-        # We didn't aggregate partitions in metrics.py.
-        # But for weekly charts, we can just skip or implement simple aggregation here.
-        # Existing code aggregated them into `weekly_summary['partitions']`.
-        # I omitted that in metrics.py for simplicity but the view needs it.
-        # I'll fill with None for now or just take last day? No, Avg is better.
-        # Let's map Nones to avoid crash.
+        # Aggregate Partitions for Weekly View
+        def get_p_val(log, p_name, is_male, index):
+             p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
+             val = p_map.get(p_name, 0)
+             if val == 0:
+                 attr = f'bw_male_p{index}' if is_male else f'bw_female_p{index}'
+                 if hasattr(log, attr):
+                     val = getattr(log, attr, 0)
+             return val
+
         for i in range(1, 9):
-            chart_data_weekly[f'bw_M{i}'].append(None)
-            chart_data_weekly[f'bw_F{i}'].append(None)
+            m_key = f'M{i}'
+            f_key = f'F{i}'
+            m_vals = []
+            f_vals = []
+
+            for d in daily_by_week[w]:
+                log = d['log']
+                vm = get_p_val(log, m_key, True, i)
+                if vm and vm > 0: m_vals.append(vm)
+                vf = get_p_val(log, f_key, False, i)
+                if vf and vf > 0: f_vals.append(vf)
+
+            val_m = round(sum(m_vals)/len(m_vals)) if m_vals else None
+            val_f = round(sum(f_vals)/len(f_vals)) if f_vals else None
+
+            chart_data_weekly[f'bw_M{i}'].append(val_m)
+            chart_data_weekly[f'bw_F{i}'].append(val_f)
 
         if ws['notes'] or ws['photos']:
             note_text = " | ".join(ws['notes'])
@@ -5974,8 +5992,12 @@ def executive_flock_detail(id):
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
-        chart_data_weekly['bw_male_std'].append(last_day['log'].standard_bw_male if last_day['log'].standard_bw_male > 0 else None)
-        chart_data_weekly['bw_female_std'].append(last_day['log'].standard_bw_female if last_day['log'].standard_bw_female > 0 else None)
+
+        # Standard BW - Use Biological Age (w)
+        std_bio = std_map.get(w)
+        chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
+        chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+
         chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
         chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
 
