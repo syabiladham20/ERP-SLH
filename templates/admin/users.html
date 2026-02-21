@@ -61,14 +61,12 @@
                                                             <option value="Admin" {% if user.dept == 'Admin' %}selected{% endif %}>Admin</option>
                                                             <option value="Farm" {% if user.dept == 'Farm' %}selected{% endif %}>Farm</option>
                                                             <option value="Hatchery" {% if user.dept == 'Hatchery' %}selected{% endif %}>Hatchery</option>
+                                                            <option value="Management" {% if user.dept == 'Management' %}selected{% endif %}>Management</option>
                                                         </select>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">Role</label>
-                                                        <select class="form-select" name="role">
-                                                            <option value="Admin" {% if user.role == 'Admin' %}selected{% endif %}>Admin (Manager)</option>
-                                                            <option value="Worker" {% if user.role == 'Worker' %}selected{% endif %}>Worker</option>
-                                                        </select>
+                                                        <input type="text" class="form-control" name="role" list="roleList" value="{{ user.role }}" required>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -159,14 +157,12 @@
                             <option value="Farm">Farm</option>
                             <option value="Hatchery">Hatchery</option>
                             <option value="Admin">Admin</option>
+                            <option value="Management">Management</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Role</label>
-                        <select class="form-select" name="role">
-                            <option value="Worker">Worker</option>
-                            <option value="Admin">Admin (Manager)</option>
-                        </select>
+                        <input type="text" class="form-control" name="role" list="roleList" required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -177,4 +173,10 @@
         </div>
     </div>
 </div>
+
+<datalist id="roleList">
+    <option value="Admin">
+    <option value="Worker">
+    <option value="Management">
+</datalist>
 {% endblock %}
