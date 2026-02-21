@@ -682,15 +682,11 @@
 
       // --- General Chart (Dynamic Mode) ---
 
-      const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
-
       // Determine keys based on mode
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
       const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
       const cullMKey = mode === 'daily' ? 'culls_daily_male' : 'culls_weekly_male';
       const cullFKey = mode === 'daily' ? 'culls_daily_female' : 'culls_weekly_female';
-
-      const baselineData = new Array(generalData.dates.length).fill(stdVal);
 
       // Prepare Notes Dataset
       const notesPoints = generalData.dates.map((d, i) => {
@@ -731,7 +727,7 @@
       const genMortScales = getScaleOptions([
         generalData[mortMKey], generalData[mortFKey],
         generalData[cullMKey], generalData[cullFKey],
-        baselineData
+        generalData.std_mortality
       ], true);
 
       generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
@@ -783,8 +779,8 @@
               yAxisID: 'y1'
             },
             {
-              label: 'Standard Mort Limit',
-              data: baselineData,
+              label: 'Standard Mortality',
+              data: generalData.std_mortality,
               type: 'line',
               borderColor: 'red',
               borderWidth: 2,
