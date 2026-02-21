@@ -329,11 +329,18 @@
 
             const cardBody = document.createElement('div');
             cardBody.className = 'card-body';
+            cardBody.style.overflowX = 'auto';
+
+            const chartWrapper = document.createElement('div');
+            chartWrapper.style.position = 'relative';
+            chartWrapper.style.minWidth = '600px';
+            chartWrapper.style.height = '400px';
 
             const canvas = document.createElement('canvas');
             canvas.id = `chartCanvas_${chart.id}`;
 
-            cardBody.appendChild(canvas);
+            chartWrapper.appendChild(canvas);
+            cardBody.appendChild(chartWrapper);
             card.appendChild(cardHeader);
             card.appendChild(cardBody);
             col.appendChild(card);
@@ -526,6 +533,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 interaction: {
                     mode: 'index',
                     intersect: false,
