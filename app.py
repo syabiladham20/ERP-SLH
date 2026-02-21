@@ -3124,21 +3124,31 @@ def edit_daily_log(id):
 def import_data():
     if request.method == 'POST':
         # Check for Confirmation
-        confirm_filename = request.form.get('confirm_file')
-        if confirm_filename:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'temp', confirm_filename)
-            if not os.path.exists(filepath):
-                flash('Temporary import file not found. Please upload again.', 'danger')
-                return redirect(url_for('import_data'))
+        confirm_files = request.form.getlist('confirm_files')
+        if confirm_files:
+            results = []
+            errors = []
 
-            try:
-                process_import(filepath, commit=True, preview=False)
-                os.remove(filepath)
-                flash('Import confirmed and data saved successfully.', 'success')
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                flash(f'Error during import: {str(e)}', 'danger')
+            for confirm_filename in confirm_files:
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'temp', confirm_filename)
+                if not os.path.exists(filepath):
+                    errors.append(f"{confirm_filename}: File not found.")
+                    continue
+
+                try:
+                    process_import(filepath, commit=True, preview=False)
+                    os.remove(filepath)
+                    results.append(confirm_filename)
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    errors.append(f"{confirm_filename}: {str(e)}")
+
+            if results:
+                flash(f"Successfully imported {len(results)} files.", 'success')
+            if errors:
+                for err in errors:
+                    flash(f"Error: {err}", 'danger')
 
             return redirect(url_for('index'))
 
@@ -3150,14 +3160,6 @@ def import_data():
         if not files or files[0].filename == '':
             flash('No selected files', 'danger')
             return redirect(request.url)
-
-        # For Staging Step: We only handle single file preview nicely for now,
-        # or we iterate. The requirement implies "a table for me to Approve".
-        # If multiple files, we might need a more complex UI.
-        # Assuming single file for the "Staging" flow is safer or sequential.
-        # But existing code handled multiple.
-        # Let's handle the first valid file for preview to satisfy the requirement,
-        # or loop and append changes. Appending changes is better.
 
         all_changes = []
         all_warnings = []
@@ -3175,8 +3177,16 @@ def import_data():
                     temp_filenames.append(safe_name)
 
                     changes, warnings = process_import(filepath, commit=False, preview=True)
+
+                    # Add source filename to changes
+                    for c in changes:
+                        c['source_file'] = file.filename
+
                     all_changes.extend(changes)
-                    all_warnings.extend(warnings)
+
+                    # Prefix warnings with filename
+                    for w in warnings:
+                        all_warnings.append(f"[{file.filename}] {w}")
 
                 except Exception as e:
                     import traceback
@@ -3189,15 +3199,7 @@ def import_data():
                     return redirect(request.url)
 
         if all_changes:
-            # We only support confirming one file at a time in the simple UI unless we handle list of files.
-            # But let's assume the user uploaded one file as is typical for this detailed review.
-            # If multiple, we just use the first filename for confirmation?
-            # Ideally we support only one file for this "Deep Review" mode.
-            if len(temp_filenames) > 1:
-                flash("Please upload only one file at a time for review.", "warning")
-                return redirect(request.url)
-
-            return render_template('import_preview.html', changes=all_changes, warnings=all_warnings, filename=temp_filenames[0])
+            return render_template('import_preview.html', changes=all_changes, warnings=all_warnings, filenames=temp_filenames)
 
         flash("No valid data found to import.", "warning")
         return redirect(url_for('index'))

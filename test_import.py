@@ -127,7 +127,7 @@ class ImportTestCase(unittest.TestCase):
 
         # Extract filename from hidden input
         import re
-        m = re.search(r'name="confirm_file" value="([^"]+)"', response.data.decode('utf-8'))
+        m = re.search(r'name="confirm_files" value="([^"]+)"', response.data.decode('utf-8'))
         self.assertIsNotNone(m)
         confirm_filename = m.group(1)
 
@@ -137,10 +137,10 @@ class ImportTestCase(unittest.TestCase):
 
         # Post to import (Step 2: Confirm)
         response = self.app.post('/import', data={
-            'confirm_file': confirm_filename
+            'confirm_files': confirm_filename
         }, follow_redirects=True)
 
-        self.assertIn(b'Import confirmed', response.data)
+        self.assertIn(b'Successfully imported', response.data)
         
         # Verify DB
         house = House.query.filter_by(name='TEST_HOUSE_1').first()
