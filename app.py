@@ -2311,27 +2311,54 @@ def hatchery_charts(flock_id):
         'notes': []
     }
 
+    # Aggregate by week
+    weekly_agg = {}
+
     for r in records:
         age_days = (r.setting_date - flock.intake_date).days
         week = (age_days // 7) + 1
 
+        if week not in weekly_agg:
+            weekly_agg[week] = {
+                'egg_set': 0, 'clear_eggs': 0, 'rotten_eggs': 0, 'hatched_chicks': 0,
+                'male_ratios': []
+            }
+
+        weekly_agg[week]['egg_set'] += (r.egg_set or 0)
+        weekly_agg[week]['clear_eggs'] += (r.clear_eggs or 0)
+        weekly_agg[week]['rotten_eggs'] += (r.rotten_eggs or 0)
+        weekly_agg[week]['hatched_chicks'] += (r.hatched_chicks or 0)
+
+        if r.male_ratio_pct is not None:
+            weekly_agg[week]['male_ratios'].append(r.male_ratio_pct)
+
+    sorted_weeks = sorted(weekly_agg.keys())
+
+    for week in sorted_weeks:
+        agg = weekly_agg[week]
         data['weeks'].append(f"Week {week}")
 
-        e_set = r.egg_set or 1
-        clear_p = (r.clear_eggs / e_set) * 100
-        rotten_p = (r.rotten_eggs / e_set) * 100
-        fertile_p = ((r.egg_set - r.clear_eggs - r.rotten_eggs) / e_set) * 100
-        hatch_p = (r.hatched_chicks / e_set) * 100
+        e_set = agg['egg_set'] or 1
+        clear_p = (agg['clear_eggs'] / e_set) * 100
+        rotten_p = (agg['rotten_eggs'] / e_set) * 100
+        fertile_p = ((agg['egg_set'] - agg['clear_eggs'] - agg['rotten_eggs']) / e_set) * 100
+        hatch_p = (agg['hatched_chicks'] / e_set) * 100
+
+        avg_male = 0
+        if agg['male_ratios']:
+            avg_male = sum(agg['male_ratios']) / len(agg['male_ratios'])
 
         data['clear_pct'].append(round(clear_p, 2))
         data['rotten_pct'].append(round(rotten_p, 2))
         data['fertile_pct'].append(round(fertile_p, 2))
         data['hatch_pct'].append(round(hatch_p, 2))
-        data['male_ratio_pct'].append(round(r.male_ratio_pct, 2) if r.male_ratio_pct else 0)
+        data['male_ratio_pct'].append(round(avg_male, 2))
 
-        # Gather Notes & Medications for the week leading up to setting
-        end_date = r.setting_date
-        start_date = end_date - timedelta(days=7)
+        # Gather Notes & Medications for the specific week (Age based)
+        # Week starts at: Intake + (Week-1)*7
+        # Week ends at: Intake + Week*7 - 1
+        start_date = flock.intake_date + timedelta(days=(week - 1) * 7)
+        end_date = flock.intake_date + timedelta(days=(week * 7) - 1)
 
         logs = DailyLog.query.filter(
             DailyLog.flock_id == flock_id,
