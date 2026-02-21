@@ -1756,7 +1756,7 @@ def view_flock(id):
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
         'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
-        'male_ratio': [round(d['male_ratio_stock'] * 100, 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
+        'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
         'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
         'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
         'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
@@ -1910,7 +1910,7 @@ def view_flock(id):
             'female_prod': last.get('stock_female_prod_end', 0),
             'male_hosp': last.get('stock_male_hosp_end', 0),
             'female_hosp': last.get('stock_female_hosp_end', 0),
-            'male_ratio': last['male_ratio_stock'] * 100 if last.get('male_ratio_stock') else 0
+            'male_ratio': last['male_ratio_stock'] if last.get('male_ratio_stock') else 0
         }
     else:
         current_stats = {
