@@ -16,9 +16,19 @@ else
     echo ".env file already exists."
 fi
 
+# Detect Database Mode (Postgres vs SQLite)
+# Check for 'postgres' anywhere in the DATABASE_URL line
+if grep -q "DATABASE_URL=.*postgres" .env; then
+    echo "PostgreSQL detected in .env"
+    DB_MODE="postgres"
+else
+    echo "SQLite detected (default)"
+    DB_MODE="sqlite"
+fi
+
 echo "Checking database..."
-if [ -f instance/farm.db ]; then
-    echo "Backing up existing database..."
+if [ "$DB_MODE" = "sqlite" ] && [ -f instance/farm.db ]; then
+    echo "Backing up existing SQLite database..."
     cp instance/farm.db instance/farm.db.bak
     echo "Backup created at instance/farm.db.bak"
 fi
