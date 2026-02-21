@@ -414,8 +414,11 @@
       const generalData = filterData(fullData, generalLimit, 'dates');
 
       const bwLimit = window.bwFilterState || 10;
-      const bwKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
-      const bwData = filterData(fullData, bwLimit, bwKey);
+
+      // Force Weekly Data for Body Weight Charts (User Request: Show weekly summary only)
+      const bwFullData = chartDataWeekly;
+      // Use weekly keys specifically
+      const bwData = filterData(bwFullData, bwLimit, 'avg_bw_female');
 
 
       // Destroy existing
@@ -500,7 +503,7 @@
 
       const maleBWValues = []; // Collect for scale calculation
 
-      const maleKey = mode === 'daily' ? 'bw_m' : 'avg_bw_male';
+      const maleKey = 'avg_bw_male';
       if (bwData[maleKey] && bwData[maleKey].some(v => v !== null)) {
            maleDatasets.push({
                 label: 'Avg BW Male',
@@ -592,7 +595,7 @@
       const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
       const femaleBWValues = [];
 
-      const femaleKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
+      const femaleKey = 'avg_bw_female';
       if (bwData[femaleKey] && bwData[femaleKey].some(v => v !== null)) {
            femaleDatasets.push({
                 label: 'Avg BW Female',
