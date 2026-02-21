@@ -1141,14 +1141,14 @@ def index():
                 f.daily_stats['mort_f_diff'] = display_data['mortality_female_pct'] - stats_prev['mortality_female_pct']
                 f.daily_stats['egg_diff'] = display_data['egg_prod_pct'] - stats_prev['egg_prod_pct']
 
-                if f.daily_stats['mort_m_diff'] > 0: f.daily_stats['mort_m_trend'] = 'up'
-                elif f.daily_stats['mort_m_diff'] < 0: f.daily_stats['mort_m_trend'] = 'down'
+                if round(f.daily_stats['mort_m_diff'], 2) > 0: f.daily_stats['mort_m_trend'] = 'up'
+                elif round(f.daily_stats['mort_m_diff'], 2) < 0: f.daily_stats['mort_m_trend'] = 'down'
 
-                if f.daily_stats['mort_f_diff'] > 0: f.daily_stats['mort_f_trend'] = 'up'
-                elif f.daily_stats['mort_f_diff'] < 0: f.daily_stats['mort_f_trend'] = 'down'
+                if round(f.daily_stats['mort_f_diff'], 2) > 0: f.daily_stats['mort_f_trend'] = 'up'
+                elif round(f.daily_stats['mort_f_diff'], 2) < 0: f.daily_stats['mort_f_trend'] = 'down'
 
-                if f.daily_stats['egg_diff'] > 0: f.daily_stats['egg_trend'] = 'up'
-                elif f.daily_stats['egg_diff'] < 0: f.daily_stats['egg_trend'] = 'down'
+                if round(f.daily_stats['egg_diff'], 2) > 0: f.daily_stats['egg_trend'] = 'up'
+                elif round(f.daily_stats['egg_diff'], 2) < 0: f.daily_stats['egg_trend'] = 'down'
 
     return render_template('index.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
 
@@ -5694,14 +5694,14 @@ def executive_dashboard():
                 f.daily_stats['mort_f_diff'] = display_data['mortality_female_pct'] - stats_prev['mortality_female_pct']
                 f.daily_stats['egg_diff'] = display_data['egg_prod_pct'] - stats_prev['egg_prod_pct']
 
-                if f.daily_stats['mort_m_diff'] > 0: f.daily_stats['mort_m_trend'] = 'up'
-                elif f.daily_stats['mort_m_diff'] < 0: f.daily_stats['mort_m_trend'] = 'down'
+                if round(f.daily_stats['mort_m_diff'], 2) > 0: f.daily_stats['mort_m_trend'] = 'up'
+                elif round(f.daily_stats['mort_m_diff'], 2) < 0: f.daily_stats['mort_m_trend'] = 'down'
 
-                if f.daily_stats['mort_f_diff'] > 0: f.daily_stats['mort_f_trend'] = 'up'
-                elif f.daily_stats['mort_f_diff'] < 0: f.daily_stats['mort_f_trend'] = 'down'
+                if round(f.daily_stats['mort_f_diff'], 2) > 0: f.daily_stats['mort_f_trend'] = 'up'
+                elif round(f.daily_stats['mort_f_diff'], 2) < 0: f.daily_stats['mort_f_trend'] = 'down'
 
-                if f.daily_stats['egg_diff'] > 0: f.daily_stats['egg_trend'] = 'up'
-                elif f.daily_stats['egg_diff'] < 0: f.daily_stats['egg_trend'] = 'down'
+                if round(f.daily_stats['egg_diff'], 2) > 0: f.daily_stats['egg_trend'] = 'up'
+                elif round(f.daily_stats['egg_diff'], 2) < 0: f.daily_stats['egg_trend'] = 'down'
 
     # --- Hatchery Data (Legacy Avg) ---
     start_month = date(today.year, today.month, 1)
