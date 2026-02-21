@@ -378,9 +378,33 @@
           datalabels: {
               align: 'top',
               anchor: 'end',
-              formatter: (v, ctx) => v ? (ctx.dataset.label.includes('%') ? v + '%' : v) : '',
+              formatter: (v, ctx) => {
+                  if (v === null || v === undefined) return '';
+                  if (ctx.dataset.label.includes('%') || ctx.dataset.yAxisID === 'y1') {
+                      return parseFloat(v).toFixed(2) + '%';
+                  }
+                  return v;
+              },
               font: { size: 10, weight: 'bold' },
               color: '#444'
+          },
+          tooltip: {
+              callbacks: {
+                  label: function(context) {
+                      let label = context.dataset.label || '';
+                      if (label) {
+                          label += ': ';
+                      }
+                      if (context.parsed.y !== null) {
+                          if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
+                              label += parseFloat(context.parsed.y).toFixed(2) + '%';
+                          } else {
+                              label += context.parsed.y;
+                          }
+                      }
+                      return label;
+                  }
+              }
           }
       }
   };
