@@ -5429,10 +5429,34 @@ def get_iso_aggregated_data(flocks, target_year=None):
     # Requirement: Filter by year.
     filter_year = target_year if target_year else date.today().year
 
+    # Optimization: Bulk fetch Logs and Hatchability to avoid N+1 queries
+    flock_ids = [f.id for f in flocks]
+
+    # 1. Bulk Fetch Hatchability
+    all_hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids)).all()
+    hatch_by_flock = {}
+    for h in all_hatch_records:
+        if h.flock_id not in hatch_by_flock:
+            hatch_by_flock[h.flock_id] = []
+        hatch_by_flock[h.flock_id].append(h)
+
+    # 2. Bulk Fetch Logs
+    # Note: enrich_flock_data expects logs, preferably sorted
+    all_logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids)).order_by(DailyLog.date.asc()).all()
+    logs_by_flock = {}
+    for l in all_logs:
+        if l.flock_id not in logs_by_flock:
+            logs_by_flock[l.flock_id] = []
+        logs_by_flock[l.flock_id].append(l)
+
     for flock in flocks:
-        # Use relationship logs if available, else query
-        logs = flock.logs if flock.logs else DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date).all()
-        hatch_records = Hatchability.query.filter_by(flock_id=flock.id).all()
+        # Use pre-fetched data
+        logs = logs_by_flock.get(flock.id, [])
+        # Fallback to relationship if list is empty (and maybe loaded?)
+        # But if bulk fetch returns empty, relationship is likely empty too or not committed.
+        # Stick to bulk fetch results which are consistent with DB.
+
+        hatch_records = hatch_by_flock.get(flock.id, [])
 
         daily_stats = enrich_flock_data(flock, logs, hatch_records)
 
