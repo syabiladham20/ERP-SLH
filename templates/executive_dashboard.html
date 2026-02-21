@@ -168,7 +168,9 @@
                     </div>
                     <div class="card-footer d-flex justify-content-between">
                         <div>
+                            {% if session.get('is_admin') %}
                             <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info me-1">See Details</a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
