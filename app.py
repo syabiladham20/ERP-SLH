@@ -3546,7 +3546,11 @@ def process_import(file, commit=True, preview=False):
         if sheet_name.upper() in ignore_sheets:
             continue
             
-        df_meta = pd.read_excel(xls, sheet_name=sheet_name, header=None, nrows=10)
+        # Optimization: Read the full sheet once
+        df_full = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+
+        # 1. Metadata (First 10 rows)
+        df_meta = df_full.iloc[:10].copy() if df_full.shape[0] > 0 else pd.DataFrame()
         
         def get_val(r, c):
             try:
@@ -3572,8 +3576,12 @@ def process_import(file, commit=True, preview=False):
         house_name_cell = str(get_val(1, 1)).strip()
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
         
-        intake_female = int(get_val(2, 1) or 0)
-        intake_male = int(get_val(3, 1) or 0)
+        def safe_int(val):
+            try: return int(float(val)) if val is not None else 0
+            except: return 0
+
+        intake_female = safe_int(get_val(2, 1))
+        intake_male = safe_int(get_val(3, 1))
         intake_date_val = get_val(4, 1)
         
         if not intake_date_val:
@@ -3624,14 +3632,19 @@ def process_import(file, commit=True, preview=False):
 
         existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock_id).all()}
 
-        df_std = pd.read_excel(xls, sheet_name=sheet_name, header=None, skiprows=507, nrows=70)
+        # 2. Standards (Row 507+, 70 rows)
+        if df_full.shape[0] > 507:
+            df_std = df_full.iloc[507:507+70].copy()
+        else:
+            df_std = pd.DataFrame()
+
         standard_bw_map = {}
         missing_std_weeks = []
 
         if df_std.shape[1] > 33:
-            weeks = df_std[0]
-            males = df_std[32]
-            females = df_std[33]
+            weeks = df_std.iloc[:, 0]
+            males = df_std.iloc[:, 32]
+            females = df_std.iloc[:, 33]
 
             for w, m, f in zip(weeks, males, females):
                 try:
@@ -3651,7 +3664,15 @@ def process_import(file, commit=True, preview=False):
             else:
                 flash(msg, "warning")
 
-        df_data = pd.read_excel(xls, sheet_name=sheet_name, header=8)
+        # 3. Data (Header at row 8, data from 9)
+        if df_full.shape[0] > 8:
+            header_row = df_full.iloc[8]
+            df_data = df_full.iloc[9:].copy()
+            df_data.columns = header_row
+            # Reset index to have 0-based index for iterrows
+            df_data.reset_index(drop=True, inplace=True)
+        else:
+            df_data = pd.DataFrame()
         
         # --- Column Mapping Logic ---
         headers = [str(c).upper().strip() for c in df_data.columns]
@@ -3740,12 +3761,16 @@ def process_import(file, commit=True, preview=False):
             def get_float(r, idx):
                 if idx is None or idx >= len(r): return 0.0
                 val = r.iloc[idx]
-                return float(val) if pd.notna(val) and isinstance(val, (int, float)) else 0.0
+                if pd.isna(val): return 0.0
+                try: return float(val)
+                except (ValueError, TypeError): return 0.0
 
             def get_int(r, idx):
                 if idx is None or idx >= len(r): return 0
                 val = r.iloc[idx]
-                return int(val) if pd.notna(val) and isinstance(val, (int, float)) else 0
+                if pd.isna(val): return 0
+                try: return int(float(val))
+                except (ValueError, TypeError): return 0
                 
             def get_str(r, idx):
                 if idx is None or idx >= len(r): return None

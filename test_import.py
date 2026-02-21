@@ -1,5 +1,5 @@
 import unittest
-from app import app, db, House, Flock, DailyLog
+from app import app, db, House, Flock, DailyLog, User
 import pandas as pd
 import os
 import io
@@ -15,12 +15,21 @@ class ImportTestCase(unittest.TestCase):
         self.ctx.push()
         db.create_all()
 
+        # Create User for Auth
+        u = User(username='farm_user', dept='Farm', role='Worker')
+        u.set_password('farm123')
+        db.session.add(u)
+        db.session.commit()
+
     def tearDown(self):
         db.session.remove()
         db.drop_all()
         self.ctx.pop()
 
     def test_import_logic(self):
+        # Login
+        self.app.post('/login', data={'username': 'farm_user', 'password': 'farm123'}, follow_redirects=True)
+
         # Create a mock Excel file using pandas
         # Metadata
         # Row 1 (Index 1) Col 1 (B): House Name
