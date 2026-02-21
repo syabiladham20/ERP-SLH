@@ -106,8 +106,12 @@
                                 <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</strong>
                             </div>
                             <div class="col-6">
-                                <small class="text-muted">Daily Mort %</small><br>
-                                {% if flock.daily_stats.has_today %}
+                                <small class="text-muted">Daily Mort %</small>
+                                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                                <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
+                                {% endif %}
+                                <br>
+                                {% if flock.daily_stats.show_data %}
                                     M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%
                                     {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
                                     <br>
@@ -127,8 +131,12 @@
                                 <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</strong>
                             </div>
                             <div class="col-4 border-end">
-                                <small class="text-muted">Daily Mort %</small><br>
-                                {% if flock.daily_stats.has_today %}
+                                <small class="text-muted">Daily Mort %</small>
+                                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                                <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
+                                {% endif %}
+                                <br>
+                                {% if flock.daily_stats.show_data %}
                                     M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%
                                     {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓</span>{% endif %}
                                     <br>
@@ -142,8 +150,12 @@
                                 <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
                             </div>
                             <div class="col-4">
-                                <small class="text-muted">Egg Prod %</small><br>
-                                {% if flock.daily_stats.has_today %}
+                                <small class="text-muted">Egg Prod %</small>
+                                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                                <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
+                                {% endif %}
+                                <br>
+                                {% if flock.daily_stats.show_data %}
                                     <strong>{{ "%.2f"|format(flock.daily_stats.egg_pct) }}%</strong>
                                     {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓</span>{% endif %}
                                 {% else %}

@@ -1102,24 +1102,39 @@ def index():
             'mort_m_pct': 0, 'mort_f_pct': 0, 'egg_pct': 0,
             'mort_m_trend': 'flat', 'mort_f_trend': 'flat', 'egg_trend': 'flat',
             'mort_m_diff': 0, 'mort_f_diff': 0, 'egg_diff': 0,
-            'has_today': False
+            'has_today': False,
+            'show_data': False,
+            'data_date': None
         }
 
         # Map date -> stat
         stats_map = { d['date']: d for d in daily_stats }
         stats_today = stats_map.get(today)
-        stats_yest = stats_map.get(today - timedelta(days=1))
 
+        # Determine Display Data (Today or Latest)
+        display_data = None
         if stats_today:
             f.daily_stats['has_today'] = True
-            f.daily_stats['mort_m_pct'] = stats_today['mortality_male_pct']
-            f.daily_stats['mort_f_pct'] = stats_today['mortality_female_pct']
-            f.daily_stats['egg_pct'] = stats_today['egg_prod_pct']
+            display_data = stats_today
+        elif daily_stats:
+            display_data = daily_stats[-1]
 
-            if stats_yest:
-                f.daily_stats['mort_m_diff'] = stats_today['mortality_male_pct'] - stats_yest['mortality_male_pct']
-                f.daily_stats['mort_f_diff'] = stats_today['mortality_female_pct'] - stats_yest['mortality_female_pct']
-                f.daily_stats['egg_diff'] = stats_today['egg_prod_pct'] - stats_yest['egg_prod_pct']
+        if display_data:
+            f.daily_stats['show_data'] = True
+            f.daily_stats['data_date'] = display_data['date']
+
+            f.daily_stats['mort_m_pct'] = display_data['mortality_male_pct']
+            f.daily_stats['mort_f_pct'] = display_data['mortality_female_pct']
+            f.daily_stats['egg_pct'] = display_data['egg_prod_pct']
+
+            # Trend Calculation (vs Previous Day of DATA DATE)
+            prev_date = display_data['date'] - timedelta(days=1)
+            stats_prev = stats_map.get(prev_date)
+
+            if stats_prev:
+                f.daily_stats['mort_m_diff'] = display_data['mortality_male_pct'] - stats_prev['mortality_male_pct']
+                f.daily_stats['mort_f_diff'] = display_data['mortality_female_pct'] - stats_prev['mortality_female_pct']
+                f.daily_stats['egg_diff'] = display_data['egg_prod_pct'] - stats_prev['egg_prod_pct']
 
                 if f.daily_stats['mort_m_diff'] > 0: f.daily_stats['mort_m_trend'] = 'up'
                 elif f.daily_stats['mort_m_diff'] < 0: f.daily_stats['mort_m_trend'] = 'down'
@@ -5445,23 +5460,38 @@ def executive_dashboard():
             'mort_m_pct': 0, 'mort_f_pct': 0, 'egg_pct': 0,
             'mort_m_trend': 'flat', 'mort_f_trend': 'flat', 'egg_trend': 'flat',
             'mort_m_diff': 0, 'mort_f_diff': 0, 'egg_diff': 0,
-            'has_today': False
+            'has_today': False,
+            'show_data': False,
+            'data_date': None
         }
 
         stats_map = { d['date']: d for d in daily_stats }
         stats_today = stats_map.get(today)
-        stats_yest = stats_map.get(today - timedelta(days=1))
 
+        # Determine Display Data (Today or Latest)
+        display_data = None
         if stats_today:
             f.daily_stats['has_today'] = True
-            f.daily_stats['mort_m_pct'] = stats_today['mortality_male_pct']
-            f.daily_stats['mort_f_pct'] = stats_today['mortality_female_pct']
-            f.daily_stats['egg_pct'] = stats_today['egg_prod_pct']
+            display_data = stats_today
+        elif daily_stats:
+            display_data = daily_stats[-1]
 
-            if stats_yest:
-                f.daily_stats['mort_m_diff'] = stats_today['mortality_male_pct'] - stats_yest['mortality_male_pct']
-                f.daily_stats['mort_f_diff'] = stats_today['mortality_female_pct'] - stats_yest['mortality_female_pct']
-                f.daily_stats['egg_diff'] = stats_today['egg_prod_pct'] - stats_yest['egg_prod_pct']
+        if display_data:
+            f.daily_stats['show_data'] = True
+            f.daily_stats['data_date'] = display_data['date']
+
+            f.daily_stats['mort_m_pct'] = display_data['mortality_male_pct']
+            f.daily_stats['mort_f_pct'] = display_data['mortality_female_pct']
+            f.daily_stats['egg_pct'] = display_data['egg_prod_pct']
+
+            # Trend Calculation (vs Previous Day of DATA DATE)
+            prev_date = display_data['date'] - timedelta(days=1)
+            stats_prev = stats_map.get(prev_date)
+
+            if stats_prev:
+                f.daily_stats['mort_m_diff'] = display_data['mortality_male_pct'] - stats_prev['mortality_male_pct']
+                f.daily_stats['mort_f_diff'] = display_data['mortality_female_pct'] - stats_prev['mortality_female_pct']
+                f.daily_stats['egg_diff'] = display_data['egg_prod_pct'] - stats_prev['egg_prod_pct']
 
                 if f.daily_stats['mort_m_diff'] > 0: f.daily_stats['mort_m_trend'] = 'up'
                 elif f.daily_stats['mort_m_diff'] < 0: f.daily_stats['mort_m_trend'] = 'down'
