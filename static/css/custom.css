@@ -16,22 +16,24 @@ body {
     position: sticky;
     top: 56px; /* Matches navbar height */
     z-index: 1020; /* Below navbar (1030) */
+    background-color: #ffffff; /* Solid background to prevent overlap transparency */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding-top: 0.5rem; /* Add padding for better spacing */
+    padding-bottom: 0.5rem;
 }
 
 /* 2. Table Headers (General) */
 .sticky-table-header th {
     position: -webkit-sticky;
     position: sticky;
-    top: 56px;
-    z-index: 1010; /* Below card header if present */
-    background-color: #f8f9fa; /* Default light gray background */
-    box-shadow: inset 0 -1px 0 #dee2e6; /* Border simulation */
+    top: 56px; /* Default for window-based sticky (Desktop fallback) */
+    z-index: 1010;
+    background-color: #f8f9fa;
+    box-shadow: inset 0 -1px 0 #dee2e6;
     background-clip: padding-box;
 }
 
 /* 3. Table Headers Offset (for tables inside sticky cards) */
-/* Approx 56px (Navbar) + ~50px (Card Header) = 106px */
 .sticky-table-header-offset th {
     position: -webkit-sticky;
     position: sticky;
@@ -49,9 +51,36 @@ body {
     box-shadow: inset 0 -1px 0 #373b3e;
 }
 
-/* Helper to enable sticky behavior on large screens by disabling overflow clipping */
+/* --- Mobile Optimization (Default) --- */
+/* Use container-based scrolling for tables on mobile to support sticky headers + horizontal scroll */
+.table-responsive-sticky {
+    max-height: 75vh;       /* Limit height to force vertical scroll within container */
+    overflow-y: auto;       /* Enable vertical scroll */
+    overflow-x: auto;       /* Enable horizontal scroll */
+    position: relative;     /* Context for sticky positioning */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+}
+
+/* Inside the mobile container, header sticks to TOP (0), not Navbar (56px) */
+.table-responsive-sticky .sticky-table-header th,
+.table-responsive-sticky .sticky-table-header-offset th {
+    top: 0;
+    z-index: 1020; /* Ensure it stays above rows */
+}
+
+/* --- Desktop Override (Large Screens) --- */
 @media (min-width: 992px) {
+    /* Revert to Window-based sticky behavior */
     .table-responsive-sticky {
-        overflow: visible;
+        overflow: visible; /* Disable container clipping so sticky works against window */
+        max-height: none;  /* Remove height restriction */
+    }
+
+    /* Revert header top position to match Navbar height */
+    .table-responsive-sticky .sticky-table-header th {
+        top: 56px;
+    }
+    .table-responsive-sticky .sticky-table-header-offset th {
+        top: 106px;
     }
 }

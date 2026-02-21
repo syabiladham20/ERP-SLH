@@ -2,18 +2,21 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Hatchability Performance: {{ flock.house.name }}</h2>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+        <h2 class="h4 mb-2 mb-md-0">Hatchability Performance: {{ flock.house.name }}</h2>
         <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
     </div>
 
     <div class="card p-3 shadow-sm">
-        <canvas id="hatchChart" style="max-height: 600px;"></canvas>
+        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%;">
+            <canvas id="hatchChart"></canvas>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
     Chart.register(ChartDataLabels);
     const chartData = {{ data | tojson }};
@@ -104,6 +107,24 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                zoom: {
+                    zoom: {
+                      wheel: { enabled: true },
+                      pinch: { enabled: true },
+                      mode: 'x',
+                    },
+                    pan: {
+                      enabled: true,
+                      mode: 'x',
+                    }
+                },
                 title: {
                     display: true,
                     text: 'Egg Breakdown & Hatchability Trend'
