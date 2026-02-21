@@ -298,7 +298,7 @@
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
         <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
         <div class="btn-group btn-group-sm" role="group">
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Default (10d/10w)</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
         </div>
       </div>
@@ -314,7 +314,7 @@
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
           <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
           <div class="btn-group btn-group-sm" role="group">
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Default (10d/10w)</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
           </div>
       </div>
@@ -340,15 +340,21 @@
       {% for r in hatch_records %}
       {
           date: "{{ r.setting_date | date_fmt }}",
+          age: {{ ((r.setting_date - flock.intake_date).days // 7) + 1 }},
           hatch: {{ "%.2f"|format(r.hatchability_pct) }},
           fertile: {{ "%.2f"|format(r.fertile_egg_pct) }},
           clear: {{ "%.2f"|format(r.clear_egg_pct) }},
           rotten: {{ "%.2f"|format(r.rotten_egg_pct) }},
-          male_ratio: {{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else 'null' }}
+          male_ratio: {{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else 'null' }},
+          // Raw values for aggregation
+          egg_set: {{ r.egg_set or 0 }},
+          hatched: {{ r.hatched_chicks or 0 }},
+          clear_eggs: {{ r.clear_eggs or 0 }},
+          rotten_eggs: {{ r.rotten_eggs or 0 }}
       },
       {% endfor %}
   ];
-  // Sort by date just in case
+  // Sort by date ASCENDING for chart logic (table is descending)
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   let maleChart, femaleChart, generalChart, hatchChart;
@@ -379,7 +385,6 @@
       }
   };
 
-  // Logic to find latest valid data point index
   function getLatestDataIndex(dataArray, checkZero = false) {
       if (!dataArray || dataArray.length === 0) return 0;
       for (let i = dataArray.length - 1; i >= 0; i--) {
@@ -399,9 +404,6 @@
       if (!targetArray) targetArray = dataObj.dates; // Fallback
 
       const lastIdx = getLatestDataIndex(targetArray, checkZero);
-      // We want range [lastIdx - count + 1, lastIdx]
-      // Because slice is end-exclusive: [start, end)
-      // So slice up to lastIdx + 1.
       let start = lastIdx - count + 1;
       if (start < 0) start = 0;
 
@@ -424,14 +426,11 @@
       // --- Filter Data ---
       const defaultGeneralCount = mode === 'daily' ? 30 : 10;
       const generalLimit = window.generalFilterState || defaultGeneralCount;
-      // For General, we usually assume data exists if log exists. Dates array is sufficient.
-      // But user said "skip if missing data". If "Egg Prod" is missing (0), we might want to skip?
-      // But rearing has 0 egg prod.
-      // Let's rely on dates array length (last logged date) for General.
-      const generalData = filterData(fullData, generalLimit, 'dates'); // Uses last date index
+      const generalData = filterData(fullData, generalLimit, 'dates');
 
-      const bwLimit = window.bwFilterState || 10;
-      // Use 'bw_female' or 'avg_bw_female' to find last data
+      // Bodyweight Filter: Default 10 points (10 days or 10 weeks)
+      const defaultBwCount = 10;
+      const bwLimit = window.bwFilterState || defaultBwCount;
       const bwKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
       const bwData = filterData(fullData, bwLimit, bwKey);
 
@@ -440,13 +439,15 @@
       if (generalChart) generalChart.destroy();
       if (hatchChart) hatchChart.destroy();
 
+      // Labels for BW -> Week Age (ages)
+      const bwLabels = bwData.ages || bwData.dates;
+
       // --- Male Chart ---
       const maleDatasets = [];
       const maleKey = mode === 'daily' ? 'bw_m' : 'avg_bw_male';
       if(bwData[maleKey]) {
           maleDatasets.push({ label: 'Avg BW', data: bwData[maleKey], borderColor: 'blue', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
       }
-      // Partitions
       for (let i = 1; i <= 8; i++) {
           let key = 'bw_M' + i;
           if (bwData[key] && bwData[key].some(v => v!==null)) {
@@ -458,12 +459,12 @@
 
       maleChart = new Chart(document.getElementById('maleChart'), {
           type: 'line',
-          data: { labels: bwData.dates, datasets: maleDatasets },
+          data: { labels: bwLabels, datasets: maleDatasets },
           options: {
               ...commonOptions,
               scales: {
                   y: { type: 'linear', position: 'left', title: {display:true, text:'Body Weight (g)'} },
-                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false} }
+                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false}, min: 0, max: 100 }
               }
           }
       });
@@ -485,18 +486,22 @@
 
       femaleChart = new Chart(document.getElementById('femaleChart'), {
           type: 'line',
-          data: { labels: bwData.dates, datasets: femaleDatasets },
+          data: { labels: bwLabels, datasets: femaleDatasets },
           options: {
               ...commonOptions,
               scales: {
                   y: { type: 'linear', position: 'left', title: {display:true, text:'Body Weight (g)'} },
-                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false} }
+                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false}, min: 0, max: 100 }
               }
           }
       });
 
       // --- General Chart ---
+      // X-Axis logic: Daily -> Date, Weekly -> Week Age (Data already has 'dates' array properly formatted as "Week X" for weekly)
+      // Wait, general chart X-Axis is requested: "keep daily to date and weekly to their week age".
+      // `chartDataWeekly.dates` are "Week X", so that's fine.
       const labels = generalData.dates;
+
       const mortM = mode==='daily' ? generalData.mortality_daily_male : generalData.mortality_weekly_male;
       const mortF = mode==='daily' ? generalData.mortality_daily_female : generalData.mortality_weekly_female;
       const cullM = mode==='daily' ? generalData.culls_daily_male : generalData.culls_weekly_male;
@@ -509,6 +514,11 @@
               datasets: [
                   { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'} },
                   { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} },
+
+                  // Standard Mortality Lines
+                  { label: 'Std Mort Male %', data: generalData.std_mortality_male, type:'line', borderColor:'rgba(54, 162, 235, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false} },
+                  { label: 'Std Mort Female %', data: generalData.std_mortality_female, type:'line', borderColor:'rgba(255, 99, 132, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false} },
+
                   { label: 'Mort Male %', data: mortM, backgroundColor: 'rgba(54, 162, 235, 0.6)', yAxisID:'y1', datalabels:{display:false} },
                   { label: 'Mort Female %', data: mortF, backgroundColor: 'rgba(255, 99, 132, 0.6)', yAxisID:'y1', datalabels:{display:false} },
                   { label: 'Cull Male %', data: cullM, backgroundColor: 'rgba(255, 206, 86, 0.6)', yAxisID:'y1', datalabels:{display:false} },
@@ -518,8 +528,8 @@
           options: {
               ...commonOptions,
               scales: {
-                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, suggestedMax: 100 },
-                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0, suggestedMax: 1 }
+                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, max: 100 },
+                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0 }
               }
           }
       });
@@ -528,36 +538,82 @@
   }
 
   function renderHatchChart() {
-      // Filter hatchRecords
+      // Aggregate hatchRecords by Age Week
+      const weeklyHatch = {};
+
+      hatchRecords.forEach(r => {
+          // If hatch% is 0, user wants it hidden in "show all" chart.
+          // Check if hatch > 0 OR if we should sum everything and check later?
+          // "hide when hatchability with 0%".
+          // If aggregated week has 0 hatch, hide it.
+          // BUT, we need to sum partial data (set eggs) even if not hatched?
+          // "only shows chart where hatchability is calculated when chick hatched has been key in"
+          // So if hatched_chicks == 0, ignore?
+          // If entire week has hatched=0, then hatch%=0.
+
+          const week = "Week " + r.age;
+          if (!weeklyHatch[week]) {
+              weeklyHatch[week] = { egg_set:0, hatched:0, clear:0, rotten:0, male_ratios:[], age: r.age };
+          }
+          weeklyHatch[week].egg_set += r.egg_set;
+          weeklyHatch[week].hatched += r.hatched;
+          weeklyHatch[week].clear += r.clear_eggs;
+          weeklyHatch[week].rotten += r.rotten_eggs;
+          if (r.male_ratio !== null) weeklyHatch[week].male_ratios.push(r.male_ratio);
+      });
+
+      // Convert to array and filter
+      let aggregated = [];
+      Object.keys(weeklyHatch).forEach(key => {
+          const d = weeklyHatch[key];
+          if (d.hatched > 0) { // Only valid hatch data
+              const es = d.egg_set || 1;
+              const hatchPct = (d.hatched / es) * 100;
+              const fertilePct = ((d.egg_set - d.clear - d.rotten) / es) * 100;
+              const clearPct = (d.clear / es) * 100;
+              const rottenPct = (d.rotten / es) * 100;
+
+              let avgMale = null;
+              if (d.male_ratios.length > 0) {
+                  avgMale = d.male_ratios.reduce((a,b)=>a+b, 0) / d.male_ratios.length;
+              }
+
+              aggregated.push({
+                  week: key,
+                  age: d.age,
+                  hatch: parseFloat(hatchPct.toFixed(2)),
+                  fertile: parseFloat(fertilePct.toFixed(2)),
+                  clear: parseFloat(clearPct.toFixed(2)),
+                  rotten: parseFloat(rottenPct.toFixed(2)),
+                  male_ratio: avgMale !== null ? parseFloat(avgMale.toFixed(2)) : null
+              });
+          }
+      });
+
+      // Sort by Age
+      aggregated.sort((a,b) => a.age - b.age);
+
+      // Filtering (Last 10 Weeks logic)
       const limit = window.hatchFilterState || 10;
-      let filteredRecords = hatchRecords;
+      let finalData = aggregated;
 
       if (limit !== 'all') {
-          // Find last index where hatch > 0
-          let lastIdx = 0;
-          for (let i = hatchRecords.length - 1; i >= 0; i--) {
-              if (hatchRecords[i].hatch > 0) {
-                  lastIdx = i;
-                  break;
-              }
-          }
-          let start = lastIdx - limit + 1;
+          // Slice last N
+          let start = aggregated.length - limit;
           if (start < 0) start = 0;
-          filteredRecords = hatchRecords.slice(start, lastIdx + 1);
+          finalData = aggregated.slice(start);
       }
 
-      const hLabels = filteredRecords.map(r => r.date);
-      const dHatch = filteredRecords.map(r => r.hatch);
-      const dFertile = filteredRecords.map(r => r.fertile);
-      const dClear = filteredRecords.map(r => r.clear);
-      const dRotten = filteredRecords.map(r => r.rotten);
-      const dMale = filteredRecords.map(r => r.male_ratio);
+      const hLabels = finalData.map(r => r.week);
+      const dHatch = finalData.map(r => r.hatch);
+      const dFertile = finalData.map(r => r.fertile);
+      const dClear = finalData.map(r => r.clear);
+      const dRotten = finalData.map(r => r.rotten);
+      const dMale = finalData.map(r => r.male_ratio);
 
-      // Stacked Bar Logic
-      // Calculate max for Y axis
-      const stackedSums = dFertile.map((v, i) => (v||0) + (dClear[i]||0) + (dRotten[i]||0));
-      const maxStacked = Math.max(...stackedSums, 0);
-      const limitY = maxStacked > 100 ? 100 : (maxStacked * 1.2 || 100);
+      // Max Y Calculation (force 100 if percent)
+      // Requirement: "fixed every axis with percentage from 0% to 100%"
+      const limitY = 100;
 
       const ctx = document.getElementById('hatchChart').getContext('2d');
       hatchChart = new Chart(ctx, {
@@ -620,11 +676,11 @@
               scales: {
                   y: {
                       type: 'linear', position: 'left', stacked: true, title: {display:true, text:'Egg Status %'},
-                      min: 0, suggestedMax: limitY
+                      min: 0, max: 100
                   },
                   y1: {
                       type: 'linear', position: 'right', title: {display:true, text:'Hatchability %'},
-                      grid: {drawOnChartArea: false}, min: 0, suggestedMax: 100
+                      grid: {drawOnChartArea: false}, min: 0, max: 100
                   }
               }
           }
@@ -642,7 +698,9 @@
           renderHatchChart();
       } else {
           // bw
-          window.bwFilterState = (filterType === 'default') ? 10 : 'all';
+          // Default filter for daily is 10 (days), weekly is 10 (weeks)
+          let def = 10;
+          window.bwFilterState = (filterType === 'default') ? def : 'all';
           renderCharts(currentMode);
       }
   }
