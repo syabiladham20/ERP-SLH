@@ -586,8 +586,8 @@ def get_flock_stock_history_bulk(flocks):
 
     return result_map
 
-def calculate_male_ratio(flock_id, setting_date):
-    flock = Flock.query.get(flock_id)
+def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last_hatch_date=None):
+    flock = flock_obj or Flock.query.get(flock_id)
     if not flock: return None, False
 
     weekday = setting_date.weekday() # Mon=0, Tue=1 ... Fri=4
@@ -603,23 +603,27 @@ def calculate_male_ratio(flock_id, setting_date):
         start_date = setting_date - timedelta(days=3)
     else:
         # Non-Standard
-        # Find LAST setting date for this flock BEFORE current setting_date
-        last_hatch = Hatchability.query.filter_by(flock_id=flock_id)\
-            .filter(Hatchability.setting_date < setting_date)\
-            .order_by(Hatchability.setting_date.desc()).first()
-
-        if last_hatch:
-            start_date = last_hatch.setting_date
+        if last_hatch_date:
+            start_date = last_hatch_date
         else:
-            # First time catch
-            start_date = setting_date - timedelta(days=7)
+            # Find LAST setting date for this flock BEFORE current setting_date
+            last_hatch = Hatchability.query.filter_by(flock_id=flock_id)\
+                .filter(Hatchability.setting_date < setting_date)\
+                .order_by(Hatchability.setting_date.desc()).first()
+
+            if last_hatch:
+                start_date = last_hatch.setting_date
+            else:
+                # First time catch
+                start_date = setting_date - timedelta(days=7)
 
     days_count = (end_date - start_date).days + 1
     if days_count > 10:
         large_window = True
 
     # Calculate ratios daily
-    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
+    if logs is None:
+        logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date).all()
 
     # Init stocks (Production)
     curr_m_prod = flock.intake_male or 0
@@ -3320,6 +3324,10 @@ def process_hatchability_import(file):
             flocks_by_house[f.house_id] = []
         flocks_by_house[f.house_id].append(f)
 
+    # Caches for performance optimization (N+1 query resolution)
+    logs_cache = {} # flock_id -> list of DailyLog
+    hatch_cache = {} # flock_id -> list of Hatchability (sorted by setting_date)
+
     created_count = 0
     updated_count = 0
 
@@ -3341,17 +3349,25 @@ def process_hatchability_import(file):
 
         # 2. Match Flock in House by Date
         # Find first flock where intake_date <= s_date
+        target_flock = None
         target_flock_id = None
         candidates = flocks_by_house.get(house_id, [])
 
         for f in candidates:
             if f.intake_date <= s_date:
+                target_flock = f
                 target_flock_id = f.id
                 break
 
         if not target_flock_id:
             # No valid flock found for this date
             continue
+
+        # Populate caches for this flock if needed
+        if target_flock_id not in logs_cache:
+            logs_cache[target_flock_id] = DailyLog.query.filter_by(flock_id=target_flock_id).order_by(DailyLog.date).all()
+        if target_flock_id not in hatch_cache:
+            hatch_cache[target_flock_id] = Hatchability.query.filter_by(flock_id=target_flock_id).order_by(Hatchability.setting_date).all()
 
         # Extract values (None if blank)
         c_date = get_val(row, 'candling_date', parse_date)
@@ -3361,11 +3377,21 @@ def process_hatchability_import(file):
         r_eggs = get_val(row, 'rotten_eggs', int)
         h_chicks = get_val(row, 'hatched_chicks', int)
 
-        # Always fetch Male Ratio from Farm Database
-        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
+        # Determine last_hatch_date from cache for male ratio calculation
+        last_hatch_date = None
+        for h_rec in reversed(hatch_cache[target_flock_id]):
+            if h_rec.setting_date < s_date:
+                last_hatch_date = h_rec.setting_date
+                break
 
-        # Check existing record
-        existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()
+        # Always fetch Male Ratio from Farm Database (using optimized call)
+        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date,
+                                          flock_obj=target_flock,
+                                          logs=logs_cache[target_flock_id],
+                                          last_hatch_date=last_hatch_date)
+
+        # Check existing record in cache
+        existing = next((h_rec for h_rec in hatch_cache[target_flock_id] if h_rec.setting_date == s_date), None)
         if existing:
             # Smart Patch Update
             updated_fields = []
@@ -3412,6 +3438,8 @@ def process_hatchability_import(file):
                 male_ratio_pct=m_ratio
             )
             db.session.add(h)
+            hatch_cache[target_flock_id].append(h)
+            hatch_cache[target_flock_id].sort(key=lambda x: x.setting_date)
             created_count += 1
 
     db.session.commit()
