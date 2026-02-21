@@ -22,9 +22,16 @@
                 <label class="form-label">End Date</label>
                 <input type="date" id="endDate" class="form-control">
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button id="applyFilters" class="btn btn-primary flex-grow-1">Apply</button>
-                <button id="downloadPdf" class="btn btn-outline-danger" title="Download PDF Report"><i class="bi bi-file-pdf"></i> PDF</button>
+            <div class="col-md-3 d-flex flex-column gap-2">
+                <div class="d-flex gap-2">
+                    <button id="applyFilters" class="btn btn-primary flex-grow-1">Apply</button>
+                    <button id="downloadPdf" class="btn btn-outline-danger" title="Download PDF Report"><i class="bi bi-file-pdf"></i> PDF</button>
+                </div>
+                <div class="btn-group btn-group-sm w-100">
+                    <button class="btn btn-outline-secondary" onclick="applyQuickFilter('30d')">Last 30 Days</button>
+                    <button class="btn btn-outline-secondary" onclick="applyQuickFilter('10w')">Last 10 Weeks</button>
+                    <button class="btn btn-outline-secondary" onclick="applyQuickFilter('all')">Show All</button>
+                </div>
             </div>
         </div>
     </div>
@@ -87,8 +94,8 @@
 
     let currentData = null; // Store fetched data
 
-    document.getElementById('applyFilters').addEventListener('click', loadData);
-    document.getElementById('viewMode').addEventListener('change', loadData);
+    document.getElementById('applyFilters').addEventListener('click', () => loadData());
+    document.getElementById('viewMode').addEventListener('change', () => loadData());
 
     // PDF Download
     document.getElementById('downloadPdf').addEventListener('click', function() {
@@ -118,10 +125,14 @@
         loadData();
     });
 
-    function loadData() {
+    function loadData(params = {}) {
         const mode = document.getElementById('viewMode').value;
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
+        const start = params.startDate || document.getElementById('startDate').value;
+        const end = params.endDate || document.getElementById('endDate').value;
+
+        // If params provided, update inputs
+        if (params.startDate) document.getElementById('startDate').value = params.startDate;
+        if (params.endDate) document.getElementById('endDate').value = params.endDate;
 
         let url = `/api/chart_data/${flockId}?mode=${mode}`;
         if (start) url += `&start_date=${start}`;
@@ -134,6 +145,94 @@
                 renderCharts(data, mode);
             })
             .catch(err => console.error("Error loading chart data:", err));
+    }
+
+    function applyQuickFilter(type) {
+        // If we want "Latest Data", we need to know the latest date first.
+        // We can fetch ALL data first to find the range, then filter.
+        // Or assume Today? User said "fetch until the latest key in".
+        // This implies we rely on the API returning data up to the last log.
+        // If we clear dates and fetch, we get everything.
+        // Then we find the last date in `currentData` and subtract 30 days/10 weeks.
+
+        // Clear inputs to fetch all
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+
+        const mode = document.getElementById('viewMode').value;
+        let url = `/api/chart_data/${flockId}?mode=${mode}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                currentData = data;
+                if (!data.dates || data.dates.length === 0) {
+                    renderCharts(data, mode);
+                    return;
+                }
+
+                // Find Latest Date
+                const dates = data.dates;
+                const lastDateStr = dates[dates.length - 1];
+                const lastDate = new Date(lastDateStr); // Standard ISO YYYY-MM-DD or Week string?
+                // If weekly mode, dates are "Week X".
+                // If monthly, "YYYY-MM".
+                // If daily, "YYYY-MM-DD".
+
+                if (type === 'all') {
+                    renderCharts(data, mode);
+                    return;
+                }
+
+                if (mode === 'daily') {
+                    // type '30d' or '10w' (70d)
+                    const days = type === '30d' ? 30 : 70;
+                    const startDate = new Date(lastDate);
+                    startDate.setDate(lastDate.getDate() - days);
+
+                    const sStr = startDate.toISOString().split('T')[0];
+                    const eStr = lastDate.toISOString().split('T')[0];
+
+                    document.getElementById('startDate').value = sStr;
+                    document.getElementById('endDate').value = eStr;
+
+                    // Re-load with filter
+                    loadData({startDate: sStr, endDate: eStr});
+                } else if (mode === 'weekly') {
+                    // Logic for weeks?
+                    // Week string parsing is hard ("Week 10").
+                    // But data.metrics arrays align with dates.
+                    // We can just slice the data arrays in JS instead of re-fetching?
+                    // Plotly handles zooming. We can set range in layout?
+                    // User asked to "fetch until".
+                    // Re-fetching with filtered date range is safest if API supports it.
+                    // But API expects YYYY-MM-DD.
+                    // Week X doesn't map easily to Date without knowing intake.
+                    // But we have `data.intake_date`.
+
+                    // Simplified: Just slice the data here and render!
+                    // filterData logic
+                    const count = type === '30d' ? 4 : 10; // Approx 4 weeks for 30d
+
+                    const filtered = filterDataLocally(data, count);
+                    renderCharts(filtered, mode);
+                } else {
+                    renderCharts(data, mode);
+                }
+            });
+    }
+
+    function filterDataLocally(data, count) {
+        const len = data.dates.length;
+        if (len <= count) return data;
+
+        const start = len - count;
+        const newData = { ...data, metrics: {}, dates: data.dates.slice(start) };
+
+        for (let k in data.metrics) {
+            newData.metrics[k] = data.metrics[k].slice(start);
+        }
+        return newData;
     }
 
     function getMaxRange(arr, isPercentage) {
@@ -190,13 +289,18 @@
 
         // Event Markers (only in Daily mode)
         let eventTraces = [];
-        if (mode === 'daily' && data.events.length > 0) {
-             const eventX = data.events.map(e => e.date);
+        if (mode === 'daily' && data.events && data.events.length > 0) {
+             // Need to filter events if date range applied locally
+             // Basic matching
+             const validDates = new Set(xValues);
+             const filteredEvents = data.events.filter(e => validDates.has(e.date));
+
+             const eventX = filteredEvents.map(e => e.date);
              const eventY = eventX.map(() => maxEgg * 0.95); // Near top based on maxEgg
 
              // Differentiate Flushing vs Normal
-             const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
-             const symbols = data.events.map(e => e.type === 'flushing' ? 'drop' : 'star');
+             const colors = filteredEvents.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
+             const symbols = filteredEvents.map(e => e.type === 'flushing' ? 'drop' : 'star');
 
              const traceEvt = {
                  x: eventX,
@@ -205,7 +309,7 @@
                  type: 'scatter',
                  name: 'Events',
                  marker: { symbol: symbols, size: 12, color: colors, line: {color: 'black', width: 1} },
-                 text: data.events.map(e => e.type === 'flushing' ? 'Flushing' : 'Note/Photo'),
+                 text: filteredEvents.map(e => e.type === 'flushing' ? 'Flushing' : 'Note/Photo'),
                  hoverinfo: 'text'
              };
              eventTraces.push(traceEvt);
@@ -231,7 +335,7 @@
         });
 
         // 3. Cull & Hatching Egg
-        const cullPct = metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0);
+        const cullPct = metrics.hatch_egg_pct ? metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0) : [];
         const maxCull = getMaxRange(cullPct, true);
         const maxHatch = getMaxRange(metrics.hatch_egg_pct, true);
 
@@ -264,7 +368,7 @@
 
         // 4. Water & Feed
         const maxWater = getMaxRange(metrics.water_per_bird, false);
-        const maxFeed = getMaxRange([...metrics.feed_f, ...metrics.feed_m], false);
+        const maxFeed = getMaxRange([...(metrics.feed_f||[]), ...(metrics.feed_m||[])], false);
 
         const traceWater = {
             x: xValues,

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>Flock Details: {{ flock.house.name }} (Read-Only)</h2>
-  <div class="dropdown" style="z-index: 2000;"> <!-- High Z-index for dropdown -->
+  <div class="dropdown" style="z-index: 2000;">
     <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
       Switch House
     </button>
@@ -61,7 +61,7 @@
 <!-- Tab Content -->
 <div class="tab-content" id="flockTabsContent">
 
-  <!-- Daily Logs Tab (Pane 1) -->
+  <!-- Daily Logs Tab -->
   <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
     <div class="table-responsive table-responsive-sticky">
       <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
@@ -116,25 +116,18 @@
           <tr>
             <td class="text-nowrap fw-bold">{{ item.log.date | date_fmt }}</td>
             <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
-
             <td class="fw-bold">{{ item.stock_male }}</td>
             <td class="fw-bold">{{ item.stock_female }}</td>
-
             <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
             <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
-
             <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
             <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
-
             <td class="fw-bold">{{ "%.1f"|format(item.total_feed) }}</td>
-
             <td>{{ item.log.feed_male_gp_bird }}g</td>
             <td>{{ item.log.feed_female_gp_bird }}g</td>
-
             {% set total_birds = item.stock_male + item.stock_female %}
             {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
             <td>{{ "%.0f"|format(water_per_bird) }}</td>
-
             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                 {% if item.medications %}
                     <span class="badge bg-info text-dark">{{ item.medications }}</span>
@@ -142,32 +135,23 @@
                     -
                 {% endif %}
             </td>
-
             <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
                 {{ "%.2f"|format(item.egg_prod_pct) }}%
             </td>
             <td>{{ item.log.egg_weight }}</td>
             <td class="fw-bold">{{ item.log.eggs_collected }}</td>
-
-            <!-- Cull Details -->
             <td class="small">{{ item.egg_data.jumbo }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
-
             <td class="small">{{ item.egg_data.small }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
-
             <td class="small">{{ item.egg_data.crack }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
-
             <td class="small">{{ item.egg_data.abnormal }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
-
             <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
             <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
-
             <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
             <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
-
             <td>{{ item.lighting_hours }} hour</td>
           </tr>
           {% endfor %}
@@ -176,7 +160,7 @@
     </div>
   </div>
 
-  <!-- Weekly Summary Tab (Pane 2) -->
+  <!-- Weekly Summary Tab -->
   <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
     {% if weekly_data %}
     <div class="table-responsive table-responsive-sticky mb-4">
@@ -218,7 +202,7 @@
     {% endif %}
   </div>
 
-  <!-- Hatchability Logs Tab (Pane 3) -->
+  <!-- Hatchability Logs Tab -->
   <div class="tab-pane fade" id="hatch" role="tabpanel" aria-labelledby="hatch-tab">
     <div class="table-responsive" style="max-height: 80vh; overflow-y: auto;">
         <table class="table table-striped table-bordered text-center">
@@ -266,22 +250,28 @@
     </div>
   </div>
 
-  <!-- Charts Tab (Pane 4) -->
+  <!-- Charts Tab -->
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
     <!-- General Performance Chart -->
     <div class="card mb-4 mt-3">
-      <div class="card-header sticky-header d-flex justify-content-between align-items-center">
-        <strong>General Performance</strong>
-        <div class="btn-group btn-group-sm" role="group">
-             <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-             <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">General Performance</span>
+        <div class="d-flex flex-wrap gap-2">
+             <div class="btn-group btn-group-sm" role="group">
+                 <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+                 <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
-             <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-             <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+                 <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+                 <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+             </div>
+             <div class="btn-group btn-group-sm" role="group">
+                 <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'default')">Default (30d/10w)</button>
+                 <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'all')">Show All</button>
+             </div>
         </div>
       </div>
-      <div class="card-body">
-        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%;">
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
           <canvas id="generalChart"></canvas>
         </div>
       </div>
@@ -289,11 +279,15 @@
 
     <!-- Hatchability Chart -->
     <div class="card mb-4">
-      <div class="card-header sticky-header">
-        <strong>Hatchability & Fertility</strong>
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">Hatchability & Fertility</span>
+        <div class="btn-group btn-group-sm" role="group">
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'all')">Show All</button>
+        </div>
       </div>
-      <div class="card-body">
-        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
           <canvas id="hatchChart"></canvas>
         </div>
       </div>
@@ -301,11 +295,15 @@
 
     <!-- Male Chart -->
     <div class="card mb-4">
-      <div class="card-header sticky-header">
-        <strong>Male Statistics (BW & Uniformity)</strong>
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+        <div class="btn-group btn-group-sm" role="group">
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
+        </div>
       </div>
-      <div class="card-body">
-        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
           <canvas id="maleChart"></canvas>
         </div>
       </div>
@@ -313,36 +311,21 @@
 
     <!-- Female Chart -->
     <div class="card mb-4">
-      <div class="card-header sticky-header">
-          <strong>Female Statistics (BW & Uniformity)</strong>
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+          <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+          <div class="btn-group btn-group-sm" role="group">
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
+             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
+          </div>
       </div>
-      <div class="card-body">
-        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
           <canvas id="femaleChart"></canvas>
         </div>
       </div>
     </div>
   </div>
 
-</div>
-
-<!-- Note Modal -->
-<div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body text-center">
-        <div id="noteModalPhoto" class="mb-3" style="display: none;">
-          <img src="" class="img-fluid rounded border" alt="Clinical Photo">
-        </div>
-        <p id="noteModalText" class="lead"></p>
-        <p id="noteModalDate" class="text-muted small"></p>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -360,15 +343,13 @@
           hatch: {{ "%.2f"|format(r.hatchability_pct) }},
           fertile: {{ "%.2f"|format(r.fertile_egg_pct) }},
           clear: {{ "%.2f"|format(r.clear_egg_pct) }},
-          rotten: {{ "%.2f"|format(r.rotten_egg_pct) }}
+          rotten: {{ "%.2f"|format(r.rotten_egg_pct) }},
+          male_ratio: {{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else 'null' }}
       },
       {% endfor %}
   ];
   // Sort by date just in case
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
-
-  const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
-  const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
 
   let maleChart, femaleChart, generalChart, hatchChart;
   let currentMode = 'daily';
@@ -398,9 +379,61 @@
       }
   };
 
+  // Logic to find latest valid data point index
+  function getLatestDataIndex(dataArray, checkZero = false) {
+      if (!dataArray || dataArray.length === 0) return 0;
+      for (let i = dataArray.length - 1; i >= 0; i--) {
+          const val = dataArray[i];
+          if (val !== null && val !== undefined && (!checkZero || val > 0)) {
+              return i;
+          }
+      }
+      return 0;
+  }
+
+  function filterData(dataObj, count, metricKey, checkZero=false) {
+      if (count === 'all') return dataObj;
+      if (!dataObj.dates || dataObj.dates.length === 0) return dataObj;
+
+      let targetArray = dataObj[metricKey];
+      if (!targetArray) targetArray = dataObj.dates; // Fallback
+
+      const lastIdx = getLatestDataIndex(targetArray, checkZero);
+      // We want range [lastIdx - count + 1, lastIdx]
+      // Because slice is end-exclusive: [start, end)
+      // So slice up to lastIdx + 1.
+      let start = lastIdx - count + 1;
+      if (start < 0) start = 0;
+
+      const newObj = {};
+      for (let key in dataObj) {
+          if (Array.isArray(dataObj[key])) {
+              // Slice up to lastIdx + 1
+              newObj[key] = dataObj[key].slice(start, lastIdx + 1);
+          } else {
+              newObj[key] = dataObj[key];
+          }
+      }
+      return newObj;
+  }
+
   function renderCharts(mode) {
       currentMode = mode;
-      const data = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+
+      // --- Filter Data ---
+      const defaultGeneralCount = mode === 'daily' ? 30 : 10;
+      const generalLimit = window.generalFilterState || defaultGeneralCount;
+      // For General, we usually assume data exists if log exists. Dates array is sufficient.
+      // But user said "skip if missing data". If "Egg Prod" is missing (0), we might want to skip?
+      // But rearing has 0 egg prod.
+      // Let's rely on dates array length (last logged date) for General.
+      const generalData = filterData(fullData, generalLimit, 'dates'); // Uses last date index
+
+      const bwLimit = window.bwFilterState || 10;
+      // Use 'bw_female' or 'avg_bw_female' to find last data
+      const bwKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
+      const bwData = filterData(fullData, bwLimit, bwKey);
 
       if (maleChart) maleChart.destroy();
       if (femaleChart) femaleChart.destroy();
@@ -409,22 +442,23 @@
 
       // --- Male Chart ---
       const maleDatasets = [];
-      if(data.avg_bw_male) {
-          maleDatasets.push({ label: 'Avg BW', data: data.avg_bw_male, borderColor: 'blue', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
+      const maleKey = mode === 'daily' ? 'bw_m' : 'avg_bw_male';
+      if(bwData[maleKey]) {
+          maleDatasets.push({ label: 'Avg BW', data: bwData[maleKey], borderColor: 'blue', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
       }
       // Partitions
       for (let i = 1; i <= 8; i++) {
           let key = 'bw_M' + i;
-          if (data[key] && data[key].some(v => v!==null)) {
-              maleDatasets.push({ label: 'M'+i, data: data[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
+          if (bwData[key] && bwData[key].some(v => v!==null)) {
+              maleDatasets.push({ label: 'M'+i, data: bwData[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
           }
       }
-      maleDatasets.push({ label: 'Std BW', data: data.bw_male_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
-      maleDatasets.push({ label: 'Uniformity %', data: data.unif_male, borderColor: 'orange', borderDash:[2,2], yAxisID: 'y1' });
+      maleDatasets.push({ label: 'Std BW', data: bwData.bw_male_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
+      maleDatasets.push({ label: 'Uniformity %', data: bwData.unif_male, borderColor: 'orange', borderDash:[2,2], yAxisID: 'y1' });
 
       maleChart = new Chart(document.getElementById('maleChart'), {
           type: 'line',
-          data: { labels: data.dates, datasets: maleDatasets },
+          data: { labels: bwData.dates, datasets: maleDatasets },
           options: {
               ...commonOptions,
               scales: {
@@ -436,21 +470,22 @@
 
       // --- Female Chart ---
       const femaleDatasets = [];
-      if(data.avg_bw_female) {
-          femaleDatasets.push({ label: 'Avg BW', data: data.avg_bw_female, borderColor: 'pink', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
+      const femaleKey = mode === 'daily' ? 'bw_f' : 'avg_bw_female';
+      if(bwData[femaleKey]) {
+          femaleDatasets.push({ label: 'Avg BW', data: bwData[femaleKey], borderColor: 'pink', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
       }
       for (let i = 1; i <= 8; i++) {
           let key = 'bw_F' + i;
-          if (data[key] && data[key].some(v => v!==null)) {
-              femaleDatasets.push({ label: 'F'+i, data: data[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
+          if (bwData[key] && bwData[key].some(v => v!==null)) {
+              femaleDatasets.push({ label: 'F'+i, data: bwData[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
           }
       }
-      femaleDatasets.push({ label: 'Std BW', data: data.bw_female_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
-      femaleDatasets.push({ label: 'Uniformity %', data: data.unif_female, borderColor: 'purple', borderDash:[2,2], yAxisID: 'y1' });
+      femaleDatasets.push({ label: 'Std BW', data: bwData.bw_female_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
+      femaleDatasets.push({ label: 'Uniformity %', data: bwData.unif_female, borderColor: 'purple', borderDash:[2,2], yAxisID: 'y1' });
 
       femaleChart = new Chart(document.getElementById('femaleChart'), {
           type: 'line',
-          data: { labels: data.dates, datasets: femaleDatasets },
+          data: { labels: bwData.dates, datasets: femaleDatasets },
           options: {
               ...commonOptions,
               scales: {
@@ -461,19 +496,19 @@
       });
 
       // --- General Chart ---
-      const labels = data.dates;
-      const mortM = mode==='daily' ? data.mortality_daily_male : data.mortality_weekly_male;
-      const mortF = mode==='daily' ? data.mortality_daily_female : data.mortality_weekly_female;
-      const cullM = mode==='daily' ? data.culls_daily_male : data.culls_weekly_male;
-      const cullF = mode==='daily' ? data.culls_daily_female : data.culls_weekly_female;
+      const labels = generalData.dates;
+      const mortM = mode==='daily' ? generalData.mortality_daily_male : generalData.mortality_weekly_male;
+      const mortF = mode==='daily' ? generalData.mortality_daily_female : generalData.mortality_weekly_female;
+      const cullM = mode==='daily' ? generalData.culls_daily_male : generalData.culls_weekly_male;
+      const cullF = mode==='daily' ? generalData.culls_daily_female : generalData.culls_weekly_female;
 
       generalChart = new Chart(document.getElementById('generalChart'), {
           type: 'bar',
           data: {
               labels: labels,
               datasets: [
-                  { label: 'Egg Prod %', data: data.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'} },
-                  { label: 'Std Egg Prod %', data: data.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} },
+                  { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'} },
+                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} },
                   { label: 'Mort Male %', data: mortM, backgroundColor: 'rgba(54, 162, 235, 0.6)', yAxisID:'y1', datalabels:{display:false} },
                   { label: 'Mort Female %', data: mortF, backgroundColor: 'rgba(255, 99, 132, 0.6)', yAxisID:'y1', datalabels:{display:false} },
                   { label: 'Cull Male %', data: cullM, backgroundColor: 'rgba(255, 206, 86, 0.6)', yAxisID:'y1', datalabels:{display:false} },
@@ -489,40 +524,137 @@
           }
       });
 
-      // --- Hatch Chart (Always Weekly/Event based, doesn't switch mode) ---
-      // Uses `hatchRecords` global variable
-      const hLabels = hatchRecords.map(r => r.date);
-      const dHatch = hatchRecords.map(r => r.hatch);
-      const dFertile = hatchRecords.map(r => r.fertile);
-      const dClear = hatchRecords.map(r => r.clear);
-      const dRotten = hatchRecords.map(r => r.rotten);
+      renderHatchChart();
+  }
 
-      hatchChart = new Chart(document.getElementById('hatchChart'), {
-          type: 'line',
+  function renderHatchChart() {
+      // Filter hatchRecords
+      const limit = window.hatchFilterState || 10;
+      let filteredRecords = hatchRecords;
+
+      if (limit !== 'all') {
+          // Find last index where hatch > 0
+          let lastIdx = 0;
+          for (let i = hatchRecords.length - 1; i >= 0; i--) {
+              if (hatchRecords[i].hatch > 0) {
+                  lastIdx = i;
+                  break;
+              }
+          }
+          let start = lastIdx - limit + 1;
+          if (start < 0) start = 0;
+          filteredRecords = hatchRecords.slice(start, lastIdx + 1);
+      }
+
+      const hLabels = filteredRecords.map(r => r.date);
+      const dHatch = filteredRecords.map(r => r.hatch);
+      const dFertile = filteredRecords.map(r => r.fertile);
+      const dClear = filteredRecords.map(r => r.clear);
+      const dRotten = filteredRecords.map(r => r.rotten);
+      const dMale = filteredRecords.map(r => r.male_ratio);
+
+      // Stacked Bar Logic
+      // Calculate max for Y axis
+      const stackedSums = dFertile.map((v, i) => (v||0) + (dClear[i]||0) + (dRotten[i]||0));
+      const maxStacked = Math.max(...stackedSums, 0);
+      const limitY = maxStacked > 100 ? 100 : (maxStacked * 1.2 || 100);
+
+      const ctx = document.getElementById('hatchChart').getContext('2d');
+      hatchChart = new Chart(ctx, {
+          type: 'bar',
           data: {
               labels: hLabels,
               datasets: [
-                  { label: 'Hatch %', data: dHatch, borderColor: 'green', backgroundColor: 'green', tension: 0.1 },
-                  { label: 'Fertility %', data: dFertile, borderColor: 'blue', backgroundColor: 'blue', tension: 0.1 },
-                  { label: 'Clear %', data: dClear, borderColor: 'orange', backgroundColor: 'orange', borderDash:[5,5], tension: 0.1 },
-                  { label: 'Rotten %', data: dRotten, borderColor: 'red', backgroundColor: 'red', borderDash:[5,5], tension: 0.1 }
+                  {
+                      label: 'Fertile %',
+                      data: dFertile,
+                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                  },
+                  {
+                      label: 'Clear %',
+                      data: dClear,
+                      backgroundColor: 'rgba(255, 205, 86, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                  },
+                  {
+                      label: 'Rotten %',
+                      data: dRotten,
+                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                  },
+                  {
+                      label: 'Hatchability %',
+                      data: dHatch,
+                      type: 'line',
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                      borderWidth: 3,
+                      yAxisID: 'y1',
+                      order: 1,
+                      datalabels: { anchor: 'end', align: 'top', formatter: (v) => v > 0 ? v + '%' : '' }
+                  },
+                  {
+                      label: 'Male Ratio %',
+                      data: dMale,
+                      type: 'line',
+                      borderColor: 'rgba(153, 102, 255, 1)',
+                      backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                      borderWidth: 2,
+                      borderDash: [5, 5],
+                      pointStyle: 'circle',
+                      yAxisID: 'y1',
+                      order: 0,
+                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' }
+                  }
               ]
           },
           options: {
               ...commonOptions,
               scales: {
-                  y: { type: 'linear', min: 0, max: 100, title: {display:true, text:'Percentage'} }
+                  y: {
+                      type: 'linear', position: 'left', stacked: true, title: {display:true, text:'Egg Status %'},
+                      min: 0, suggestedMax: limitY
+                  },
+                  y1: {
+                      type: 'linear', position: 'right', title: {display:true, text:'Hatchability %'},
+                      grid: {drawOnChartArea: false}, min: 0, suggestedMax: 100
+                  }
               }
           }
       });
   }
 
+  function applyDateFilter(chartName, filterType) {
+      if (chartName === 'general') {
+          window.generalFilterState = (filterType === 'default') ? (currentMode === 'daily' ? 30 : 10) : 'all';
+          renderCharts(currentMode);
+      } else if (chartName === 'hatch') {
+          window.hatchFilterState = (filterType === 'default') ? 10 : 'all';
+          // Only re-render hatch chart
+          if (hatchChart) hatchChart.destroy();
+          renderHatchChart();
+      } else {
+          // bw
+          window.bwFilterState = (filterType === 'default') ? 10 : 'all';
+          renderCharts(currentMode);
+      }
+  }
+
   function switchMode(mode) {
+      // Reset general/bw filter when switching mode to default
+      window.generalFilterState = (mode === 'daily' ? 30 : 10);
+      window.bwFilterState = 10;
       renderCharts(mode);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-      // Listener for tabs to resize charts
       document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(el => {
           el.addEventListener('shown.bs.tab', (e) => {
               if (e.target.id === 'charts-tab') {
