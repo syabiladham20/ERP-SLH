@@ -1,4 +1,4 @@
-# SLH ERP - Poultry Flock Management System
+# SLH-OP - Poultry Flock Management System
 
 A Flask-based web application for managing poultry flocks, tracking daily performance metrics, and visualizing data.
 
