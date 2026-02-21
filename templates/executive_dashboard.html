@@ -1,22 +1,6 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<style>
-    .sticky-table-container {
-        max-height: 70vh;
-        overflow-y: auto;
-        position: relative;
-    }
-    .sticky-table-container thead th {
-        position: sticky;
-        top: 0;
-        background-color: #f8f9fa;
-        z-index: 10;
-        border-top: none;
-        box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
-    }
-</style>
-
 <div class="d-flex justify-content-between align-items-center mb-4 sticky-top bg-white py-3 border-bottom" style="z-index: 1000; top: 56px;"> <!-- top:56px for navbar offset if needed, usually navbar is not sticky or we need to account for it -->
     <div class="d-flex align-items-center">
         <h2 class="mb-0 me-3">Executive Dashboard</h2>
@@ -204,9 +188,9 @@
               <h5>Weekly ISO Report</h5>
           </div>
           <div class="card-body">
-              <div class="sticky-table-container">
+              <div class="table-responsive table-responsive-sticky">
                   <table class="table table-striped table-hover text-center">
-                      <thead>
+                      <thead class="sticky-table-header">
                           <tr>
                               <th>Period</th>
                               <th>Avg Prod Females</th>
@@ -245,9 +229,9 @@
               <h5>Monthly ISO Report</h5>
           </div>
           <div class="card-body">
-              <div class="sticky-table-container">
+              <div class="table-responsive table-responsive-sticky">
                   <table class="table table-striped table-hover text-center">
-                      <thead>
+                      <thead class="sticky-table-header">
                           <tr>
                               <th>Period</th>
                               <th>Avg Prod Females</th>
@@ -286,9 +270,9 @@
               <h5>Yearly ISO Report</h5>
           </div>
           <div class="card-body">
-              <div class="sticky-table-container">
+              <div class="table-responsive table-responsive-sticky">
                   <table class="table table-striped table-hover text-center">
-                      <thead>
+                      <thead class="sticky-table-header">
                           <tr>
                               <th>Period</th>
                               <th>Avg Prod Females</th>
