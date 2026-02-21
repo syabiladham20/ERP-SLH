@@ -4,7 +4,13 @@
 <div class="container mt-4">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
         <h2 class="h4 mb-2 mb-md-0">Hatchability Performance: {{ flock.house.name }}</h2>
-        <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        <div class="d-flex gap-2">
+            <div class="btn-group btn-group-sm" role="group">
+                 <button class="btn btn-outline-secondary" onclick="applyFilter('default')">Last 10 Weeks</button>
+                 <button class="btn btn-outline-secondary" onclick="applyFilter('all')">Show All</button>
+            </div>
+            <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary btn-sm">Back</a>
+        </div>
     </div>
 
     <div class="card p-3 shadow-sm" style="overflow-x: auto;">
@@ -19,16 +25,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
     Chart.register(ChartDataLabels);
-    const chartData = {{ data | tojson }};
-
-    const fertile = chartData.fertile_pct || [];
-    const clear = chartData.clear_pct || [];
-    const rotten = chartData.rotten_pct || [];
-    const hatch = chartData.hatch_pct || [];
-    const male = chartData.male_ratio_pct || [];
-
-    // Calculate Stacked Max
-    const stackedSums = fertile.map((v, i) => (v||0) + (clear[i]||0) + (rotten[i]||0));
+    const fullChartData = {{ data | tojson }};
+    let hatchChart;
 
     // Calculate Y Max Options
     function getOptions(values, isPercentage) {
@@ -42,173 +40,223 @@
         return {min: 0, suggestedMax: limit};
     }
 
-    const yOptions = getOptions(stackedSums, true);
-    // Combine hatch and male for y1
-    const y1Values = [...hatch, ...male];
-    const y1Options = getOptions(y1Values, true);
+    function renderChart(limit) {
+        let data = fullChartData;
 
-    const ctx = document.getElementById('hatchChart').getContext('2d');
-
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: chartData.weeks,
-            datasets: [
-                {
-                    label: 'Fertile %',
-                    data: chartData.fertile_pct,
-                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                    stack: 'Stack 0',
-                    order: 2,
-                    datalabels: {
-                        anchor: 'center',
-                        align: 'center',
-                        formatter: (value) => value > 0 ? value + '%' : ''
-                    }
-                },
-                {
-                    label: 'Clear %',
-                    data: chartData.clear_pct,
-                    backgroundColor: 'rgba(255, 205, 86, 0.7)',
-                    stack: 'Stack 0',
-                    order: 2,
-                    datalabels: {
-                        anchor: 'center',
-                        align: 'center',
-                        formatter: (value) => value > 0 ? value + '%' : ''
-                    }
-                },
-                {
-                    label: 'Rotten %',
-                    data: chartData.rotten_pct,
-                    backgroundColor: 'rgba(255, 99, 132, 0.7)',
-                    stack: 'Stack 0',
-                    order: 2,
-                    datalabels: {
-                        anchor: 'center',
-                        align: 'center',
-                        formatter: (value) => value > 0 ? value + '%' : ''
-                    }
-                },
-                {
-                    label: 'Hatchability %',
-                    data: chartData.hatch_pct,
-                    type: 'line',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderWidth: 3,
-                    yAxisID: 'y1',
-                    order: 1,
-                    tension: 0.3,
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'top',
-                        formatter: (value) => value > 0 ? value + '%' : ''
-                    }
-                },
-                {
-                    label: 'Male Ratio %',
-                    data: chartData.male_ratio_pct,
-                    type: 'line',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointStyle: 'circle',
-                    pointRadius: 4,
-                    yAxisID: 'y1',
-                    order: 0,
-                    tension: 0.3,
-                    datalabels: {
-                        anchor: 'start',
-                        align: 'bottom',
-                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                        borderRadius: 4,
-                        formatter: (value) => value > 0 ? value + '%' : ''
-                    }
+        // Filtering Logic
+        if (limit !== 'all') {
+            // Find last index where hatch > 0
+            const hatchArr = fullChartData.hatch_pct || [];
+            let lastIdx = 0;
+            for (let i = hatchArr.length - 1; i >= 0; i--) {
+                if (hatchArr[i] > 0) {
+                    lastIdx = i;
+                    break;
                 }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
-                zoom: {
-                    zoom: {
-                      wheel: { enabled: true },
-                      pinch: { enabled: true },
-                      mode: 'x',
+            }
+            // Slice range [lastIdx - limit + 1, lastIdx + 1]
+            let start = lastIdx - limit + 1;
+            if (start < 0) start = 0;
+            let end = lastIdx + 1;
+
+            // Deep clone and slice arrays
+            const sliced = {};
+            for (let key in fullChartData) {
+                if (Array.isArray(fullChartData[key])) {
+                    sliced[key] = fullChartData[key].slice(start, end);
+                } else {
+                    sliced[key] = fullChartData[key];
+                }
+            }
+            data = sliced;
+        }
+
+        const fertile = data.fertile_pct || [];
+        const clear = data.clear_pct || [];
+        const rotten = data.rotten_pct || [];
+        const hatch = data.hatch_pct || [];
+        const male = data.male_ratio_pct || [];
+
+        // Calculate Stacked Max
+        const stackedSums = fertile.map((v, i) => (v||0) + (clear[i]||0) + (rotten[i]||0));
+        const yOptions = getOptions(stackedSums, true);
+        const y1Values = [...hatch, ...male];
+        const y1Options = getOptions(y1Values, true);
+
+        if (hatchChart) hatchChart.destroy();
+
+        const ctx = document.getElementById('hatchChart').getContext('2d');
+        hatchChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.weeks,
+                datasets: [
+                    {
+                        label: 'Fertile %',
+                        data: data.fertile_pct,
+                        backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        stack: 'Stack 0',
+                        order: 2,
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: (value) => value > 0 ? value + '%' : ''
+                        }
                     },
-                    pan: {
-                      enabled: true,
-                      mode: 'x',
+                    {
+                        label: 'Clear %',
+                        data: data.clear_pct,
+                        backgroundColor: 'rgba(255, 205, 86, 0.7)',
+                        stack: 'Stack 0',
+                        order: 2,
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: (value) => value > 0 ? value + '%' : ''
+                        }
+                    },
+                    {
+                        label: 'Rotten %',
+                        data: data.rotten_pct,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        stack: 'Stack 0',
+                        order: 2,
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: (value) => value > 0 ? value + '%' : ''
+                        }
+                    },
+                    {
+                        label: 'Hatchability %',
+                        data: data.hatch_pct,
+                        type: 'line',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderWidth: 3,
+                        yAxisID: 'y1',
+                        order: 1,
+                        tension: 0.3,
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: (value) => value > 0 ? value + '%' : ''
+                        }
+                    },
+                    {
+                        label: 'Male Ratio %',
+                        data: data.male_ratio_pct,
+                        type: 'line',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointStyle: 'circle',
+                        pointRadius: 4,
+                        yAxisID: 'y1',
+                        order: 0,
+                        tension: 0.3,
+                        datalabels: {
+                            anchor: 'start',
+                            align: 'bottom',
+                            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                            borderRadius: 4,
+                            formatter: (value) => value > 0 ? value + '%' : ''
+                        }
                     }
-                },
-                title: {
-                    display: true,
-                    text: 'Egg Breakdown & Hatchability Trend'
-                },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false,
-                    callbacks: {
-                        footer: function(tooltipItems) {
-                            const index = tooltipItems[0].dataIndex;
-                            const note = chartData.notes[index];
-                            if (note) {
-                                return note.split(' | ');
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    zoom: {
+                        zoom: {
+                          wheel: { enabled: true },
+                          pinch: { enabled: true },
+                          mode: 'x',
+                        },
+                        pan: {
+                          enabled: true,
+                          mode: 'x',
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Egg Breakdown & Hatchability Trend'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            footer: function(tooltipItems) {
+                                const index = tooltipItems[0].dataIndex;
+                                const note = data.notes[index];
+                                if (note) {
+                                    return note.split(' | ');
+                                }
+                                return '';
                             }
-                            return '';
+                        }
+                    },
+                    datalabels: {
+                        color: 'black',
+                        font: {
+                            weight: 'bold'
                         }
                     }
                 },
-                datalabels: {
-                    color: 'black',
-                    font: {
-                        weight: 'bold'
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Flock Age'
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: 'Egg Status %'
+                        },
+                        ...yOptions
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Hatchability %'
+                        },
+                        ...y1Options
                     }
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Flock Age'
-                    }
-                },
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    stacked: true,
-                    title: {
-                        display: true,
-                        text: 'Egg Status %'
-                    },
-                    ...yOptions
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    grid: {
-                        drawOnChartArea: false
-                    },
-                    title: {
-                        display: true,
-                        text: 'Hatchability %'
-                    },
-                    ...y1Options
                 }
             }
-        }
+        });
+    }
+
+    function applyFilter(mode) {
+        const limit = mode === 'all' ? 'all' : 10;
+        renderChart(limit);
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+        renderChart(10); // Default to Last 10 Weeks
     });
 </script>
 {% endblock %}
