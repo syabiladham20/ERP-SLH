@@ -39,7 +39,7 @@
                                 <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#resetPassModal{{ user.id }}">
                                     Reset Pass
                                 </button>
-                                {% if user.username != session['user_id'] %}
+                                {% if user.id != session['user_id'] %}
                                 <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteUserModal{{ user.id }}">
                                     Delete
                                 </button>

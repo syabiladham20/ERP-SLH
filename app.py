@@ -882,17 +882,8 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 @app.before_request
 def load_logged_in_user():
     user_id = session.get('user_id')
-    if user_id:
-        # Optimization: storing simple details in session to avoid DB hit on every request?
-        # But for security (role changes), fetching from DB is better.
-        # However, sticking to original session-based design for now, but validating existence.
-        # Let's trust session for performance, but `g.user` is useful.
-        # Note: In session we stored 'username' as 'user_id' in previous code.
-        # Let's switch to storing Database ID in session['user_db_id'] maybe?
-        # Or stick to username for backward compat?
-        # The previous code used session['user_id'] = username.
-        # Let's keep using session['user_id'] = username to minimize disruption, but `g.user` will be the object.
-        g.user = User.query.filter_by(username=user_id).first()
+    if user_id and isinstance(user_id, int):
+        g.user = User.query.get(user_id)
     else:
         g.user = None
 
@@ -907,7 +898,8 @@ def login():
 
         if user and user.check_password(password):
             session.clear()
-            session['user_id'] = user.username
+            session['user_id'] = user.id
+            session['user_name'] = user.username
             session['user_dept'] = user.dept
             session['user_role'] = user.role
             session['is_admin'] = (user.role == 'Admin')
@@ -948,7 +940,7 @@ def change_password():
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
 
-        user = User.query.filter_by(username=session['user_id']).first()
+        user = User.query.get(session['user_id'])
 
         if not user or not user.check_password(current_password):
             flash("Incorrect current password.", "danger")
@@ -1008,7 +1000,7 @@ def admin_user_delete(user_id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
-    if user.username == session['user_id']:
+    if user.id == session.get('user_id'):
         flash("Cannot delete yourself.", "danger")
     else:
         db.session.delete(user)
