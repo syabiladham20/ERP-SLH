@@ -23,7 +23,9 @@
     </div>
 
     <form method="POST" action="{{ url_for('import_data') }}">
-        <input type="hidden" name="confirm_file" value="{{ filename }}">
+        {% for filename in filenames %}
+        <input type="hidden" name="confirm_files" value="{{ filename }}">
+        {% endfor %}
         <button type="submit" class="btn btn-success mb-3">Confirm Import</button>
         <a href="{{ url_for('import_data') }}" class="btn btn-secondary mb-3">Cancel</a>
     </form>
@@ -32,6 +34,7 @@
         <table class="table table-striped table-bordered table-sm">
             <thead>
                 <tr>
+                    <th>File</th>
                     <th>Date</th>
                     <th>House</th>
                     <th>Flock</th>
@@ -46,6 +49,7 @@
             <tbody>
                 {% for change in changes %}
                 <tr class="{% if change.type == 'New' %}table-success{% endif %}">
+                    <td>{{ change.source_file }}</td>
                     <td>{{ change.date | date_fmt }}</td>
                     <td>{{ change.house }}</td>
                     <td>{{ change.flock }}</td>
@@ -68,7 +72,9 @@
     </div>
 
     <form method="POST" action="{{ url_for('import_data') }}">
-        <input type="hidden" name="confirm_file" value="{{ filename }}">
+        {% for filename in filenames %}
+        <input type="hidden" name="confirm_files" value="{{ filename }}">
+        {% endfor %}
         <button type="submit" class="btn btn-success mt-3">Confirm Import</button>
         <a href="{{ url_for('import_data') }}" class="btn btn-secondary mt-3">Cancel</a>
     </form>
