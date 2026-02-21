@@ -1,0 +1,539 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Flock Details: {{ flock.house.name }} (Read-Only)</h2>
+  <div class="dropdown" style="z-index: 2000;"> <!-- High Z-index for dropdown -->
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+      Switch House
+    </button>
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="max-height: 300px; overflow-y: auto;">
+      {% for f in active_flocks %}
+      <li><a class="dropdown-item" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<!-- Overview Card -->
+<div class="card mb-4">
+  <div class="card-header sticky-header">
+    Overview
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
+      <div class="col-md-3"><strong>Status:</strong> {{ flock.status }}</div>
+      <div class="col-md-3"><strong>Phase:</strong> {{ flock.phase }}</div>
+      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date | date_fmt }}</div>
+    </div>
+    <div class="row mt-2">
+      <div class="col-md-3"><strong>Intake:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
+      <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
+      <div class="col-md-3 border-start">
+          <strong>Current Prod:</strong> {{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F
+          <br>
+          <small class="text-muted">Male Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</small>
+      </div>
+      <div class="col-md-3">
+          <strong>Current Hosp:</strong> {{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Navigation Tabs -->
+<ul class="nav nav-tabs mb-3" id="flockTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="hatch-tab" data-bs-toggle="tab" data-bs-target="#hatch" type="button" role="tab" aria-controls="hatch" aria-selected="false">Hatchability Logs</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
+  </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="flockTabsContent">
+
+  <!-- Daily Logs Tab (Pane 1) -->
+  <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
+    <div class="table-responsive table-responsive-sticky">
+      <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
+        <thead class="sticky-table-header table-light">
+          <tr>
+            <th rowspan="2" class="align-middle">Date</th>
+            <th rowspan="2" class="align-middle">Age</th>
+            <th colspan="2" class="bg-light">Stock</th>
+            <th colspan="2" class="bg-danger bg-opacity-10">Mortality</th>
+            <th colspan="2" class="bg-warning bg-opacity-10">Culls</th>
+            <th rowspan="2" class="align-middle">Feed<br>(Kg)</th>
+            <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
+            <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
+            <th rowspan="2" class="align-middle">Medication</th>
+            <th colspan="3" class="bg-info bg-opacity-10">Production</th>
+            <th colspan="2">Jumbo</th>
+            <th colspan="2">Small</th>
+            <th colspan="2">Crack</th>
+            <th colspan="2">Abnormal</th>
+            <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
+            <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
+            <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
+          </tr>
+          <tr>
+            <th class="bg-light">M</th>
+            <th class="bg-light">F</th>
+            <th class="bg-danger bg-opacity-10">M</th>
+            <th class="bg-danger bg-opacity-10">F</th>
+            <th class="bg-warning bg-opacity-10">M</th>
+            <th class="bg-warning bg-opacity-10">F</th>
+            <th class="bg-success bg-opacity-10">M</th>
+            <th class="bg-success bg-opacity-10">F</th>
+            <th class="bg-info bg-opacity-10">%</th>
+            <th class="bg-info bg-opacity-10">Wt(g)</th>
+            <th class="bg-info bg-opacity-10">Qty</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th>#</th>
+            <th>%</th>
+            <th class="bg-primary bg-opacity-10">#</th>
+            <th class="bg-primary bg-opacity-10">%</th>
+            <th class="bg-secondary bg-opacity-10">#</th>
+            <th class="bg-secondary bg-opacity-10">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in logs %}
+          <tr>
+            <td class="text-nowrap fw-bold">{{ item.log.date | date_fmt }}</td>
+            <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
+
+            <td class="fw-bold">{{ item.stock_male }}</td>
+            <td class="fw-bold">{{ item.stock_female }}</td>
+
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
+
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
+
+            <td class="fw-bold">{{ "%.1f"|format(item.total_feed) }}</td>
+
+            <td>{{ item.log.feed_male_gp_bird }}g</td>
+            <td>{{ item.log.feed_female_gp_bird }}g</td>
+
+            {% set total_birds = item.stock_male + item.stock_female %}
+            {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
+            <td>{{ "%.0f"|format(water_per_bird) }}</td>
+
+            <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
+                {% if item.medications %}
+                    <span class="badge bg-info text-dark">{{ item.medications }}</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+
+            <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
+                {{ "%.2f"|format(item.egg_prod_pct) }}%
+            </td>
+            <td>{{ item.log.egg_weight }}</td>
+            <td class="fw-bold">{{ item.log.eggs_collected }}</td>
+
+            <!-- Cull Details -->
+            <td class="small">{{ item.egg_data.jumbo }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.small }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.crack }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
+
+            <td class="small">{{ item.egg_data.abnormal }}</td>
+            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
+
+            <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
+            <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
+
+            <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
+            <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
+
+            <td>{{ item.lighting_hours }} hour</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Weekly Summary Tab (Pane 2) -->
+  <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
+    {% if weekly_data %}
+    <div class="table-responsive table-responsive-sticky mb-4">
+      <table class="table table-bordered table-sm">
+        <thead class="table-light sticky-table-header">
+          <tr>
+            <th>Week</th>
+            <th>Mortality (M/F)</th>
+            <th>Mortality % (M/F)</th>
+            <th>Culls (M/F)</th>
+            <th>Culls % (M/F)</th>
+            <th>Eggs</th>
+            <th>Egg Prod %</th>
+            <th>Hatching Eggs</th>
+            <th>Hatching Egg %</th>
+            <th>Avg BW (M/F)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in weekly_data %}
+          <tr>
+            <td>{{ w.week }}</td>
+            <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
+            <td>{{ "%.2f"|format(w.mort_pct_m) }} / {{ "%.2f"|format(w.mort_pct_f) }}</td>
+            <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
+            <td>{{ "%.2f"|format(w.cull_pct_m) }} / {{ "%.2f"|format(w.cull_pct_f) }}</td>
+            <td>{{ w.eggs }}</td>
+            <td>{{ "%.2f"|format(w.egg_prod_pct) }}</td>
+            <td>{{ w.hatch_eggs_sum }}</td>
+            <td>{{ "%.2f"|format(w.hatching_egg_pct) }}</td>
+            <td>{{ w.avg_bw_male }} / {{ w.avg_bw_female }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted p-3">No weekly data available.</p>
+    {% endif %}
+  </div>
+
+  <!-- Hatchability Logs Tab (Pane 3) -->
+  <div class="tab-pane fade" id="hatch" role="tabpanel" aria-labelledby="hatch-tab">
+    <div class="table-responsive" style="max-height: 80vh; overflow-y: auto;">
+        <table class="table table-striped table-bordered text-center">
+            <thead class="table-dark" style="position: sticky; top: 0; z-index: 100;">
+                <tr>
+                    <th>Setting Date</th>
+                    <th>Hatching Date</th>
+                    <th>Age (Weeks)</th>
+                    <th>Egg Set</th>
+                    <th>Hatched</th>
+                    <th>Hatch %</th>
+                    <th>Hatchable (Fertile)</th>
+                    <th>Fertility %</th>
+                    <th>Clear %</th>
+                    <th>Rotten %</th>
+                    <th>Male Ratio %</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in hatch_records %}
+                <tr>
+                    <td>{{ r.setting_date | date_fmt }}</td>
+                    <td>{{ r.hatching_date | date_fmt }}</td>
+                    <td>{{ ((r.setting_date - flock.intake_date).days // 7) + 1 }}</td>
+                    <td>{{ r.egg_set }}</td>
+                    <td>{{ r.hatched_chicks }}</td>
+                    <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
+                    <td>{{ r.hatchable_eggs }}</td>
+                    <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
+                    <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
+                    <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
+                    <td>{{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else '-' }}%</td>
+                    <td>
+                        <a href="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=r.setting_date, readonly='true') }}" class="btn btn-sm btn-info text-white" title="Diagnose Farm Data">
+                            Diagnose
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="12" class="text-center">No records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+  </div>
+
+  <!-- Charts Tab (Pane 4) -->
+  <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
+    <!-- General Performance Chart -->
+    <div class="card mb-4 mt-3">
+      <div class="card-header sticky-header d-flex justify-content-between align-items-center">
+        <strong>General Performance</strong>
+        <div class="btn-group btn-group-sm" role="group">
+             <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+             <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+
+             <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+             <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%;">
+          <canvas id="generalChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hatchability Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header">
+        <strong>Hatchability & Fertility</strong>
+      </div>
+      <div class="card-body">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+          <canvas id="hatchChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Male Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header">
+        <strong>Male Statistics (BW & Uniformity)</strong>
+      </div>
+      <div class="card-body">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+          <canvas id="maleChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Female Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header">
+          <strong>Female Statistics (BW & Uniformity)</strong>
+      </div>
+      <div class="card-body">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%;">
+          <canvas id="femaleChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Note Modal -->
+<div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="noteModalPhoto" class="mb-3" style="display: none;">
+          <img src="" class="img-fluid rounded border" alt="Clinical Photo">
+        </div>
+        <p id="noteModalText" class="lead"></p>
+        <p id="noteModalDate" class="text-muted small"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+  Chart.register(ChartDataLabels);
+
+  const chartDataDaily = {{ chart_data | tojson }};
+  const chartDataWeekly = {{ chart_data_weekly | tojson }};
+  const hatchRecords = [
+      {% for r in hatch_records %}
+      {
+          date: "{{ r.setting_date | date_fmt }}",
+          hatch: {{ "%.2f"|format(r.hatchability_pct) }},
+          fertile: {{ "%.2f"|format(r.fertile_egg_pct) }},
+          clear: {{ "%.2f"|format(r.clear_egg_pct) }},
+          rotten: {{ "%.2f"|format(r.rotten_egg_pct) }}
+      },
+      {% endfor %}
+  ];
+  // Sort by date just in case
+  hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
+  const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
+
+  let maleChart, femaleChart, generalChart, hatchChart;
+  let currentMode = 'daily';
+
+  // Common Options
+  const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      spanGaps: true,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+          legend: { position: 'bottom' },
+          zoom: {
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+            pan: { enabled: true, mode: 'x' }
+          },
+          datalabels: {
+              align: 'top',
+              anchor: 'end',
+              formatter: (v, ctx) => v ? (ctx.dataset.label.includes('%') ? v + '%' : v) : '',
+              font: { size: 10, weight: 'bold' },
+              color: '#444'
+          }
+      }
+  };
+
+  function renderCharts(mode) {
+      currentMode = mode;
+      const data = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+
+      if (maleChart) maleChart.destroy();
+      if (femaleChart) femaleChart.destroy();
+      if (generalChart) generalChart.destroy();
+      if (hatchChart) hatchChart.destroy();
+
+      // --- Male Chart ---
+      const maleDatasets = [];
+      if(data.avg_bw_male) {
+          maleDatasets.push({ label: 'Avg BW', data: data.avg_bw_male, borderColor: 'blue', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
+      }
+      // Partitions
+      for (let i = 1; i <= 8; i++) {
+          let key = 'bw_M' + i;
+          if (data[key] && data[key].some(v => v!==null)) {
+              maleDatasets.push({ label: 'M'+i, data: data[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
+          }
+      }
+      maleDatasets.push({ label: 'Std BW', data: data.bw_male_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
+      maleDatasets.push({ label: 'Uniformity %', data: data.unif_male, borderColor: 'orange', borderDash:[2,2], yAxisID: 'y1' });
+
+      maleChart = new Chart(document.getElementById('maleChart'), {
+          type: 'line',
+          data: { labels: data.dates, datasets: maleDatasets },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: { type: 'linear', position: 'left', title: {display:true, text:'Body Weight (g)'} },
+                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false} }
+              }
+          }
+      });
+
+      // --- Female Chart ---
+      const femaleDatasets = [];
+      if(data.avg_bw_female) {
+          femaleDatasets.push({ label: 'Avg BW', data: data.avg_bw_female, borderColor: 'pink', borderWidth: 2, tension: 0.1, yAxisID: 'y' });
+      }
+      for (let i = 1; i <= 8; i++) {
+          let key = 'bw_F' + i;
+          if (data[key] && data[key].some(v => v!==null)) {
+              femaleDatasets.push({ label: 'F'+i, data: data[key], borderColor: '#ccc', borderWidth: 1, yAxisID: 'y', datalabels:{display:false} });
+          }
+      }
+      femaleDatasets.push({ label: 'Std BW', data: data.bw_female_std, borderColor: 'black', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} });
+      femaleDatasets.push({ label: 'Uniformity %', data: data.unif_female, borderColor: 'purple', borderDash:[2,2], yAxisID: 'y1' });
+
+      femaleChart = new Chart(document.getElementById('femaleChart'), {
+          type: 'line',
+          data: { labels: data.dates, datasets: femaleDatasets },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: { type: 'linear', position: 'left', title: {display:true, text:'Body Weight (g)'} },
+                  y1: { type: 'linear', position: 'right', title: {display:true, text:'Uniformity %'}, grid: {drawOnChartArea: false} }
+              }
+          }
+      });
+
+      // --- General Chart ---
+      const labels = data.dates;
+      const mortM = mode==='daily' ? data.mortality_daily_male : data.mortality_weekly_male;
+      const mortF = mode==='daily' ? data.mortality_daily_female : data.mortality_weekly_female;
+      const cullM = mode==='daily' ? data.culls_daily_male : data.culls_weekly_male;
+      const cullF = mode==='daily' ? data.culls_daily_female : data.culls_weekly_female;
+
+      generalChart = new Chart(document.getElementById('generalChart'), {
+          type: 'bar',
+          data: {
+              labels: labels,
+              datasets: [
+                  { label: 'Egg Prod %', data: data.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'} },
+                  { label: 'Std Egg Prod %', data: data.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} },
+                  { label: 'Mort Male %', data: mortM, backgroundColor: 'rgba(54, 162, 235, 0.6)', yAxisID:'y1', datalabels:{display:false} },
+                  { label: 'Mort Female %', data: mortF, backgroundColor: 'rgba(255, 99, 132, 0.6)', yAxisID:'y1', datalabels:{display:false} },
+                  { label: 'Cull Male %', data: cullM, backgroundColor: 'rgba(255, 206, 86, 0.6)', yAxisID:'y1', datalabels:{display:false} },
+                  { label: 'Cull Female %', data: cullF, backgroundColor: 'rgba(75, 192, 192, 0.6)', yAxisID:'y1', datalabels:{display:false} }
+              ]
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, suggestedMax: 100 },
+                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0, suggestedMax: 1 }
+              }
+          }
+      });
+
+      // --- Hatch Chart (Always Weekly/Event based, doesn't switch mode) ---
+      // Uses `hatchRecords` global variable
+      const hLabels = hatchRecords.map(r => r.date);
+      const dHatch = hatchRecords.map(r => r.hatch);
+      const dFertile = hatchRecords.map(r => r.fertile);
+      const dClear = hatchRecords.map(r => r.clear);
+      const dRotten = hatchRecords.map(r => r.rotten);
+
+      hatchChart = new Chart(document.getElementById('hatchChart'), {
+          type: 'line',
+          data: {
+              labels: hLabels,
+              datasets: [
+                  { label: 'Hatch %', data: dHatch, borderColor: 'green', backgroundColor: 'green', tension: 0.1 },
+                  { label: 'Fertility %', data: dFertile, borderColor: 'blue', backgroundColor: 'blue', tension: 0.1 },
+                  { label: 'Clear %', data: dClear, borderColor: 'orange', backgroundColor: 'orange', borderDash:[5,5], tension: 0.1 },
+                  { label: 'Rotten %', data: dRotten, borderColor: 'red', backgroundColor: 'red', borderDash:[5,5], tension: 0.1 }
+              ]
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: { type: 'linear', min: 0, max: 100, title: {display:true, text:'Percentage'} }
+              }
+          }
+      });
+  }
+
+  function switchMode(mode) {
+      renderCharts(mode);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+      // Listener for tabs to resize charts
+      document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(el => {
+          el.addEventListener('shown.bs.tab', (e) => {
+              if (e.target.id === 'charts-tab') {
+                  if(maleChart) maleChart.resize();
+                  if(femaleChart) femaleChart.resize();
+                  if(generalChart) generalChart.resize();
+                  if(hatchChart) hatchChart.resize();
+              }
+          });
+      });
+      renderCharts('daily');
+  });
+</script>
+{% endblock %}

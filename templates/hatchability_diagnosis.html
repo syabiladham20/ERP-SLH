@@ -3,12 +3,16 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Hatchability Diagnosis</h2>
+    {% if readonly %}
+    <a href="{{ url_for('executive_flock_detail', id=flock.id) }}" class="btn btn-secondary">Back to Flock (Read-Only)</a>
+    {% else %}
     <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-secondary">Back to Hatchability</a>
+    {% endif %}
 </div>
 
 <div class="row">
     <!-- Hatchability Update Section (Moved to Top) -->
-    {% if session.get('user_dept') != 'Farm' %}
+    {% if session.get('user_dept') != 'Farm' and not readonly %}
     <div class="col-12 mb-4">
         <div class="card border-secondary">
             <div class="card-header bg-secondary text-white">
