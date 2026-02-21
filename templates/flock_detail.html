@@ -634,8 +634,11 @@
           const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
               // Stick to Female Mortality line + slight offset for visibility
-              let yVal = generalData.mortality_cum_female[i];
-              if (yVal === undefined || yVal === null) yVal = 0;
+              // Safety check for mortality array existence
+              let yVal = (generalData.mortality_cum_female && generalData.mortality_cum_female[i] !== undefined)
+                         ? generalData.mortality_cum_female[i]
+                         : 0;
+              if (yVal === null) yVal = 0;
               return {
                   x: d,
                   y: yVal,
@@ -645,7 +648,7 @@
               };
           }
           return null;
-      });
+      }).filter(p => p !== null);
 
       const notesDataset = {
           label: 'Clinical Notes',
