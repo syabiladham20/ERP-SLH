@@ -12,7 +12,7 @@
 
 <div class="row">
     <!-- Hatchability Update Section (Moved to Top) -->
-    {% if session.get('user_dept') != 'Farm' and not readonly %}
+    {% if user_dept != 'Farm' and not readonly %}
     <div class="col-12 mb-4">
         <div class="card border-secondary">
             <div class="card-header bg-secondary text-white">

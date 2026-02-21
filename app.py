@@ -2834,8 +2834,40 @@ def daily_log():
                            vaccines_due=vaccines_due,
                            medication_inventory=medication_inventory)
 
+@app.route('/toggle_admin_view')
+def toggle_admin_view():
+    if not session.get('is_admin'):
+        flash("Unauthorized.", "danger")
+        return redirect(url_for('index'))
+
+    session['hide_admin_view'] = not session.get('hide_admin_view', False)
+    return redirect(request.referrer or url_for('index'))
+
 @app.context_processor
 def utility_processor():
+    # Inject Effective Admin & Dept for Simulation
+    real_is_admin = session.get('is_admin', False)
+    hide_view = session.get('hide_admin_view', False)
+
+    effective_is_admin = real_is_admin
+    effective_dept = session.get('user_dept')
+    effective_role = session.get('user_role')
+
+    if real_is_admin and hide_view:
+        effective_is_admin = False
+        # Infer Dept/Role based on Context
+        path = request.path
+        if path.startswith('/executive'):
+             effective_dept = 'Management'
+             effective_role = 'Management'
+        elif path.startswith('/hatchery') or 'hatchability' in path or 'hatch' in path:
+             # 'hatch' covers hatchery_dashboard, hatchery_charts, import_hatchability, etc.
+             effective_dept = 'Hatchery'
+             effective_role = 'Worker'
+        else:
+             effective_dept = 'Farm'
+             effective_role = 'Worker'
+
     def get_partition_val(log, name, type_):
         if not log: return 0.0
         for pw in log.partition_weights:
@@ -2847,11 +2879,17 @@ def utility_processor():
         # Admin sees everything (sorted)
         # Standard users see only visible
         query = UIElement.query.filter_by(section=section).order_by(UIElement.order_index.asc())
-        if not session.get('is_admin'):
+        if not effective_is_admin:
             query = query.filter_by(is_visible=True)
         return query.all()
 
-    return dict(get_partition_val=get_partition_val, get_ui_elements=get_ui_elements, is_admin=session.get('is_admin', False), is_debug=app.debug)
+    return dict(get_partition_val=get_partition_val,
+                get_ui_elements=get_ui_elements,
+                is_admin=effective_is_admin,
+                real_is_admin=real_is_admin,
+                user_dept=effective_dept,
+                user_role=effective_role,
+                is_debug=app.debug)
 
 @app.route('/admin/ui', methods=['GET', 'POST'])
 def admin_ui_update():
