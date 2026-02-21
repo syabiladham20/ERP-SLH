@@ -5593,6 +5593,8 @@ def executive_dashboard():
     if not selected_year:
         selected_year = available_years[0] if available_years else today.year
 
+    active_tab = request.args.get('active_tab', 'overview')
+
     iso_data = get_iso_aggregated_data(active_flocks, target_year=selected_year)
 
     return render_template('executive_dashboard.html',
@@ -5603,7 +5605,8 @@ def executive_dashboard():
                            low_stock_count=low_stock_count,
                            iso_data=iso_data,
                            available_years=available_years,
-                           selected_year=selected_year)
+                           selected_year=selected_year,
+                           active_tab=active_tab)
 
 @app.route('/executive/flock/<int:id>')
 def executive_flock_detail(id):
