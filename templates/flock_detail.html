@@ -361,6 +361,27 @@
       return newObj;
   }
 
+  function getScaleOptions(dataArrays, isPercentage) {
+      let allValues = [];
+      if (Array.isArray(dataArrays)) {
+           // Flatten if array of arrays
+           allValues = dataArrays.flat().filter(v => v !== null && v !== undefined && !isNaN(v));
+      }
+
+      if (allValues.length === 0) return { min: 0, suggestedMax: isPercentage ? 100 : 10 };
+
+      const maxVal = Math.max(...allValues);
+      let limit = maxVal * 1.25;
+
+      if (limit === 0) return { min: 0, suggestedMax: isPercentage ? 100 : 1 };
+
+      if (isPercentage && limit > 100) {
+          return { min: 0, max: 100 };
+      } else {
+          return { min: 0, suggestedMax: limit };
+      }
+  }
+
   function renderCharts(mode) {
       currentMode = mode;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
@@ -453,6 +474,8 @@
       const maleDatasets = [];
       const colorsM = ['#36A2EB', '#0056b3', '#4bc0c0', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384'];
 
+      const maleBWValues = []; // Collect for scale calculation
+
       // Avg BW
       if (bwData.avg_bw_male && bwData.avg_bw_male.some(v => v !== null)) {
            maleDatasets.push({
@@ -464,6 +487,7 @@
                 tension: 0.1,
                 yAxisID: 'y'
            });
+           maleBWValues.push(bwData.avg_bw_male);
       }
 
       // Dynamic Partitions 1-8
@@ -478,6 +502,7 @@
                 tension: 0.1,
                 yAxisID: 'y'
               });
+              maleBWValues.push(bwData[key]);
           }
       }
 
@@ -491,6 +516,7 @@
           yAxisID: 'y',
           datalabels: { display: false }
       });
+      maleBWValues.push(bwData.bw_male_std);
 
       maleDatasets.push({
           label: 'Uniformity %',
@@ -500,6 +526,9 @@
           pointStyle: 'rectRot',
           yAxisID: 'y1'
       });
+
+      const maleBWScales = getScaleOptions(maleBWValues, false);
+      const maleUniScales = getScaleOptions([bwData.unif_male], true);
 
       maleChart = new Chart(document.getElementById('maleChart').getContext('2d'), {
         type: 'line',
@@ -514,21 +543,21 @@
                     type: 'linear',
                     display: true,
                     position: 'left',
-                    title: { display: true, text: 'Body Weight (g)' }
+                    title: { display: true, text: 'Body Weight (g)' },
+                    ...maleBWScales
                 },
                 y1: {
                     type: 'linear',
                     display: true,
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
-                    min: 0,
-                    max: 100,
                     grid: { drawOnChartArea: false },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
                         }
-                    }
+                    },
+                    ...maleUniScales
                 }
             }
         }
@@ -537,6 +566,7 @@
       // --- Female Chart (Weekly Fixed) ---
       const femaleDatasets = [];
       const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
+      const femaleBWValues = [];
 
       // Avg BW
       if (bwData.avg_bw_female && bwData.avg_bw_female.some(v => v !== null)) {
@@ -549,6 +579,7 @@
                 tension: 0.1,
                 yAxisID: 'y'
            });
+           femaleBWValues.push(bwData.avg_bw_female);
       }
 
       for (let i = 1; i <= 8; i++) {
@@ -561,6 +592,7 @@
                 backgroundColor: colorsF[i-1] || '#333',
                 yAxisID: 'y'
               });
+              femaleBWValues.push(bwData[key]);
           }
       }
 
@@ -574,6 +606,7 @@
           yAxisID: 'y',
           datalabels: { display: false }
       });
+      femaleBWValues.push(bwData.bw_female_std);
 
       femaleDatasets.push({
           label: 'Uniformity %',
@@ -583,6 +616,9 @@
           pointStyle: 'rectRot',
           yAxisID: 'y1'
       });
+
+      const femaleBWScales = getScaleOptions(femaleBWValues, false);
+      const femaleUniScales = getScaleOptions([bwData.unif_female], true);
 
       femaleChart = new Chart(document.getElementById('femaleChart').getContext('2d'), {
         type: 'line',
@@ -597,21 +633,21 @@
                     type: 'linear',
                     display: true,
                     position: 'left',
-                    title: { display: true, text: 'Body Weight (g)' }
+                    title: { display: true, text: 'Body Weight (g)' },
+                    ...femaleBWScales
                 },
                 y1: {
                     type: 'linear',
                     display: true,
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
-                    min: 0,
-                    max: 100,
                     grid: { drawOnChartArea: false },
                     ticks: {
                         callback: function(value) {
                             return value + '%';
                         }
-                    }
+                    },
+                    ...femaleUniScales
                 }
             }
         }
@@ -663,6 +699,13 @@
           hidden: true, // Hidden initially
           datalabels: { display: false }
       };
+
+      const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
+      const genMortScales = getScaleOptions([
+        generalData[mortMKey], generalData[mortFKey],
+        generalData[cullMKey], generalData[cullFKey],
+        baselineData
+      ], true);
 
       generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
         type: 'bar',
@@ -754,14 +797,16 @@
               type: 'linear',
               display: true,
               position: 'right',
-              title: { display: true, text: 'Egg Production %' }
+              title: { display: true, text: 'Egg Production %' },
+              ...genEggScales
             },
             y1: {
               type: 'linear',
               display: true,
               position: 'left',
               title: { display: true, text: 'Mortality/Culls %' },
-              grid: { drawOnChartArea: false }
+              grid: { drawOnChartArea: false },
+              ...genMortScales
             }
           },
           plugins: {

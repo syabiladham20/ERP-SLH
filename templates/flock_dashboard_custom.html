@@ -402,6 +402,33 @@
 
         const hasRight = rightMetrics.length > 0;
 
+        // Calculate Scale Options
+        let leftValues = [];
+        let rightValues = [];
+        leftMetrics.forEach(m => {
+            if (CURRENT_DATA[m]) leftValues.push(...CURRENT_DATA[m]);
+        });
+        rightMetrics.forEach(m => {
+            if (CURRENT_DATA[m]) rightValues.push(...CURRENT_DATA[m]);
+        });
+
+        function getScaleOptions(values, isPercentage) {
+             const valid = values.filter(v => v !== null && v !== undefined && !isNaN(v));
+             if (!valid || valid.length === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 10};
+             const maxVal = Math.max(...valid);
+             let limit = maxVal * 1.25;
+             if (limit === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 1};
+
+             if (isPercentage && limit > 100) return {min: 0, max: 100};
+             return {min: 0, suggestedMax: limit};
+        }
+
+        const leftIsPct = leftMetrics.length > 0 && leftMetrics.every(m => METRICS_META[m]?.unit?.includes('%'));
+        const rightIsPct = rightMetrics.length > 0 && rightMetrics.every(m => METRICS_META[m]?.unit?.includes('%'));
+
+        const leftScale = getScaleOptions(leftValues, leftIsPct);
+        const rightScale = getScaleOptions(rightValues, rightIsPct);
+
         // Prepare Notes Dataset (Scatter)
         // We use xLabels (Category Scale) for X, and map Y to first available metric value.
         const notesPoints = CURRENT_DATA.dates.map((d, i) => {
@@ -558,7 +585,8 @@
                         display: true,
                         position: 'left',
                         title: { display: true, text: 'Primary Axis' },
-                        stacked: isStacked
+                        stacked: isStacked,
+                        ...leftScale
                     },
                     y1: {
                         type: 'linear',
@@ -568,7 +596,8 @@
                             drawOnChartArea: false,
                         },
                         title: { display: true, text: 'Secondary Axis' },
-                        stacked: isStacked
+                        stacked: isStacked,
+                        ...rightScale
                     },
                 }
             },

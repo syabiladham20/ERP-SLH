@@ -21,6 +21,32 @@
     Chart.register(ChartDataLabels);
     const chartData = {{ data | tojson }};
 
+    const fertile = chartData.fertile_pct || [];
+    const clear = chartData.clear_pct || [];
+    const rotten = chartData.rotten_pct || [];
+    const hatch = chartData.hatch_pct || [];
+    const male = chartData.male_ratio_pct || [];
+
+    // Calculate Stacked Max
+    const stackedSums = fertile.map((v, i) => (v||0) + (clear[i]||0) + (rotten[i]||0));
+
+    // Calculate Y Max Options
+    function getOptions(values, isPercentage) {
+        const valid = values.filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (!valid || valid.length === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 10};
+        const maxVal = Math.max(...valid);
+        let limit = maxVal * 1.25;
+        if (limit === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 1};
+
+        if (isPercentage && limit > 100) return {min: 0, max: 100};
+        return {min: 0, suggestedMax: limit};
+    }
+
+    const yOptions = getOptions(stackedSums, true);
+    // Combine hatch and male for y1
+    const y1Values = [...hatch, ...male];
+    const y1Options = getOptions(y1Values, true);
+
     const ctx = document.getElementById('hatchChart').getContext('2d');
 
     new Chart(ctx, {
@@ -162,11 +188,11 @@
                     display: true,
                     position: 'left',
                     stacked: true,
-                    max: 100,
                     title: {
                         display: true,
                         text: 'Egg Status %'
-                    }
+                    },
+                    ...yOptions
                 },
                 y1: {
                     type: 'linear',
@@ -178,7 +204,8 @@
                     title: {
                         display: true,
                         text: 'Hatchability %'
-                    }
+                    },
+                    ...y1Options
                 }
             }
         }

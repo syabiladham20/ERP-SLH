@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 plugins: { legend: { display: false }, tooltip: { enabled: false } },
                 scales: {
                     x: { display: false },
-                    y: { display: false, min: Math.min(...values) * 0.9, max: Math.max(...values) * 1.1 }
+                    y: { display: false, min: 0, max: Math.max(...values) * 1.25 }
                 },
                 layout: { padding: 0 }
             }
