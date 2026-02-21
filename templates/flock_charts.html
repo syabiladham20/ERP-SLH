@@ -71,7 +71,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
     const flockId = {{ flock.id }};
-    const eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+    let eventModal;
 
     let currentData = null; // Store fetched data
 
@@ -97,7 +97,14 @@
     });
 
     // Initial Load
-    document.addEventListener('DOMContentLoaded', loadData);
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            if (typeof bootstrap !== 'undefined') {
+                eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+            }
+        } catch(e) { console.error("Bootstrap Modal init error:", e); }
+        loadData();
+    });
 
     function loadData() {
         const mode = document.getElementById('viewMode').value;
@@ -117,6 +124,20 @@
             .catch(err => console.error("Error loading chart data:", err));
     }
 
+    function getMaxRange(arr, isPercentage) {
+        if (!arr || arr.length === 0) return isPercentage ? 100 : 10;
+        const valid = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
+        if (valid.length === 0) return isPercentage ? 100 : 10;
+        const maxVal = Math.max(...valid);
+
+        let limit = maxVal * 1.25;
+        // If buffer is 0, default to something sensible (e.g. 1 or 5)
+        if (limit === 0) return isPercentage ? 100 : 1;
+
+        if (isPercentage && limit > 100) limit = 100;
+        return limit;
+    }
+
     function renderCharts(data, mode) {
         const xValues = data.dates;
         const metrics = data.metrics;
@@ -129,6 +150,9 @@
         };
 
         // 1. Female Depletion & Egg Production
+        const maxEgg = getMaxRange(metrics.egg_prod_pct, true);
+        const maxDepF = getMaxRange(metrics.mortality_f_pct, true);
+
         const traceDepF = {
             x: xValues,
             y: metrics.mortality_f_pct,
@@ -148,15 +172,15 @@
 
         const layout1 = { ...commonLayout,
             title: 'Female Depletion & Egg Production %',
-            yaxis: {title: 'Egg Production %', range: [0, 100]},
-            yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, 5], showgrid: false}
+            yaxis: {title: 'Egg Production %', range: [0, maxEgg]},
+            yaxis2: {title: 'Depletion %', overlaying: 'y', side: 'right', range: [0, maxDepF], showgrid: false}
         };
 
         // Event Markers (only in Daily mode)
         let eventTraces = [];
         if (mode === 'daily' && data.events.length > 0) {
              const eventX = data.events.map(e => e.date);
-             const eventY = eventX.map(() => 95); // Near top
+             const eventY = eventX.map(() => maxEgg * 0.95); // Near top based on maxEgg
 
              // Differentiate Flushing vs Normal
              const colors = data.events.map(e => e.type === 'flushing' ? 'cyan' : 'gold');
@@ -181,6 +205,7 @@
         });
 
         // 2. Male Depletion
+        const maxDepM = getMaxRange(metrics.mortality_m_pct, true);
         const traceDepM = {
             x: xValues,
             y: metrics.mortality_m_pct,
@@ -188,16 +213,16 @@
             type: 'bar',
             marker: {color: 'blue', opacity: 0.6}
         };
-        Plotly.newPlot('chart-depletion-m', [traceDepM], { ...commonLayout, title: 'Male Depletion %', yaxis: {title: 'Depletion %'} }).then(gd => {
+        Plotly.newPlot('chart-depletion-m', [traceDepM], { ...commonLayout, title: 'Male Depletion %', yaxis: {title: 'Depletion %', range: [0, maxDepM]} }).then(gd => {
              gd.removeAllListeners('plotly_click');
              gd.on('plotly_click', d => handleChartClick(d, mode));
         });
 
         // 3. Cull & Hatching Egg
-        // Cull Egg % approx calculated as 100 - Hatching? Or from raw? API returned hatch_egg_pct.
-        // Let's infer Cull % as (100 - Hatching) for visualization if needed, or just plot what we have.
-        // User asked for "Cull & Hatching Egg %".
-        // Assuming we want stacked? or lines?
+        const cullPct = metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0);
+        const maxCull = getMaxRange(cullPct, true);
+        const maxHatch = getMaxRange(metrics.hatch_egg_pct, true);
+
         const traceHatch = {
             x: xValues,
             y: metrics.hatch_egg_pct,
@@ -207,8 +232,7 @@
             line: {color: 'green'},
             yaxis: 'y2'
         };
-        // Let's calc Cull %
-        const cullPct = metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0);
+
         const traceCull = {
             x: xValues,
             y: cullPct,
@@ -219,14 +243,17 @@
         Plotly.newPlot('chart-cull-hatch', [traceCull, traceHatch], {
             ...commonLayout,
             title: 'Cull & Hatching Egg %',
-            yaxis: {title: 'Cull %', range: [0, 20]},
-            yaxis2: {title: 'Hatching %', overlaying: 'y', side: 'right', range: [80, 100], showgrid: false}
+            yaxis: {title: 'Cull %', range: [0, maxCull]},
+            yaxis2: {title: 'Hatching %', overlaying: 'y', side: 'right', range: [0, maxHatch], showgrid: false}
         }).then(gd => {
              gd.removeAllListeners('plotly_click');
              gd.on('plotly_click', d => handleChartClick(d, mode));
         });
 
         // 4. Water & Feed
+        const maxWater = getMaxRange(metrics.water_per_bird, false);
+        const maxFeed = getMaxRange([...metrics.feed_f, ...metrics.feed_m], false);
+
         const traceWater = {
             x: xValues,
             y: metrics.water_per_bird,
@@ -255,14 +282,17 @@
         Plotly.newPlot('chart-water-feed', [traceWater, traceFeedF, traceFeedM], {
             ...commonLayout,
             title: 'Water & Feed Consumption',
-            yaxis: {title: 'Water (mL/bird)'},
-            yaxis2: {title: 'Feed (g/bird)', overlaying: 'y', side: 'right', showgrid: false}
+            yaxis: {title: 'Water (mL/bird)', range: [0, maxWater]},
+            yaxis2: {title: 'Feed (g/bird)', overlaying: 'y', side: 'right', showgrid: false, range: [0, maxFeed]}
         }).then(gd => {
              gd.removeAllListeners('plotly_click');
              gd.on('plotly_click', d => handleChartClick(d, mode));
         });
 
         // 5. BW Female
+        const maxBwF = getMaxRange(metrics.bw_f, false);
+        const maxUniF = getMaxRange(metrics.uni_f, true);
+
         const traceBwF = {
             x: xValues,
             y: metrics.bw_f,
@@ -282,14 +312,17 @@
         Plotly.newPlot('chart-bw-female', [traceUniF, traceBwF], {
             ...commonLayout,
             title: 'Female Body Weight & Uniformity',
-            yaxis: {title: 'Body Weight (g)'},
-            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, 100], showgrid: false}
+            yaxis: {title: 'Body Weight (g)', range: [0, maxBwF]},
+            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, maxUniF], showgrid: false}
         }).then(gd => {
              gd.removeAllListeners('plotly_click');
              gd.on('plotly_click', d => handleChartClick(d, mode));
         });
 
         // 6. BW Male
+        const maxBwM = getMaxRange(metrics.bw_m, false);
+        const maxUniM = getMaxRange(metrics.uni_m, true);
+
         const traceBwM = {
             x: xValues,
             y: metrics.bw_m,
@@ -309,8 +342,8 @@
         Plotly.newPlot('chart-bw-male', [traceUniM, traceBwM], {
             ...commonLayout,
             title: 'Male Body Weight & Uniformity',
-            yaxis: {title: 'Body Weight (g)'},
-            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, 100], showgrid: false}
+            yaxis: {title: 'Body Weight (g)', range: [0, maxBwM]},
+            yaxis2: {title: 'Uniformity %', overlaying: 'y', side: 'right', range: [0, maxUniM], showgrid: false}
         }).then(gd => {
              gd.removeAllListeners('plotly_click');
              gd.on('plotly_click', d => handleChartClick(d, mode));
