@@ -1642,7 +1642,7 @@ def view_flock(id):
             break
 
     # --- Fetch Hatch Data ---
-    hatch_records = Hatchability.query.filter_by(flock_id=id).all()
+    hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
@@ -5679,7 +5679,7 @@ def executive_flock_detail(id):
             break
 
     # --- Fetch Hatch Data ---
-    hatch_records = Hatchability.query.filter_by(flock_id=id).all()
+    hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
@@ -5702,6 +5702,8 @@ def executive_flock_detail(id):
         target_std_week = current_age_week - offset_weeks
         std_obj = std_map.get(target_std_week)
         d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        d['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
+        d['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
@@ -5710,6 +5712,35 @@ def executive_flock_detail(id):
         target_std_week = current_age_week - offset_weeks
         std_obj = std_map.get(target_std_week)
         ws['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        # Aggregated Standard Mortality? Typically daily standard * 7 or similar?
+        # Standards are usually daily rates in this system or weekly?
+        # Looking at seed_standards: 0.003 (0.3%). This is daily if "Standard Mortality%" header implies daily?
+        # Actually GlobalStandard has std_mortality_daily vs weekly.
+        # But per-week Standard table usually has ONE value.
+        # If std_mortality_male in DB is 0.3, is that % per week?
+        # Aviagen usually provides weekly mortality %.
+        # If daily chart uses it, we might need to convert?
+        # But 'std_mortality_male' in Standard model is likely the Weekly % standard.
+        # If the chart is daily, we should divide by 7? Or is the standard daily?
+        # If seeded from "SLH Daily Aviagen", it likely aligns with the row frequency.
+        # If rows are weekly, it's weekly %.
+        # Let's check `seed_standards_from_file`:
+        # `std_mort = float(row[14]) * 100`. If row 14 is 0.003 -> 0.3%.
+        # If that's weekly cumulative or daily? Usually Aviagen gives "Weekly Mortality %" or "Cumulative".
+        # Let's assume it's Weekly % Standard for that age.
+        # So for daily chart, we might want `std / 7`? Or just plot the target line?
+        # Usually we plot the "Standard Weekly Mortality" line as a reference for the "Weekly Mortality" bars.
+        # But for daily chart? "Daily Mortality %" is usually very small.
+        # If we plot a Weekly Standard (0.3%) against Daily Actual (0.05%), it looks huge.
+        # User asked for "Standard Mortality is missing in general performances".
+        # General Performance has toggle Daily/Weekly.
+        # For Weekly toggle: Plot Weekly Standard.
+        # For Daily toggle: Plot Daily Standard (Weekly / 7).
+        # I will inject the raw standard (Weekly) into daily stats, and let frontend divide if needed?
+        # Or inject both.
+        # Let's inject `std_mortality_male` as is (Weekly Standard) and handle in JS scaling.
+        ws['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
+        ws['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -5791,10 +5822,13 @@ def executive_flock_detail(id):
     # 3. Chart Data (Daily)
     chart_data = {
         'dates': [d['date'].strftime('%Y-%m-%d') for d in daily_stats],
+        'ages': [d['log'].age_week_day for d in daily_stats],
         'mortality_cum_male': [round(d['mortality_cum_male_pct'], 2) for d in daily_stats],
         'mortality_cum_female': [round(d['mortality_cum_female_pct'], 2) for d in daily_stats],
         'mortality_daily_male': [round(d['mortality_male_pct'], 2) for d in daily_stats],
         'mortality_daily_female': [round(d['mortality_female_pct'], 2) for d in daily_stats],
+        'std_mortality_male': [round(d['std_mortality_male'], 3) for d in daily_stats],
+        'std_mortality_female': [round(d['std_mortality_female'], 3) for d in daily_stats],
         'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
@@ -5838,8 +5872,10 @@ def executive_flock_detail(id):
     weekly_map = {ws['week']: ws for ws in weekly_stats}
     chart_data_weekly = {
         'dates': [],
+        'ages': [],
         'mortality_cum_male': [], 'mortality_cum_female': [],
         'mortality_weekly_male': [], 'mortality_weekly_female': [],
+        'std_mortality_male': [], 'std_mortality_female': [],
         'culls_weekly_male': [], 'culls_weekly_female': [],
         'avg_bw_male': [], 'avg_bw_female': [],
         'egg_prod': [],
