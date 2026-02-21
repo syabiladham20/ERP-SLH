@@ -1029,7 +1029,7 @@ def admin_user_reset_password(user_id):
 @app.route('/hatchery')
 @dept_required('Hatchery')
 def hatchery_dashboard():
-    active_flocks = Flock.query.filter_by(status='Active').all()
+    active_flocks = Flock.query.filter_by(status='Active', phase='Production').all()
     active_flocks.sort(key=natural_sort_key)
     today = date.today()
     for f in active_flocks:
