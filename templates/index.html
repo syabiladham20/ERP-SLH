@@ -175,7 +175,7 @@
 
                         <!-- Admin Actions (Hardcoded/Protected) -->
                         {% if flock.phase != 'Rearing' %}
-                             {% if session.get('is_admin') %}
+                             {% if is_admin %}
                              <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Rearing? Production Start Date will be cleared.');">
                                <button type="submit" class="btn btn-sm btn-outline-warning">
                                  Revert Rearing
@@ -183,11 +183,11 @@
                             </form>
                             {% endif %}
                         {% endif %}
-                        {% if session.get('is_admin') %}
+                        {% if is_admin %}
                         <a href="{{ url_for('edit_flock', id=flock.id) }}" class="btn btn-sm btn-light border" title="Edit Flock Metadata">Edit</a>
                         {% endif %}
                     </div>
-                    {% if session.get('is_admin') %}
+                    {% if is_admin %}
                     <div>
                         <form action="{{ url_for('close_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Close this flock?');">
                           <button type="submit" class="btn btn-warning btn-sm">Close</button>

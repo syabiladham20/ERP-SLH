@@ -3,14 +3,14 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Hatchability: {{ flock.house.name }}</h2>
-    {% if session.get('user_dept') == 'Hatchery' %}
+    {% if user_dept == 'Hatchery' %}
     <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
     {% else %}
     <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-secondary">Back to Flock</a>
     {% endif %}
 </div>
 
-{% if session.get('user_dept') == 'Hatchery' or is_admin %}
+{% if user_dept == 'Hatchery' or is_admin %}
 <div class="card mb-4">
     <div class="card-header">
         <h5>Add Hatchability Record</h5>
@@ -92,7 +92,7 @@
                     <a href="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=r.setting_date) }}" class="btn btn-sm btn-info text-white" title="Diagnose Farm Data">
                         Diagnose
                     </a>
-                    {% if session.get('user_dept') == 'Hatchery' or is_admin %}
+                    {% if user_dept == 'Hatchery' or is_admin %}
                     <form method="POST" action="{{ url_for('delete_hatchability', id=flock.id, record_id=r.id) }}" style="display:inline;" onsubmit="return confirm('Delete this record?');">
                         <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
                     </form>
