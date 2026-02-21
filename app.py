@@ -3582,6 +3582,7 @@ def process_import(file, commit=True, preview=False):
                 db.session.commit()
             
             initialize_sampling_schedule(flock_id, commit=commit)
+            initialize_vaccine_schedule(flock_id, commit=commit)
 
         existing_logs_dict = {log.date: log for log in DailyLog.query.filter_by(flock_id=flock_id).all()}
 
