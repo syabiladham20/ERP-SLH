@@ -484,8 +484,8 @@
           } else {
                // Daily: use 'ages' array (e.g. "20.3")
                if (dataObj.ages && dataObj.ages.length > 0) {
-                   startAge = "W" + dataObj.ages[0];
-                   endAge = "W" + dataObj.ages[dataObj.ages.length - 1];
+                   startAge = "W" + dataObj.ages[0].split('.')[0];
+                   endAge = "W" + dataObj.ages[dataObj.ages.length - 1].split('.')[0];
                }
           }
       }
