@@ -255,7 +255,7 @@
     <!-- General Performance Chart -->
     <div class="card mb-4 mt-3">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">General Performance</span>
+        <span class="fw-bold mb-2 mb-md-0" id="generalChartTitle">General Performance</span>
         <div class="d-flex flex-wrap gap-2">
              <div class="btn-group btn-group-sm" role="group">
                  <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
@@ -280,7 +280,7 @@
     <!-- Hatchability Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Hatchability & Fertility</span>
+        <span class="fw-bold mb-2 mb-md-0" id="hatchChartTitle">Hatchability & Fertility</span>
         <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'all')">Show All</button>
@@ -296,7 +296,7 @@
     <!-- Male Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+        <span class="fw-bold mb-2 mb-md-0" id="maleChartTitle">Male Statistics (BW & Uniformity)</span>
         <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
@@ -312,7 +312,7 @@
     <!-- Female Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-          <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+          <span class="fw-bold mb-2 mb-md-0" id="femaleChartTitle">Female Statistics (BW & Uniformity)</span>
           <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
@@ -334,6 +334,7 @@
 <script>
   Chart.register(ChartDataLabels);
 
+  const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
   const hatchRecords = [
@@ -360,6 +361,78 @@
   let maleChart, femaleChart, generalChart, hatchChart;
   let currentMode = 'daily';
 
+  // Week Separator Plugin
+  const weekSeparatorPlugin = {
+      id: 'weekSeparator',
+      beforeDraw: (chart) => {
+          if (!chart.config.options.plugins.weekSeparator || !chart.config.options.plugins.weekSeparator.enabled) {
+              return;
+          }
+
+          const ctx = chart.ctx;
+          const xAxis = chart.scales.x;
+          const yAxis = chart.scales.y;
+
+          // Get labels to determine week changes
+          const labels = chart.data.labels;
+          if (!labels || labels.length === 0) return;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+          ctx.setLineDash([5, 5]);
+
+          let prevWeek = null;
+
+          // Loop through visible points
+          // Optimization: Only loop through visible range if zoomed?
+          // For simplicity, loop all and check bounds.
+          // Or loop indices.
+
+          for (let i = 0; i < labels.length; i++) {
+              const label = labels[i];
+              // Label format expected: "W{Age} ({Date})" or similar structure where Week is first part
+              // e.g. "W20.3 (2023-01-01)"
+              // Extract Week Number
+              // If label doesn't match, skip logic
+
+              let currentWeek = null;
+              if (typeof label === 'string' && label.startsWith('W')) {
+                  const parts = label.split('.');
+                  if (parts.length > 0) {
+                      currentWeek = parts[0]; // "W20"
+                  }
+              }
+
+              if (prevWeek !== null && currentWeek !== null && currentWeek !== prevWeek) {
+                  // Week Changed between i-1 and i. Draw line between them (at index i - 0.5?)
+                  // Chart.js bar charts align ticks to center. A line between bars is at index - 0.5.
+                  // But for line charts, points are on the tick.
+                  // Let's draw AT the start of the new week (index i)? Or strictly between?
+                  // "Separating age week" -> Line between end of W20 and start of W21.
+
+                  const x = xAxis.getPixelForValue(i) - (xAxis.width / labels.length / 2);
+                  // Approximate mid-point if category scale?
+                  // Better: (getPixelForValue(i) + getPixelForValue(i-1)) / 2
+
+                  const x1 = xAxis.getPixelForValue(i-1);
+                  const x2 = xAxis.getPixelForValue(i);
+                  const midX = (x1 + x2) / 2;
+
+                  if (midX >= xAxis.left && midX <= xAxis.right) {
+                      ctx.moveTo(midX, yAxis.top);
+                      ctx.lineTo(midX, yAxis.bottom);
+                  }
+              }
+              prevWeek = currentWeek;
+          }
+
+          ctx.stroke();
+          ctx.restore();
+      }
+  };
+
   // Common Options
   const commonOptions = {
       responsive: true,
@@ -371,6 +444,7 @@
       },
       plugins: {
           legend: { position: 'bottom' },
+          weekSeparator: { enabled: false }, // Default disabled
           zoom: {
             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
             pan: { enabled: true, mode: 'x' }
@@ -464,6 +538,43 @@
       }
   }
 
+  function updateChartTitle(chartTitleId, baseTitle, dataObj, isDaily) {
+      const titleEl = document.getElementById(chartTitleId);
+      if (!titleEl) return;
+
+      let startAge = '?', endAge = '?';
+      let startDate = '', endDate = '';
+
+      if (dataObj && dataObj.dates && dataObj.dates.length > 0) {
+          const count = dataObj.dates.length;
+          startDate = dataObj.dates[0];
+          endDate = dataObj.dates[count - 1];
+
+          if (!isDaily) {
+               // Weekly: dates are "Week X"
+               startAge = startDate;
+               endAge = endDate;
+          } else {
+               // Daily: use 'ages' array (e.g. "20.3")
+               if (dataObj.ages && dataObj.ages.length > 0) {
+                   startAge = "W" + dataObj.ages[0].split('.')[0];
+                   endAge = "W" + dataObj.ages[dataObj.ages.length - 1].split('.')[0];
+               }
+          }
+      }
+
+      let dynamicText = `${baseTitle} - ${flockHouseName}`;
+      if (startAge !== '?' && endAge !== '?') {
+          dynamicText += ` - Age: ${startAge} to ${endAge}`;
+      }
+
+      if (isDaily && startDate && endDate) {
+          dynamicText += ` - Date: ${startDate} to ${endDate}`;
+      }
+
+      titleEl.innerText = dynamicText;
+  }
+
   function renderCharts(mode) {
       currentMode = mode;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
@@ -473,11 +584,16 @@
       const generalLimit = window.generalFilterState || defaultGeneralCount;
       const generalData = filterData(fullData, generalLimit, 'dates');
 
+      updateChartTitle('generalChartTitle', 'General Performance', generalData, mode === 'daily');
+
       const bwLimit = window.bwFilterState || 10;
       // Force Weekly Data for Body Weight Charts (User Request: Show weekly summary only)
       const bwFullData = chartDataWeekly;
       // Use weekly keys specifically
       const bwData = filterData(bwFullData, bwLimit, 'avg_bw_female');
+
+      updateChartTitle('maleChartTitle', 'Male Statistics (BW & Uniformity)', bwData, false);
+      updateChartTitle('femaleChartTitle', 'Female Statistics (BW & Uniformity)', bwData, false);
 
       if (maleChart) maleChart.destroy();
       if (femaleChart) femaleChart.destroy();
@@ -639,10 +755,21 @@
       });
 
       // --- General Chart ---
-      // X-Axis logic: Daily -> Date, Weekly -> Week Age (Data already has 'dates' array properly formatted as "Week X" for weekly)
-      // Wait, general chart X-Axis is requested: "keep daily to date and weekly to their week age".
-      // `chartDataWeekly.dates` are "Week X", so that's fine.
-      const labels = generalData.dates;
+      // X-Axis logic: Daily -> Custom Label "W{Age} ({Date})", Weekly -> Week Age
+      let labels = [];
+      if (mode === 'daily') {
+          // Construct labels from ages and dates
+          if (generalData.dates && generalData.ages) {
+              labels = generalData.dates.map((d, i) => {
+                  const age = generalData.ages[i]; // e.g. "20.3"
+                  return `W${age} (${d})`;
+              });
+          } else {
+              labels = generalData.dates;
+          }
+      } else {
+          labels = generalData.dates; // Already "Week X"
+      }
 
       const mortM = mode==='daily' ? generalData.mortality_daily_male : generalData.mortality_weekly_male;
       const mortF = mode==='daily' ? generalData.mortality_daily_female : generalData.mortality_weekly_female;
@@ -669,11 +796,16 @@
           },
           options: {
               ...commonOptions,
+              plugins: {
+                  ...commonOptions.plugins,
+                  weekSeparator: { enabled: mode === 'daily' }
+              },
               scales: {
                   y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, max: 100 },
                   y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0 }
               }
-          }
+          },
+          plugins: [weekSeparatorPlugin]
       });
 
       renderHatchChart();
@@ -745,6 +877,12 @@
           if (start < 0) start = 0;
           finalData = aggregated.slice(start);
       }
+
+      // Update Title
+      const hatchTitleData = {
+          dates: finalData.map(r => r.week)
+      };
+      updateChartTitle('hatchChartTitle', 'Hatchability & Fertility', hatchTitleData, false);
 
       const hLabels = finalData.map(r => r.week);
       const dHatch = finalData.map(r => r.hatch);
