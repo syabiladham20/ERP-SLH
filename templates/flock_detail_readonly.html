@@ -361,6 +361,78 @@
   let maleChart, femaleChart, generalChart, hatchChart;
   let currentMode = 'daily';
 
+  // Week Separator Plugin
+  const weekSeparatorPlugin = {
+      id: 'weekSeparator',
+      beforeDraw: (chart) => {
+          if (!chart.config.options.plugins.weekSeparator || !chart.config.options.plugins.weekSeparator.enabled) {
+              return;
+          }
+
+          const ctx = chart.ctx;
+          const xAxis = chart.scales.x;
+          const yAxis = chart.scales.y;
+
+          // Get labels to determine week changes
+          const labels = chart.data.labels;
+          if (!labels || labels.length === 0) return;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+          ctx.setLineDash([5, 5]);
+
+          let prevWeek = null;
+
+          // Loop through visible points
+          // Optimization: Only loop through visible range if zoomed?
+          // For simplicity, loop all and check bounds.
+          // Or loop indices.
+
+          for (let i = 0; i < labels.length; i++) {
+              const label = labels[i];
+              // Label format expected: "W{Age} ({Date})" or similar structure where Week is first part
+              // e.g. "W20.3 (2023-01-01)"
+              // Extract Week Number
+              // If label doesn't match, skip logic
+
+              let currentWeek = null;
+              if (typeof label === 'string' && label.startsWith('W')) {
+                  const parts = label.split('.');
+                  if (parts.length > 0) {
+                      currentWeek = parts[0]; // "W20"
+                  }
+              }
+
+              if (prevWeek !== null && currentWeek !== null && currentWeek !== prevWeek) {
+                  // Week Changed between i-1 and i. Draw line between them (at index i - 0.5?)
+                  // Chart.js bar charts align ticks to center. A line between bars is at index - 0.5.
+                  // But for line charts, points are on the tick.
+                  // Let's draw AT the start of the new week (index i)? Or strictly between?
+                  // "Separating age week" -> Line between end of W20 and start of W21.
+
+                  const x = xAxis.getPixelForValue(i) - (xAxis.width / labels.length / 2);
+                  // Approximate mid-point if category scale?
+                  // Better: (getPixelForValue(i) + getPixelForValue(i-1)) / 2
+
+                  const x1 = xAxis.getPixelForValue(i-1);
+                  const x2 = xAxis.getPixelForValue(i);
+                  const midX = (x1 + x2) / 2;
+
+                  if (midX >= xAxis.left && midX <= xAxis.right) {
+                      ctx.moveTo(midX, yAxis.top);
+                      ctx.lineTo(midX, yAxis.bottom);
+                  }
+              }
+              prevWeek = currentWeek;
+          }
+
+          ctx.stroke();
+          ctx.restore();
+      }
+  };
+
   // Common Options
   const commonOptions = {
       responsive: true,
@@ -372,6 +444,7 @@
       },
       plugins: {
           legend: { position: 'bottom' },
+          weekSeparator: { enabled: false }, // Default disabled
           zoom: {
             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
             pan: { enabled: true, mode: 'x' }
@@ -682,10 +755,21 @@
       });
 
       // --- General Chart ---
-      // X-Axis logic: Daily -> Date, Weekly -> Week Age (Data already has 'dates' array properly formatted as "Week X" for weekly)
-      // Wait, general chart X-Axis is requested: "keep daily to date and weekly to their week age".
-      // `chartDataWeekly.dates` are "Week X", so that's fine.
-      const labels = generalData.dates;
+      // X-Axis logic: Daily -> Custom Label "W{Age} ({Date})", Weekly -> Week Age
+      let labels = [];
+      if (mode === 'daily') {
+          // Construct labels from ages and dates
+          if (generalData.dates && generalData.ages) {
+              labels = generalData.dates.map((d, i) => {
+                  const age = generalData.ages[i]; // e.g. "20.3"
+                  return `W${age} (${d})`;
+              });
+          } else {
+              labels = generalData.dates;
+          }
+      } else {
+          labels = generalData.dates; // Already "Week X"
+      }
 
       const mortM = mode==='daily' ? generalData.mortality_daily_male : generalData.mortality_weekly_male;
       const mortF = mode==='daily' ? generalData.mortality_daily_female : generalData.mortality_weekly_female;
@@ -712,11 +796,16 @@
           },
           options: {
               ...commonOptions,
+              plugins: {
+                  ...commonOptions.plugins,
+                  weekSeparator: { enabled: mode === 'daily' }
+              },
               scales: {
                   y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, max: 100 },
                   y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0 }
               }
-          }
+          },
+          plugins: [weekSeparatorPlugin]
       });
 
       renderHatchChart();
