@@ -255,7 +255,7 @@
     <!-- General Performance Chart -->
     <div class="card mb-4 mt-3">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">General Performance</span>
+        <span class="fw-bold mb-2 mb-md-0" id="generalChartTitle">General Performance</span>
         <div class="d-flex flex-wrap gap-2">
              <div class="btn-group btn-group-sm" role="group">
                  <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
@@ -280,7 +280,7 @@
     <!-- Hatchability Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Hatchability & Fertility</span>
+        <span class="fw-bold mb-2 mb-md-0" id="hatchChartTitle">Hatchability & Fertility</span>
         <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('hatch', 'all')">Show All</button>
@@ -296,7 +296,7 @@
     <!-- Male Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+        <span class="fw-bold mb-2 mb-md-0" id="maleChartTitle">Male Statistics (BW & Uniformity)</span>
         <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
@@ -312,7 +312,7 @@
     <!-- Female Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-          <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+          <span class="fw-bold mb-2 mb-md-0" id="femaleChartTitle">Female Statistics (BW & Uniformity)</span>
           <div class="btn-group btn-group-sm" role="group">
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
              <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
@@ -334,6 +334,7 @@
 <script>
   Chart.register(ChartDataLabels);
 
+  const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
   const hatchRecords = [
@@ -464,6 +465,43 @@
       }
   }
 
+  function updateChartTitle(chartTitleId, baseTitle, dataObj, isDaily) {
+      const titleEl = document.getElementById(chartTitleId);
+      if (!titleEl) return;
+
+      let startAge = '?', endAge = '?';
+      let startDate = '', endDate = '';
+
+      if (dataObj && dataObj.dates && dataObj.dates.length > 0) {
+          const count = dataObj.dates.length;
+          startDate = dataObj.dates[0];
+          endDate = dataObj.dates[count - 1];
+
+          if (!isDaily) {
+               // Weekly: dates are "Week X"
+               startAge = startDate;
+               endAge = endDate;
+          } else {
+               // Daily: use 'ages' array (e.g. "20.3")
+               if (dataObj.ages && dataObj.ages.length > 0) {
+                   startAge = "W" + dataObj.ages[0];
+                   endAge = "W" + dataObj.ages[dataObj.ages.length - 1];
+               }
+          }
+      }
+
+      let dynamicText = `${baseTitle} - ${flockHouseName}`;
+      if (startAge !== '?' && endAge !== '?') {
+          dynamicText += ` - Age: ${startAge} to ${endAge}`;
+      }
+
+      if (isDaily && startDate && endDate) {
+          dynamicText += ` - Date: ${startDate} to ${endDate}`;
+      }
+
+      titleEl.innerText = dynamicText;
+  }
+
   function renderCharts(mode) {
       currentMode = mode;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
@@ -473,11 +511,16 @@
       const generalLimit = window.generalFilterState || defaultGeneralCount;
       const generalData = filterData(fullData, generalLimit, 'dates');
 
+      updateChartTitle('generalChartTitle', 'General Performance', generalData, mode === 'daily');
+
       const bwLimit = window.bwFilterState || 10;
       // Force Weekly Data for Body Weight Charts (User Request: Show weekly summary only)
       const bwFullData = chartDataWeekly;
       // Use weekly keys specifically
       const bwData = filterData(bwFullData, bwLimit, 'avg_bw_female');
+
+      updateChartTitle('maleChartTitle', 'Male Statistics (BW & Uniformity)', bwData, false);
+      updateChartTitle('femaleChartTitle', 'Female Statistics (BW & Uniformity)', bwData, false);
 
       if (maleChart) maleChart.destroy();
       if (femaleChart) femaleChart.destroy();
@@ -745,6 +788,12 @@
           if (start < 0) start = 0;
           finalData = aggregated.slice(start);
       }
+
+      // Update Title
+      const hatchTitleData = {
+          dates: finalData.map(r => r.week)
+      };
+      updateChartTitle('hatchChartTitle', 'Hatchability & Fertility', hatchTitleData, false);
 
       const hLabels = finalData.map(r => r.week);
       const dHatch = finalData.map(r => r.hatch);
