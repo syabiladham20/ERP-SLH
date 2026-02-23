@@ -2721,7 +2721,12 @@ def daily_log():
         log.flock = flock
         db.session.add(log)
 
-        update_log_from_request(log, request)
+        try:
+            update_log_from_request(log, request)
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), 'danger')
+            return redirect(url_for('daily_log', house_id=house_id, date=date_str))
 
         # Automatic Production Trigger
         if log.eggs_collected > 0 and not flock.start_of_lay_date:
@@ -2813,9 +2818,14 @@ def daily_log():
                     )
                     db.session.add(t)
 
-        db.session.commit()
-        flash(flash_msg, 'success')
-        return redirect(url_for('index'))
+        try:
+            db.session.commit()
+            flash(flash_msg, 'success')
+            return redirect(url_for('index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Database Error: {str(e)}", 'danger')
+            return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
@@ -3185,16 +3195,26 @@ def edit_daily_log(id):
                     )
                     db.session.add(t)
 
-        update_log_from_request(log, request)
+        try:
+            update_log_from_request(log, request)
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), 'danger')
+            return redirect(url_for('edit_daily_log', id=id))
 
         # Automatic Production Trigger
         if log.eggs_collected > 0 and not log.flock.start_of_lay_date:
             log.flock.start_of_lay_date = log.date
             flash(f"First egg detected! Production tracking started for {log.flock.flock_id} from {log.date}.", "info")
 
-        db.session.commit()
-        flash('Log updated successfully.', 'success')
-        return redirect(url_for('view_flock', id=log.flock_id))
+        try:
+            db.session.commit()
+            flash('Log updated successfully.', 'success')
+            return redirect(url_for('view_flock', id=log.flock_id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Database Error: {str(e)}", 'danger')
+            return redirect(url_for('edit_daily_log', id=id))
     
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
@@ -4137,6 +4157,30 @@ def update_log_from_request(log, req):
     current_stock_m = start_m - cum_mort_m - cum_culls_m
     current_stock_f = start_f - (stmt_f[0] or 0) - (stmt_f[1] or 0)
 
+    # Data Integrity: Validation Layer
+    if log.mortality_male > current_stock_m:
+        raise ValueError(f"Mortality Male ({log.mortality_male}) exceeds Current Stock ({current_stock_m}).")
+    if log.mortality_female > current_stock_f:
+        raise ValueError(f"Mortality Female ({log.mortality_female}) exceeds Current Stock ({current_stock_f}).")
+
+    # Automated Alerts: Mortality Spike
+    alert_triggered = False
+    if current_stock_m > 0:
+        mort_pct_m = (log.mortality_male / current_stock_m) * 100
+        if mort_pct_m > 0.5:
+            flash(f"ALERT: High Male Mortality Spike ({mort_pct_m:.2f}%) detected!", "danger")
+            alert_triggered = True
+
+    if current_stock_f > 0:
+        mort_pct_f = (log.mortality_female / current_stock_f) * 100
+        if mort_pct_f > 0.5:
+            flash(f"ALERT: High Female Mortality Spike ({mort_pct_f:.2f}%) detected!", "danger")
+            alert_triggered = True
+
+    if alert_triggered:
+        # Simulate sending email
+        app.logger.warning(f"Mortality Alert Triggered for Flock {log.flock_id}")
+
     # Feed Multiplier Logic
     multiplier = 1.0
     if log.feed_program == 'Skip-a-day':
@@ -4966,9 +5010,13 @@ def inventory_transaction():
         notes=notes
     )
     db.session.add(t)
-    db.session.commit()
+    try:
+        db.session.commit()
+        flash('Transaction recorded.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error recording transaction: {str(e)}', 'danger')
 
-    flash('Transaction recorded.', 'success')
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
