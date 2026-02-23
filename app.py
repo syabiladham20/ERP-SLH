@@ -5703,12 +5703,59 @@ def executive_dashboard():
                 if round(f.daily_stats['egg_diff'], 2) > 0: f.daily_stats['egg_trend'] = 'up'
                 elif round(f.daily_stats['egg_diff'], 2) < 0: f.daily_stats['egg_trend'] = 'down'
 
-    # --- Hatchery Data (Legacy Avg) ---
-    start_month = date(today.year, today.month, 1)
-    monthly_records = Hatchability.query.filter(Hatchability.hatching_date >= start_month).all()
-    total_hatched = sum(r.hatched_chicks for r in monthly_records)
-    total_set = sum(r.egg_set for r in monthly_records)
-    avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
+    # Analytics: Previous & Next Hatch Dates
+    # Previous Hatch: Max date <= today with hatched_chicks > 0
+    last_hatch_date_query = db.session.query(func.max(Hatchability.hatching_date)).filter(
+        Hatchability.hatching_date <= today,
+        Hatchability.hatched_chicks > 0
+    ).scalar()
+
+    last_hatch = None
+    if last_hatch_date_query:
+        last_records = Hatchability.query.filter_by(hatching_date=last_hatch_date_query).all()
+        total_h = sum(r.hatched_chicks for r in last_records)
+        total_s = sum(r.egg_set for r in last_records)
+        h_pct = (total_h / total_s * 100) if total_s > 0 else 0.0
+        last_hatch = {
+            'date': last_hatch_date_query,
+            'total_hatched': total_h,
+            'hatch_pct': h_pct
+        }
+
+    # Next Hatch: Min date >= today (or > last_hatch_date if today was processed?)
+    next_filter = Hatchability.hatching_date >= today
+    if last_hatch and last_hatch['date'] == today:
+        next_filter = Hatchability.hatching_date > today
+
+    next_hatch_date_query = db.session.query(func.min(Hatchability.hatching_date)).filter(
+        next_filter,
+        Hatchability.egg_set > 0
+    ).scalar()
+
+    next_hatch = None
+    if next_hatch_date_query:
+        next_records = Hatchability.query.filter_by(hatching_date=next_hatch_date_query).all()
+
+        # Calculate Forecast
+        all_standards = Standard.query.all()
+        std_map = {s.week: s.std_hatchability for s in all_standards}
+
+        total_forecast = 0
+
+        for r in next_records:
+            # Calculate Age
+            age_days = (next_hatch_date_query - r.flock.intake_date).days
+            age_week = (age_days // 7) + 1
+            std_hatch = std_map.get(age_week, 0.0) # Default to 0 if missing
+
+            # Forecast
+            forecast = r.egg_set * (std_hatch / 100.0)
+            total_forecast += forecast
+
+        next_hatch = {
+            'date': next_hatch_date_query,
+            'forecast': int(total_forecast)
+        }
 
     # --- New ISO Reports ---
     # Year Filter Logic
@@ -5727,7 +5774,8 @@ def executive_dashboard():
 
     return render_template('executive_dashboard.html',
                            active_flocks=active_flocks,
-                           avg_hatch_pct=avg_hatch_pct,
+                           last_hatch=last_hatch,
+                           next_hatch=next_hatch,
                            current_month=today.strftime('%B %Y'),
                            today=today,
                            low_stock_count=low_stock_count,
