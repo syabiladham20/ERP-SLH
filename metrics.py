@@ -73,10 +73,13 @@ def safe_div(num, den, multiplier=100.0):
         return (num / den) * multiplier
     return 0.0
 
-def enrich_flock_data(flock, logs, hatchability_data=None):
+def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=None):
     """
     Core function to process a flock's logs and return a list of enriched daily data points.
     Handles Phase Switching, Stock Tracking, and Derived Metrics.
+
+    custom_start_stock: dict with keys 'male_prod', 'female_prod', 'male_hosp', 'female_hosp'
+                        Used to initialize stock if calculating for a subset of logs.
     """
 
     # 1. Setup Hatchability Map
@@ -86,23 +89,59 @@ def enrich_flock_data(flock, logs, hatchability_data=None):
             hatch_map[h.setting_date] = h
 
     # 2. Setup Stock Variables
-    # Initial Baseline: Intake
-    start_m = flock.intake_male or 0
-    start_f = flock.intake_female or 0
+    if custom_start_stock:
+        # If custom stock is provided (e.g. from historical sum), use it
+        curr_m_prod = custom_start_stock.get('male_prod', 0)
+        curr_f_prod = custom_start_stock.get('female_prod', 0)
+        curr_m_hosp = custom_start_stock.get('male_hosp', 0)
+        curr_f_hosp = custom_start_stock.get('female_hosp', 0)
 
-    # Running Stock (Production + Hospital)
-    curr_m_prod = start_m
-    curr_m_hosp = 0
-    curr_f_prod = start_f
-    curr_f_hosp = 0
+        # Assume baseline is current stock if not provided separately?
+        # Actually start_m/f should be Intake usually.
+        # But if we are in mid-stream, cum_mort_pct needs a denominator.
+        # If custom_start_stock is used, we might not have access to original Intake or Phase Start.
+        # For ISO report, we often care about trends or assume Intake is available on Flock object.
+        start_m = flock.intake_male or 0
+        start_f = flock.intake_female or 0
 
-    in_prod = False
+        # If we are already in production (implied by custom stock?), we might not detect phase switch
+        # if the switch happened before the logs we see.
+        # So we should assume `in_prod` based on flock status or data?
+        # If custom_start_stock is used, we assume we are continuing a sequence.
+        # We can pass `in_prod` status too, or infer.
+        in_prod = custom_start_stock.get('in_prod', False)
 
-    # Cumulative Counters (Reset on Phase Switch)
-    cum_mort_m = 0
-    cum_mort_f = 0
-    cum_cull_m = 0
-    cum_cull_f = 0
+        # Cumulatives: If we start mid-way, we might lack previous mortality.
+        # We can pass `initial_cumulatives` if needed for % calc.
+        # For now, let's start cumulatives at 0 for the window or pass them?
+        cum_mort_m = custom_start_stock.get('cum_mort_male', 0)
+        cum_mort_f = custom_start_stock.get('cum_mort_female', 0)
+        cum_cull_m = custom_start_stock.get('cum_culls_male', 0)
+        cum_cull_f = custom_start_stock.get('cum_culls_female', 0)
+
+        # Override start_m/f if we want percentages relative to Phase Start
+        if 'phase_start_male' in custom_start_stock:
+            start_m = custom_start_stock['phase_start_male']
+            start_f = custom_start_stock['phase_start_female']
+
+    else:
+        # Initial Baseline: Intake
+        start_m = flock.intake_male or 0
+        start_f = flock.intake_female or 0
+
+        # Running Stock (Production + Hospital)
+        curr_m_prod = start_m
+        curr_m_hosp = 0
+        curr_f_prod = start_f
+        curr_f_hosp = 0
+
+        in_prod = False
+
+        # Cumulative Counters (Reset on Phase Switch)
+        cum_mort_m = 0
+        cum_mort_f = 0
+        cum_cull_m = 0
+        cum_cull_f = 0
 
     # Global Cumulative (For total flock life) could be tracked if needed,
     # but charts usually respect the "Phase Baseline".

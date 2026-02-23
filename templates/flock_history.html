@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="text-secondary">Archived Flocks</h1>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        {% if inactive_flocks %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>House</th>
+                        <th>Flock ID</th>
+                        <th>Intake Date</th>
+                        <th>End Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for flock in inactive_flocks %}
+                    <tr>
+                        <td>{{ flock.house.name }}</td>
+                        <td>{{ flock.flock_id }}</td>
+                        <td>{{ flock.intake_date | date_fmt }}</td>
+                        <td>{{ flock.end_date | date_fmt }}</td>
+                        <td>
+                            <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-outline-primary">View Data</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No archived flocks found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
