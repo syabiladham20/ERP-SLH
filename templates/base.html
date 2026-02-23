@@ -199,6 +199,20 @@
             window.addEventListener('pageshow', function() {
                 overlay.style.display = 'none';
             });
+
+            // Dynamic Navbar Height Calculation
+            function adjustNavbarHeight() {
+                const navbar = document.querySelector('.navbar');
+                if (navbar) {
+                    const height = navbar.offsetHeight;
+                    document.documentElement.style.setProperty('--navbar-height', height + 'px');
+                    document.body.style.paddingTop = height + 'px';
+                }
+            }
+
+            // Run on load and resize
+            adjustNavbarHeight();
+            window.addEventListener('resize', adjustNavbarHeight);
         });
     </script>
   </body>
