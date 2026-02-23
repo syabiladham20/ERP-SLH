@@ -1,15 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <div class="container mt-4">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
         <h2 class="h4 mb-2 mb-md-0">Hatchability Performance: {{ flock.house.name }}</h2>
-        <div class="d-flex gap-2">
-            <div class="btn-group btn-group-sm" role="group">
-                 <button class="btn btn-outline-secondary" onclick="applyFilter('default')">Last 10 Weeks</button>
-                 <button class="btn btn-outline-secondary" onclick="applyFilter('all')">Show All</button>
+        <div class="d-flex gap-2 align-items-center">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
+                <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly style="min-width: 220px;">
             </div>
-            <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary btn-sm">Back</a>
+            <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2 text-nowrap"></span>
+            <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary btn-sm ms-2">Back</a>
         </div>
     </div>
 
@@ -26,7 +30,18 @@
 <script>
     Chart.register(ChartDataLabels);
     const fullChartData = {{ data | tojson }};
+    const intakeDateStr = "{{ flock.intake_date }}";
+    const intakeDate = new Date(intakeDateStr);
     let hatchChart;
+    let globalStartDate = null;
+    let globalEndDate = null;
+
+    function calculateAgeWeeks(dateObj) {
+        if (!intakeDate) return 0;
+        const diffTime = Math.abs(dateObj - intakeDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return Math.floor(diffDays / 7) + 1;
+    }
 
     // Calculate Y Max Options
     function getOptions(values, isPercentage) {
@@ -40,35 +55,58 @@
         return {min: 0, suggestedMax: limit};
     }
 
-    function renderChart(limit) {
+    function renderChart() {
         let data = fullChartData;
 
-        // Filtering Logic
-        if (limit !== 'all') {
-            // Find last index where hatch > 0
-            const hatchArr = fullChartData.hatch_pct || [];
-            let lastIdx = 0;
-            for (let i = hatchArr.length - 1; i >= 0; i--) {
-                if (hatchArr[i] > 0) {
-                    lastIdx = i;
-                    break;
-                }
-            }
-            // Slice range [lastIdx - limit + 1, lastIdx + 1]
-            let start = lastIdx - limit + 1;
-            if (start < 0) start = 0;
-            let end = lastIdx + 1;
+        // Filtering Logic by Date (Age Weeks)
+        if (globalStartDate && globalEndDate) {
+            const startAge = calculateAgeWeeks(globalStartDate);
+            const endAge = calculateAgeWeeks(globalEndDate);
 
-            // Deep clone and slice arrays
-            const sliced = {};
-            for (let key in fullChartData) {
-                if (Array.isArray(fullChartData[key])) {
-                    sliced[key] = fullChartData[key].slice(start, end);
-                } else {
-                    sliced[key] = fullChartData[key];
+            // fullChartData.weeks contains strings "Week X" or numbers?
+            // Usually "Week 25". Let's parse.
+
+            const indices = [];
+            const weeksArr = fullChartData.weeks || [];
+            weeksArr.forEach((w, i) => {
+                let weekNum = w;
+                if (typeof w === 'string') {
+                    const match = w.match(/(\d+)/);
+                    if (match) weekNum = parseInt(match[1]);
                 }
+
+                if (weekNum >= startAge && weekNum <= endAge) {
+                    indices.push(i);
+                }
+            });
+
+            if (indices.length > 0) {
+                const start = indices[0];
+                const end = indices[indices.length - 1] + 1;
+
+                const sliced = {};
+                for (let key in fullChartData) {
+                    if (Array.isArray(fullChartData[key])) {
+                        sliced[key] = fullChartData[key].slice(start, end);
+                    } else {
+                        sliced[key] = fullChartData[key];
+                    }
+                }
+                data = sliced;
+            } else {
+                // Empty
+                const sliced = {};
+                for (let key in fullChartData) {
+                    if (Array.isArray(fullChartData[key])) {
+                        sliced[key] = [];
+                    }
+                }
+                data = sliced;
             }
-            data = sliced;
+        } else {
+            // Fallback default logic (Last 10 active weeks?)
+            // Actually, flatpickr will always set range, but on init...
+            // Let's rely on flatpickr to drive this.
         }
 
         const fertile = data.fertile_pct || [];
@@ -249,14 +287,38 @@
         });
     }
 
-    function applyFilter(mode) {
-        const limit = mode === 'all' ? 'all' : 10;
-        renderChart(limit);
-    }
-
     // Initial load
     document.addEventListener('DOMContentLoaded', () => {
-        renderChart(10); // Default to Last 10 Weeks
+        const today = new Date();
+        const last70 = new Date(); // Hatchery charts are weekly, 10 weeks = 70 days
+        last70.setDate(today.getDate() - 70);
+
+        flatpickr("#dateRangeSlicer", {
+          mode: "range",
+          defaultDate: [last70, today],
+          dateFormat: "Y-m-d",
+          disableMobile: "true",
+          onChange: function(selectedDates) {
+              if (selectedDates.length === 2) {
+                  globalStartDate = selectedDates[0];
+                  globalEndDate = selectedDates[1];
+                  const startAge = calculateAgeWeeks(globalStartDate);
+                  const endAge = calculateAgeWeeks(globalEndDate);
+                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+                  renderChart();
+              }
+          },
+          onReady: function(selectedDates) {
+              if (selectedDates.length === 2) {
+                  globalStartDate = selectedDates[0];
+                  globalEndDate = selectedDates[1];
+                  const startAge = calculateAgeWeeks(globalStartDate);
+                  const endAge = calculateAgeWeeks(globalEndDate);
+                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+                  renderChart();
+              }
+          }
+      });
     });
 </script>
 {% endblock %}

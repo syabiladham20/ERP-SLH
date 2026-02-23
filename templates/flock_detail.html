@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>Flock Details: {{ flock.house.name }}</h2>
   <div class="dropdown">
@@ -248,66 +251,61 @@
 
   <!-- Charts Tab (Pane 3) -->
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
-<!-- General Performance Chart -->
-<div class="card mb-4 mt-3">
-  <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-    <span class="fw-bold mb-2 mb-md-0">General Performance</span>
-    <div class="d-flex flex-wrap gap-2">
-        <div class="btn-group btn-group-sm" role="group">
-             <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-             <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
-             <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-             <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+    <!-- Filter Control Bar -->
+    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border">
+        <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
+            <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly>
         </div>
-        <!-- Filter Controls -->
-        <div class="btn-group btn-group-sm" role="group" id="generalFilterControls">
-            <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'default')">Default (30d/10w)</button>
-            <button class="btn btn-outline-secondary" onclick="applyDateFilter('general', 'all')">Show All</button>
-        </div>
+        <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
     </div>
-  </div>
-  <div class="card-body" style="overflow-x: auto;">
-    <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
-      <canvas id="generalChart"></canvas>
-    </div>
-  </div>
-</div>
 
-<!-- Male Chart -->
-<div class="card mb-4">
-  <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-    <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
-    <div>
-        <div class="btn-group btn-group-sm" role="group">
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'default')">Last 10 Weeks</button>
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('male', 'all')">Show All</button>
-        </div>
-    </div>
-  </div>
-  <div class="card-body" style="overflow-x: auto;">
-    <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
-      <canvas id="maleChart"></canvas>
-    </div>
-  </div>
-</div>
+    <!-- General Performance Chart -->
+    <div class="card mb-4 mt-3">
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">General Performance</span>
+        <div class="d-flex flex-wrap gap-2">
+            <div class="btn-group btn-group-sm" role="group">
+                 <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+                 <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
-<!-- Female Chart -->
-<div class="card mb-4">
-  <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-      <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
-      <div class="btn-group btn-group-sm" role="group">
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'default')">Last 10 Weeks</button>
-             <button class="btn btn-outline-secondary" onclick="applyDateFilter('female', 'all')">Show All</button>
+                 <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+                 <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+            </div>
+        </div>
       </div>
-  </div>
-  <div class="card-body" style="overflow-x: auto;">
-    <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
-      <canvas id="femaleChart"></canvas>
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+          <canvas id="generalChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Male Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+      </div>
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+          <canvas id="maleChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Female Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+          <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+      </div>
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+          <canvas id="femaleChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
-</div>
-    </div>
 
 </div>
 
@@ -342,11 +340,22 @@
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
   const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
   const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
+  const intakeDateStr = "{{ flock.intake_date }}";
+  const intakeDate = new Date(intakeDateStr);
+  const flockId = "{{ flock.id }}";
 
   let maleChart, femaleChart, generalChart;
   let currentMode = 'daily';
+  let globalStartDate = null;
+  let globalEndDate = null;
 
-  // Logic to find latest valid data point index
+  function calculateAgeWeeks(dateObj) {
+      if (!intakeDate) return 0;
+      const diffTime = Math.abs(dateObj - intakeDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.floor(diffDays / 7) + 1;
+  }
+
   function getLatestDataIndex(dataArray, checkZero = false) {
       if (!dataArray || dataArray.length === 0) return 0;
       for (let i = dataArray.length - 1; i >= 0; i--) {
@@ -358,23 +367,60 @@
       return 0;
   }
 
-  function filterData(dataObj, count, metricKey, checkZero=false) {
-      if (count === 'all') return dataObj;
+  function filterDataByDate(dataObj, startDate, endDate, isWeekly) {
       if (!dataObj.dates || dataObj.dates.length === 0) return dataObj;
+      if (!startDate || !endDate) return dataObj;
 
-      let targetArray = dataObj[metricKey];
-      if (!targetArray) targetArray = dataObj.dates; // Fallback
+      let indices = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      // Set hours to compare dates only
+      start.setHours(0,0,0,0);
+      end.setHours(23,59,59,999);
 
-      const lastIdx = getLatestDataIndex(targetArray, checkZero);
-      // We want range [lastIdx - count + 1, lastIdx]
-      let start = lastIdx - count + 1;
-      if (start < 0) start = 0;
+      if (isWeekly) {
+          // Weekly data has dates as "Week X"
+          // We filter by converting "Week X" to approx Age Week and comparing with selection
+          const startAge = calculateAgeWeeks(start);
+          const endAge = calculateAgeWeeks(end);
+
+          dataObj.dates.forEach((label, idx) => {
+              // Extract number from "Week X"
+              const match = label.toString().match(/(\d+)/);
+              if (match) {
+                  const weekNum = parseInt(match[1]);
+                  if (weekNum >= startAge && weekNum <= endAge) {
+                      indices.push(idx);
+                  }
+              }
+          });
+
+      } else {
+          // Daily data has YYYY-MM-DD
+          dataObj.dates.forEach((dateStr, idx) => {
+              const d = new Date(dateStr);
+              if (d >= start && d <= end) {
+                  indices.push(idx);
+              }
+          });
+      }
+
+      if (indices.length === 0) {
+          // Return empty structure but preserve keys
+           const emptyObj = {};
+           for (let key in dataObj) {
+                emptyObj[key] = [];
+           }
+           return emptyObj;
+      }
+
+      const firstIdx = indices[0];
+      const lastIdx = indices[indices.length - 1];
 
       const newObj = {};
       for (let key in dataObj) {
           if (Array.isArray(dataObj[key])) {
-              // Slice up to lastIdx + 1
-              newObj[key] = dataObj[key].slice(start, lastIdx + 1);
+              newObj[key] = dataObj[key].slice(firstIdx, lastIdx + 1);
           } else {
               newObj[key] = dataObj[key];
           }
@@ -407,19 +453,12 @@
       currentMode = mode;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
 
-      // --- Filter Data ---
-      const defaultGeneralCount = mode === 'daily' ? 30 : 10;
-      const generalLimit = window.generalFilterState || defaultGeneralCount;
-      // General uses Date existence (assumed by data object structure)
-      const generalData = filterData(fullData, generalLimit, 'dates');
+      // Filter Data using global date range
+      const generalData = filterDataByDate(fullData, globalStartDate, globalEndDate, mode === 'weekly');
 
-      const bwLimit = window.bwFilterState || 10;
-
-      // Force Weekly Data for Body Weight Charts (User Request: Show weekly summary only)
+      // Force Weekly Data for Body Weight Charts
       const bwFullData = chartDataWeekly;
-      // Use weekly keys specifically
-      const bwData = filterData(bwFullData, bwLimit, 'avg_bw_female');
-
+      const bwData = filterDataByDate(bwFullData, globalStartDate, globalEndDate, true);
 
       // Destroy existing
       if (maleChart) maleChart.destroy();
@@ -690,10 +729,10 @@
       const cullMKey = mode === 'daily' ? 'culls_daily_male' : 'culls_weekly_male';
       const cullFKey = mode === 'daily' ? 'culls_daily_female' : 'culls_weekly_female';
 
-      const baselineData = new Array(generalData.dates.length).fill(stdVal);
+      const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
 
       // Prepare Notes Dataset
-      const notesPoints = generalData.dates.map((d, i) => {
+      const notesPoints = (generalData.dates || []).map((d, i) => {
           const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
               // Stick to Female Mortality line + slight offset for visibility
@@ -846,30 +885,23 @@
       });
   }
 
-  function applyDateFilter(chartName, filterType) {
-      if (chartName === 'general') {
-          if (filterType === 'default') window.generalFilterState = (currentMode === 'daily' ? 30 : 10);
-          else window.generalFilterState = 'all';
-      } else {
-          // Both male and female share the filter for bodyweight
-          if (filterType === 'default') window.bwFilterState = 10;
-          else window.bwFilterState = 'all';
-      }
-      renderCharts(currentMode);
-  }
-
   function switchMode(mode) {
-      // Reset general filter when switching mode
-      window.generalFilterState = (mode === 'daily' ? 30 : 10);
       renderCharts(mode);
   }
 
   // Initial Render
   document.addEventListener('DOMContentLoaded', function() {
-      // Tab Change Listener to handle Chart resizing
+      // Tab Persistence
+      const activeTab = localStorage.getItem('activeTab_' + flockId);
+      if (activeTab) {
+          const triggerEl = document.querySelector('#flockTabs button[data-bs-target="' + activeTab + '"]');
+          if(triggerEl) bootstrap.Tab.getOrCreateInstance(triggerEl).show();
+      }
+
       const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
       tabEls.forEach(function(tabEl) {
         tabEl.addEventListener('shown.bs.tab', function (event) {
+          localStorage.setItem('activeTab_' + flockId, event.target.getAttribute('data-bs-target'));
           if (event.target.id === 'charts-tab') {
             if (maleChart) maleChart.resize();
             if (femaleChart) femaleChart.resize();
@@ -878,7 +910,41 @@
         });
       });
 
-      renderCharts('daily');
+      // Flatpickr Init
+      const today = new Date();
+      const last30 = new Date();
+      last30.setDate(today.getDate() - 30);
+
+      flatpickr("#dateRangeSlicer", {
+          mode: "range",
+          defaultDate: [last30, today],
+          dateFormat: "Y-m-d",
+          disableMobile: "true", // Use custom UI on mobile for better range support
+          onChange: function(selectedDates, dateStr, instance) {
+              if (selectedDates.length === 2) {
+                  globalStartDate = selectedDates[0];
+                  globalEndDate = selectedDates[1];
+
+                  // Update Age Display
+                  const startAge = calculateAgeWeeks(globalStartDate);
+                  const endAge = calculateAgeWeeks(globalEndDate);
+                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+                  renderCharts(currentMode);
+              }
+          },
+          onReady: function(selectedDates, dateStr, instance) {
+              if (selectedDates.length === 2) {
+                  globalStartDate = selectedDates[0];
+                  globalEndDate = selectedDates[1];
+                  const startAge = calculateAgeWeeks(globalStartDate);
+                  const endAge = calculateAgeWeeks(globalEndDate);
+                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+                  renderCharts(currentMode);
+              }
+          }
+      });
   });
 
 
