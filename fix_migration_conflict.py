@@ -41,7 +41,7 @@ def fix_migration():
             if 'std_hatching_egg_pct' not in columns:
                 # Only apply manual fix if version is None (about to stamp head) OR version is the merge revision
                 # The merge revision is '1a2b3c4d5e6f'.
-                if version_num is None or version_num == '1a2b3c4d5e6f':
+                if version_num is None or version_num == '1a2b3c4d5e6f' or version_num == '982f1b4c92d5':
                      print("Detected missing 'std_hatching_egg_pct' column. Applying hotfix...")
                      try:
                          with db.engine.connect() as conn:
@@ -50,9 +50,25 @@ def fix_migration():
                              conn.commit()
                          print("Hotfix applied successfully.")
                      except Exception as e:
-                         print(f"Error applying hotfix: {e}")
+                         print(f"Error applying hotfix for std_hatching_egg_pct: {e}")
                 else:
                     print(f"Missing 'std_hatching_egg_pct' but version is {version_num}. Letting upgrade handle it.")
+
+            if 'login_required' not in columns:
+                # Hotfix for login_required
+                if version_num is None or version_num == '1a2b3c4d5e6f' or version_num == '982f1b4c92d5':
+                     print("Detected missing 'login_required' column. Applying hotfix...")
+                     try:
+                         with db.engine.connect() as conn:
+                             conn.execute(text("ALTER TABLE global_standard ADD COLUMN login_required BOOLEAN"))
+                             # SQLite uses 1 for True
+                             conn.execute(text("UPDATE global_standard SET login_required = 1"))
+                             conn.commit()
+                         print("Hotfix applied successfully.")
+                     except Exception as e:
+                         print(f"Error applying hotfix for login_required: {e}")
+                else:
+                    print(f"Missing 'login_required' but version is {version_num}. Letting upgrade handle it.")
 
         # --- END HOTFIX ---
 
