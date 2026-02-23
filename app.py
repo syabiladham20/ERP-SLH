@@ -344,6 +344,7 @@ class GlobalStandard(db.Model):
     std_mortality_daily = db.Column(db.Float, default=0.05)
     std_mortality_weekly = db.Column(db.Float, default=0.3)
     std_hatching_egg_pct = db.Column(db.Float, default=96.0)
+    login_required = db.Column(db.Boolean, default=True) # TEMPORARY FEATURE
 
 class UIElement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -881,7 +882,30 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 @app.before_request
 def load_logged_in_user():
+    # TEMPORARY FEATURE: Auto-login if login_required is False
+    gs = GlobalStandard.query.first()
+    login_not_required = False
+    if gs and hasattr(gs, 'login_required') and not gs.login_required:
+        login_not_required = True
+
     user_id = session.get('user_id')
+
+    if login_not_required and not user_id:
+        # Auto-login as Admin
+        admin = User.query.filter_by(role='Admin').first()
+        if not admin:
+             # Fallback to username 'admin'
+             admin = User.query.filter_by(username='admin').first()
+
+        if admin:
+            session.clear()
+            session['user_id'] = admin.id
+            session['user_name'] = admin.username
+            session['user_dept'] = admin.dept
+            session['user_role'] = admin.role
+            session['is_admin'] = (admin.role == 'Admin')
+            user_id = admin.id
+
     if user_id and isinstance(user_id, int):
         g.user = User.query.get(user_id)
     else:
@@ -889,6 +913,9 @@ def load_logged_in_user():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if g.user:
+        return redirect(url_for('index'))
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -2949,7 +2976,37 @@ def admin_control_panel():
     if not session.get('is_admin'):
         flash("Access Denied: Admin only.", "danger")
         return redirect(url_for('index'))
-    return render_template('admin/control_panel.html')
+
+    gs = GlobalStandard.query.first()
+    login_required = gs.login_required if gs and hasattr(gs, 'login_required') else True
+
+    return render_template('admin/control_panel.html', login_required=login_required)
+
+@app.route('/admin/toggle_login', methods=['POST'])
+def toggle_login():
+    if not session.get('is_admin'):
+        return redirect(url_for('index'))
+
+    gs = GlobalStandard.query.first()
+    if not gs:
+        gs = GlobalStandard()
+        db.session.add(gs)
+
+    # Toggle
+    current = gs.login_required if hasattr(gs, 'login_required') else True
+    gs.login_required = not current
+    db.session.commit()
+
+    status = "ON" if gs.login_required else "OFF"
+
+    if gs.login_required:
+        session.clear()
+        flash("Login Page enabled. Please log in.", "info")
+        return redirect(url_for('login'))
+    else:
+        flash(f"Login Page turned {status}.", "warning")
+
+    return redirect(url_for('admin_control_panel'))
 
 @app.route('/admin/houses')
 def admin_houses():

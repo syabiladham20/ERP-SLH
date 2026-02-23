@@ -41,7 +41,26 @@
                 <div class="card-header bg-dark text-white">User & Security</div>
                 <div class="card-body">
                     <p>Manage system access, create new users, update roles, or reset passwords.</p>
-                    <a href="{{ url_for('admin_users') }}" class="btn btn-dark">Manage Users</a>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-dark mb-3">Manage Users</a>
+
+                    <hr>
+
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="mb-1">Login Requirement (Testing Mode)</h5>
+                            <p class="mb-0 text-muted">
+                                Status:
+                                <span class="badge bg-{{ 'success' if login_required else 'warning text-dark' }}">
+                                    {{ 'Active' if login_required else 'Disabled (Auto-Admin)' }}
+                                </span>
+                            </p>
+                        </div>
+                        <form action="{{ url_for('toggle_login') }}" method="POST">
+                            <button type="submit" class="btn btn-{{ 'danger' if login_required else 'success' }}">
+                                {{ 'Disable Login Page' if login_required else 'Enable Login Page' }}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
