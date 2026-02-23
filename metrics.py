@@ -171,11 +171,20 @@ def enrich_flock_data(flock, logs, hatchability_data=None):
         cum_cull_m += cull_m
         cum_cull_f += cull_f
 
+        # Production Week Calculation
+        bio_week = (log.date - flock.intake_date).days // 7 + 1
+        prod_week = None
+        if flock.start_of_lay_date:
+            start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+            if bio_week >= start_bio_week:
+                prod_week = bio_week - start_bio_week + 1
+
         # Metrics Dict
         d = {
             'date': log.date,
             'log': log, # Reference to original object
-            'week': (log.date - flock.intake_date).days // 7 + 1,
+            'week': bio_week,
+            'production_week': prod_week,
             'age_days': (log.date - flock.intake_date).days,
 
             # Stocks
@@ -304,6 +313,7 @@ def aggregate_weekly_metrics(daily_stats):
         if w not in weekly_stats:
             weekly_stats[w] = {
                 'week': w,
+                'production_week': d.get('production_week'),
                 'count': 0,
                 'stock_male_start': d['stock_male_start'], # Take start of week
                 'stock_female_start': d['stock_female_start'],

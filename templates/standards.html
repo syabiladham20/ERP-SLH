@@ -39,62 +39,112 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ url_for('manage_standards') }}">
-        <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Week</th>
-                        <th>Std Mort Male %</th>
-                        <th>Std Mort Fem %</th>
-                        <th>Std BW Male (g)</th>
-                        <th>Std BW Fem (g)</th>
-                        <th>Std Egg Prod %</th>
-                        <th>Std Egg Wt (g)</th>
-                        <th>Std Hatch %</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in standards %}
-                    <tr>
-                        <td>{{ s.week }}</td>
-                        <td>{{ s.std_mortality_male }}</td>
-                        <td>{{ s.std_mortality_female }}</td>
-                        <td>{{ s.std_bw_male }}</td>
-                        <td>{{ s.std_bw_female }}</td>
-                        <td>{{ s.std_egg_prod }}</td>
-                        <td>{{ s.std_egg_weight }}</td>
-                        <td>{{ s.std_hatchability }}</td>
-                        <td>
-                            <!-- Minimal inline edit logic or just delete? -->
-                            <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ s.id }}">Edit</a>
-                        </td>
-                    </tr>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered sticky-table-container" style="max-height: 800px; overflow-y: auto;">
+            <thead class="table-dark">
+                <tr>
+                    <th>Age Week</th>
+                    <th>Prod Week</th>
+                    <th>Std Mort Male %</th>
+                    <th>Std Mort Fem %</th>
+                    <th>Std BW Male (g)</th>
+                    <th>Std BW Fem (g)</th>
+                    <th>Std Egg Prod %</th>
+                    <th>Std Egg Wt (g)</th>
+                    <th>Std Hatch %</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in standards %}
+                <tr>
+                    <td>{{ s.week }}</td>
+                    <td>{{ s.production_week or '-' }}</td>
+                    <td>{{ s.std_mortality_male }}</td>
+                    <td>{{ s.std_mortality_female }}</td>
+                    <td>{{ s.std_bw_male }}</td>
+                    <td>{{ s.std_bw_female }}</td>
+                    <td>{{ s.std_egg_prod }}</td>
+                    <td>{{ s.std_egg_weight }}</td>
+                    <td>{{ s.std_hatchability }}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ s.id }}">Edit</button>
+                    </td>
+                </tr>
 
-                    <!-- Edit Modal -->
-                    <div class="modal fade" id="editModal{{ s.id }}" tabindex="-1">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
+                <!-- Edit Modal -->
+                <div class="modal fade" id="editModal{{ s.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ url_for('manage_standards') }}">
                                 <div class="modal-header">
-                                    <h5 class="modal-title">Edit Week {{ s.week }}</h5>
+                                    <h5 class="modal-title">Edit Standard: Week {{ s.week }}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
                                     <input type="hidden" name="action" value="update">
                                     <input type="hidden" name="id" value="{{ s.id }}">
-                                    <!-- This form inside a loop is tricky for single submit.
-                                         Better to use JS or separate forms.
-                                         Let's use a separate form inside the modal for updating ONE row. -->
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Production Week</label>
+                                            <input type="number" name="production_week" class="form-control" value="{{ s.production_week or '' }}" placeholder="e.g. 1">
+                                            <div class="form-text">Set to 1 for the first week of production (offset). Leave empty for rearing.</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std Mort Male %</label>
+                                            <input type="number" step="0.001" name="std_mortality_male" class="form-control" value="{{ s.std_mortality_male }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std Mort Female %</label>
+                                            <input type="number" step="0.001" name="std_mortality_female" class="form-control" value="{{ s.std_mortality_female }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std BW Male (g)</label>
+                                            <input type="number" name="std_bw_male" class="form-control" value="{{ s.std_bw_male }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std BW Female (g)</label>
+                                            <input type="number" name="std_bw_female" class="form-control" value="{{ s.std_bw_female }}">
+                                        </div>
+                                    </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Std Egg Prod %</label>
+                                            <input type="number" step="0.01" name="std_egg_prod" class="form-control" value="{{ s.std_egg_prod }}">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Std Egg Weight (g)</label>
+                                            <input type="number" step="0.1" name="std_egg_weight" class="form-control" value="{{ s.std_egg_weight }}">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Std Hatchability %</label>
+                                            <input type="number" step="0.1" name="std_hatchability" class="form-control" value="{{ s.std_hatchability }}">
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endfor %}
 
-                    <!-- Add New Row -->
-                    <tr>
+                <!-- Add New Row -->
+                <tr>
+                    <form method="POST" action="{{ url_for('manage_standards') }}">
                         <td><input type="number" name="week" class="form-control" placeholder="Week" required></td>
+                        <td><input type="number" name="production_week" class="form-control" placeholder="Prod Wk"></td>
                         <td><input type="number" step="0.01" name="std_mortality_male" class="form-control" placeholder="%"></td>
                         <td><input type="number" step="0.01" name="std_mortality_female" class="form-control" placeholder="%"></td>
                         <td><input type="number" step="0.1" name="std_bw_male" class="form-control" placeholder="g"></td>
@@ -105,11 +155,11 @@
                         <td>
                             <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
                         </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </form>
+                    </form>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
     <!-- Bulk Upload / Seed could be here -->
 </div>
