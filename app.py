@@ -201,6 +201,7 @@ class Flock(db.Model):
     status = db.Column(db.String(20), default='Active', nullable=False) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
     production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
+    start_of_lay_date = db.Column(db.Date, nullable=True) # Date of First Egg (Biological Start)
 
     # Production Start Counts (New Baseline)
     prod_start_male = db.Column(db.Integer, default=0, nullable=False, server_default='0')
@@ -338,6 +339,7 @@ class Standard(db.Model):
     std_feed_female = db.Column(db.Float, default=0.0)
     std_egg_weight = db.Column(db.Float, default=0.0)
     std_hatchability = db.Column(db.Float, default=0.0)
+    production_week = db.Column(db.Integer, nullable=True) # Production Week 1, 2, 3...
 
 class GlobalStandard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1327,8 +1329,12 @@ def manage_standards():
                 flash('Invalid or missing week number.', 'danger')
                 return redirect(url_for('manage_standards'))
 
+            pw_val = request.form.get('production_week')
+            prod_week = int(pw_val) if pw_val and pw_val.isdigit() else None
+
             s = Standard(
                 week=int(week_val),
+                production_week=prod_week,
                 std_mortality_male=float(request.form.get('std_mortality_male') or 0),
                 std_mortality_female=float(request.form.get('std_mortality_female') or 0),
                 std_bw_male=round_to_whole(request.form.get('std_bw_male')),
@@ -1340,6 +1346,26 @@ def manage_standards():
             db.session.add(s)
             db.session.commit()
             flash('Standard added.', 'success')
+        elif action == 'update':
+            s_id = request.form.get('id')
+            s = Standard.query.get(s_id)
+            if s:
+                pw_val = request.form.get('production_week')
+                s.production_week = int(pw_val) if pw_val and pw_val.isdigit() else None
+
+                s.std_mortality_male=float(request.form.get('std_mortality_male') or 0)
+                s.std_mortality_female=float(request.form.get('std_mortality_female') or 0)
+                s.std_bw_male=round_to_whole(request.form.get('std_bw_male'))
+                s.std_bw_female=round_to_whole(request.form.get('std_bw_female'))
+                s.std_egg_prod=float(request.form.get('std_egg_prod') or 0)
+                s.std_egg_weight=float(request.form.get('std_egg_weight') or 0)
+                s.std_hatchability=float(request.form.get('std_hatchability') or 0)
+
+                db.session.commit()
+                flash(f'Standard for Week {s.week} updated.', 'success')
+            else:
+                flash('Standard not found.', 'danger')
+
         elif action == 'update_global':
             gs = GlobalStandard.query.first()
             if not gs:
@@ -1620,18 +1646,10 @@ def view_flock(id):
         db.session.add(gs)
         db.session.commit()
 
-    # --- Standards Setup for Shifted Comparison ---
+    # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_map = {s.week: s for s in all_standards}
-    
-    # Find Standard Start Week (first week with egg prod > 0)
-    # Default to 24 if not found
-    std_start_week = 24
-    sorted_stds = sorted(all_standards, key=lambda x: x.week)
-    for s in sorted_stds:
-        if s.std_egg_prod > 0:
-            std_start_week = s.week
-            break
+    std_map = {s.week: s for s in all_standards} # Biological Age Map
+    prod_std_map = {s.production_week: s for s in all_standards if s.production_week} # Production Week Map
 
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
@@ -1639,36 +1657,24 @@ def view_flock(id):
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
 
-    # --- Calculate Actual Start & Offset ---
-    actual_start_date = None
+    # Inject Standards
     for d in daily_stats:
-        if d['eggs_collected'] > 0:
-            actual_start_date = d['date']
-            break
+        # Production Metrics (Egg Prod, Weight, Hatch) -> Use Production Week
+        prod_std = None
+        if d.get('production_week'):
+            prod_std = prod_std_map.get(d['production_week'])
 
-    offset_weeks = 0
-    if actual_start_date:
-        actual_start_week = (actual_start_date - flock.intake_date).days // 7 + 1
-        offset_weeks = actual_start_week - std_start_week
-
-    # Inject Shifted Standard into daily_stats
-    for d in daily_stats:
-        current_age_week = d['week']
-        # Production Metrics use Shifted Standard
-        target_std_week = current_age_week - offset_weeks
-
-        std_obj = std_map.get(target_std_week)
-        d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
+        # Add other production standards if needed by template
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
-    # Inject Shifted Standard into weekly_stats (simple average of days or lookup by week?)
-    # Lookup by week is cleaner for the graph
     for ws in weekly_stats:
-        current_age_week = ws['week']
-        target_std_week = current_age_week - offset_weeks
-        std_obj = std_map.get(target_std_week)
-        ws['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
+        prod_std = None
+        if ws.get('production_week'):
+            prod_std = prod_std_map.get(ws['production_week'])
+
+        ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -2533,35 +2539,19 @@ def flock_dashboard(id):
     age_days = (target_date - flock.intake_date).days
     age_week = (age_days // 7) + 1
 
-    # --- Offset Logic for KPI ---
-    # Find Standard Start
+    # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_start_week = 24
-    sorted_stds = sorted(all_standards, key=lambda x: x.week)
     std_map = {s.week: s for s in all_standards}
-    for s in sorted_stds:
-        if s.std_egg_prod > 0:
-            std_start_week = s.week
-            break
-
-    # Find Actual Start (First egg in logs)
-    # We need to query *all* logs to find the start, even though 'all_logs' is filtered by target_date.
-    # Optimization: Use 'all_logs' if it contains the start, otherwise do a quick query.
-    # Or just use all_logs since we likely need the start date which is usually BEFORE target_date.
-    actual_start_date = None
-    for log in all_logs:
-        if log.eggs_collected > 0:
-            actual_start_date = log.date
-            break
-
-    offset_weeks = 0
-    if actual_start_date:
-        actual_start_week = (actual_start_date - flock.intake_date).days // 7 + 1
-        offset_weeks = actual_start_week - std_start_week
+    prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
 
     standard = std_map.get(age_week) # Biological Standard
-    prod_standard_week = age_week - offset_weeks
-    prod_standard = std_map.get(prod_standard_week) # Production Standard
+
+    prod_standard = None
+    if flock.start_of_lay_date:
+        start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+        if age_week >= start_bio_week:
+            current_prod_week = age_week - start_bio_week + 1
+            prod_standard = prod_std_map.get(current_prod_week)
 
     kpis = []
 
@@ -2685,6 +2675,11 @@ def daily_log():
         db.session.add(log)
 
         update_log_from_request(log, request)
+
+        # Automatic Production Trigger
+        if log.eggs_collected > 0 and not flock.start_of_lay_date:
+            flock.start_of_lay_date = log.date
+            flash(f"First egg detected! Production tracking started for {flock.flock_id} from {log.date}.", "info")
 
         # Handle Vaccines (Mark as Completed)
         vaccine_present_ids = request.form.getlist('vaccine_present_ids')
@@ -3107,6 +3102,12 @@ def edit_daily_log(id):
                     db.session.add(t)
 
         update_log_from_request(log, request)
+
+        # Automatic Production Trigger
+        if log.eggs_collected > 0 and not log.flock.start_of_lay_date:
+            log.flock.start_of_lay_date = log.date
+            flash(f"First egg detected! Production tracking started for {log.flock.flock_id} from {log.date}.", "info")
+
         db.session.commit()
         flash('Log updated successfully.', 'success')
         return redirect(url_for('view_flock', id=log.flock_id))
@@ -5086,31 +5087,7 @@ def get_weekly_data_aggregated(flocks):
     # 3. Fetch Standards
     standards = Standard.query.all()
     std_map = {s.week: s for s in standards}
-
-    # Pre-calculate Offsets for Shifted Standards
-    # Find Standard Start
-    std_start_week = 24
-    std_weeks_with_eggs = [s.week for s in standards if s.std_egg_prod > 0]
-    if std_weeks_with_eggs:
-        std_start_week = min(std_weeks_with_eggs)
-
-    # Find Actual Start per Flock
-    min_egg_dates = db.session.query(
-        DailyLog.flock_id,
-        func.min(DailyLog.date)
-    ).filter(
-        DailyLog.flock_id.in_(flock_ids),
-        DailyLog.eggs_collected > 0
-    ).group_by(DailyLog.flock_id).all()
-
-    offset_map = {}
-    flock_objs_temp = {f.id: f for f in flocks} # Temp map for offset calc
-
-    for fid, min_date in min_egg_dates:
-        if fid in flock_objs_temp:
-             f = flock_objs_temp[fid]
-             actual_start_week = (min_date - f.intake_date).days // 7 + 1
-             offset_map[fid] = actual_start_week - std_start_week
+    prod_std_map = {s.production_week: s for s in standards if s.production_week}
 
     weekly_agg = {}
 
@@ -5251,9 +5228,13 @@ def get_weekly_data_aggregated(flocks):
             # Standards
             std_bio = std_map.get(age_week) # Biological Standard (BW)
 
-            offset = offset_map.get(f_id, 0)
-            prod_std_week = age_week - offset
-            std_prod = std_map.get(prod_std_week) # Production Standard (Eggs)
+            # Production Standard Lookup
+            std_prod = None
+            if flock.start_of_lay_date:
+                start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+                if age_week >= start_bio_week:
+                    current_prod_week = age_week - start_bio_week + 1
+                    std_prod = prod_std_map.get(current_prod_week)
 
             # Stock Calculation
             # Use stock at start of week
@@ -5803,17 +5784,10 @@ def executive_flock_detail(id):
         db.session.add(gs)
         db.session.commit()
 
-    # --- Standards Setup for Shifted Comparison ---
+    # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_map = {s.week: s for s in all_standards}
-
-    # Find Standard Start Week
-    std_start_week = 24
-    sorted_stds = sorted(all_standards, key=lambda x: x.week)
-    for s in sorted_stds:
-        if s.std_egg_prod > 0:
-            std_start_week = s.week
-            break
+    std_map = {s.week: s for s in all_standards} # Bio Map
+    prod_std_map = {s.production_week: s for s in all_standards if s.production_week} # Prod Map
 
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
@@ -5821,63 +5795,34 @@ def executive_flock_detail(id):
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
 
-    # --- Calculate Actual Start & Offset ---
-    actual_start_date = None
-    for d in daily_stats:
-        if d['eggs_collected'] > 0:
-            actual_start_date = d['date']
-            break
-
-    offset_weeks = 0
-    if actual_start_date:
-        actual_start_week = (actual_start_date - flock.intake_date).days // 7 + 1
-        offset_weeks = actual_start_week - std_start_week
-
     # Inject Shifted Standard
     for d in daily_stats:
-        current_age_week = d['week']
-        target_std_week = current_age_week - offset_weeks
-        std_obj = std_map.get(target_std_week)
-        d['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
-        d['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
-        d['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
+        # Biological Standards (Mortality, BW)
+        std_bio = std_map.get(d['week'])
+        d['std_mortality_male'] = std_bio.std_mortality_male if std_bio else 0.0
+        d['std_mortality_female'] = std_bio.std_mortality_female if std_bio else 0.0
+
+        # Production Standards (Egg Prod)
+        prod_std = None
+        if d.get('production_week'):
+            prod_std = prod_std_map.get(d['production_week'])
+
+        d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
     for ws in weekly_stats:
-        current_age_week = ws['week']
-        target_std_week = current_age_week - offset_weeks
-        std_obj = std_map.get(target_std_week)
-        ws['std_egg_prod'] = std_obj.std_egg_prod if std_obj else 0.0
-        # Aggregated Standard Mortality? Typically daily standard * 7 or similar?
-        # Standards are usually daily rates in this system or weekly?
-        # Looking at seed_standards: 0.003 (0.3%). This is daily if "Standard Mortality%" header implies daily?
-        # Actually GlobalStandard has std_mortality_daily vs weekly.
-        # But per-week Standard table usually has ONE value.
-        # If std_mortality_male in DB is 0.3, is that % per week?
-        # Aviagen usually provides weekly mortality %.
-        # If daily chart uses it, we might need to convert?
-        # But 'std_mortality_male' in Standard model is likely the Weekly % standard.
-        # If the chart is daily, we should divide by 7? Or is the standard daily?
-        # If seeded from "SLH Daily Aviagen", it likely aligns with the row frequency.
-        # If rows are weekly, it's weekly %.
-        # Let's check `seed_standards_from_file`:
-        # `std_mort = float(row[14]) * 100`. If row 14 is 0.003 -> 0.3%.
-        # If that's weekly cumulative or daily? Usually Aviagen gives "Weekly Mortality %" or "Cumulative".
-        # Let's assume it's Weekly % Standard for that age.
-        # So for daily chart, we might want `std / 7`? Or just plot the target line?
-        # Usually we plot the "Standard Weekly Mortality" line as a reference for the "Weekly Mortality" bars.
-        # But for daily chart? "Daily Mortality %" is usually very small.
-        # If we plot a Weekly Standard (0.3%) against Daily Actual (0.05%), it looks huge.
-        # User asked for "Standard Mortality is missing in general performances".
-        # General Performance has toggle Daily/Weekly.
-        # For Weekly toggle: Plot Weekly Standard.
-        # For Daily toggle: Plot Daily Standard (Weekly / 7).
-        # I will inject the raw standard (Weekly) into daily stats, and let frontend divide if needed?
-        # Or inject both.
-        # Let's inject `std_mortality_male` as is (Weekly Standard) and handle in JS scaling.
-        ws['std_mortality_male'] = std_obj.std_mortality_male if std_obj else 0.0
-        ws['std_mortality_female'] = std_obj.std_mortality_female if std_obj else 0.0
+        # Biological Standards
+        std_bio = std_map.get(ws['week'])
+        ws['std_mortality_male'] = std_bio.std_mortality_male if std_bio else 0.0
+        ws['std_mortality_female'] = std_bio.std_mortality_female if std_bio else 0.0
+
+        # Production Standards
+        prod_std = None
+        if ws.get('production_week'):
+            prod_std = prod_std_map.get(ws['production_week'])
+
+        ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
