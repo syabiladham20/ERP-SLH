@@ -75,7 +75,12 @@ class FarmTestCase(unittest.TestCase):
 
     def test_daily_log_submission(self):
         # Create flock
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-10-27'})
+        self.app.post('/flocks', data={
+            'house_name': 'VA1',
+            'intake_date': '2023-10-27',
+            'intake_male': 100,
+            'intake_female': 100
+        })
         
         # Submit log
         response = self.app.post('/daily_log', data={
@@ -149,7 +154,12 @@ class FarmTestCase(unittest.TestCase):
 
     def test_edit_log(self):
         # Create flock & log
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-11-01'})
+        self.app.post('/flocks', data={
+            'house_name': 'VA1',
+            'intake_date': '2023-11-01',
+            'intake_male': 100,
+            'intake_female': 100
+        })
         self.app.post('/daily_log', data={'house_id': 1, 'date': '2023-11-02', 'mortality_male': 5})
         log = DailyLog.query.first()
         
