@@ -16,7 +16,7 @@
 </div>
 
 <!-- Controls Toolbar -->
-<div class="row mb-3" id="chartsToolbar">
+<div class="row mb-3" id="chartsToolbar" style="position: relative; z-index: 1;">
     <div class="col-md-6">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chartModal" onclick="prepareAddChart()">
             <i class="bi bi-plus-lg"></i> Add Chart
@@ -179,6 +179,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // Fix for zoom clipping
+    if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+    if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+    if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+
     const HOUSE_ID = {{ flock.house_id }};
     const FLOCK_ID = {{ flock.id }};
 
