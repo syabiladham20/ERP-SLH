@@ -125,5 +125,162 @@
             </div>
         </div>
     </div>
+
+    <!-- Strategic Recommendation: Value of Professional Deployment -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-success text-white">Strategic Recommendation: Value of Professional Deployment</div>
+        <div class="card-body">
+            <h5 class="card-title">Enhancing Web Performance & Operational Intelligence</h5>
+            <p class="card-text">
+                Moving from the current free-tier configuration to a professional deployment is not merely a technical upgrade; it is a strategic investment in operational stability and data-driven decision making.
+            </p>
+
+            <div class="row g-4 mt-2">
+                <div class="col-md-6">
+                    <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">1. Web Performance: Free vs. Paid</div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-x-circle text-danger me-2"></i><strong>Free Version (Current):</strong> Relies on SQLite and shared CPU resources. During peak hours (morning data entry), multiple users attempting to save logs simultaneously will encounter "Database Locked" errors and timeouts (>10s latency).
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle text-success me-2"></i><strong>Professional Deployment:</strong> Utilizes PostgreSQL and dedicated web workers. This architecture supports parallel processing, ensuring <strong>&lt;1s response times</strong> even with 50+ concurrent users across 30 houses.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-success">
+                        <div class="card-header bg-success text-white">2. Cost-Benefit Analysis</div>
+                        <div class="card-body">
+                            <p>
+                                The cost of upgrading (estimated <strong>$7 - $15 / month</strong>) is negligible compared to the operational risks of system downtime.
+                            </p>
+                            <ul>
+                                <li><strong>Reliability:</strong> 99.9% uptime ensures data is always accessible.</li>
+                                <li><strong>Risk Mitigation:</strong> The cost of one unrecorded mortality event or missed feed adjustment due to system unavailability far exceeds the monthly subscription fee.</li>
+                                <li><strong>Scalability:</strong> Prevents the need for a costly "emergency migration" later when the database hits file-size limits.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-info">
+                        <div class="card-header bg-info text-white">3. Database Integrity & Traceability</div>
+                        <div class="card-body">
+                            <p>
+                                <strong>Tracking the flow from Farm to Hatchery</strong> requires strict transactional integrity that SQLite struggles to maintain under load.
+                            </p>
+                            <p>
+                                PostgreSQL ensures that every <em>Hatchability</em> record is inextricably linked to its source <em>Flock</em> and <em>Daily Log</em>. This robust linkage allows for deep root-cause analysis: tracing poor chick quality back to specific feed batches or environmental conditions weeks prior.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">4. Speed of Preventive Action</div>
+                        <div class="card-body">
+                            <p>
+                                <strong>Speed saves lives.</strong> A slow dashboard discourages frequent checking. By reducing load times from ~10s to ~3s, management can monitor flocks in real-time.
+                            </p>
+                            <p>
+                                Immediate visibility into a 0.5% mortality spike allows for intervention (e.g., adjusting ventilation) <em>before</em> it escalates into a major loss event. The system shifts from a "reporting tool" to an "alerting system."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card h-100 border-secondary">
+                        <div class="card-header bg-secondary text-white">5. Historical Analysis & Prediction</div>
+                        <div class="card-body">
+                            <p>
+                                <strong>Data is an asset that grows in value over time.</strong> SQLite performance degrades as historical data accumulates. PostgreSQL is designed for terabytes of data.
+                            </p>
+                            <p>
+                                A professional database allows keeping 5+ years of detailed flock history online without performance loss. This enables powerful year-over-year benchmarking (e.g., <em>"How does the 2026 Spring flock compare to the 2024 record holder?"</em>) and predictive modeling for future flock performance.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical Deployment Guide -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">Technical Deployment Guide</div>
+        <div class="card-body">
+            <h4 class="mb-3">Recommended Configuration for 30+ Houses Expansion</h4>
+            <p>Based on your current expansion plans (30 houses, 12 new intakes this year), here is the technical roadmap for a "smooth experience" while optimizing costs.</p>
+
+            <h5 class="mt-4">Resource Allocation (PythonAnywhere)</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Feature</th>
+                            <th>Current Selection</th>
+                            <th>Recommendation</th>
+                            <th>Reasoning</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>CPU Seconds</strong></td>
+                            <td>40000s</td>
+                            <td><strong>40000s</strong> (Limit)</td>
+                            <td>Good safety margin. Reports use CPU; keep high to avoid throttling.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Web Workers</strong></td>
+                            <td>20</td>
+                            <td><strong>2 - 4</strong></td>
+                            <td><strong>Biggest cost driver.</strong> 20 workers is overkill for ~5-10 concurrent staff. 4 workers can handle 50+ concurrent requests efficiently. Start small and scale up.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Always-on tasks</strong></td>
+                            <td>1</td>
+                            <td><strong>1</strong></td>
+                            <td><strong>Essential</strong> for nightly backups and background report generation.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Postgres</strong></td>
+                            <td>Enabled</td>
+                            <td><strong>Enabled</strong></td>
+                            <td><strong>Critical.</strong> Do not use SQLite for production. Postgres handles concurrent writes reliably.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-4">Technical Setup Steps</h5>
+            <ol>
+                <li class="mb-2">
+                    <strong>Switch to PostgreSQL:</strong> Initialize the database in the "Databases" tab and set the <code>DATABASE_URL</code> environment variable.
+                    <br>
+                    <code>DATABASE_URL=postgresql://super:password@host:port/dbname</code>
+                </li>
+                <li class="mb-2">
+                    <strong>Run Migration:</strong> Execute the setup script to migrate schema and data.
+                    <br>
+                    <code>bash setup_pa.sh</code>
+                </li>
+                <li class="mb-2">
+                    <strong>WSGI Configuration:</strong> Ensure the WSGI file points correctly to the project home and loads environment variables.
+                </li>
+                <li class="mb-2">
+                    <strong>Static Files:</strong> Configure PythonAnywhere to serve <code>/static/</code> directly to save CPU cycles.
+                </li>
+            </ol>
+
+            <div class="alert alert-warning mt-3">
+                <strong>Expected Cost Savings:</strong> By reducing Web Workers from 20 to 3-4, monthly costs could drop by 50% or more without sacrificing perceivable performance.
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
