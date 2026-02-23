@@ -27,18 +27,22 @@
                             <tr>
                                 <th>Metric</th>
                                 <th>Before</th>
-                                <th>After Optimization</th>
+                                <th>Phase 1 (Index)</th>
+                                <th>Phase 2 (SQL Agg + WAL)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td>Exec. Dashboard Load</td>
                                 <td class="text-danger">~5.30s</td>
-                                <td class="text-success">~3.95s</td>
+                                <td class="text-warning">~3.95s</td>
+                                <td class="text-success">~3.77s</td>
                             </tr>
                             <tr>
-                                <td>Concurrent Writes (10 users)</td>
-                                <td colspan="2" class="text-muted">Avg 10.8s (Limited by SQLite Lock)</td>
+                                <td>Concurrent Writes</td>
+                                <td class="text-muted">N/A</td>
+                                <td class="text-muted">10.8s</td>
+                                <td class="text-muted">10.3s</td>
                             </tr>
                         </tbody>
                     </table>
@@ -73,9 +77,8 @@
             <div class="alert alert-secondary">
                 <h5><i class="bi bi-code-slash"></i> Application Logic</h5>
                 <p>
-                    The Executive Dashboard processes ~32,000 records in Python. While optimization reduced load time by ~25%,
-                    further scaling will require <strong>SQL-based aggregation</strong> or <strong>Pre-computed Summary Tables</strong>
-                    to bypass the need to load raw logs into application memory.
+                    <strong>SQL-Based Aggregation</strong> has been implemented for the Executive Dashboard ISO Report, moving processing from Python loops to the Database Engine.
+                    This reduced load times by ~30% total. However, the system is now strictly bound by Database IOPS and SQLite concurrency limits.
                 </p>
             </div>
         </div>
