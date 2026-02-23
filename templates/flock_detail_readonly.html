@@ -6,7 +6,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h2>Flock Details: {{ flock.house.name }}</h2>
-  <div class="dropdown" style="z-index: 2000;">
+  <div class="dropdown">
     <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
       Switch House
     </button>
@@ -257,7 +257,7 @@
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
 
     <!-- Filter Control Bar -->
-    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border">
+    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
         <div class="input-group" style="max-width: 300px;">
             <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
             <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly>
@@ -330,6 +330,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
   Chart.register(ChartDataLabels);
+  // Fix for zoom clipping
+  if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+  if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+  if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
 
   const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};

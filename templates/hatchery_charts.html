@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <div class="container mt-4">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2" style="position: relative; z-index: 1;">
         <h2 class="h4 mb-2 mb-md-0">Hatchability Performance: {{ flock.house.name }}</h2>
         <div class="d-flex gap-2 align-items-center">
             <div class="input-group input-group-sm">
@@ -29,6 +29,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
     Chart.register(ChartDataLabels);
+    // Fix for zoom clipping
+    if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+    if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+    if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+
     const fullChartData = {{ data | tojson }};
     const intakeDateStr = "{{ flock.intake_date }}";
     const intakeDate = new Date(intakeDateStr);

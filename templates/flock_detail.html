@@ -253,7 +253,7 @@
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
 
     <!-- Filter Control Bar -->
-    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border">
+    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
         <div class="input-group" style="max-width: 300px;">
             <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
             <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly>
@@ -335,6 +335,10 @@
 
   // Register plugin
   Chart.register(ChartDataLabels);
+  // Fix for zoom clipping
+  if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+  if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+  if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
 
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
