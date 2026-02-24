@@ -356,6 +356,7 @@ class Standard(db.Model):
     production_week = db.Column(db.Integer, nullable=True) # Production Week 1, 2, 3...
 
     std_cum_eggs_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Total Eggs)
+    std_cum_hatching_eggs_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Hatching Eggs)
     std_cum_chicks_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Chicks)
 
 class GlobalStandard(db.Model):
@@ -1404,6 +1405,7 @@ def manage_standards():
                 std_egg_weight=float(request.form.get('std_egg_weight') or 0),
                 std_hatchability=float(request.form.get('std_hatchability') or 0),
                 std_cum_eggs_hha=float(request.form.get('std_cum_eggs_hha') or 0),
+                std_cum_hatching_eggs_hha=float(request.form.get('std_cum_hatching_eggs_hha') or 0),
                 std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
             )
             db.session.add(s)
@@ -1424,6 +1426,7 @@ def manage_standards():
                 s.std_egg_weight=float(request.form.get('std_egg_weight') or 0)
                 s.std_hatchability=float(request.form.get('std_hatchability') or 0)
                 s.std_cum_eggs_hha=float(request.form.get('std_cum_eggs_hha') or 0)
+                s.std_cum_hatching_eggs_hha=float(request.form.get('std_cum_hatching_eggs_hha') or 0)
                 s.std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
 
                 db.session.commit()
@@ -1445,6 +1448,12 @@ def manage_standards():
 
         elif action == 'seed_standards':
             success, message = seed_standards_from_file()
+            if success:
+                flash(message, 'success')
+            else:
+                flash(message, 'danger')
+        elif action == 'seed_arbor_acres':
+            success, message = seed_arbor_acres_standards()
             if success:
                 flash(message, 'success')
             else:
@@ -1756,11 +1765,14 @@ def calculate_flock_summary(flock, daily_stats):
         std_hha_total = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
         std_hha_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
 
-        # Estimate Hatching Eggs HHA Target (96% of Total if not defined, or derived)
-        # Using Global Standard if available, else 96%
-        gs = GlobalStandard.query.first()
-        std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
-        std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
+        # Estimate Hatching Eggs HHA Target (From Standard if available, else Global %)
+        if std and std.std_cum_hatching_eggs_hha:
+            std_hha_hatch = std.std_cum_hatching_eggs_hha
+        else:
+            # Using Global Standard if available, else 96%
+            gs = GlobalStandard.query.first()
+            std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
+            std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
 
         # Feed Targets (Placeholder or Derived if Standard table doesn't have them)
         # For now, we set them to 0 if not available to avoid hardcoded mismatch
@@ -3520,6 +3532,60 @@ def import_hatchability():
         flash('Invalid file type. Please upload an Excel file (.xlsx).', 'danger')
 
     return redirect(url_for('import_data'))
+
+def seed_arbor_acres_standards():
+    filepath = os.path.join(basedir, 'Arbor_Acres_Plus_S_Complete_Production_Standards.xlsx')
+    if not os.path.exists(filepath):
+        return False, "File 'Arbor_Acres_Plus_S_Complete_Production_Standards.xlsx' not found."
+
+    try:
+        df = pd.read_excel(filepath)
+
+        # Columns: 'Production Week', 'Age (Days)', 'Age (Weeks)', 'Std Egg Prod %', 'Std Egg Wt (g)', 'Std Hatch %', 'Std Cum Eggs HHA', 'Std Cum Hatching HHA', 'Std Cum Chicks HHA'
+
+        # Filter: Age (Weeks) >= 25
+        # Assuming Age (Weeks) is column 'Age (Weeks)'
+        if 'Age (Weeks)' not in df.columns:
+            return False, "Column 'Age (Weeks)' not found."
+
+        df_filtered = df[df['Age (Weeks)'] >= 25]
+
+        count = 0
+        for index, row in df_filtered.iterrows():
+            week = int(row['Age (Weeks)'])
+            prod_week = int(row['Production Week']) if pd.notna(row['Production Week']) else None
+
+            std_egg_prod = float(row['Std Egg Prod %']) if pd.notna(row['Std Egg Prod %']) else 0.0
+            std_egg_wt = float(row['Std Egg Wt (g)']) if pd.notna(row['Std Egg Wt (g)']) else 0.0
+            std_hatch = float(row['Std Hatch %']) if pd.notna(row['Std Hatch %']) else 0.0
+            std_cum_eggs_hha = float(row['Std Cum Eggs HHA']) if pd.notna(row['Std Cum Eggs HHA']) else 0.0
+            std_cum_hatching_hha = float(row['Std Cum Hatching HHA']) if pd.notna(row['Std Cum Hatching HHA']) else 0.0
+            std_cum_chicks_hha = float(row['Std Cum Chicks HHA']) if pd.notna(row['Std Cum Chicks HHA']) else 0.0
+
+            # Find or Create Standard
+            s = Standard.query.filter_by(week=week).first()
+            if not s:
+                s = Standard(week=week)
+                db.session.add(s)
+
+            # Update Fields
+            s.production_week = prod_week
+            s.std_egg_prod = std_egg_prod
+            s.std_egg_weight = std_egg_wt
+            s.std_hatchability = std_hatch
+            s.std_cum_eggs_hha = std_cum_eggs_hha
+            s.std_cum_hatching_eggs_hha = std_cum_hatching_hha
+            s.std_cum_chicks_hha = std_cum_chicks_hha
+
+            count += 1
+
+        db.session.commit()
+        return True, f"Imported/Updated {count} weeks of Arbor Acres standards."
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return False, f"Error importing Arbor Acres standards: {str(e)}"
 
 def seed_standards_from_file():
     filepath = os.path.join(basedir, 'SLH Daily Aviagen.xlsx')

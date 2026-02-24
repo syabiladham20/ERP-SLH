@@ -33,8 +33,11 @@
         <div class="card-header">Seed Standards</div>
         <div class="card-body">
             <p>Seed standards from <strong>SLH Daily Aviagen.xlsx</strong> located on the server.</p>
-            <form method="POST" action="{{ url_for('manage_standards') }}">
-                <button type="submit" name="action" value="seed_standards" class="btn btn-warning" onclick="return confirm('This will update standards from the server file. Continue?');">Seed from File</button>
+            <form method="POST" action="{{ url_for('manage_standards') }}" class="d-inline">
+                <button type="submit" name="action" value="seed_standards" class="btn btn-warning" onclick="return confirm('This will update standards from the server file (SLH Daily Aviagen). Continue?');">Seed from SLH File</button>
+            </form>
+            <form method="POST" action="{{ url_for('manage_standards') }}" class="d-inline ms-2">
+                <button type="submit" name="action" value="seed_arbor_acres" class="btn btn-info" onclick="return confirm('This will update standards from the Arbor Acres Excel file. Continue?');">Import Arbor Acres Standards</button>
             </form>
         </div>
     </div>
@@ -53,6 +56,7 @@
                     <th>Std Egg Wt (g)</th>
                     <th>Std Hatch %</th>
                     <th>Std Cum Eggs HHA</th>
+                    <th>Std Cum Hatching HHA</th>
                     <th>Std Cum Chicks HHA</th>
                     <th>Action</th>
                 </tr>
@@ -70,6 +74,7 @@
                     <td>{{ s.std_egg_weight }}</td>
                     <td>{{ s.std_hatchability }}</td>
                     <td>{{ s.std_cum_eggs_hha }}</td>
+                    <td>{{ s.std_cum_hatching_eggs_hha }}</td>
                     <td>{{ s.std_cum_chicks_hha }}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ s.id }}">Edit</button>
@@ -135,11 +140,15 @@
                                     </div>
 
                                     <div class="row mb-3">
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label">Std Cum Eggs HHA</label>
                                             <input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" value="{{ s.std_cum_eggs_hha }}">
                                         </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Std Cum Hatching HHA</label>
+                                            <input type="number" step="0.1" name="std_cum_hatching_eggs_hha" class="form-control" value="{{ s.std_cum_hatching_eggs_hha }}">
+                                        </div>
+                                        <div class="col-md-4">
                                             <label class="form-label">Std Cum Chicks HHA</label>
                                             <input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" value="{{ s.std_cum_chicks_hha }}">
                                         </div>
@@ -168,6 +177,7 @@
                         <td><input type="number" step="0.1" name="std_egg_weight" class="form-control" placeholder="g"></td>
                         <td><input type="number" step="0.1" name="std_hatchability" class="form-control" placeholder="%"></td>
                         <td><input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" placeholder="Eggs"></td>
+                        <td><input type="number" step="0.1" name="std_cum_hatching_eggs_hha" class="form-control" placeholder="Hatch Eggs"></td>
                         <td><input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" placeholder="Chicks"></td>
                         <td>
                             <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
