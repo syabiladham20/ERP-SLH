@@ -352,7 +352,13 @@
         <h4 class="alert-heading">Production Summary Not Available</h4>
         <p>This flock has not started production or missing production start data.</p>
         <hr>
-        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date' and 'Production Start Count'.</p>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date'.</p>
+        {% if not flock.start_of_lay_date %}
+        <p class="mb-0 fw-bold text-danger mt-2">
+            Missing 'Start of Lay Date' (First Egg).
+            <a href="{{ url_for('edit_flock', id=flock.id) }}" class="alert-link">Click here to set it</a> to enable Production Weeks.
+        </p>
+        {% endif %}
     </div>
     {% endif %}
   </div>
