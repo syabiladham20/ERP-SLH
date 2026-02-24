@@ -1636,24 +1636,27 @@ def calculate_flock_summary(flock, daily_stats):
     start_date = flock.production_start_date
     start_stock = flock.prod_start_female
 
-    if not start_date or start_stock == 0:
-        # Fallback if Phase Production but no start counts recorded?
-        # Try to infer from logs?
-        # If logs have 'production_week' set, we can use that.
-        # But 'production_week' is derived from `start_of_lay_date` in `enrich_flock_data`.
-        # `start_of_lay_date` is biological start. `production_start_date` is management phase switch.
-        # User said: "Females Housed at 1st week of production".
-        # This usually means the counts when they were moved to laying house or reached 5%.
-        # I'll stick to `flock.prod_start_female` if available.
-        # If not, I'll try to find the stock at `production_week == 1`.
-
-        # Scan daily_stats for first entry with production_week >= 1
+    if not start_date:
+        # Fallback: Try to find start date from logs (Production Week 1)
         first_prod_log = next((d for d in daily_stats if d.get('production_week') and d['production_week'] >= 1), None)
         if first_prod_log:
             start_date = first_prod_log['date']
-            start_stock = first_prod_log['stock_female_start']
+            if start_stock == 0:
+                start_stock = first_prod_log['stock_female_start']
         else:
             return None, []
+
+    # If start_date is found but start_stock is 0 (User entered 0 or missing)
+    if start_stock == 0 and start_date:
+        # Find stock on that date from daily_stats
+        log_on_start = next((d for d in daily_stats if d['date'] == start_date), None)
+        if log_on_start:
+            start_stock = log_on_start['stock_female_start']
+        else:
+            # If no log exactly on start date, find first log after start date
+            first_log_after = next((d for d in daily_stats if d['date'] > start_date), None)
+            if first_log_after:
+                start_stock = first_log_after['stock_female_start']
 
     if start_stock <= 0:
         start_stock = 1 # Avoid div by zero
@@ -1734,21 +1737,36 @@ def calculate_flock_summary(flock, daily_stats):
         }
         summary_table.append(row)
 
-        # Update Dashboard (Last valid week)
+        # Standard Targets (Dynamic)
+        std_hha_total = std.std_cum_eggs_hha if std else 0
+        std_hha_chicks = std.std_cum_chicks_hha if std else 0
+
+        # Estimate Hatching Eggs HHA Target (96% of Total if not defined, or derived)
+        # Using Global Standard if available, else 96%
+        gs = GlobalStandard.query.first()
+        std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
+        std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
+
+        # Feed Targets (Placeholder or Derived if Standard table doesn't have them)
+        # For now, we set them to 0 if not available to avoid hardcoded mismatch
+        std_feed_chicks = 0
+        std_feed_h_eggs = 0
+
+        # Update Dashboard (Last valid week overwrites previous)
         dashboard_metrics = {
             'week': pw,
             'age': days[-1]['week'],
             'hha_total': round(hha_total, 1),
-            'hha_total_std': 189.6, # Depletion Target
+            'hha_total_std': round(std_hha_total, 1),
             'hha_hatch': round(hha_hatch, 1),
-            'hha_hatch_std': 180.6, # Depletion Target
+            'hha_hatch_std': round(std_hha_hatch, 1),
             'hha_chicks': round(hha_chicks, 1),
-            'hha_chicks_std': 154.6, # Depletion Target (154.6 from User Prompt 1, Dict has 154.6 at wk 40)
+            'hha_chicks_std': round(std_hha_chicks, 1),
             'liveability': round(liveability, 2),
             'feed_100_chicks': round(feed_100_chicks, 1),
-            'feed_100_chicks_std': 36.2, # Depletion Target
+            'feed_100_chicks_std': std_feed_chicks, # Dynamic or 0
             'feed_100_h_eggs': round(feed_100_h_eggs, 1),
-            'feed_100_h_eggs_std': 31.0 # Depletion Target
+            'feed_100_h_eggs_std': std_feed_h_eggs # Dynamic or 0
         }
 
     return dashboard_metrics, summary_table
