@@ -10,7 +10,7 @@
     <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
       Switch House
     </button>
-    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1">
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="z-index: 1050;">
       {% for f in active_flocks %}
       <li><a class="dropdown-item" href="{{ url_for('view_flock', id=f.id) }}">{{ f.house.name }}</a></li>
       {% endfor %}
@@ -500,6 +500,7 @@
               datalabels: {
                   align: 'top',
                   anchor: 'end',
+                  clip: true,
                   formatter: function(value, context) {
                       if (!value) return '';
                       if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
@@ -555,7 +556,8 @@
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
            });
            maleBWValues.push(bwData[maleKey]);
       }
@@ -570,7 +572,8 @@
                 borderColor: colorsM[i-1] || '#333',
                 backgroundColor: colorsM[i-1] || '#333',
                 tension: 0.1,
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
               });
               maleBWValues.push(bwData[key]);
           }
@@ -584,7 +587,8 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false }
+          datalabels: { display: false },
+          clip: true
       });
       maleBWValues.push(bwData.bw_male_std);
 
@@ -594,7 +598,8 @@
           borderColor: '#FFCE56',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          clip: true
       });
 
       const maleBWScales = getScaleOptions(maleBWValues, false);
@@ -647,7 +652,8 @@
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
            });
            femaleBWValues.push(bwData[femaleKey]);
       }
@@ -660,7 +666,8 @@
                 data: bwData[key],
                 borderColor: colorsF[i-1] || '#333',
                 backgroundColor: colorsF[i-1] || '#333',
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
               });
               femaleBWValues.push(bwData[key]);
           }
@@ -674,7 +681,8 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false }
+          datalabels: { display: false },
+          clip: true
       });
       femaleBWValues.push(bwData.bw_female_std);
 
@@ -684,7 +692,8 @@
           borderColor: '#9966FF',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          clip: true
       });
 
       const femaleBWScales = getScaleOptions(femaleBWValues, false);
@@ -767,7 +776,8 @@
           backgroundColor: 'purple',
           borderColor: 'purple',
           hidden: true, // Hidden initially
-          datalabels: { display: false }
+          datalabels: { display: false },
+          clip: true
       };
 
       const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
@@ -788,7 +798,8 @@
               type: 'line',
               borderColor: 'green',
               yAxisID: 'y',
-              datalabels: { display: false }
+              datalabels: { display: false },
+              clip: true
             },
             {
               label: 'Standard Egg Prod %',
@@ -799,31 +810,36 @@
               pointRadius: 0,
               borderWidth: 2,
               yAxisID: 'y',
-              datalabels: { display: false }
+              datalabels: { display: false },
+              clip: true
             },
             {
               label: 'Mortality Male %',
               data: generalData[mortMKey],
               backgroundColor: '#B22222', // Bold Dark Red
-              yAxisID: 'y1'
+              yAxisID: 'y1',
+              clip: true
             },
             {
               label: 'Mortality Female %',
               data: generalData[mortFKey],
               backgroundColor: '#FF0000', // Bold Bright Red
-              yAxisID: 'y1'
+              yAxisID: 'y1',
+              clip: true
             },
             {
               label: 'Culls Male %',
               data: generalData[cullMKey],
               backgroundColor: '#DAA520', // Bold GoldenRod
-              yAxisID: 'y1'
+              yAxisID: 'y1',
+              clip: true
             },
             {
               label: 'Culls Female %',
               data: generalData[cullFKey],
               backgroundColor: '#FFD700', // Bold Gold
-              yAxisID: 'y1'
+              yAxisID: 'y1',
+              clip: true
             },
             {
               label: 'Standard Mort Limit',
@@ -834,7 +850,8 @@
               borderDash: [5, 5],
               pointRadius: 0,
               yAxisID: 'y1',
-              datalabels: { display: false }
+              datalabels: { display: false },
+              clip: true
             },
             notesDataset
           ]

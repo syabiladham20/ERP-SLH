@@ -84,3 +84,8 @@ body {
         top: calc(var(--navbar-height, 56px) + 50px);
     }
 }
+
+/* Fix for flatpickr calendar z-index to be below navbar (1030) but above sticky headers (1020) */
+.flatpickr-calendar {
+    z-index: 1029 !important;
+}
