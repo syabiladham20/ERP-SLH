@@ -153,25 +153,29 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
 
     for log in sorted_logs:
         # --- A. Phase Switch Logic ---
-        # If we hit the production start date, we reset the baseline if prod_start counts are provided.
+        # If we hit the production start date, we reset the baseline.
         if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
-             # Check if we have explicit start counts for production
-             if (flock.prod_start_male or 0) > 0 or (flock.prod_start_female or 0) > 0:
-                 in_prod = True
-                 curr_m_prod = flock.prod_start_male or 0
-                 curr_f_prod = flock.prod_start_female or 0
+             in_prod = True
+
+             # If manual counts are provided, use them to overwrite current running stock
+             if (flock.prod_start_male or 0) > 0:
+                 curr_m_prod = flock.prod_start_male
                  curr_m_hosp = flock.prod_start_male_hosp or 0
+
+             if (flock.prod_start_female or 0) > 0:
+                 curr_f_prod = flock.prod_start_female
                  curr_f_hosp = flock.prod_start_female_hosp or 0
 
-                 # Reset Baseline for Cumulative Calcs
-                 start_m = curr_m_prod + curr_m_hosp
-                 start_f = curr_f_prod + curr_f_hosp
+             # Reset Baseline for Cumulative Calcs (Production Phase Baseline)
+             # If no manual count, this uses the running stock (Intake - Rearing Loss) as the new baseline.
+             start_m = curr_m_prod + curr_m_hosp
+             start_f = curr_f_prod + curr_f_hosp
 
-                 # Reset Cumulative Loss Counters
-                 cum_mort_m = 0
-                 cum_mort_f = 0
-                 cum_cull_m = 0
-                 cum_cull_f = 0
+             # Reset Cumulative Loss Counters for the new phase
+             cum_mort_m = 0
+             cum_mort_f = 0
+             cum_cull_m = 0
+             cum_cull_f = 0
 
         # --- B. Snapshot Stock (Start of Day) ---
         # Used for today's mortality % calculation
