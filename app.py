@@ -1735,8 +1735,8 @@ def calculate_flock_summary(flock, daily_stats):
 
         # Standard
         std = std_map.get(pw)
-        std_eggs = std.std_cum_eggs_hha if std else 0
-        std_chicks = std.std_cum_chicks_hha if std else 0
+        std_eggs = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
+        std_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
 
         row = {
             'week': pw,
@@ -1753,8 +1753,8 @@ def calculate_flock_summary(flock, daily_stats):
         summary_table.append(row)
 
         # Standard Targets (Dynamic)
-        std_hha_total = std.std_cum_eggs_hha if std else 0
-        std_hha_chicks = std.std_cum_chicks_hha if std else 0
+        std_hha_total = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
+        std_hha_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
 
         # Estimate Hatching Eggs HHA Target (96% of Total if not defined, or derived)
         # Using Global Standard if available, else 96%
