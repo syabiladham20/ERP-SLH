@@ -12,9 +12,25 @@
     </div>
     <div class="card-body">
         <div class="row text-center">
-            <div class="col-md-12">
-                <h6 class="text-muted">Average Hatchability</h6>
-                <h2 class="display-4 text-primary">{{ "%.2f"|format(avg_hatch_pct) }}%</h2>
+            <div class="col-md-6 border-end">
+                <h6 class="text-muted">Previous Hatch</h6>
+                {% if last_hatch %}
+                    <h3 class="text-success">{{ last_hatch.date | date_fmt }}</h3>
+                    <p class="mb-0 fs-5"><strong>{{ "{:,}".format(last_hatch.total_hatched) }}</strong> chicks</p>
+                    <p class="text-muted small mb-0">({{ "%.2f"|format(last_hatch.hatch_pct) }}%)</p>
+                {% else %}
+                    <p class="text-muted py-2">No recent data</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted">Next Hatch Forecast</h6>
+                {% if next_hatch %}
+                    <h3 class="text-primary">{{ next_hatch.date | date_fmt }}</h3>
+                    <p class="mb-0 fs-5"><strong>{{ "{:,}".format(next_hatch.forecast) }}</strong> chicks</p>
+                    <p class="text-muted small mb-0">(Forecast at Standard %)</p>
+                {% else %}
+                    <p class="text-muted py-2">No upcoming hatch</p>
+                {% endif %}
             </div>
         </div>
     </div>
