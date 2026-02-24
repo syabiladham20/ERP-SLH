@@ -27,6 +27,12 @@
         <div class="form-text">Clear to revert to Rearing logic (unless manual Phase is set).</div>
       </div>
 
+      <div class="mb-3">
+        <label for="start_of_lay_date" class="form-label">Start of Lay Date (First Egg)</label>
+        <input type="date" class="form-control" id="start_of_lay_date" name="start_of_lay_date" value="{{ flock.start_of_lay_date or '' }}">
+        <div class="form-text">Set manually if not auto-detected. Required for Production Summary.</div>
+      </div>
+
       <div class="row">
         <div class="col-6 mb-3">
           <label for="intake_male" class="form-label">Intake Male</label>
@@ -46,6 +52,32 @@
         <div class="col-6 mb-3">
           <label for="doa_female" class="form-label">DOA Female</label>
           <input type="number" class="form-control" id="doa_female" name="doa_female" value="{{ flock.doa_female }}">
+        </div>
+      </div>
+
+      <hr>
+      <h5>Production Phase Baseline</h5>
+      <p class="text-muted small">Update these counts only if correcting the baseline at start of production.</p>
+
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label for="prod_start_male" class="form-label">Production Start Male (Prod)</label>
+          <input type="number" class="form-control" id="prod_start_male" name="prod_start_male" value="{{ flock.prod_start_male }}">
+        </div>
+        <div class="col-6 mb-3">
+          <label for="prod_start_female" class="form-label">Production Start Female (Prod)</label>
+          <input type="number" class="form-control" id="prod_start_female" name="prod_start_female" value="{{ flock.prod_start_female }}">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label for="prod_start_male_hosp" class="form-label">Production Start Male (Hosp)</label>
+          <input type="number" class="form-control" id="prod_start_male_hosp" name="prod_start_male_hosp" value="{{ flock.prod_start_male_hosp }}">
+        </div>
+        <div class="col-6 mb-3">
+          <label for="prod_start_female_hosp" class="form-label">Production Start Female (Hosp)</label>
+          <input type="number" class="form-control" id="prod_start_female_hosp" name="prod_start_female_hosp" value="{{ flock.prod_start_female_hosp }}">
         </div>
       </div>
 

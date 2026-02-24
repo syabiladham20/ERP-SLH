@@ -52,6 +52,8 @@
                     <th>Std Egg Prod %</th>
                     <th>Std Egg Wt (g)</th>
                     <th>Std Hatch %</th>
+                    <th>Std Cum Eggs HHA</th>
+                    <th>Std Cum Chicks HHA</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -67,6 +69,8 @@
                     <td>{{ s.std_egg_prod }}</td>
                     <td>{{ s.std_egg_weight }}</td>
                     <td>{{ s.std_hatchability }}</td>
+                    <td>{{ s.std_cum_eggs_hha }}</td>
+                    <td>{{ s.std_cum_chicks_hha }}</td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ s.id }}">Edit</button>
                     </td>
@@ -129,6 +133,17 @@
                                             <input type="number" step="0.1" name="std_hatchability" class="form-control" value="{{ s.std_hatchability }}">
                                         </div>
                                     </div>
+
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std Cum Eggs HHA</label>
+                                            <input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" value="{{ s.std_cum_eggs_hha }}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Std Cum Chicks HHA</label>
+                                            <input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" value="{{ s.std_cum_chicks_hha }}">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -152,6 +167,8 @@
                         <td><input type="number" step="0.1" name="std_egg_prod" class="form-control" placeholder="%"></td>
                         <td><input type="number" step="0.1" name="std_egg_weight" class="form-control" placeholder="g"></td>
                         <td><input type="number" step="0.1" name="std_hatchability" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" placeholder="Eggs"></td>
+                        <td><input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" placeholder="Chicks"></td>
                         <td>
                             <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
                         </td>

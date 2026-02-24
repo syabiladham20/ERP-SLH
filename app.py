@@ -1269,10 +1269,21 @@ def edit_flock(id):
         else:
              flock.production_start_date = None
 
+        lay_date_str = request.form.get('start_of_lay_date')
+        if lay_date_str:
+             flock.start_of_lay_date = datetime.strptime(lay_date_str, '%Y-%m-%d').date()
+        else:
+             flock.start_of_lay_date = None
+
         flock.intake_male = int(request.form.get('intake_male') or 0)
         flock.intake_female = int(request.form.get('intake_female') or 0)
         flock.doa_male = int(request.form.get('doa_male') or 0)
         flock.doa_female = int(request.form.get('doa_female') or 0)
+
+        flock.prod_start_male = int(request.form.get('prod_start_male') or 0)
+        flock.prod_start_female = int(request.form.get('prod_start_female') or 0)
+        flock.prod_start_male_hosp = int(request.form.get('prod_start_male_hosp') or 0)
+        flock.prod_start_female_hosp = int(request.form.get('prod_start_female_hosp') or 0)
 
         db.session.commit()
         flash(f'Flock {flock.flock_id} updated.', 'success')
@@ -1391,7 +1402,9 @@ def manage_standards():
                 std_bw_female=round_to_whole(request.form.get('std_bw_female')),
                 std_egg_prod=float(request.form.get('std_egg_prod') or 0),
                 std_egg_weight=float(request.form.get('std_egg_weight') or 0),
-                std_hatchability=float(request.form.get('std_hatchability') or 0)
+                std_hatchability=float(request.form.get('std_hatchability') or 0),
+                std_cum_eggs_hha=float(request.form.get('std_cum_eggs_hha') or 0),
+                std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
             )
             db.session.add(s)
             db.session.commit()
@@ -1410,6 +1423,8 @@ def manage_standards():
                 s.std_egg_prod=float(request.form.get('std_egg_prod') or 0)
                 s.std_egg_weight=float(request.form.get('std_egg_weight') or 0)
                 s.std_hatchability=float(request.form.get('std_hatchability') or 0)
+                s.std_cum_eggs_hha=float(request.form.get('std_cum_eggs_hha') or 0)
+                s.std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
 
                 db.session.commit()
                 flash(f'Standard for Week {s.week} updated.', 'success')
