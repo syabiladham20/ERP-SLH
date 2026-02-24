@@ -60,7 +60,7 @@
                         <div class="mt-1 overflow-auto" style="max-height: 80px;">
                             {% if day in vaccine_events_by_date %}
                                 {% for event in vaccine_events_by_date[day] %}
-                                    <div class="mb-1 p-1 rounded bg-info text-dark" style="font-size: 0.75rem;">
+                                    <div class="mb-1 p-1 rounded {% if event.completed %}bg-secondary text-white{% else %}bg-info text-dark{% endif %}" style="font-size: 0.75rem; {% if event.completed %}opacity: 0.8;{% endif %}">
                                         <strong>{{ event.flock.house.name }}</strong> | W{{ event.age }}<br>
                                         {{ event.obj.vaccine_name }}
                                     </div>

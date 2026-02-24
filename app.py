@@ -4431,13 +4431,34 @@ def health_log_vaccines():
     flock_ids = [f.id for f in active_flocks]
 
     vaccine_events_by_date = {}
-    vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).all()
+    vaccines = Vaccine.query.filter(
+        Vaccine.flock_id.in_(flock_ids),
+        or_(
+            and_(Vaccine.actual_date == None, Vaccine.est_date >= start_date, Vaccine.est_date <= end_date),
+            and_(Vaccine.actual_date != None, Vaccine.actual_date >= start_date, Vaccine.actual_date <= end_date)
+        )
+    ).all()
+
     for v in vaccines:
-        d = v.est_date
-        if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
-        age_days = (d - v.flock.intake_date).days
-        age_week = (age_days // 7) + 1
-        vaccine_events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock, 'age': age_week})
+        if v.actual_date:
+            d = v.actual_date
+            completed = True
+        else:
+            d = v.est_date
+            completed = False
+
+        # Only add if strictly in range (query is broad but let's be safe for edge cases in OR logic)
+        if start_date <= d <= end_date:
+            if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
+            age_days = (d - v.flock.intake_date).days
+            age_week = (age_days // 7) + 1
+            vaccine_events_by_date[d].append({
+                'type': 'Vaccine',
+                'obj': v,
+                'flock': v.flock,
+                'age': age_week,
+                'completed': completed
+            })
 
     flock_tasks = {}
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
