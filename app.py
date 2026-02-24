@@ -355,6 +355,9 @@ class Standard(db.Model):
     std_hatchability = db.Column(db.Float, default=0.0)
     production_week = db.Column(db.Integer, nullable=True) # Production Week 1, 2, 3...
 
+    std_cum_eggs_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Total Eggs)
+    std_cum_chicks_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Chicks)
+
 class GlobalStandard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     std_mortality_daily = db.Column(db.Float, default=0.05)
@@ -1622,6 +1625,134 @@ def get_chart_data(flock_id):
 
     return data
 
+def calculate_flock_summary(flock, daily_stats):
+    """
+    Calculates the 'Summary' tab data:
+    1. Dashboard: Current Totals vs Depletion Targets.
+    2. Weekly Table: Cumulative metrics from Start of Production.
+    """
+
+    # 1. Determine Start of Production & Females Housed
+    start_date = flock.production_start_date
+    start_stock = flock.prod_start_female
+
+    if not start_date or start_stock == 0:
+        # Fallback if Phase Production but no start counts recorded?
+        # Try to infer from logs?
+        # If logs have 'production_week' set, we can use that.
+        # But 'production_week' is derived from `start_of_lay_date` in `enrich_flock_data`.
+        # `start_of_lay_date` is biological start. `production_start_date` is management phase switch.
+        # User said: "Females Housed at 1st week of production".
+        # This usually means the counts when they were moved to laying house or reached 5%.
+        # I'll stick to `flock.prod_start_female` if available.
+        # If not, I'll try to find the stock at `production_week == 1`.
+
+        # Scan daily_stats for first entry with production_week >= 1
+        first_prod_log = next((d for d in daily_stats if d.get('production_week') and d['production_week'] >= 1), None)
+        if first_prod_log:
+            start_date = first_prod_log['date']
+            start_stock = first_prod_log['stock_female_start']
+        else:
+            return None, []
+
+    if start_stock <= 0:
+        start_stock = 1 # Avoid div by zero
+
+    # 2. Iterate daily_stats
+    # Filter for production period
+    prod_stats = [d for d in daily_stats if d['date'] >= start_date]
+
+    # Group by Production Week
+
+    # Standards Map
+    all_standards = Standard.query.all()
+    std_map = {s.production_week: s for s in all_standards if s.production_week}
+
+    cum_eggs = 0
+    cum_hatch_eggs = 0
+    cum_feed = 0
+    cum_chicks = 0
+
+    summary_table = []
+    dashboard_metrics = {}
+
+    # Grouping
+    by_week = {}
+    for d in prod_stats:
+        pw = d.get('production_week')
+        if not pw: continue
+        if pw not in by_week: by_week[pw] = []
+        by_week[pw].append(d)
+
+    sorted_weeks = sorted(by_week.keys())
+
+    for pw in sorted_weeks:
+        days = by_week[pw]
+
+        # Weekly Sums
+        w_eggs = sum(d['eggs_collected'] for d in days)
+        w_hatch_eggs = sum(d['hatch_eggs'] for d in days)
+        w_feed = sum(d['feed_f_kg'] for d in days) # Use calculated Kg from enrichment
+        w_chicks = sum(d['hatched_chicks'] or 0 for d in days)
+
+        # Update Cumulative
+        cum_eggs += w_eggs
+        cum_hatch_eggs += w_hatch_eggs
+        cum_feed += w_feed
+        cum_chicks += w_chicks
+
+        # Metrics
+        hha_total = cum_eggs / start_stock
+        hha_hatch = cum_hatch_eggs / start_stock
+        hha_chicks = cum_chicks / start_stock
+
+        feed_100_chicks = (cum_feed / cum_chicks * 100) if cum_chicks > 0 else 0
+        feed_100_h_eggs = (cum_feed / cum_hatch_eggs * 100) if cum_hatch_eggs > 0 else 0
+
+        # Liveability
+        last_day = days[-1]
+        current_live = last_day.get('stock_female_prod_end', 0)
+
+        liveability = (current_live / start_stock * 100)
+
+        # Standard
+        std = std_map.get(pw)
+        std_eggs = std.std_cum_eggs_hha if std else 0
+        std_chicks = std.std_cum_chicks_hha if std else 0
+
+        row = {
+            'week': pw,
+            'age': days[-1]['week'], # Bio Week
+            'cum_eggs_hha': round(hha_total, 1),
+            'std_cum_eggs_hha': std_eggs,
+            'cum_hatch_hha': round(hha_hatch, 1),
+            'cum_chicks_hha': round(hha_chicks, 1),
+            'std_cum_chicks_hha': std_chicks,
+            'feed_100_chicks': round(feed_100_chicks, 1),
+            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
+            'liveability': round(liveability, 2)
+        }
+        summary_table.append(row)
+
+        # Update Dashboard (Last valid week)
+        dashboard_metrics = {
+            'week': pw,
+            'age': days[-1]['week'],
+            'hha_total': round(hha_total, 1),
+            'hha_total_std': 189.6, # Depletion Target
+            'hha_hatch': round(hha_hatch, 1),
+            'hha_hatch_std': 180.6, # Depletion Target
+            'hha_chicks': round(hha_chicks, 1),
+            'hha_chicks_std': 154.6, # Depletion Target (154.6 from User Prompt 1, Dict has 154.6 at wk 40)
+            'liveability': round(liveability, 2),
+            'feed_100_chicks': round(feed_100_chicks, 1),
+            'feed_100_chicks_std': 36.2, # Depletion Target
+            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
+            'feed_100_h_eggs_std': 31.0 # Depletion Target
+        }
+
+    return dashboard_metrics, summary_table
+
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
 @dept_required('Farm')
 def toggle_phase(id):
@@ -1703,6 +1834,9 @@ def view_flock(id):
 
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
+
+    # --- Calculate Summary Tab Data ---
+    summary_dashboard, summary_table = calculate_flock_summary(flock, daily_stats)
 
     # Inject Standards
     for d in daily_stats:
@@ -2014,7 +2148,7 @@ def view_flock(id):
 
     weekly_data.reverse()
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks)
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table)
 
 @app.route('/flock/<int:id>/charts')
 @dept_required('Farm')

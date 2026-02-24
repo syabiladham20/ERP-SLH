@@ -66,6 +66,9 @@
     <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Summary</button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
   </li>
   <li class="nav-item" role="presentation">
@@ -206,7 +209,155 @@
     </div>
   </div>
 
-  <!-- Weekly Summary Tab (Pane 2) -->
+  <!-- Summary Tab (Pane 2) -->
+  <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+    {% if summary_dashboard %}
+    <!-- Dashboard Cards -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+        <!-- Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-success border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-success">{{ summary_dashboard.hha_total }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_total_std }}</span>
+                    </div>
+                    {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
+                    <small class="{{ 'text-success' if diff_eggs >= 0 else 'text-danger' }}">
+                        {{ "%+.1f"|format(diff_eggs) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Hatching Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-primary border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Hatching Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-primary">{{ summary_dashboard.hha_hatch }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_hatch_std }}</span>
+                    </div>
+                    {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
+                    <small class="{{ 'text-success' if diff_hatch >= 0 else 'text-danger' }}">
+                        {{ "%+.1f"|format(diff_hatch) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Chicks HHA -->
+        <div class="col">
+            <div class="card h-100 border-info border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Chicks HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-info">{{ summary_dashboard.hha_chicks }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_chicks_std }}</span>
+                    </div>
+                    {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
+                    <small class="{{ 'text-success' if diff_chicks >= 0 else 'text-danger' }}">
+                        {{ "%+.1f"|format(diff_chicks) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Liveability & Feed -->
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Efficiency Metrics</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="d-flex justify-content-between">
+                            <span>Liveability:</span>
+                            <strong>{{ summary_dashboard.liveability }}%</strong>
+                        </li>
+                        <li class="d-flex justify-content-between">
+                            <span>Feed/100 Chicks:</span>
+                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_chicks }} kg
+                            </span>
+                        </li>
+                        <li class="d-flex justify-content-between">
+                            <span>Feed/100 H.Eggs:</span>
+                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_h_eggs }} kg
+                            </span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cumulative Table -->
+    <div class="table-responsive table-responsive-sticky mb-4">
+        <table class="table table-bordered table-sm text-center align-middle table-hover">
+            <thead class="table-light sticky-table-header">
+                <tr>
+                    <th rowspan="2" class="align-middle">Prod Week</th>
+                    <th rowspan="2" class="align-middle">Age Week</th>
+                    <th colspan="2">Cumulative Eggs HHA</th>
+                    <th rowspan="2" class="align-middle">Cum. Hatching<br>Eggs HHA</th>
+                    <th colspan="2">Cumulative Chicks HHA</th>
+                    <th colspan="2">Feed Efficiency (Kg)</th>
+                    <th rowspan="2" class="align-middle">Liveability %</th>
+                </tr>
+                <tr>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>/100 Chicks</th>
+                    <th>/100 H.Eggs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary_table %}
+                <tr>
+                    <td>{{ row.week }}</td>
+                    <td>{{ row.age }}</td>
+
+                    <!-- Eggs HHA -->
+                    {% set diff_e = row.cum_eggs_hha - row.std_cum_eggs_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_e >= 0 else 'text-danger' }}">
+                        {{ row.cum_eggs_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_eggs_hha }}</td>
+
+                    <!-- Hatching Eggs HHA -->
+                    <td>{{ row.cum_hatch_hha }}</td>
+
+                    <!-- Chicks HHA -->
+                    {% set diff_c = row.cum_chicks_hha - row.std_cum_chicks_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_c >= 0 else 'text-danger' }}">
+                        {{ row.cum_chicks_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_chicks_hha }}</td>
+
+                    <!-- Feed Eff -->
+                    <td>{{ row.feed_100_chicks }}</td>
+                    <td>{{ row.feed_100_h_eggs }}</td>
+
+                    <!-- Liveability -->
+                    <td>{{ row.liveability }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning mt-3">
+        <h4 class="alert-heading">Production Summary Not Available</h4>
+        <p>This flock has not started production or missing production start data.</p>
+        <hr>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date' and 'Production Start Count'.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Weekly Summary Tab (Pane 3) -->
   <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
     {% if weekly_data %}
     <h3>Weekly Summary</h3>
