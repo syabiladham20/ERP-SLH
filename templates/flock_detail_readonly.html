@@ -10,7 +10,7 @@
     <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
       Switch House
     </button>
-    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="max-height: 300px; overflow-y: auto;">
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="max-height: 300px; overflow-y: auto; z-index: 1050;">
       {% for f in active_flocks %}
       <li><a class="dropdown-item" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
       {% endfor %}
@@ -447,6 +447,7 @@
           datalabels: {
               align: 'top',
               anchor: 'end',
+                  clip: true,
               formatter: (v, ctx) => {
                   if (v === null || v === undefined) return '';
                   if (ctx.dataset.label.includes('%') || ctx.dataset.yAxisID === 'y1') {
@@ -635,7 +636,8 @@
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
            });
            maleBWValues.push(bwData[maleKey]);
       }
@@ -650,7 +652,8 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false }
+          datalabels: { display: false },
+          clip: true
       });
       maleBWValues.push(bwData.bw_male_std);
 
@@ -660,7 +663,8 @@
           borderColor: '#FFCE56',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          clip: true
       });
 
       const maleBWScales = getScaleOptions(maleBWValues, false);
@@ -712,7 +716,8 @@
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
-                yAxisID: 'y'
+                yAxisID: 'y',
+                clip: true
            });
            femaleBWValues.push(bwData[femaleKey]);
       }
@@ -727,7 +732,8 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false }
+          datalabels: { display: false },
+          clip: true
       });
       femaleBWValues.push(bwData.bw_female_std);
 
@@ -737,7 +743,8 @@
           borderColor: '#9966FF',
           borderDash: [2, 2],
           pointStyle: 'rectRot',
-          yAxisID: 'y1'
+          yAxisID: 'y1',
+          clip: true
       });
 
       const femaleBWScales = getScaleOptions(femaleBWValues, false);
@@ -803,17 +810,17 @@
           data: {
               labels: labels,
               datasets: [
-                  { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'} },
-                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false} },
+                  { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
+                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false}, clip: true },
 
                   // Standard Mortality Lines
-                  { label: 'Std Mort Male %', data: generalData.std_mortality_male, type:'line', borderColor:'rgba(54, 162, 235, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false} },
-                  { label: 'Std Mort Female %', data: generalData.std_mortality_female, type:'line', borderColor:'rgba(255, 99, 132, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false} },
+                  { label: 'Std Mort Male %', data: generalData.std_mortality_male, type:'line', borderColor:'rgba(54, 162, 235, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Std Mort Female %', data: generalData.std_mortality_female, type:'line', borderColor:'rgba(255, 99, 132, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false}, clip: true },
 
-                  { label: 'Mort Male %', data: mortM, backgroundColor: '#B22222', yAxisID:'y1', datalabels:{display:false} },
-                  { label: 'Mort Female %', data: mortF, backgroundColor: '#FF0000', yAxisID:'y1', datalabels:{display:false} },
-                  { label: 'Cull Male %', data: cullM, backgroundColor: '#DAA520', yAxisID:'y1', datalabels:{display:false} },
-                  { label: 'Cull Female %', data: cullF, backgroundColor: '#FFD700', yAxisID:'y1', datalabels:{display:false} }
+                  { label: 'Mort Male %', data: mortM, backgroundColor: '#B22222', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Mort Female %', data: mortF, backgroundColor: '#FF0000', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Cull Male %', data: cullM, backgroundColor: '#DAA520', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Cull Female %', data: cullF, backgroundColor: '#FFD700', yAxisID:'y1', datalabels:{display:false}, clip: true }
               ]
           },
           options: {
@@ -920,7 +927,8 @@
                       backgroundColor: 'rgba(75, 192, 192, 0.7)',
                       stack: 'Stack 0',
                       order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
+                      clip: true
                   },
                   {
                       label: 'Clear %',
@@ -928,7 +936,8 @@
                       backgroundColor: 'rgba(255, 205, 86, 0.7)',
                       stack: 'Stack 0',
                       order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
+                      clip: true
                   },
                   {
                       label: 'Rotten %',
@@ -936,7 +945,8 @@
                       backgroundColor: 'rgba(255, 99, 132, 0.7)',
                       stack: 'Stack 0',
                       order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' }
+                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
+                      clip: true
                   },
                   {
                       label: 'Hatchability %',
@@ -947,7 +957,8 @@
                       borderWidth: 3,
                       yAxisID: 'y1',
                       order: 1,
-                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' }
+                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
+                      clip: true
                   },
                   {
                       label: 'Male Ratio %',
@@ -960,7 +971,8 @@
                       pointStyle: 'circle',
                       yAxisID: 'y1',
                       order: 0,
-                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' }
+                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
+                      clip: true
                   }
               ]
           },
