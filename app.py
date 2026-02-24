@@ -6232,6 +6232,9 @@ def executive_flock_detail(id):
     # --- Metrics Engine ---
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
 
+    # --- Calculate Summary Tab Data ---
+    summary_dashboard, summary_table = calculate_flock_summary(flock, daily_stats)
+
     # Inject Shifted Standard
     for d in daily_stats:
         # Biological Standards (Mortality, BW)
@@ -6472,7 +6475,9 @@ def executive_flock_detail(id):
                            current_stats=current_stats,
                            global_std=gs,
                            active_flocks=active_flocks,
-                           hatch_records=hatch_records)
+                           hatch_records=hatch_records,
+                           summary_dashboard=summary_dashboard,
+                           summary_table=summary_table)
 
 
 if __name__ == '__main__':
