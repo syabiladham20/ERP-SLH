@@ -180,4 +180,29 @@
 
     <!-- Bulk Upload / Seed could be here -->
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Check for saved scroll position
+        var scrollPos = sessionStorage.getItem('standards_scroll_pos');
+        if (scrollPos) {
+            var targetPos = parseInt(scrollPos);
+            window.scrollTo(0, targetPos);
+
+            // Retry after a small delay to ensure layout is ready
+            setTimeout(function() {
+                window.scrollTo(0, targetPos);
+                sessionStorage.removeItem('standards_scroll_pos');
+            }, 100);
+        }
+
+        // Attach submit listener to all forms
+        var forms = document.querySelectorAll('form');
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+                sessionStorage.setItem('standards_scroll_pos', window.scrollY);
+            });
+        });
+    });
+</script>
 {% endblock %}
