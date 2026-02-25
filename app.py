@@ -1891,8 +1891,8 @@ def view_flock(id):
         if d.get('production_week'):
             prod_std = prod_std_map.get(d['production_week'])
 
-        d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
-        d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
+        d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
         # Add other production standards if needed by template
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
@@ -1902,8 +1902,8 @@ def view_flock(id):
         if ws.get('production_week'):
             prod_std = prod_std_map.get(ws['production_week'])
 
-        ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
-        ws['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
+        ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -6130,7 +6130,8 @@ def get_hatchery_analytics():
         for r in next_records:
             age_days = (next_hatch_date_query - r.flock.intake_date).days
             age_week = (age_days // 7) + 1
-            std_hatch = std_map.get(age_week, 0.0)
+            std_hatch = std_map.get(age_week)
+            if std_hatch is None: std_hatch = 0.0
             forecast = r.egg_set * (std_hatch / 100.0)
             total_forecast += forecast
 
@@ -6349,32 +6350,32 @@ def executive_flock_detail(id):
     for d in daily_stats:
         # Biological Standards (Mortality, BW)
         std_bio = std_map.get(d['week'])
-        d['std_mortality_male'] = std_bio.std_mortality_male if std_bio else 0.0
-        d['std_mortality_female'] = std_bio.std_mortality_female if std_bio else 0.0
+        d['std_mortality_male'] = (std_bio.std_mortality_male if std_bio and std_bio.std_mortality_male is not None else 0.0)
+        d['std_mortality_female'] = (std_bio.std_mortality_female if std_bio and std_bio.std_mortality_female is not None else 0.0)
 
         # Production Standards (Egg Prod)
         prod_std = None
         if d.get('production_week'):
             prod_std = prod_std_map.get(d['production_week'])
 
-        d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
-        d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
+        d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
     for ws in weekly_stats:
         # Biological Standards
         std_bio = std_map.get(ws['week'])
-        ws['std_mortality_male'] = std_bio.std_mortality_male if std_bio else 0.0
-        ws['std_mortality_female'] = std_bio.std_mortality_female if std_bio else 0.0
+        ws['std_mortality_male'] = (std_bio.std_mortality_male if std_bio and std_bio.std_mortality_male is not None else 0.0)
+        ws['std_mortality_female'] = (std_bio.std_mortality_female if std_bio and std_bio.std_mortality_female is not None else 0.0)
 
         # Production Standards
         prod_std = None
         if ws.get('production_week'):
             prod_std = prod_std_map.get(ws['production_week'])
 
-        ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
-        ws['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
+        ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
