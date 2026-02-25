@@ -51,7 +51,11 @@ with app.app_context():
                 body_weight_female=2000 + (i*5),
                 body_weight_male=3000 + (i*10),
                 uniformity_female=random.uniform(80, 95),
-                uniformity_male=random.uniform(80, 95)
+                uniformity_male=random.uniform(80, 95),
+                feed_male_gp_bird=random.uniform(110, 130),
+                feed_female_gp_bird=random.uniform(150, 170),
+                water_intake_calculated=random.uniform(0.2, 0.3), # Liters per bird (approx) -> 200-300ml
+                flushing=(i % 10 == 0) # Every 10 days
             )
             db.session.add(log)
     db.session.commit()
