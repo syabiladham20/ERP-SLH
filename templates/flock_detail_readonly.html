@@ -399,6 +399,50 @@
         </div>
         </div>
 
+        <!-- Daily Water Chart -->
+        <div class="card mb-4" id="cardWater">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="waterChartTitle" class="fw-bold mb-2 mb-md-0">Daily Water per Bird (mL)</span>
+             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardWater')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="waterChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Daily Feed Chart -->
+        <div class="card mb-4" id="cardFeed">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="feedChartTitle" class="fw-bold mb-2 mb-md-0">Daily Gram per Bird</span>
+             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFeed')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="feedChart"></canvas>
+            </div>
+        </div>
+        </div>
+
         <!-- Male Chart -->
         <div class="card mb-4" id="cardMale">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
@@ -653,7 +697,7 @@
   const flockId = "{{ flock.id }}";
   const flockPhase = "{{ flock.phase }}";
 
-  let maleChart, femaleChart, generalChart, hatchChart, hatchingEggChart;
+  let maleChart, femaleChart, generalChart, hatchChart, hatchingEggChart, waterChart, feedChart;
 
   const hatchRecords = [
       {% for r in hatch_records %}
@@ -683,6 +727,8 @@
       general: { start: null, end: null },
       hatching: { start: null, end: null },
       hatchability: { start: null, end: null },
+      water: { start: null, end: null },
+      feed: { start: null, end: null },
       male: { start: null, end: null },
       female: { start: null, end: null }
   };
@@ -936,6 +982,148 @@
       } else {
           document.exitFullscreen();
       }
+  }
+
+  function renderWaterChart() {
+      const state = chartStates.water;
+      const fullData = chartDataDaily; // Water is primarily daily
+      const data = filterDataByDate(fullData, state.start, state.end, false);
+
+      updateChartTitle('waterChartTitle', 'Daily Water per Bird (mL)', data, true);
+
+      if (waterChart) waterChart.destroy();
+
+      const waterData = data.water_per_bird || [];
+      const flushFlags = data.flushing || [];
+
+      // Point Styles
+      const pointStyles = flushFlags.map(f => f ? 'triangle' : 'circle');
+      const pointColors = flushFlags.map(f => f ? 'red' : '#36A2EB');
+      const pointRadii = flushFlags.map(f => f ? 6 : 3);
+
+      const datasets = [{
+          label: 'Water (ml/bird)',
+          data: waterData,
+          borderColor: '#36A2EB',
+          backgroundColor: '#36A2EB',
+          pointStyle: pointStyles,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          pointRadius: pointRadii,
+          tension: 0.1,
+          yAxisID: 'y',
+          clip: true
+      }];
+
+      const scales = getScaleOptions(waterData, false);
+
+      waterChart = new Chart(document.getElementById('waterChart').getContext('2d'), {
+          type: 'line',
+          data: {
+              labels: data.dates,
+              datasets: datasets
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Water (ml)' },
+                      ...scales
+                  }
+              },
+              plugins: {
+                  ...commonOptions.plugins,
+                  tooltip: {
+                      callbacks: {
+                          afterBody: function(context) {
+                              const idx = context[0].dataIndex;
+                              if (flushFlags[idx]) {
+                                  return "FLUSHING ACTIVE";
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      });
+  }
+
+  function renderFeedChart() {
+      const state = chartStates.feed;
+      const fullData = chartDataDaily; // Feed is primarily daily
+      const data = filterDataByDate(fullData, state.start, state.end, false);
+
+      updateChartTitle('feedChartTitle', 'Daily Gram per Bird', data, true);
+
+      if (feedChart) feedChart.destroy();
+
+      const feedM = data.feed_male_gp_bird || [];
+      const feedF = data.feed_female_gp_bird || [];
+      const eggProd = data.egg_prod || [];
+
+      const datasets = [
+          {
+              label: 'Male Feed (g)',
+              data: feedM,
+              borderColor: '#36A2EB',
+              backgroundColor: '#36A2EB',
+              tension: 0.1,
+              yAxisID: 'y',
+              clip: true
+          },
+          {
+              label: 'Female Feed (g)',
+              data: feedF,
+              borderColor: '#FF6384',
+              backgroundColor: '#FF6384',
+              tension: 0.1,
+              yAxisID: 'y',
+              clip: true
+          },
+          {
+              label: 'Egg Prod %',
+              data: eggProd,
+              borderColor: 'green',
+              borderDash: [5, 5],
+              pointRadius: 0,
+              yAxisID: 'y1',
+              hidden: true,
+              clip: true
+          }
+      ];
+
+      const feedScales = getScaleOptions([feedM, feedF], false);
+
+      feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
+          type: 'line',
+          data: {
+              labels: data.dates,
+              datasets: datasets
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  y: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Feed (g)' },
+                      ...feedScales
+                  },
+                  y1: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      title: { display: true, text: 'Egg Prod %' },
+                      min: 0, max: 100,
+                      grid: { drawOnChartArea: false }
+                  }
+              }
+          }
+      });
   }
 
   function renderMaleChart() {
@@ -1519,6 +1707,8 @@
                   if(generalChart) generalChart.resize();
                   if(hatchChart) hatchChart.resize();
                   if(hatchingEggChart) hatchingEggChart.resize();
+                  if(waterChart) waterChart.resize();
+                  if(feedChart) feedChart.resize();
               }
           });
       });
@@ -1568,6 +1758,8 @@
       initChartPickers('general', renderGeneralChart);
       initChartPickers('hatching', renderHatchingChart);
       initChartPickers('hatchability', renderHatchChart);
+      initChartPickers('water', renderWaterChart);
+      initChartPickers('feed', renderFeedChart);
       initChartPickers('male', renderMaleChart);
       initChartPickers('female', renderFemaleChart);
 
@@ -1616,6 +1808,8 @@
               renderGeneralChart();
               renderHatchingChart();
               renderHatchChart();
+              renderWaterChart();
+              renderFeedChart();
               renderMaleChart();
               renderFemaleChart();
           }
@@ -1629,6 +1823,8 @@
       renderGeneralChart();
       renderHatchingChart();
       renderHatchChart();
+      renderWaterChart();
+      renderFeedChart();
       renderMaleChart();
       renderFemaleChart();
   });

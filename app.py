@@ -2076,6 +2076,11 @@ def view_flock(id):
         'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
         'bw_m': [d['body_weight_male'] if d['body_weight_male'] > 0 else None for d in daily_stats],
 
+        'water_per_bird': [round(d['water_per_bird'], 1) for d in daily_stats],
+        'feed_male_gp_bird': [round(d['feed_male_gp_bird'], 1) for d in daily_stats],
+        'feed_female_gp_bird': [round(d['feed_female_gp_bird'], 1) for d in daily_stats],
+        'flushing': [d['log'].flushing for d in daily_stats],
+
         # Legacy Partitions from Log
         'bw_male_p1': [d['log'].bw_male_p1 if d['log'].bw_male_p1 > 0 else None for d in daily_stats],
         'bw_male_p2': [d['log'].bw_male_p2 if d['log'].bw_male_p2 > 0 else None for d in daily_stats],
@@ -2228,6 +2233,15 @@ def view_flock(id):
 
         chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
         chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
+
+        chart_data_weekly['water_per_bird'] = chart_data_weekly.get('water_per_bird', [])
+        chart_data_weekly['water_per_bird'].append(round(ws['water_per_bird'], 1))
+
+        chart_data_weekly['feed_male_gp_bird'] = chart_data_weekly.get('feed_male_gp_bird', [])
+        chart_data_weekly['feed_male_gp_bird'].append(round(ws['feed_male_gp_bird'], 1))
+
+        chart_data_weekly['feed_female_gp_bird'] = chart_data_weekly.get('feed_female_gp_bird', [])
+        chart_data_weekly['feed_female_gp_bird'].append(round(ws['feed_female_gp_bird'], 1))
 
         # Aggregate Partitions for Weekly View
         def get_p_val(log, p_name, is_male, index):
@@ -6638,6 +6652,10 @@ def executive_flock_detail(id):
         'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
         'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
         'bw_m': [d['body_weight_male'] if d['body_weight_male'] > 0 else None for d in daily_stats],
+        'water_per_bird': [round(d['water_per_bird'], 1) for d in daily_stats],
+        'feed_male_gp_bird': [round(d['feed_male_gp_bird'], 1) for d in daily_stats],
+        'feed_female_gp_bird': [round(d['feed_female_gp_bird'], 1) for d in daily_stats],
+        'flushing': [d['log'].flushing for d in daily_stats],
         'notes': []
     }
 
@@ -6753,6 +6771,15 @@ def executive_flock_detail(id):
 
         chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
         chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
+
+        chart_data_weekly['water_per_bird'] = chart_data_weekly.get('water_per_bird', [])
+        chart_data_weekly['water_per_bird'].append(round(ws['water_per_bird'], 1))
+
+        chart_data_weekly['feed_male_gp_bird'] = chart_data_weekly.get('feed_male_gp_bird', [])
+        chart_data_weekly['feed_male_gp_bird'].append(round(ws['feed_male_gp_bird'], 1))
+
+        chart_data_weekly['feed_female_gp_bird'] = chart_data_weekly.get('feed_female_gp_bird', [])
+        chart_data_weekly['feed_female_gp_bird'].append(round(ws['feed_female_gp_bird'], 1))
 
         for i in range(1, 9):
             chart_data_weekly[f'bw_M{i}'].append(None)
