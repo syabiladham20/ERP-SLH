@@ -269,7 +269,7 @@
     <!-- General Performance Chart -->
     <div class="card mb-4 mt-3">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">General Performance</span>
+        <span id="generalChartTitle" class="fw-bold mb-2 mb-md-0">General Performance</span>
         <div class="d-flex flex-wrap gap-2">
             <div class="btn-group btn-group-sm" role="group">
                  <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
@@ -278,10 +278,13 @@
                  <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
                  <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
             </div>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreen('generalChartContainer')" title="Full Screen">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
         </div>
       </div>
       <div class="card-body" style="overflow-x: auto;">
-        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+        <div id="generalChartContainer" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
           <canvas id="generalChart"></canvas>
         </div>
       </div>
@@ -518,6 +521,7 @@
   const intakeDateStr = "{{ flock.intake_date }}";
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
+  const flockPhase = "{{ flock.phase }}";
 
   let maleChart, femaleChart, generalChart, hatchingEggChart;
   let currentMode = 'daily';
@@ -959,12 +963,20 @@
         baselineData
       ], true);
 
-      generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: generalData.dates,
-          datasets: [
-            {
+      // --- Dynamic Chart Config Based on Phase ---
+      const isRearing = (flockPhase === 'Rearing');
+
+      // 1. Update Title
+      const titleEl = document.getElementById('generalChartTitle');
+      if (titleEl) {
+          titleEl.innerText = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
+      }
+
+      // 2. Prepare Datasets
+      const generalDatasets = [];
+
+      if (!isRearing) {
+          generalDatasets.push({
               label: 'Egg Production %',
               data: generalData.egg_prod,
               type: 'line',
@@ -972,8 +984,8 @@
               yAxisID: 'y',
               datalabels: { display: false },
               clip: true
-            },
-            {
+          });
+          generalDatasets.push({
               label: 'Standard Egg Prod %',
               data: generalData.std_egg_prod,
               type: 'line',
@@ -984,7 +996,11 @@
               yAxisID: 'y',
               datalabels: { display: false },
               clip: true
-            },
+          });
+      }
+
+      // Always show Mortality & Culls (Depletion)
+      generalDatasets.push(
             {
               label: 'Mortality Male %',
               data: generalData[mortMKey],
@@ -1026,7 +1042,35 @@
               clip: true
             },
             notesDataset
-          ]
+      );
+
+      // 3. Prepare Scales
+      const generalScales = {
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: { display: true, text: 'Mortality/Culls %' },
+              grid: { drawOnChartArea: false },
+              ...genMortScales
+            }
+      };
+
+      if (!isRearing) {
+          generalScales.y = {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: { display: true, text: 'Egg Production %' },
+              ...genEggScales
+          };
+      }
+
+      generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: generalData.dates,
+          datasets: generalDatasets
         },
         options: {
           responsive: true,
@@ -1051,23 +1095,7 @@
             mode: 'index',
             intersect: false,
           },
-          scales: {
-            y: {
-              type: 'linear',
-              display: true,
-              position: 'right',
-              title: { display: true, text: 'Egg Production %' },
-              ...genEggScales
-            },
-            y1: {
-              type: 'linear',
-              display: true,
-              position: 'left',
-              title: { display: true, text: 'Mortality/Culls %' },
-              grid: { drawOnChartArea: false },
-              ...genMortScales
-            }
-          },
+          scales: generalScales,
           plugins: {
               legend: commonOptions.plugins.legend,
               zoom: commonOptions.plugins.zoom,
@@ -1200,6 +1228,27 @@
 
   function switchMode(mode) {
       renderCharts(mode);
+  }
+
+  function toggleFullScreen(elemId) {
+      const elem = document.getElementById(elemId);
+      if (!document.fullscreenElement) {
+          if (elem.requestFullscreen) {
+              elem.requestFullscreen();
+          } else if (elem.webkitRequestFullscreen) { /* Safari */
+              elem.webkitRequestFullscreen();
+          } else if (elem.msRequestFullscreen) { /* IE11 */
+              elem.msRequestFullscreen();
+          }
+      } else {
+          if (document.exitFullscreen) {
+              document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) { /* Safari */
+              document.webkitExitFullscreen();
+          } else if (document.msExitFullscreen) { /* IE11 */
+              document.msExitFullscreen();
+          }
+      }
   }
 
   // Initial Render
