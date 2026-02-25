@@ -37,6 +37,8 @@
     padding: 0.5rem; /* Reduced padding */
     font-size: 1rem; /* Reduced font size */
     min-height: 40px; /* Compact height */
+    top: 0 !important; /* Force header to top in fullscreen */
+    z-index: 1050;
 }
 
 #chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
@@ -815,11 +817,11 @@
             zoom: {
               wheel: { enabled: true },
               pinch: { enabled: true },
-              mode: 'x',
+              mode: 'xy',
             },
             pan: {
               enabled: true,
-              mode: 'x',
+              mode: 'xy',
             }
           },
           datalabels: {
@@ -1540,7 +1542,7 @@
 
           const config = {
               dateFormat: "Y-m-d",
-              disableMobile: "true",
+              // disableMobile: "true", // Removed to allow native mobile picker
               onChange: function(selectedDates, dateStr, instance) {
                    const startInst = chartStates[key].pickerStart;
                    const endInst = chartStates[key].pickerEnd;
@@ -1577,7 +1579,7 @@
       // 4. Initialize Global Picker
       const commonFlatpickrConfig = {
           dateFormat: "Y-m-d",
-          disableMobile: "true",
+          // disableMobile: "true", // Removed to allow native mobile picker
           onChange: function(selectedDates, dateStr, instance) {
               updateGlobalDateRange();
           }
