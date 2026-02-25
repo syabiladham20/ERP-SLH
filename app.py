@@ -353,6 +353,7 @@ class Standard(db.Model):
     std_feed_female = db.Column(db.Float, default=0.0)
     std_egg_weight = db.Column(db.Float, default=0.0)
     std_hatchability = db.Column(db.Float, default=0.0)
+    std_hatching_egg_pct = db.Column(db.Float, default=0.0)
     production_week = db.Column(db.Integer, nullable=True) # Production Week 1, 2, 3...
 
     std_cum_eggs_hha = db.Column(db.Float, default=0.0) # Cumulative HHA (Total Eggs)
@@ -1891,6 +1892,7 @@ def view_flock(id):
             prod_std = prod_std_map.get(d['production_week'])
 
         d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
+        d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
         # Add other production standards if needed by template
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
@@ -1901,6 +1903,7 @@ def view_flock(id):
             prod_std = prod_std_map.get(ws['production_week'])
 
         ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
+        ws['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -2008,6 +2011,12 @@ def view_flock(id):
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
         'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
+        'hatch_egg_pct': [round(d['hatch_egg_pct'], 2) for d in daily_stats],
+        'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) for d in daily_stats],
+        'cull_eggs_jumbo_pct': [round(d['cull_eggs_jumbo_pct'], 2) for d in daily_stats],
+        'cull_eggs_small_pct': [round(d['cull_eggs_small_pct'], 2) for d in daily_stats],
+        'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
+        'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
         'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
         'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
         'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
@@ -2118,6 +2127,24 @@ def view_flock(id):
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+
+        chart_data_weekly['hatch_egg_pct'] = chart_data_weekly.get('hatch_egg_pct', [])
+        chart_data_weekly['hatch_egg_pct'].append(round(ws['hatch_egg_pct'], 2))
+
+        chart_data_weekly['std_hatching_egg_pct'] = chart_data_weekly.get('std_hatching_egg_pct', [])
+        chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2))
+
+        chart_data_weekly['cull_eggs_jumbo_pct'] = chart_data_weekly.get('cull_eggs_jumbo_pct', [])
+        chart_data_weekly['cull_eggs_jumbo_pct'].append(round(ws['cull_eggs_jumbo_pct'], 2))
+
+        chart_data_weekly['cull_eggs_small_pct'] = chart_data_weekly.get('cull_eggs_small_pct', [])
+        chart_data_weekly['cull_eggs_small_pct'].append(round(ws['cull_eggs_small_pct'], 2))
+
+        chart_data_weekly['cull_eggs_crack_pct'] = chart_data_weekly.get('cull_eggs_crack_pct', [])
+        chart_data_weekly['cull_eggs_crack_pct'].append(round(ws['cull_eggs_crack_pct'], 2))
+
+        chart_data_weekly['cull_eggs_abnormal_pct'] = chart_data_weekly.get('cull_eggs_abnormal_pct', [])
+        chart_data_weekly['cull_eggs_abnormal_pct'].append(round(ws['cull_eggs_abnormal_pct'], 2))
 
         # Standard BW - Use Biological Age (w)
         std_bio = std_map.get(w)
@@ -3561,6 +3588,7 @@ def seed_arbor_acres_standards():
             std_cum_eggs_hha = float(row['Std Cum Eggs HHA']) if pd.notna(row['Std Cum Eggs HHA']) else 0.0
             std_cum_hatching_hha = float(row['Std Cum Hatching HHA']) if pd.notna(row['Std Cum Hatching HHA']) else 0.0
             std_cum_chicks_hha = float(row['Std Cum Chicks HHA']) if pd.notna(row['Std Cum Chicks HHA']) else 0.0
+            std_hatch_egg_pct = float(row['Std Hatching Egg %']) if 'Std Hatching Egg %' in row and pd.notna(row['Std Hatching Egg %']) else 0.0
 
             # Find or Create Standard
             s = Standard.query.filter_by(week=week).first()
@@ -3576,6 +3604,7 @@ def seed_arbor_acres_standards():
             s.std_cum_eggs_hha = std_cum_eggs_hha
             s.std_cum_hatching_eggs_hha = std_cum_hatching_hha
             s.std_cum_chicks_hha = std_cum_chicks_hha
+            s.std_hatching_egg_pct = std_hatch_egg_pct
 
             count += 1
 
@@ -6329,6 +6358,7 @@ def executive_flock_detail(id):
             prod_std = prod_std_map.get(d['production_week'])
 
         d['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
+        d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
 
     weekly_stats = aggregate_weekly_metrics(daily_stats)
 
@@ -6344,6 +6374,7 @@ def executive_flock_detail(id):
             prod_std = prod_std_map.get(ws['production_week'])
 
         ws['std_egg_prod'] = prod_std.std_egg_prod if prod_std else 0.0
+        ws['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std else 0.0
 
     medications = Medication.query.filter_by(flock_id=id).all()
 
@@ -6436,6 +6467,12 @@ def executive_flock_detail(id):
         'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
         'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
         'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
+        'hatch_egg_pct': [round(d['hatch_egg_pct'], 2) for d in daily_stats],
+        'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) for d in daily_stats],
+        'cull_eggs_jumbo_pct': [round(d['cull_eggs_jumbo_pct'], 2) for d in daily_stats],
+        'cull_eggs_small_pct': [round(d['cull_eggs_small_pct'], 2) for d in daily_stats],
+        'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
+        'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
         'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
         'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
         'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
@@ -6506,6 +6543,24 @@ def executive_flock_detail(id):
         chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
         chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
         chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+
+        chart_data_weekly['hatch_egg_pct'] = chart_data_weekly.get('hatch_egg_pct', [])
+        chart_data_weekly['hatch_egg_pct'].append(round(ws['hatch_egg_pct'], 2))
+
+        chart_data_weekly['std_hatching_egg_pct'] = chart_data_weekly.get('std_hatching_egg_pct', [])
+        chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2))
+
+        chart_data_weekly['cull_eggs_jumbo_pct'] = chart_data_weekly.get('cull_eggs_jumbo_pct', [])
+        chart_data_weekly['cull_eggs_jumbo_pct'].append(round(ws['cull_eggs_jumbo_pct'], 2))
+
+        chart_data_weekly['cull_eggs_small_pct'] = chart_data_weekly.get('cull_eggs_small_pct', [])
+        chart_data_weekly['cull_eggs_small_pct'].append(round(ws['cull_eggs_small_pct'], 2))
+
+        chart_data_weekly['cull_eggs_crack_pct'] = chart_data_weekly.get('cull_eggs_crack_pct', [])
+        chart_data_weekly['cull_eggs_crack_pct'].append(round(ws['cull_eggs_crack_pct'], 2))
+
+        chart_data_weekly['cull_eggs_abnormal_pct'] = chart_data_weekly.get('cull_eggs_abnormal_pct', [])
+        chart_data_weekly['cull_eggs_abnormal_pct'].append(round(ws['cull_eggs_abnormal_pct'], 2))
 
         # Standard BW - Use Biological Age (w)
         std_bio = std_map.get(w)
