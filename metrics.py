@@ -365,6 +365,8 @@ def aggregate_weekly_metrics(daily_stats):
                 'mortality_male': 0, 'mortality_female': 0,
                 'culls_male': 0, 'culls_female': 0,
                 'eggs_collected': 0, 'hatch_eggs': 0,
+                'cull_eggs_jumbo': 0, 'cull_eggs_small': 0,
+                'cull_eggs_crack': 0, 'cull_eggs_abnormal': 0,
                 'feed_total_kg': 0,
                 'feed_sum_m_kg': 0, 'feed_sum_f_kg': 0,
                 'water_total_vol': 0,
@@ -392,6 +394,10 @@ def aggregate_weekly_metrics(daily_stats):
         ws['culls_female'] += d['culls_female']
         ws['eggs_collected'] += d['eggs_collected']
         ws['hatch_eggs'] += d['hatch_eggs']
+        ws['cull_eggs_jumbo'] += d['cull_eggs_jumbo']
+        ws['cull_eggs_small'] += d['cull_eggs_small']
+        ws['cull_eggs_crack'] += d['cull_eggs_crack']
+        ws['cull_eggs_abnormal'] += d['cull_eggs_abnormal']
         ws['feed_total_kg'] += d['feed_total_kg']
         ws['feed_sum_m_kg'] += d['feed_m_kg']
         ws['feed_sum_f_kg'] += d['feed_f_kg']
@@ -441,6 +447,11 @@ def aggregate_weekly_metrics(daily_stats):
         ws['egg_prod_pct'] = safe_div(ws['eggs_collected'], avg_hen * ws['count'])
 
         ws['hatch_egg_pct'] = safe_div(ws['hatch_eggs'], ws['eggs_collected'])
+        ws['cull_eggs_jumbo_pct'] = safe_div(ws['cull_eggs_jumbo'], ws['eggs_collected'])
+        ws['cull_eggs_small_pct'] = safe_div(ws['cull_eggs_small'], ws['eggs_collected'])
+        ws['cull_eggs_crack_pct'] = safe_div(ws['cull_eggs_crack'], ws['eggs_collected'])
+        ws['cull_eggs_abnormal_pct'] = safe_div(ws['cull_eggs_abnormal'], ws['eggs_collected'])
+
         ws['hatchability_pct'] = safe_div(ws['hatched_chicks'], ws['egg_set'])
 
         ws['body_weight_male'] = ws['bw_male_sum'] / ws['bw_male_count'] if ws['bw_male_count'] > 0 else 0

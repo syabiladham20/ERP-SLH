@@ -291,6 +291,18 @@
       </div>
     </div>
 
+    <!-- Hatching Egg Chart -->
+    <div class="card mb-4">
+      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+        <span class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
+      </div>
+      <div class="card-body" style="overflow-x: auto;">
+        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+          <canvas id="hatchingEggChart"></canvas>
+        </div>
+      </div>
+    </div>
+
     <!-- Hatchability Chart -->
     <div class="card mb-4">
       <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
@@ -516,6 +528,8 @@
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
 
+  let maleChart, femaleChart, generalChart, hatchChart, hatchingEggChart;
+
   const hatchRecords = [
       {% for r in hatch_records %}
       {
@@ -537,7 +551,6 @@
   // Sort by date ASCENDING for chart logic (table is descending)
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
 
-  let maleChart, femaleChart, generalChart, hatchChart;
   let currentMode = 'daily';
   let globalStartDate = null;
   let globalEndDate = null;
@@ -796,6 +809,7 @@
       if (femaleChart) femaleChart.destroy();
       if (generalChart) generalChart.destroy();
       if (hatchChart) hatchChart.destroy();
+      if (hatchingEggChart) hatchingEggChart.destroy();
 
       // --- Male Chart (Weekly Fixed) ---
       const maleDatasets = [];
@@ -1082,6 +1096,115 @@
           plugins: [weekSeparatorPlugin]
       });
 
+      // --- Hatching Egg Chart ---
+      const heData = generalData.hatch_egg_pct || [];
+      const heStdData = generalData.std_hatching_egg_pct || [];
+      const jumboData = generalData.cull_eggs_jumbo_pct || [];
+      const smallData = generalData.cull_eggs_small_pct || [];
+      const crackData = generalData.cull_eggs_crack_pct || [];
+      const abnormalData = generalData.cull_eggs_abnormal_pct || [];
+
+      const barMaxCalc = getScaleOptions([jumboData, smallData, crackData, abnormalData], true);
+
+      hatchingEggChart = new Chart(document.getElementById('hatchingEggChart').getContext('2d'), {
+          type: 'bar',
+          data: {
+              labels: labels,
+              datasets: [
+                  {
+                      label: 'Jumbo %',
+                      data: jumboData,
+                      backgroundColor: '#70ad47',
+                      yAxisID: 'y',
+                      clip: true
+                  },
+                  {
+                      label: 'Small %',
+                      data: smallData,
+                      backgroundColor: '#4472c4',
+                      yAxisID: 'y',
+                      clip: true
+                  },
+                  {
+                      label: 'Abnormal %',
+                      data: abnormalData,
+                      backgroundColor: '#002060',
+                      yAxisID: 'y',
+                      clip: true
+                  },
+                  {
+                      label: 'Crack %',
+                      data: crackData,
+                      backgroundColor: '#ffc000',
+                      yAxisID: 'y',
+                      clip: true
+                  },
+                  {
+                      label: 'Hatchable Egg %',
+                      data: heData,
+                      type: 'line',
+                      borderColor: '#203764',
+                      borderWidth: 2,
+                      pointRadius: 3,
+                      yAxisID: 'y1',
+                      datalabels: {
+                          align: 'bottom',
+                          anchor: 'start'
+                      },
+                      clip: true
+                  },
+                  {
+                      label: 'Std Hatchable Egg %',
+                      data: heStdData,
+                      type: 'line',
+                      borderColor: '#203764',
+                      borderDash: [5, 5],
+                      borderWidth: 2,
+                      pointRadius: 0,
+                      yAxisID: 'y1',
+                      datalabels: { display: false },
+                      clip: true
+                  }
+              ]
+          },
+          options: {
+              ...commonOptions,
+              plugins: {
+                  ...commonOptions.plugins,
+                  weekSeparator: { enabled: mode === 'daily' },
+                  datalabels: {
+                       display: function(context) {
+                           return context.dataset.type === 'line';
+                       },
+                       formatter: function(value, context) {
+                           if (!value) return '';
+                           return parseFloat(value).toFixed(2) + '%';
+                       }
+                  }
+              },
+              scales: {
+                  y: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Cull Egg %' },
+                      min: 0,
+                      suggestedMax: barMaxCalc.suggestedMax
+                  },
+                  y1: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      title: { display: true, text: 'Hatchable Egg %' },
+                      min: 0,
+                      max: 100,
+                      grid: { drawOnChartArea: false }
+                  }
+              }
+          },
+          plugins: [weekSeparatorPlugin]
+      });
+
       renderHatchChart();
   }
 
@@ -1267,6 +1390,7 @@
                   if(femaleChart) femaleChart.resize();
                   if(generalChart) generalChart.resize();
                   if(hatchChart) hatchChart.resize();
+                  if(hatchingEggChart) hatchingEggChart.resize();
               }
           });
       });
