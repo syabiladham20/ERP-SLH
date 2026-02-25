@@ -651,6 +651,7 @@
           clear: {{ "%.2f"|format(r.clear_egg_pct) }},
           rotten: {{ "%.2f"|format(r.rotten_egg_pct) }},
           male_ratio: {{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else 'null' }},
+          std_hatch: {{ std_hatch_map.get(((r.setting_date - flock.intake_date).days // 7) + 1, 0.0) }},
           // Raw values for aggregation
           egg_set: {{ r.egg_set or 0 }},
           hatched: {{ r.hatched_chicks or 0 }},
@@ -1290,7 +1291,7 @@
       hatchRecords.forEach(r => {
           const week = "Week " + r.age;
           if (!weeklyHatch[week]) {
-              weeklyHatch[week] = { egg_set:0, hatched:0, clear:0, rotten:0, male_ratios:[], age: r.age };
+              weeklyHatch[week] = { egg_set:0, hatched:0, clear:0, rotten:0, male_ratios:[], age: r.age, std_hatch: r.std_hatch };
           }
           weeklyHatch[week].egg_set += r.egg_set;
           weeklyHatch[week].hatched += r.hatched;
@@ -1322,7 +1323,8 @@
                   fertile: parseFloat(fertilePct.toFixed(2)),
                   clear: parseFloat(clearPct.toFixed(2)),
                   rotten: parseFloat(rottenPct.toFixed(2)),
-                  male_ratio: avgMale !== null ? parseFloat(avgMale.toFixed(2)) : null
+                  male_ratio: avgMale !== null ? parseFloat(avgMale.toFixed(2)) : null,
+                  std_hatch: d.std_hatch
               });
           }
       });
@@ -1354,6 +1356,7 @@
       const dClear = finalData.map(r => r.clear);
       const dRotten = finalData.map(r => r.rotten);
       const dMale = finalData.map(r => r.male_ratio);
+      const dStdHatch = finalData.map(r => r.std_hatch);
 
       if (hatchChart) hatchChart.destroy(); // Fix re-render
 
@@ -1363,6 +1366,19 @@
           data: {
               labels: hLabels,
               datasets: [
+                  {
+                      label: 'Std Hatchability %',
+                      data: dStdHatch,
+                      type: 'line',
+                      borderColor: '#198754', // Bootstrap Success Green
+                      borderDash: [5, 5],
+                      pointRadius: 0,
+                      borderWidth: 2,
+                      yAxisID: 'y1',
+                      order: 0,
+                      datalabels: { display: false },
+                      clip: true
+                  },
                   {
                       label: 'Fertile %',
                       data: dFertile,

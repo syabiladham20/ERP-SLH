@@ -117,11 +117,12 @@
         const rotten = data.rotten_pct || [];
         const hatch = data.hatch_pct || [];
         const male = data.male_ratio_pct || [];
+        const stdHatch = data.std_hatch_pct || [];
 
         // Calculate Stacked Max
         const stackedSums = fertile.map((v, i) => (v||0) + (clear[i]||0) + (rotten[i]||0));
         const yOptions = getOptions(stackedSums, true);
-        const y1Values = [...hatch, ...male];
+        const y1Values = [...hatch, ...male, ...stdHatch];
         const y1Options = getOptions(y1Values, true);
 
         if (hatchChart) hatchChart.destroy();
@@ -132,6 +133,18 @@
             data: {
                 labels: data.weeks,
                 datasets: [
+                    {
+                        label: 'Std Hatchability %',
+                        data: data.std_hatch_pct,
+                        type: 'line',
+                        borderColor: '#198754', // Bootstrap Success Green
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        yAxisID: 'y1',
+                        order: 0,
+                        datalabels: { display: false }
+                    },
                     {
                         label: 'Fertile %',
                         data: data.fertile_pct,
