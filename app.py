@@ -317,6 +317,7 @@ class DailyLog(db.Model):
     flushing = db.Column(db.Boolean, default=False)
 
     photos = db.relationship('DailyLogPhoto', backref='log', lazy=True, cascade="all, delete-orphan")
+    clinical_notes_list = db.relationship('ClinicalNote', backref='log', lazy=True, cascade="all, delete-orphan")
 
     # Feed Codes (Main Branch Logic)
     feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
@@ -336,9 +337,16 @@ class DailyLog(db.Model):
         days = (delta - 1) % 7 + 1
         return f"{weeks}.{days}"
 
+class ClinicalNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
+    caption = db.Column(db.String(255))
+    photos = db.relationship('DailyLogPhoto', backref='note', lazy=True)
+
 class DailyLogPhoto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('clinical_note.id'), nullable=True)
     file_path = db.Column(db.String(200), nullable=False)
     original_filename = db.Column(db.String(200), nullable=True)
 
@@ -1633,12 +1641,30 @@ def get_chart_data(flock_id):
             if done_vacs:
                 note_parts.append("Vac: " + ", ".join(done_vacs))
 
-            has_photos = len(log.photos) > 0
+            # Main Photos
+            main_photos = [p for p in log.photos if p.note_id is None]
 
-            if note_parts or has_photos:
-                photo_list = []
-                for p in log.photos:
-                    photo_list.append({
+            # Extra Notes
+            extra_notes = []
+            if log.clinical_notes_list:
+                for n in log.clinical_notes_list:
+                    n_photos = []
+                    for p in n.photos:
+                        n_photos.append({
+                            'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                            'name': p.original_filename or 'Photo'
+                        })
+                    extra_notes.append({
+                        'caption': n.caption,
+                        'photos': n_photos
+                    })
+
+            has_data = (note_parts or main_photos or extra_notes)
+
+            if has_data:
+                main_photo_list = []
+                for p in main_photos:
+                    main_photo_list.append({
                         'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
                         'name': p.original_filename or 'Photo'
                     })
@@ -1646,8 +1672,11 @@ def get_chart_data(flock_id):
                 data['events'].append({
                     'date': log.date.isoformat(),
                     'note': " | ".join(note_parts),
-                    'photos': photo_list, # New structure
-                    'type': 'note' # Generalized
+                    'main_note': " | ".join(note_parts),
+                    'photos': main_photo_list,
+                    'main_photos': main_photo_list,
+                    'extra_notes': extra_notes,
+                    'type': 'note'
                 })
 
     else:
@@ -2125,18 +2154,40 @@ def view_flock(id):
         done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
         if done_vacs: note_parts.append("Vac: " + ", ".join(done_vacs))
 
-        has_photos = len(log.photos) > 0
-        if note_parts or has_photos:
-            photo_list = []
-            for p in log.photos:
-                photo_list.append({
+        # Main Photos (note_id is None)
+        main_photos = [p for p in log.photos if p.note_id is None]
+
+        # Extra Notes
+        extra_notes = []
+        if log.clinical_notes_list:
+            for n in log.clinical_notes_list:
+                n_photos = []
+                for p in n.photos:
+                    n_photos.append({
+                        'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                        'name': p.original_filename or 'Photo'
+                    })
+                extra_notes.append({
+                    'caption': n.caption,
+                    'photos': n_photos
+                })
+
+        has_any_data = (note_parts or main_photos or extra_notes)
+
+        if has_any_data:
+            main_photo_list = []
+            for p in main_photos:
+                main_photo_list.append({
                     'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
                     'name': p.original_filename or 'Photo'
                 })
 
             note_obj = {
-                'note': " | ".join(note_parts),
-                'photos': photo_list
+                'note': " | ".join(note_parts), # Kept for backward compat in tooltips
+                'main_note': " | ".join(note_parts),
+                'main_photos': main_photo_list,
+                'extra_notes': extra_notes,
+                'photos': main_photo_list # Fallback for legacy views
             }
 
         chart_data['notes'].append(note_obj)
@@ -4701,6 +4752,64 @@ def update_log_from_request(log, req):
         log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
     else:
         log.water_intake_calculated = 0.0
+
+    update_clinical_notes(log, req)
+
+def save_note_photos(log, note, files):
+    for file in files:
+        if file and file.filename != '':
+            date_str = log.date.strftime('%y%m%d')
+            # Ensure safe filename
+            safe_orig = secure_filename(file.filename)
+            raw_name = f"{log.flock.flock_id}_{date_str}_Note{note.id}_{safe_orig}"
+            filename = secure_filename(raw_name)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+
+            new_photo = DailyLogPhoto(
+                log_id=log.id,
+                note_id=note.id,
+                file_path=filepath,
+                original_filename=file.filename
+            )
+            db.session.add(new_photo)
+
+def update_clinical_notes(log, req):
+    # 1. Handle Deletions
+    del_ids = req.form.getlist('delete_note_ids[]')
+    if del_ids:
+        # Check ownership/relation
+        ClinicalNote.query.filter(ClinicalNote.id.in_(del_ids), ClinicalNote.log_id == log.id).delete(synchronize_session=False)
+
+    # 2. Handle Existing Updates
+    exist_ids = req.form.getlist('existing_note_id[]')
+    for nid in exist_ids:
+        note = ClinicalNote.query.get(nid)
+        if note and note.log_id == log.id:
+            caption = req.form.get(f'existing_note_caption_{nid}')
+            if caption is not None:
+                note.caption = caption
+
+            # Photos
+            if f'existing_note_photos_{nid}' in req.files:
+                files = req.files.getlist(f'existing_note_photos_{nid}')
+                save_note_photos(log, note, files)
+
+    # 3. Handle New Notes
+    new_indices = req.form.getlist('extra_note_index[]')
+    for idx in new_indices:
+        caption = req.form.get(f'extra_note_caption_{idx}')
+        # Check files
+        files = req.files.getlist(f'extra_note_photos_{idx}')
+        has_files = any(f.filename != '' for f in files)
+
+        if caption or has_files:
+            note = ClinicalNote(log_id=log.id, caption=caption)
+            db.session.add(note)
+            db.session.flush() # Get ID
+
+            if has_files:
+                save_note_photos(log, note, files)
 
 def verify_import_data(flock, logs=None):
     weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()

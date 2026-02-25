@@ -361,6 +361,72 @@
       </div>
     </div>
 
+    <div class="card mb-3">
+      <div class="card-header sticky-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <span>Detailed Clinical Notes (Optional)</span>
+        <button type="button" class="btn btn-sm btn-light fw-bold" onclick="addNoteRow()">+ Add Note Group</button>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-light border small mb-3">
+            Add detailed notes with specific photos (e.g. "Lesions on liver"). These will appear as separate entries in the dashboard.
+        </div>
+
+        <div id="notes_container">
+            <!-- Dynamic rows -->
+            {% if log and log.clinical_notes_list %}
+                {% for note in log.clinical_notes_list %}
+                <div class="note-row border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <h6>Note Group {{ loop.index }}</h6>
+                        <!-- We use existing ID for updates -->
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteExistingNote({{ note.id }}, this)">Delete</button>
+                    </div>
+                    <input type="hidden" name="existing_note_id[]" value="{{ note.id }}">
+                    <div class="mb-2">
+                        <label class="form-label">Caption</label>
+                        <input type="text" class="form-control" name="existing_note_caption_{{ note.id }}" value="{{ note.caption }}">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Add Photos</label>
+                        <input type="file" class="form-control" name="existing_note_photos_{{ note.id }}" multiple accept="image/*">
+                        {% if note.photos %}
+                        <div class="mt-1 small text-muted">
+                            Existing:
+                            {% for p in note.photos %}
+                                <a href="{{ url_for('uploaded_file', filename=p.file_path | basename) }}" target="_blank">{{ p.original_filename or 'Photo' }}</a>
+                                <button type="button" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.7rem; text-decoration: none;" onclick="deletePhoto({{ p.id }}, '{{ p.original_filename }}')">&times;</button>
+                                {{ "," if not loop.last }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- Template Row (Hidden) -->
+        <div id="note_template" style="display:none;">
+            <div class="note-row border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <h6>New Note Group <span class="note-index"></span></h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeNoteRow(this)">Remove</button>
+                </div>
+                <!-- Using a counter for unique ID in this session -->
+                <input type="hidden" name="extra_note_index[]" value="" class="note-index-input">
+                <div class="mb-2">
+                    <label class="form-label">Caption</label>
+                    <input type="text" class="form-control note-caption-input" placeholder="Description...">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Photos</label>
+                    <input type="file" class="form-control note-file-input" multiple accept="image/*">
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+
     {% if vaccines_due %}
     <div class="card mb-3 border-info">
       <div class="card-header sticky-header bg-info text-white">Vaccinations (Pending / Done Today)</div>
@@ -655,6 +721,67 @@
         }
         document.getElementById('body_weight_female').value = f_cnt > 0 ? (f_sum / f_cnt).toFixed(2) : '';
         document.getElementById('uniformity_female').value = f_cnt > 0 ? (fu_sum / f_cnt).toFixed(2) : '';
+    }
+
+    // Note Row Management
+    let noteIndex = 0;
+
+    function addNoteRow() {
+        noteIndex++;
+        let container = document.getElementById('notes_container');
+        let template = document.getElementById('note_template').innerHTML;
+
+        let newRow = document.createElement('div');
+        newRow.innerHTML = template;
+
+        // Update identifiers
+        newRow.querySelector('.note-index').textContent = noteIndex;
+
+        let idxInput = newRow.querySelector('.note-index-input');
+        idxInput.value = noteIndex;
+
+        let captionInput = newRow.querySelector('.note-caption-input');
+        captionInput.setAttribute('name', 'extra_note_caption_' + noteIndex);
+
+        let fileInput = newRow.querySelector('.note-file-input');
+        fileInput.setAttribute('name', 'extra_note_photos_' + noteIndex);
+
+        container.appendChild(newRow.firstElementChild);
+    }
+
+    function removeNoteRow(btn) {
+        let row = btn.closest('.note-row');
+        row.remove();
+    }
+
+    function deleteExistingNote(noteId, btn) {
+        if(confirm("Delete this entire note group and its photos?")) {
+            // We can handle this via backend (if missing from form) or explicit fetch.
+            // Since this form might not be submitted yet, fetch is safer to delete immediately,
+            // OR add a hidden field "delete_note_ids[]" and process on submit.
+            // Let's use hidden field approach to avoid accidental deletion without submit?
+            // But 'deletePhoto' uses fetch. Consistency?
+            // User requirement: "add or delete new field".
+            // For existing DB records, "Delete" usually implies immediate action or "Mark for deletion".
+            // Let's use fetch to be consistent with deletePhoto. But I need a route.
+            // I haven't created a route for deleting ClinicalNote yet.
+            // I'll hide the row and add to a hidden input "deleted_notes[]".
+
+            let row = btn.closest('.note-row');
+            row.style.display = 'none';
+
+            // Remove inputs so they don't submit updates
+            let inputs = row.querySelectorAll('input');
+            inputs.forEach(i => i.disabled = true);
+
+            // Add to deleted list
+            let form = document.querySelector('form');
+            let input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'delete_note_ids[]';
+            input.value = noteId;
+            form.appendChild(input);
+        }
     }
 
     // Medication Row Management

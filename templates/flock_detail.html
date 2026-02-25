@@ -1234,7 +1234,11 @@
                          ? generalData.mortality_cum_female[i]
                          : 0;
               if (yVal === null) yVal = 0;
-              return { x: d, y: yVal, note: n.note, photos: n.photos, photo: n.photo, date: d };
+              return {
+                  x: d, y: yVal, date: d,
+                  note: n.note, photos: n.photos, photo: n.photo, // Legacy
+                  main_note: n.main_note, main_photos: n.main_photos, extra_notes: n.extra_notes // New
+              };
           }
           return null;
       }).filter(p => p !== null);
@@ -1346,8 +1350,7 @@
                   const dataset = generalChart.data.datasets[datasetIndex];
                   if (dataset.label === 'Clinical Notes') {
                       const pt = dataset.data[index];
-                      // Use photos array if available, else fallback to single photo
-                      if (pt) showNoteModal(pt.date, pt.note, pt.photos || pt.photo);
+                      if (pt) showNoteModal(pt);
                   }
               }
           },
@@ -1610,40 +1613,92 @@
   });
 
 
-  function showNoteModal(date, text, photos) {
+  function showNoteModal(pt) {
+      // Support legacy signature or object
+      let date, text, photos, main_photos, extra_notes;
+      if (typeof pt === 'string') {
+          // Legacy call protection (if any)
+          date = arguments[0];
+          text = arguments[1];
+          photos = arguments[2];
+      } else {
+          date = pt.date;
+          text = pt.main_note || pt.note; // Fallback
+          main_photos = pt.main_photos || pt.photos || [];
+          if(!Array.isArray(main_photos) && main_photos) main_photos = [{url: main_photos, name:'Photo'}];
+          extra_notes = pt.extra_notes || [];
+      }
+
       document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
-      document.getElementById('noteModalText').innerText = text;
-      document.getElementById('noteModalDate').innerText = date;
+      // We will hide the static text/date elements and move everything into carousel slides
+      document.getElementById('noteModalText').style.display = 'none';
+      document.getElementById('noteModalDate').style.display = 'none';
 
       const carousel = document.getElementById('photoCarousel');
       const inner = document.getElementById('photoCarouselInner');
       inner.innerHTML = '';
+      carousel.style.display = 'block';
 
-      let photoList = [];
-      if (Array.isArray(photos)) {
-          photoList = photos;
-      } else if (typeof photos === 'string' && photos) {
-          photoList = [{url: photos, name: 'Photo'}];
-      }
+      let slides = [];
 
-      if (photoList.length > 0) {
-          carousel.style.display = 'block';
-          photoList.forEach((p, index) => {
-              const div = document.createElement('div');
-              div.className = 'carousel-item' + (index === 0 ? ' active' : '');
-              div.innerHTML = `
-                <div class="d-flex flex-column align-items-center justify-content-center" style="height: 500px; background-color: #f8f9fa;">
-                    <img src="${p.url}" class="d-block" style="max-height: 100%; max-width: 100%; width: auto; height: auto;" alt="${p.name}">
-                    <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-1 mb-0" style="bottom: 10px;">
-                        <small>${p.name}</small>
-                    </div>
-                </div>
-              `;
-              inner.appendChild(div);
+      // 1. Main Slide
+      if (text || (main_photos && main_photos.length > 0)) {
+          slides.push({
+              title: "Main Clinical Note",
+              caption: text || "No text.",
+              photos: main_photos || []
           });
-      } else {
-          carousel.style.display = 'none';
       }
+
+      // 2. Extra Slides
+      if (extra_notes) {
+          extra_notes.forEach((note, idx) => {
+              slides.push({
+                  title: `Detailed Note ${idx + 1}`,
+                  caption: note.caption || "No caption.",
+                  photos: note.photos || []
+              });
+          });
+      }
+
+      if (slides.length === 0) {
+          // Fallback if empty
+          slides.push({title: "Info", caption: "No data.", photos: []});
+      }
+
+      slides.forEach((slide, index) => {
+          const div = document.createElement('div');
+          div.className = 'carousel-item' + (index === 0 ? ' active' : '');
+
+          let photosHtml = '';
+          if (slide.photos.length > 0) {
+              photosHtml = `<div class="d-flex flex-wrap justify-content-center gap-2 mb-3" style="max-height: 400px; overflow-y: auto;">`;
+              slide.photos.forEach(p => {
+                  photosHtml += `
+                    <div class="text-center">
+                        <a href="${p.url}" target="_blank">
+                            <img src="${p.url}" class="img-thumbnail" style="max-height: 180px; object-fit: contain;" alt="${p.name}">
+                        </a>
+                        <div class="small text-muted mt-1" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
+                    </div>
+                  `;
+              });
+              photosHtml += `</div>`;
+          } else {
+              photosHtml = `<div class="d-flex align-items-center justify-content-center text-muted" style="height: 100px;">No Photos</div>`;
+          }
+
+          div.innerHTML = `
+            <div class="p-4 bg-white">
+                <h5 class="text-primary border-bottom pb-2">${slide.title}</h5>
+                ${photosHtml}
+                <div class="alert alert-light border mt-3">
+                    <strong>Note:</strong> ${slide.caption}
+                </div>
+            </div>
+          `;
+          inner.appendChild(div);
+      });
 
       const modal = new bootstrap.Modal(document.getElementById('noteModal'));
       modal.show();
