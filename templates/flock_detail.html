@@ -257,9 +257,11 @@
 
     <!-- Filter Control Bar -->
     <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
-        <div class="input-group" style="max-width: 300px;">
-            <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
-            <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly>
+        <div class="input-group" style="max-width: 450px;">
+            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> Start</span>
+            <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
+            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> End</span>
+            <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
         </div>
         <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
     </div>
@@ -1085,36 +1087,50 @@
       const last30 = new Date();
       last30.setDate(today.getDate() - 30);
 
-      flatpickr("#dateRangeSlicer", {
-          mode: "range",
-          defaultDate: [last30, today],
+      // Initialize global vars immediately
+      globalStartDate = last30;
+      globalEndDate = today;
+
+      const commonFlatpickrConfig = {
           dateFormat: "Y-m-d",
-          disableMobile: "true", // Use custom UI on mobile for better range support
+          disableMobile: "true",
           onChange: function(selectedDates, dateStr, instance) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-
-                  // Update Age Display
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-
-                  renderCharts(currentMode);
-              }
-          },
-          onReady: function(selectedDates, dateStr, instance) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-
-                  renderCharts(currentMode);
-              }
+              updateDateRangeAndRender();
           }
+      };
+
+      const fpStart = flatpickr("#startDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: last30
       });
+
+      const fpEnd = flatpickr("#endDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: today
+      });
+
+      function updateDateRangeAndRender() {
+          const startDates = fpStart.selectedDates;
+          const endDates = fpEnd.selectedDates;
+
+          if (startDates.length > 0 && endDates.length > 0) {
+              globalStartDate = startDates[0];
+              globalEndDate = endDates[0];
+
+              // Update Age Display
+              const startAge = calculateAgeWeeks(globalStartDate);
+              const endAge = calculateAgeWeeks(globalEndDate);
+              document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+              renderCharts(currentMode);
+          }
+      }
+
+      // Initial Render Logic
+      const startAge = calculateAgeWeeks(globalStartDate);
+      const endAge = calculateAgeWeeks(globalEndDate);
+      document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+      renderCharts(currentMode);
   });
 
 

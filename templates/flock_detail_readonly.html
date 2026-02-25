@@ -261,9 +261,11 @@
 
     <!-- Filter Control Bar -->
     <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
-        <div class="input-group" style="max-width: 300px;">
-            <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
-            <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly>
+        <div class="input-group" style="max-width: 450px;">
+            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> Start</span>
+            <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
+            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> End</span>
+            <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
         </div>
         <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
     </div>
@@ -476,6 +478,25 @@
 
 </div>
 
+<!-- Note Modal -->
+<div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="noteModalPhoto" class="mb-3" style="display: none;">
+          <img src="" class="img-fluid rounded border" alt="Clinical Photo">
+        </div>
+        <p id="noteModalText" class="lead"></p>
+        <p id="noteModalDate" class="text-muted small"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
@@ -489,6 +510,8 @@
   const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
+  const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
+  const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
   const intakeDateStr = "{{ flock.intake_date }}";
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
@@ -951,10 +974,55 @@
           labels = generalData.dates; // Already "Week X"
       }
 
-      const mortM = mode==='daily' ? generalData.mortality_daily_male : generalData.mortality_weekly_male;
-      const mortF = mode==='daily' ? generalData.mortality_daily_female : generalData.mortality_weekly_female;
-      const cullM = mode==='daily' ? generalData.culls_daily_male : generalData.culls_weekly_male;
-      const cullF = mode==='daily' ? generalData.culls_daily_female : generalData.culls_weekly_female;
+      const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
+      const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
+      const cullMKey = mode === 'daily' ? 'culls_daily_male' : 'culls_weekly_male';
+      const cullFKey = mode === 'daily' ? 'culls_daily_female' : 'culls_weekly_female';
+
+      const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
+      const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
+
+      // Prepare Notes Dataset
+      const notesPoints = (generalData.dates || []).map((d, i) => {
+          const n = generalData.notes ? generalData.notes[i] : null;
+          if (n) {
+              let yVal = (generalData.mortality_cum_female && generalData.mortality_cum_female[i] !== undefined)
+                         ? generalData.mortality_cum_female[i]
+                         : 0;
+              if (yVal === null) yVal = 0;
+              return {
+                  x: labels[i],
+                  y: yVal,
+                  note: n.note,
+                  photo: n.photo,
+                  date: d
+              };
+          }
+          return null;
+      }).filter(p => p !== null);
+
+      const notesDataset = {
+          label: 'Clinical Notes',
+          data: notesPoints,
+          type: 'scatter',
+          yAxisID: 'y1',
+          pointStyle: 'rectRot',
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          backgroundColor: 'purple',
+          borderColor: 'purple',
+          hidden: true,
+          datalabels: { display: false },
+          clip: true
+      };
+
+      const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
+      // Include baseline in scale calculation
+      const genMortScales = getScaleOptions([
+        generalData[mortMKey], generalData[mortFKey],
+        generalData[cullMKey], generalData[cullFKey],
+        baselineData
+      ], true);
 
       generalChart = new Chart(document.getElementById('generalChart'), {
           type: 'bar',
@@ -964,14 +1032,24 @@
                   { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
                   { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false}, clip: true },
 
-                  // Standard Mortality Lines
-                  { label: 'Std Mort Male %', data: generalData.std_mortality_male, type:'line', borderColor:'rgba(54, 162, 235, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Std Mort Female %', data: generalData.std_mortality_female, type:'line', borderColor:'rgba(255, 99, 132, 0.8)', borderDash:[2,2], pointRadius:0, yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', datalabels:{display:false}, clip: true },
 
-                  { label: 'Mort Male %', data: mortM, backgroundColor: '#B22222', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Mort Female %', data: mortF, backgroundColor: '#FF0000', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Cull Male %', data: cullM, backgroundColor: '#DAA520', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Cull Female %', data: cullF, backgroundColor: '#FFD700', yAxisID:'y1', datalabels:{display:false}, clip: true }
+                  {
+                      label: 'Standard Mort Limit',
+                      data: baselineData,
+                      type: 'line',
+                      borderColor: 'red',
+                      borderWidth: 2,
+                      borderDash: [5, 5],
+                      pointRadius: 0,
+                      yAxisID: 'y1',
+                      datalabels: { display: false },
+                      clip: true
+                  },
+                  notesDataset
               ]
           },
           options: {
@@ -980,9 +1058,25 @@
                   ...commonOptions.plugins,
                   weekSeparator: { enabled: mode === 'daily' }
               },
+              onClick: (e) => {
+                  const points = generalChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                  if (points.length) {
+                      const firstPoint = points[0];
+                      const datasetIndex = firstPoint.datasetIndex;
+                      const index = firstPoint.index;
+                      const dataset = generalChart.data.datasets[datasetIndex];
+
+                      if (dataset.label === 'Clinical Notes') {
+                          const pt = dataset.data[index];
+                          if (pt) {
+                              showNoteModal(pt.date, pt.note, pt.photo);
+                          }
+                      }
+                  }
+              },
               scales: {
-                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, min: 0, max: 100 },
-                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, min: 0 }
+                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, ...genEggScales },
+                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, ...genMortScales }
               }
           },
           plugins: [weekSeparatorPlugin]
@@ -1147,6 +1241,24 @@
       renderCharts(mode);
   }
 
+  function showNoteModal(date, text, photoUrl) {
+      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
+      document.getElementById('noteModalText').innerText = text;
+      document.getElementById('noteModalDate').innerText = date;
+
+      const imgDiv = document.getElementById('noteModalPhoto');
+      const img = imgDiv.querySelector('img');
+      if (photoUrl) {
+          img.src = photoUrl;
+          imgDiv.style.display = 'block';
+      } else {
+          imgDiv.style.display = 'none';
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
+      modal.show();
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(el => {
           el.addEventListener('shown.bs.tab', (e) => {
@@ -1159,40 +1271,55 @@
           });
       });
 
-      // Flatpickr
+      // Flatpickr Init
       const today = new Date();
       const last30 = new Date();
       last30.setDate(today.getDate() - 30);
 
-      flatpickr("#dateRangeSlicer", {
-          mode: "range",
-          defaultDate: [last30, today],
+      // Initialize global vars immediately
+      globalStartDate = last30;
+      globalEndDate = today;
+
+      const commonFlatpickrConfig = {
           dateFormat: "Y-m-d",
           disableMobile: "true",
-          onChange: function(selectedDates) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-
-                  renderCharts(currentMode);
-              }
-          },
-          onReady: function(selectedDates) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-
-                  renderCharts(currentMode);
-              }
+          onChange: function(selectedDates, dateStr, instance) {
+              updateDateRangeAndRender();
           }
+      };
+
+      const fpStart = flatpickr("#startDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: last30
       });
+
+      const fpEnd = flatpickr("#endDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: today
+      });
+
+      function updateDateRangeAndRender() {
+          const startDates = fpStart.selectedDates;
+          const endDates = fpEnd.selectedDates;
+
+          if (startDates.length > 0 && endDates.length > 0) {
+              globalStartDate = startDates[0];
+              globalEndDate = endDates[0];
+
+              // Update Age Display
+              const startAge = calculateAgeWeeks(globalStartDate);
+              const endAge = calculateAgeWeeks(globalEndDate);
+              document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+              renderCharts(currentMode);
+          }
+      }
+
+      // Initial Render Logic
+      const startAge = calculateAgeWeeks(globalStartDate);
+      const endAge = calculateAgeWeeks(globalEndDate);
+      document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+      renderCharts(currentMode);
   });
 </script>
 {% endblock %}
