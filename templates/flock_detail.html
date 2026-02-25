@@ -416,12 +416,14 @@
                     <th rowspan="2" class="align-middle">Prod Week</th>
                     <th rowspan="2" class="align-middle">Age Week</th>
                     <th colspan="2">Cumulative Eggs HHA</th>
-                    <th rowspan="2" class="align-middle">Cum. Hatching<br>Eggs HHA</th>
+                    <th colspan="2">Cumulative Hatching Eggs HHA</th>
                     <th colspan="2">Cumulative Chicks HHA</th>
                     <th colspan="2">Feed Efficiency (Kg)</th>
                     <th rowspan="2" class="align-middle">Liveability %</th>
                 </tr>
                 <tr>
+                    <th>Actual</th>
+                    <th>Standard</th>
                     <th>Actual</th>
                     <th>Standard</th>
                     <th>Actual</th>
@@ -445,6 +447,7 @@
 
                     <!-- Hatching Eggs HHA -->
                     <td>{{ row.cum_hatch_hha }}</td>
+                    <td class="text-muted">{{ row.std_cum_hatching_eggs_hha if row.std_cum_hatching_eggs_hha else 0 }}</td>
 
                     <!-- Chicks HHA -->
                     {% set diff_c = row.cum_chicks_hha - row.std_cum_chicks_hha %}
