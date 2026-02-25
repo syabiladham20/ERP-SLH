@@ -881,7 +881,7 @@
       // Point Styles: Triangle and Red if Flushing, Circle and Blue if not
       const pointStyles = flushFlags.map(f => f ? 'triangle' : 'circle');
       const pointColors = flushFlags.map(f => f ? 'red' : '#36A2EB');
-      const pointRadii = flushFlags.map(f => f ? 6 : 3);
+      const pointRadii = flushFlags.map(f => f ? 8 : 3);
 
       const datasets = [{
           label: 'Water (ml/bird)',
@@ -895,6 +895,16 @@
           tension: 0.1,
           yAxisID: 'y',
           clip: true
+      },
+      {
+          label: 'Flushing',
+          data: [],
+          borderColor: 'red',
+          backgroundColor: 'red',
+          pointStyle: 'triangle',
+          pointRadius: 8,
+          pointBackgroundColor: 'red',
+          pointBorderColor: 'red'
       }];
 
       const scales = getScaleOptions(waterData, false);
