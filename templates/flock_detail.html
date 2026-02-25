@@ -4,6 +4,56 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+<style>
+/* Fullscreen Carousel Wrapper */
+#chartsWrapper:fullscreen, #chartsWrapper:-webkit-full-screen {
+    background-color: white;
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    padding: 0;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#chartsWrapper:fullscreen .card, #chartsWrapper:-webkit-full-screen .card {
+    min-width: 100vw;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+    scroll-snap-align: start;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#chartsWrapper:fullscreen .card-header, #chartsWrapper:-webkit-full-screen .card-header {
+    flex-shrink: 0;
+    padding: 1rem;
+    font-size: 1.25rem;
+}
+
+#chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
+    flex-grow: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+#chartsWrapper:fullscreen .chart-container-inner, #chartsWrapper:-webkit-full-screen .chart-container-inner {
+    flex-grow: 1;
+    height: 100% !important;
+    width: 100% !important;
+    overflow-x: auto; /* Allow internal chart scrolling */
+}
+</style>
+
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 row-gap-2">
   <h2>Flock Details: {{ flock.house.name }}</h2>
   <div class="dropdown">
@@ -266,64 +316,75 @@
         <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
     </div>
 
-    <!-- General Performance Chart -->
-    <div class="card mb-4 mt-3">
-      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span id="generalChartTitle" class="fw-bold mb-2 mb-md-0">General Performance</span>
-        <div class="d-flex flex-wrap gap-2">
-            <div class="btn-group btn-group-sm" role="group">
-                 <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-                 <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+    <div id="chartsWrapper">
+        <!-- General Performance Chart -->
+        <div class="card mb-4 mt-3" id="cardGeneral">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="generalChartTitle" class="fw-bold mb-2 mb-md-0">General Performance</span>
+            <div class="d-flex flex-wrap gap-2">
+                <div class="btn-group btn-group-sm" role="group">
+                    <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+                    <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
-                 <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-                 <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+                    <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
             </div>
-            <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreen('generalChartContainer')" title="Full Screen">
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
+            <canvas id="generalChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Hatching Egg Chart -->
+        <div class="card mb-4" id="cardHatching">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="hatchingEggChartTitle" class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
                 <i class="bi bi-arrows-fullscreen"></i>
             </button>
         </div>
-      </div>
-      <div class="card-body" style="overflow-x: auto;">
-        <div id="generalChartContainer" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
-          <canvas id="generalChart"></canvas>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <canvas id="hatchingEggChart"></canvas>
+            </div>
         </div>
-      </div>
-    </div>
+        </div>
 
-    <!-- Hatching Egg Chart -->
-    <div class="card mb-4">
-      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
-      </div>
-      <div class="card-body" style="overflow-x: auto;">
-        <div style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
-          <canvas id="hatchingEggChart"></canvas>
+        <!-- Male Chart -->
+        <div class="card mb-4" id="cardMale">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="maleChartTitle" class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
         </div>
-      </div>
-    </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="maleChart"></canvas>
+            </div>
+        </div>
+        </div>
 
-    <!-- Male Chart -->
-    <div class="card mb-4">
-      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-        <span class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
-      </div>
-      <div class="card-body" style="overflow-x: auto;">
-        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
-          <canvas id="maleChart"></canvas>
+        <!-- Female Chart -->
+        <div class="card mb-4" id="cardFemale">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="femaleChartTitle" class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
         </div>
-      </div>
-    </div>
-
-    <!-- Female Chart -->
-    <div class="card mb-4">
-      <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-          <span class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
-      </div>
-      <div class="card-body" style="overflow-x: auto;">
-        <div style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
-          <canvas id="femaleChart"></canvas>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="femaleChart"></canvas>
+            </div>
         </div>
-      </div>
+        </div>
     </div>
   </div>
 
@@ -525,6 +586,7 @@
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
   const flockPhase = "{{ flock.phase }}";
+  const flockHouseName = "{{ flock.house.name }}";
 
   let maleChart, femaleChart, generalChart, hatchingEggChart;
   let currentMode = 'daily';
@@ -970,10 +1032,9 @@
       const isRearing = (flockPhase === 'Rearing');
 
       // 1. Update Title
-      const titleEl = document.getElementById('generalChartTitle');
-      if (titleEl) {
-          titleEl.innerText = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
-      }
+      const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
+      updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
+      updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', generalData, mode === 'daily');
 
       // 2. Prepare Datasets
       const generalDatasets = [];
@@ -1233,24 +1294,51 @@
       renderCharts(mode);
   }
 
-  function toggleFullScreen(elemId) {
-      const elem = document.getElementById(elemId);
+  function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
+      const titleEl = document.getElementById(elementId);
+      if (!titleEl) return;
+
+      let startAge = '?', endAge = '?';
+      let startDate = '', endDate = '';
+
+      if (dataObj && dataObj.dates && dataObj.dates.length > 0) {
+          const count = dataObj.dates.length;
+          startDate = dataObj.dates[0];
+          endDate = dataObj.dates[count - 1];
+
+          if (!isDaily) {
+               // Weekly: dates are "Week X"
+               startAge = startDate;
+               endAge = endDate;
+          } else {
+               startAge = "W" + calculateAgeWeeks(new Date(startDate));
+               endAge = "W" + calculateAgeWeeks(new Date(endDate));
+          }
+      }
+
+      let dynamicText = `${baseTitle} - ${flockHouseName}`;
+      if (startAge !== '?' && endAge !== '?') {
+          dynamicText += ` - Age: ${startAge} to ${endAge}`;
+      }
+
+      if (isDaily && startDate && endDate) {
+          dynamicText += ` - Date: ${startDate} to ${endDate}`;
+      }
+
+      titleEl.innerText = dynamicText;
+  }
+
+  function toggleFullScreenWrapper(targetCardId) {
+      const wrapper = document.getElementById('chartsWrapper');
       if (!document.fullscreenElement) {
-          if (elem.requestFullscreen) {
-              elem.requestFullscreen();
-          } else if (elem.webkitRequestFullscreen) { /* Safari */
-              elem.webkitRequestFullscreen();
-          } else if (elem.msRequestFullscreen) { /* IE11 */
-              elem.msRequestFullscreen();
-          }
+          wrapper.requestFullscreen().then(() => {
+             const target = document.getElementById(targetCardId);
+             if (target) target.scrollIntoView({behavior: "smooth", inline: "start"});
+          }).catch(err => {
+             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+          });
       } else {
-          if (document.exitFullscreen) {
-              document.exitFullscreen();
-          } else if (document.webkitExitFullscreen) { /* Safari */
-              document.webkitExitFullscreen();
-          } else if (document.msExitFullscreen) { /* IE11 */
-              document.msExitFullscreen();
-          }
+          document.exitFullscreen();
       }
   }
 
