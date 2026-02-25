@@ -2567,12 +2567,17 @@ def hatchery_charts(flock_id):
     flock = Flock.query.get_or_404(flock_id)
     records = Hatchability.query.filter_by(flock_id=flock_id).order_by(Hatchability.setting_date.asc()).all()
 
+    # Fetch Standards for Hatchability
+    all_standards = Standard.query.all()
+    std_map = {s.week: (s.std_hatchability or 0.0) for s in all_standards}
+
     data = {
         'weeks': [],
         'fertile_pct': [],
         'clear_pct': [],
         'rotten_pct': [],
         'hatch_pct': [],
+        'std_hatch_pct': [],
         'male_ratio_pct': [],
         'notes': []
     }
@@ -2602,6 +2607,11 @@ def hatchery_charts(flock_id):
 
     for week in sorted_weeks:
         agg = weekly_agg[week]
+
+        # Standard Lookup
+        std_val = std_map.get(week, 0.0)
+        data['std_hatch_pct'].append(round(std_val, 2))
+
         data['weeks'].append(f"Week {week}")
 
         e_set = agg['egg_set'] or 1
@@ -6334,6 +6344,8 @@ def executive_flock_detail(id):
     std_map = {s.week: s for s in all_standards} # Bio Map
     prod_std_map = {s.production_week: s for s in all_standards if s.production_week} # Prod Map
 
+    std_hatch_map = {s.week: (s.std_hatchability or 0.0) for s in all_standards}
+
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
@@ -6611,7 +6623,8 @@ def executive_flock_detail(id):
                            active_flocks=active_flocks,
                            hatch_records=hatch_records,
                            summary_dashboard=summary_dashboard,
-                           summary_table=summary_table)
+                           summary_table=summary_table,
+                           std_hatch_map=std_hatch_map)
 
 
 if __name__ == '__main__':
