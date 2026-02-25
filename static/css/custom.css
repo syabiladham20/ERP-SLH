@@ -100,3 +100,19 @@ body {
 .flatpickr-calendar {
     z-index: 1029 !important;
 }
+
+/* --- Back to Top Button --- */
+#btn-back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: none; /* Hidden by default */
+    z-index: 1090; /* Above most elements (navbar is 1030) */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
