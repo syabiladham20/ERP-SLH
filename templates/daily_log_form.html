@@ -338,9 +338,24 @@
         </div>
         <div class="mb-3">
           <label class="form-label">Photo Upload (Post-Mortem)</label>
-          <input type="file" class="form-control" name="photo">
-          {% if log and log.photo_path %}
-            <small class="text-muted">Current photo: {{ log.photo_path }}</small>
+          <input type="file" class="form-control" name="photo" multiple accept="image/*">
+
+          {% if log and log.photos %}
+            <div class="mt-2">
+                <label class="small text-muted">Existing Photos:</label>
+                <ul class="list-group list-group-flush" id="photoList">
+                    {% for p in log.photos %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center p-2" id="photo-{{ p.id }}">
+                        <div class="text-truncate me-2">
+                            <a href="{{ url_for('uploaded_file', filename=p.file_path | basename) }}" target="_blank" class="text-decoration-none">
+                                {{ p.original_filename or (p.file_path | basename) }}
+                            </a>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePhoto({{ p.id }}, '{{ p.original_filename or (p.file_path | basename) }}')" title="Delete Photo">&times;</button>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
           {% endif %}
         </div>
       </div>
@@ -693,6 +708,23 @@
         // Existing behavior was one set of fields. Let's add one row by default.
         addMedicationRow();
     };
+
+    function deletePhoto(id, name) {
+        if(confirm("Are you sure you want to delete photo '" + name + "'?")) {
+            fetch("{{ url_for('index') }}daily_log/photo/" + id + "/delete", {
+                method: "DELETE"
+            }).then(response => {
+                if(response.ok) {
+                    let el = document.getElementById("photo-" + id);
+                    if(el) el.remove();
+                } else {
+                    alert("Failed to delete photo.");
+                }
+            }).catch(err => {
+                alert("Error deleting photo: " + err);
+            });
+        }
+    }
   </script>
 {% endif %}
 {% endblock %}

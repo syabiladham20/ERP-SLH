@@ -313,8 +313,10 @@ class DailyLog(db.Model):
     feed_cleanup_end = db.Column(db.String(10), nullable=True) # HH:MM
     
     clinical_notes = db.Column(db.Text)
-    photo_path = db.Column(db.String(200)) # Path to file
+    # photo_path removed, use relation 'photos'
     flushing = db.Column(db.Boolean, default=False)
+
+    photos = db.relationship('DailyLogPhoto', backref='log', lazy=True, cascade="all, delete-orphan")
 
     # Feed Codes (Main Branch Logic)
     feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
@@ -333,6 +335,12 @@ class DailyLog(db.Model):
         weeks = (delta - 1) // 7
         days = (delta - 1) % 7 + 1
         return f"{weeks}.{days}"
+
+class DailyLogPhoto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)
+    file_path = db.Column(db.String(200), nullable=False)
+    original_filename = db.Column(db.String(200), nullable=True)
 
 class PartitionWeight(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1215,12 +1223,12 @@ def clinical_notes():
     search = request.args.get('search', '').strip()
 
     # Base Query: Has notes OR photo
-    query = DailyLog.query.join(Flock).join(House).filter(
+    query = DailyLog.query.join(Flock).join(House).outerjoin(DailyLogPhoto).filter(
         or_(
             and_(DailyLog.clinical_notes != None, DailyLog.clinical_notes != ''),
-            DailyLog.photo_path != None
+            DailyLogPhoto.id != None
         )
-    )
+    ).distinct()
 
     if house_id:
         query = query.filter(Flock.house_id == house_id)
@@ -1525,6 +1533,23 @@ def delete_daily_log(id):
     flash("Daily Log deleted.", "info")
     return redirect(url_for('view_flock', id=flock_id))
 
+@app.route('/daily_log/photo/<int:photo_id>/delete', methods=['DELETE'])
+@dept_required('Farm')
+def delete_daily_log_photo(photo_id):
+    photo = DailyLogPhoto.query.get_or_404(photo_id)
+    # Check ownership/permissions if strict, but @dept_required('Farm') is enough for now.
+
+    # Delete file from disk
+    if photo.file_path and os.path.exists(photo.file_path):
+        try:
+            os.remove(photo.file_path)
+        except OSError:
+            pass # Ignore if file missing
+
+    db.session.delete(photo)
+    db.session.commit()
+    return '', 204
+
 @app.route('/api/chart_data/<int:flock_id>')
 @dept_required('Farm')
 def get_chart_data(flock_id):
@@ -1536,6 +1561,10 @@ def get_chart_data(flock_id):
 
     hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
     all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    # Fetch Health Data
+    meds = Medication.query.filter_by(flock_id=flock_id).all()
+    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
 
     daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
 
@@ -1588,15 +1617,37 @@ def get_chart_data(flock_id):
             data['metrics']['water_per_bird'].append(round(d['water_per_bird'], 1))
 
             log = d['log']
-            if log.photo_path or log.clinical_notes or log.flushing:
-                note = log.clinical_notes or ""
-                if log.flushing: note = f"[FLUSHING] {note}"
+
+            # Construct Note content
+            note_parts = []
+            if log.flushing: note_parts.append("[FLUSHING]")
+            if log.clinical_notes: note_parts.append(log.clinical_notes)
+
+            # Active Meds
+            active_meds = [m.drug_name for m in meds if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+            if active_meds:
+                note_parts.append("Meds: " + ", ".join(active_meds))
+
+            # Completed Vaccines
+            done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+            if done_vacs:
+                note_parts.append("Vac: " + ", ".join(done_vacs))
+
+            has_photos = len(log.photos) > 0
+
+            if note_parts or has_photos:
+                photo_list = []
+                for p in log.photos:
+                    photo_list.append({
+                        'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                        'name': p.original_filename or 'Photo'
+                    })
 
                 data['events'].append({
                     'date': log.date.isoformat(),
-                    'note': note.strip(),
-                    'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None,
-                    'type': 'flushing' if log.flushing else 'note'
+                    'note': " | ".join(note_parts),
+                    'photos': photo_list, # New structure
+                    'type': 'note' # Generalized
                 })
 
     else:
@@ -1903,6 +1954,7 @@ def view_flock(id):
         ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     medications = Medication.query.filter_by(flock_id=id).all()
+    vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
 
     # 1. Enriched Logs (For Table)
     enriched_logs = []
@@ -2054,8 +2106,34 @@ def view_flock(id):
             chart_data[f'bw_F{i}'].append(val_f if val_f > 0 else None)
 
         note_obj = None
-        if log.clinical_notes or log.photo_path:
-            note_obj = {'note': log.clinical_notes, 'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None}
+
+        # Construct Note
+        note_parts = []
+        if log.flushing: note_parts.append("[FLUSHING]")
+        if log.clinical_notes: note_parts.append(log.clinical_notes)
+
+        # Meds
+        active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+        if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
+
+        # Vacs
+        done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+        if done_vacs: note_parts.append("Vac: " + ", ".join(done_vacs))
+
+        has_photos = len(log.photos) > 0
+        if note_parts or has_photos:
+            photo_list = []
+            for p in log.photos:
+                photo_list.append({
+                    'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                    'name': p.original_filename or 'Photo'
+                })
+
+            note_obj = {
+                'note': " | ".join(note_parts),
+                'photos': photo_list
+            }
+
         chart_data['notes'].append(note_obj)
 
     # 4. Chart Data (Weekly)
@@ -2180,10 +2258,47 @@ def view_flock(id):
             chart_data_weekly[f'bw_M{i}'].append(val_m)
             chart_data_weekly[f'bw_F{i}'].append(val_f)
 
-        if ws['notes'] or ws['photos']:
-            note_text = " | ".join(ws['notes'])
-            photo_url = url_for('uploaded_file', filename=os.path.basename(ws['photos'][0])) if ws['photos'] else None
-            chart_data_weekly['notes'].append({'note': note_text, 'photo': photo_url})
+        # Aggregate Weekly Notes/Photos
+        week_notes = []
+        week_photos = []
+
+        # From Daily Logs
+        if w in daily_by_week:
+            week_logs_data = daily_by_week[w]
+            if week_logs_data:
+                w_start = week_logs_data[0]['date']
+                w_end = week_logs_data[-1]['date']
+
+                for d in week_logs_data:
+                    log = d['log']
+                    if log.clinical_notes:
+                        week_notes.append(f"{log.date.strftime('%d/%m')}: {log.clinical_notes}")
+
+                    for p in log.photos:
+                        week_photos.append({
+                            'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                            'name': f"{log.date.strftime('%d/%m')} {p.original_filename or 'Photo'}"
+                        })
+
+                # Meds
+                w_meds = set()
+                for m in medications:
+                    if m.start_date <= w_end and (m.end_date is None or m.end_date >= w_start):
+                        w_meds.add(m.drug_name)
+                if w_meds: week_notes.append("Meds: " + ", ".join(w_meds))
+
+                # Vacs
+                w_vacs = set()
+                for v in vacs:
+                    if v.actual_date and w_start <= v.actual_date <= w_end:
+                        w_vacs.add(v.vaccine_name)
+                if w_vacs: week_notes.append("Vac: " + ", ".join(w_vacs))
+
+        if week_notes or week_photos:
+            chart_data_weekly['notes'].append({
+                'note': " | ".join(week_notes),
+                'photos': week_photos
+            })
         else:
             chart_data_weekly['notes'].append(None)
 
@@ -4546,14 +4661,21 @@ def update_log_from_request(log, req):
     log.clinical_notes = req.form.get('clinical_notes')
 
     if 'photo' in req.files:
-        file = req.files['photo']
-        if file and file.filename != '':
-            date_str = log.date.strftime('%y%m%d')
-            raw_name = f"{log.flock.flock_id}_{date_str}_{file.filename}"
-            filename = secure_filename(raw_name)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            log.photo_path = filepath
+        files = req.files.getlist('photo')
+        for file in files:
+            if file and file.filename != '':
+                date_str = log.date.strftime('%y%m%d')
+                raw_name = f"{log.flock.flock_id}_{date_str}_{file.filename}"
+                filename = secure_filename(raw_name)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(filepath)
+
+                new_photo = DailyLogPhoto(
+                    log_id=log.id,
+                    file_path=filepath,
+                    original_filename=file.filename
+                )
+                db.session.add(new_photo)
 
     from datetime import timedelta
     yesterday = log.date - timedelta(days=1)
@@ -5072,6 +5194,9 @@ def get_custom_data(flock_id):
     logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
     hatchability_data = Hatchability.query.filter_by(flock_id=flock_id).all()
 
+    meds = Medication.query.filter_by(flock_id=flock_id).all()
+    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
+
     result = calculate_metrics(logs, flock, metrics, hatchability_data=hatchability_data, start_date=start_date, end_date=end_date)
 
     result['events'] = []
@@ -5079,11 +5204,33 @@ def get_custom_data(flock_id):
         if start_date and log.date < start_date: continue
         if end_date and log.date > end_date: continue
 
-        if log.clinical_notes or log.photo_path:
+        # Construct Note
+        note_parts = []
+        if log.clinical_notes: note_parts.append(log.clinical_notes)
+        if log.flushing: note_parts.append("[FLUSHING]")
+
+        # Meds
+        active_meds = [m.drug_name for m in meds if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+        if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
+
+        # Vacs
+        done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+        if done_vacs: note_parts.append("Vac: " + ", ".join(done_vacs))
+
+        has_photos = len(log.photos) > 0
+
+        if note_parts or has_photos:
+             photo_list = []
+             for p in log.photos:
+                 photo_list.append({
+                     'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                     'name': p.original_filename or 'Photo'
+                 })
+
              result['events'].append({
                  'date': log.date.isoformat(),
-                 'note': log.clinical_notes,
-                 'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None
+                 'note': " | ".join(note_parts),
+                 'photos': photo_list
              })
 
     return json.dumps(result)
@@ -6387,6 +6534,7 @@ def executive_flock_detail(id):
         ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     medications = Medication.query.filter_by(flock_id=id).all()
+    vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
 
     # 1. Enriched Logs
     enriched_logs = []
@@ -6509,8 +6657,34 @@ def executive_flock_detail(id):
             chart_data[f'bw_F{i}'].append(val_f if val_f > 0 else None)
 
         note_obj = None
-        if log.clinical_notes or log.photo_path:
-            note_obj = {'note': log.clinical_notes, 'photo': url_for('uploaded_file', filename=os.path.basename(log.photo_path)) if log.photo_path else None}
+
+        # Construct Note
+        note_parts = []
+        if log.flushing: note_parts.append("[FLUSHING]")
+        if log.clinical_notes: note_parts.append(log.clinical_notes)
+
+        # Meds
+        active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+        if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
+
+        # Vacs
+        done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+        if done_vacs: note_parts.append("Vac: " + ", ".join(done_vacs))
+
+        has_photos = len(log.photos) > 0
+        if note_parts or has_photos:
+            photo_list = []
+            for p in log.photos:
+                photo_list.append({
+                    'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                    'name': p.original_filename or 'Photo'
+                })
+
+            note_obj = {
+                'note': " | ".join(note_parts),
+                'photos': photo_list
+            }
+
         chart_data['notes'].append(note_obj)
 
     # 4. Chart Data (Weekly)
@@ -6584,10 +6758,47 @@ def executive_flock_detail(id):
             chart_data_weekly[f'bw_M{i}'].append(None)
             chart_data_weekly[f'bw_F{i}'].append(None)
 
-        if ws['notes'] or ws['photos']:
-            note_text = " | ".join(ws['notes'])
-            photo_url = url_for('uploaded_file', filename=os.path.basename(ws['photos'][0])) if ws['photos'] else None
-            chart_data_weekly['notes'].append({'note': note_text, 'photo': photo_url})
+        # Aggregate Weekly Notes/Photos
+        week_notes = []
+        week_photos = []
+
+        # From Daily Logs
+        if w in daily_by_week:
+            week_logs_data = daily_by_week[w]
+            if week_logs_data:
+                w_start = week_logs_data[0]['date']
+                w_end = week_logs_data[-1]['date']
+
+                for d in week_logs_data:
+                    log = d['log']
+                    if log.clinical_notes:
+                        week_notes.append(f"{log.date.strftime('%d/%m')}: {log.clinical_notes}")
+
+                    for p in log.photos:
+                        week_photos.append({
+                            'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+                            'name': f"{log.date.strftime('%d/%m')} {p.original_filename or 'Photo'}"
+                        })
+
+                # Meds
+                w_meds = set()
+                for m in medications:
+                    if m.start_date <= w_end and (m.end_date is None or m.end_date >= w_start):
+                        w_meds.add(m.drug_name)
+                if w_meds: week_notes.append("Meds: " + ", ".join(w_meds))
+
+                # Vacs
+                w_vacs = set()
+                for v in vacs:
+                    if v.actual_date and w_start <= v.actual_date <= w_end:
+                        w_vacs.add(v.vaccine_name)
+                if w_vacs: week_notes.append("Vac: " + ", ".join(w_vacs))
+
+        if week_notes or week_photos:
+            chart_data_weekly['notes'].append({
+                'note': " | ".join(week_notes),
+                'photos': week_photos
+            })
         else:
             chart_data_weekly['notes'].append(None)
 

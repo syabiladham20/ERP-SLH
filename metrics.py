@@ -426,8 +426,8 @@ def aggregate_weekly_metrics(daily_stats):
 
         if d['log'].clinical_notes:
             ws['notes'].append(d['log'].clinical_notes)
-        if d['log'].photo_path:
-            ws['photos'].append(d['log'].photo_path)
+        for p in d['log'].photos:
+            ws['photos'].append(p.file_path)
 
     # Finalize Averages
     result = []
@@ -553,8 +553,8 @@ def aggregate_monthly_metrics(daily_stats):
 
         if d['log'].clinical_notes:
             ms['notes'].append(d['log'].clinical_notes)
-        if d['log'].photo_path:
-            ms['photos'].append(d['log'].photo_path)
+        for p in d['log'].photos:
+            ms['photos'].append(p.file_path)
 
     # Finalize Averages
     result = []
