@@ -6085,6 +6085,12 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
     """
     Aggregates data by ISO week using raw SQL for performance.
     Handles stock calculation (Intake - Cumulative Loss) dynamically.
+    Returns:
+    {
+        'weekly': [...],
+        'monthly': [...],
+        'yearly': [...]
+    }
     """
     if not flock_ids:
         return {'weekly': [], 'monthly': [], 'yearly': []}
@@ -6095,16 +6101,8 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
     else:
         ids_tuple = str(ids_tuple)
 
-    # 1. Weekly Aggregation Query
-    # Logic:
-    # - Group logs by ISO Week.
-    # - Stock Calculation:
-    #   We need 'Average Stock' for the week.
-    #   Daily Stock = Intake - Sum(Loss) OVER (PARTITION BY flock ORDER BY date).
-    #   Weekly Avg Stock = Avg(Daily Stock).
-    #   Since window functions in subqueries can be heavy, let's try a CTE.
-
-    sql_query = text(f"""
+    # Common CTE for calculating daily metrics
+    cte_sql = f"""
     WITH DailyStock AS (
         SELECT
             l.date,
@@ -6131,68 +6129,134 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
             *,
             (intake_female - cum_loss_f) as stock_f_end,
             -- Stock Start of Day is End of Prev Day (approx by adding back daily loss? No, simpler: Intake - (Cum - Daily))
-            (intake_female - (cum_loss_f - (mort_f + 0))) as stock_f_start -- Simplified culls handling
+            (intake_female - (cum_loss_f - (mort_f + 0))) as stock_f_start
         FROM DailyStock
     )
-    SELECT
-        iso_week,
-        SUM(eggs_collected) as total_eggs,
-        SUM(mort_f) as total_mort_f,
-        AVG(stock_f_start) as avg_stock_f,
-        COUNT(*) as days_count
-    FROM EnrichedDaily
-    GROUP BY iso_week
-    ORDER BY iso_week DESC
-    """)
+    """
 
-    # Correction: SQLite 'strftime %W' is Week 00-53. ISO week is %V (not supported in all sqlite versions).
-    # We will rely on Python post-processing if needed, or assume %W is 'good enough' for this simulation.
-    # %W starts Monday.
+    results = {}
 
-    # Executing Weekly
-    result_weekly = db.session.execute(sql_query, {'year': str(target_year)}).fetchall()
+    # Define aggregation queries
+    queries = {
+        'weekly': f"""
+            {cte_sql}
+            SELECT
+                iso_week as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            GROUP BY iso_week
+            ORDER BY iso_week DESC
+        """,
+        'monthly': f"""
+            {cte_sql}
+            SELECT
+                iso_month as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            GROUP BY iso_month
+            ORDER BY iso_month DESC
+        """,
+        'yearly': f"""
+            {cte_sql}
+            SELECT
+                iso_year as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            GROUP BY iso_year
+            ORDER BY iso_year DESC
+        """
+    }
 
-    # Process Hatchery Data (Separate Query usually, or join?)
-    # Hatchery data is weekly usually.
-    # Let's simple fetch hatch data and map it in python (it's small volume compared to logs).
+    # Define Hatchery Queries
+    hatch_queries = {
+        'weekly': f"""
+            SELECT
+                strftime('%Y-%W', hatching_date) as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            GROUP BY period
+        """,
+        'monthly': f"""
+            SELECT
+                strftime('%Y-%m', hatching_date) as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            GROUP BY period
+        """,
+        'yearly': f"""
+            SELECT
+                strftime('%Y', hatching_date) as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            GROUP BY period
+        """
+    }
 
-    hatch_sql = text(f"""
-        SELECT
-            strftime('%Y-%W', hatching_date) as iso_week,
-            SUM(hatched_chicks) as hatched,
-            SUM(egg_set) as egg_set
-        FROM hatchability
-        WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
-        GROUP BY iso_week
-    """)
-    hatch_weekly = db.session.execute(hatch_sql, {'year': str(target_year)}).fetchall()
-    hatch_map = {row[0]: row for row in hatch_weekly}
+    for key in ['weekly', 'monthly', 'yearly']:
+        # Fetch Logs Data
+        raw_logs = db.session.execute(text(queries[key]), {'year': str(target_year)}).fetchall()
 
-    final_weekly = []
-    for row in result_weekly:
-        week_key = row[0]
-        # Skip incomplete data if needed
-        if not week_key: continue
+        # Fetch Hatchery Data
+        raw_hatch = db.session.execute(text(hatch_queries[key]), {'year': str(target_year)}).fetchall()
+        hatch_map = {row[0]: row for row in raw_hatch}
 
-        h_data = hatch_map.get(week_key)
-        hatched = h_data[1] if h_data else 0
-        set_cnt = h_data[2] if h_data else 0
+        processed_list = []
+        for row in raw_logs:
+            period = row[0]
+            if not period: continue
 
-        avg_stock = row[3]
-        total_eggs = row[1]
-        total_mort = row[2]
+            total_eggs = row[1] or 0
+            total_mort = row[2] or 0
+            total_hen_days = row[3] or 0
+            days_in_period = row[4] or 0
 
-        final_weekly.append({
-            'period': week_key,
-            'avg_female_stock': int(avg_stock),
-            'total_eggs': total_eggs,
-            'total_chicks': hatched,
-            'mortality_pct': round((total_mort / avg_stock * 100), 2) if avg_stock > 0 else 0,
-            'hatchability_pct': round((hatched / set_cnt * 100), 2) if set_cnt > 0 else 0,
-            'egg_production_pct': round((total_eggs / (avg_stock * 7) * 100), 2) if avg_stock > 0 else 0 # Approx 7 days
-        })
+            # Hatchery
+            h_data = hatch_map.get(period)
+            hatched = h_data[1] if h_data else 0
+            set_cnt = h_data[2] if h_data else 0
 
-    return {'weekly': final_weekly, 'monthly': [], 'yearly': []}
+            # Avg Prod Females = Total Hen Days / Days in Period
+            # This represents the average number of birds present on any given day in the period
+            avg_stock = (total_hen_days / days_in_period) if days_in_period > 0 else 0
+
+            # Metrics
+            mort_pct = (total_mort / avg_stock * 100) if avg_stock > 0 else 0
+
+            # Egg Prod % = Total Eggs / Total Hen Days * 100
+            egg_prod_pct = (total_eggs / total_hen_days * 100) if total_hen_days > 0 else 0
+
+            hatch_pct = (hatched / set_cnt * 100) if set_cnt > 0 else 0
+
+            processed_list.append({
+                'period': period,
+                'avg_prod_females': int(avg_stock), # Renamed for clarity in template usage, but legacy template uses avg_female_stock
+                'avg_female_stock': int(avg_stock), # Legacy support
+                'total_eggs': total_eggs,
+                'total_chicks': hatched,
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'overall_egg_prod_pct': round(egg_prod_pct, 2), # Explicit Key
+                'egg_production_pct': round(egg_prod_pct, 2) # Legacy Key
+            })
+
+        results[key] = processed_list
+
+    return results
 
 def get_iso_aggregated_data(flocks, target_year=None):
     """
