@@ -5780,12 +5780,6 @@ def get_weekly_data_aggregated(flocks):
         year, week, _ = isocal
         week_key = f"{year}-W{week:02d}"
 
-        # Filter Pre-March 2025 (Roughly Week 9 2025)
-        # If year < 2025, skip. If year == 2025 and week < 9, skip.
-        # Requirement: "ensure that weeks with no data (pre-March 2025) are hidden"
-        if year < 2025 or (year == 2025 and week < 9):
-            continue
-
         # Start/End of that week
         # ISO week starts on Monday
         # Python's isocalendar usage
@@ -5839,8 +5833,6 @@ def get_weekly_data_aggregated(flocks):
         isocal = h.hatching_date.isocalendar()
         year, week, _ = isocal
         week_key = f"{year}-W{week:02d}"
-
-        if year < 2025 or (year == 2025 and week < 9): continue
 
         monday = h.hatching_date - timedelta(days=h.hatching_date.weekday())
         sunday = monday + timedelta(days=6)
