@@ -9,8 +9,10 @@
         <h2 class="h4 mb-2 mb-md-0">Hatchability Performance: {{ flock.house.name }}</h2>
         <div class="d-flex gap-2 align-items-center">
             <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white"><i class="bi bi-calendar-range"></i> 📅</span>
-                <input type="text" id="dateRangeSlicer" class="form-control" placeholder="Select Date Range" readonly style="min-width: 220px;">
+                <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> Start</span>
+                <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
+                <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> End</span>
+                <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
             </div>
             <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2 text-nowrap"></span>
             <a href="{{ url_for('hatchery_dashboard') }}" class="btn btn-secondary btn-sm ms-2">Back</a>
@@ -108,10 +110,6 @@
                 }
                 data = sliced;
             }
-        } else {
-            // Fallback default logic (Last 10 active weeks?)
-            // Actually, flatpickr will always set range, but on init...
-            // Let's rely on flatpickr to drive this.
         }
 
         const fertile = data.fertile_pct || [];
@@ -298,32 +296,50 @@
         const last70 = new Date(); // Hatchery charts are weekly, 10 weeks = 70 days
         last70.setDate(today.getDate() - 70);
 
-        flatpickr("#dateRangeSlicer", {
-          mode: "range",
-          defaultDate: [last70, today],
-          dateFormat: "Y-m-d",
-          disableMobile: "true",
-          onChange: function(selectedDates) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-                  renderChart();
-              }
-          },
-          onReady: function(selectedDates) {
-              if (selectedDates.length === 2) {
-                  globalStartDate = selectedDates[0];
-                  globalEndDate = selectedDates[1];
-                  const startAge = calculateAgeWeeks(globalStartDate);
-                  const endAge = calculateAgeWeeks(globalEndDate);
-                  document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-                  renderChart();
-              }
-          }
-      });
+        // Initialize global vars immediately
+        globalStartDate = last70;
+        globalEndDate = today;
+
+        const commonFlatpickrConfig = {
+            dateFormat: "Y-m-d",
+            disableMobile: "true",
+            onChange: function(selectedDates, dateStr, instance) {
+                updateDateRangeAndRender();
+            }
+        };
+
+        const fpStart = flatpickr("#startDateSlicer", {
+            ...commonFlatpickrConfig,
+            defaultDate: last70
+        });
+
+        const fpEnd = flatpickr("#endDateSlicer", {
+            ...commonFlatpickrConfig,
+            defaultDate: today
+        });
+
+        function updateDateRangeAndRender() {
+            const startDates = fpStart.selectedDates;
+            const endDates = fpEnd.selectedDates;
+
+            if (startDates.length > 0 && endDates.length > 0) {
+                globalStartDate = startDates[0];
+                globalEndDate = endDates[0];
+
+                // Update Age Display
+                const startAge = calculateAgeWeeks(globalStartDate);
+                const endAge = calculateAgeWeeks(globalEndDate);
+                document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+                renderChart();
+            }
+        }
+
+        // Initial Render Logic
+        const startAge = calculateAgeWeeks(globalStartDate);
+        const endAge = calculateAgeWeeks(globalEndDate);
+        document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+        renderChart();
     });
 </script>
 {% endblock %}

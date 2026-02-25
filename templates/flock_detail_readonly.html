@@ -34,8 +34,9 @@
 
 #chartsWrapper:fullscreen .card-header, #chartsWrapper:-webkit-full-screen .card-header {
     flex-shrink: 0;
-    padding: 1rem;
-    font-size: 1.25rem;
+    padding: 0.5rem; /* Reduced padding */
+    font-size: 1rem; /* Reduced font size */
+    min-height: 40px; /* Compact height */
 }
 
 #chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
@@ -51,6 +52,7 @@
     height: 100% !important;
     width: 100% !important;
     overflow-x: auto; /* Allow internal chart scrolling */
+    padding-top: 5px; /* Slight spacing */
 }
 </style>
 
@@ -325,13 +327,19 @@
         <div class="card mb-4 mt-3" id="cardGeneral">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span class="fw-bold mb-2 mb-md-0" id="generalChartTitle">General Performance</span>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
                     <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
 
                     <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
                     <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+                </div>
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -349,9 +357,17 @@
         <div class="card mb-4" id="cardHatching">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span id="hatchingEggChartTitle" class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
-            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
-                <i class="bi bi-arrows-fullscreen"></i>
-            </button>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
             <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
@@ -364,9 +380,17 @@
         <div class="card mb-4" id="cardHatchability">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span class="fw-bold mb-2 mb-md-0" id="hatchChartTitle">Hatchability & Fertility</span>
-            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardHatchability')" title="Full Screen">
-                <i class="bi bi-arrows-fullscreen"></i>
-            </button>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatchability')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
             <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
@@ -379,9 +403,17 @@
         <div class="card mb-4" id="cardMale">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span class="fw-bold mb-2 mb-md-0" id="maleChartTitle">Male Statistics (BW & Uniformity)</span>
-            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
-                <i class="bi bi-arrows-fullscreen"></i>
-            </button>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
             <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
@@ -394,9 +426,17 @@
         <div class="card mb-4" id="cardFemale">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span class="fw-bold mb-2 mb-md-0" id="femaleChartTitle">Female Statistics (BW & Uniformity)</span>
-            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
-                <i class="bi bi-arrows-fullscreen"></i>
-            </button>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="text" id="start_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="text" id="end_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
             <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
@@ -623,8 +663,17 @@
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   let currentMode = 'daily';
-  let globalStartDate = null;
-  let globalEndDate = null;
+
+  const chartStates = {
+      general: { start: null, end: null },
+      hatching: { start: null, end: null },
+      hatchability: { start: null, end: null },
+      male: { start: null, end: null },
+      female: { start: null, end: null }
+  };
+
+  let globalPickerStart = null;
+  let globalPickerEnd = null;
 
   function calculateAgeWeeks(dateObj) {
       if (!intakeDate) return 0;
@@ -874,35 +923,17 @@
       }
   }
 
-  function renderCharts(mode) {
-      currentMode = mode;
-      const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
-
-      // --- Filter Data ---
-      const generalData = filterDataByDate(fullData, globalStartDate, globalEndDate, mode === 'weekly');
-
-      const isRearing = (flockPhase === 'Rearing');
-      const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
-
-      updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
-      updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', generalData, mode === 'daily');
-
-      // Force Weekly Data for Body Weight Charts
+  function renderMaleChart() {
+      const state = chartStates.male;
       const bwFullData = chartDataWeekly;
-      const bwData = filterDataByDate(bwFullData, globalStartDate, globalEndDate, true);
+      const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
 
       updateChartTitle('maleChartTitle', 'Male Statistics (BW & Uniformity)', bwData, false);
-      updateChartTitle('femaleChartTitle', 'Female Statistics (BW & Uniformity)', bwData, false);
 
       if (maleChart) maleChart.destroy();
-      if (femaleChart) femaleChart.destroy();
-      if (generalChart) generalChart.destroy();
-      if (hatchChart) hatchChart.destroy();
-      if (hatchingEggChart) hatchingEggChart.destroy();
 
-      // --- Male Chart (Weekly Fixed) ---
       const maleDatasets = [];
-      const maleBWValues = []; // Collect for scale calculation
+      const maleBWValues = [];
 
       const maleKey = 'avg_bw_male';
       if (bwData[maleKey] && bwData[maleKey].some(v => v !== null)) {
@@ -918,8 +949,6 @@
            });
            maleBWValues.push(bwData[maleKey]);
       }
-
-      // Dynamic Partitions removed as requested
 
       maleDatasets.push({
           label: 'Std BW',
@@ -969,18 +998,23 @@
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
                     grid: { drawOnChartArea: false },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    },
+                    ticks: { callback: (val) => val + '%' },
                     ...maleUniScales
                 }
             }
         }
       });
+  }
 
-      // --- Female Chart (Weekly Fixed) ---
+  function renderFemaleChart() {
+      const state = chartStates.female;
+      const bwFullData = chartDataWeekly;
+      const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
+
+      updateChartTitle('femaleChartTitle', 'Female Statistics (BW & Uniformity)', bwData, false);
+
+      if (femaleChart) femaleChart.destroy();
+
       const femaleDatasets = [];
       const femaleBWValues = [];
 
@@ -998,8 +1032,6 @@
            });
            femaleBWValues.push(bwData[femaleKey]);
       }
-
-      // Dynamic Partitions removed as requested
 
       femaleDatasets.push({
           label: 'Std BW',
@@ -1049,43 +1081,50 @@
                     position: 'right',
                     title: { display: true, text: 'Uniformity' },
                     grid: { drawOnChartArea: false },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    },
+                    ticks: { callback: (val) => val + '%' },
                     ...femaleUniScales
                 }
             }
         }
       });
+  }
 
-      // --- General Chart ---
-      // X-Axis logic: Daily -> Custom Label "W{Age} ({Date})", Weekly -> Week Age
+  function renderGeneralChart() {
+      const mode = currentMode;
+      const state = chartStates.general;
+      const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      const generalData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
+
+      if (generalChart) generalChart.destroy();
+
+      const isRearing = (flockPhase === 'Rearing');
+      const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
+      updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
+
+      // Labels logic
       let labels = [];
       if (mode === 'daily') {
-          // Construct labels from ages and dates
           if (generalData.dates && generalData.ages) {
               labels = generalData.dates.map((d, i) => {
-                  const age = generalData.ages[i]; // e.g. "20.3"
+                  const age = generalData.ages[i];
                   return `W${age} (${d})`;
               });
           } else {
               labels = generalData.dates;
           }
       } else {
-          labels = generalData.dates; // Already "Week X"
+          labels = generalData.dates;
       }
 
+      const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
       const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
       const cullMKey = mode === 'daily' ? 'culls_daily_male' : 'culls_weekly_male';
       const cullFKey = mode === 'daily' ? 'culls_daily_female' : 'culls_weekly_female';
 
-      const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
 
-      // Prepare Notes Dataset
+      // Notes
       const notesPoints = (generalData.dates || []).map((d, i) => {
           const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
@@ -1093,13 +1132,7 @@
                          ? generalData.mortality_cum_female[i]
                          : 0;
               if (yVal === null) yVal = 0;
-              return {
-                  x: labels[i],
-                  y: yVal,
-                  note: n.note,
-                  photo: n.photo,
-                  date: d
-              };
+              return { x: labels[i], y: yVal, note: n.note, photo: n.photo, date: d };
           }
           return null;
       }).filter(p => p !== null);
@@ -1120,7 +1153,6 @@
       };
 
       const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
-      // Include baseline in scale calculation
       const genMortScales = getScaleOptions([
         generalData[mortMKey], generalData[mortFKey],
         generalData[cullMKey], generalData[cullFKey],
@@ -1168,12 +1200,9 @@
                       const datasetIndex = firstPoint.datasetIndex;
                       const index = firstPoint.index;
                       const dataset = generalChart.data.datasets[datasetIndex];
-
                       if (dataset.label === 'Clinical Notes') {
                           const pt = dataset.data[index];
-                          if (pt) {
-                              showNoteModal(pt.date, pt.note, pt.photo);
-                          }
+                          if (pt) showNoteModal(pt.date, pt.note, pt.photo);
                       }
                   }
               },
@@ -1184,14 +1213,39 @@
           },
           plugins: [weekSeparatorPlugin]
       });
+  }
 
-      // --- Hatching Egg Chart ---
-      const heData = generalData.hatch_egg_pct || [];
-      const heStdData = generalData.std_hatching_egg_pct || [];
-      const jumboData = generalData.cull_eggs_jumbo_pct || [];
-      const smallData = generalData.cull_eggs_small_pct || [];
-      const crackData = generalData.cull_eggs_crack_pct || [];
-      const abnormalData = generalData.cull_eggs_abnormal_pct || [];
+  function renderHatchingChart() {
+      const mode = currentMode;
+      const state = chartStates.hatching;
+      const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      const filteredData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
+
+      if (hatchingEggChart) hatchingEggChart.destroy();
+
+      updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', filteredData, mode === 'daily');
+
+      // Labels logic
+      let labels = [];
+      if (mode === 'daily') {
+          if (filteredData.dates && filteredData.ages) {
+              labels = filteredData.dates.map((d, i) => {
+                  const age = filteredData.ages[i];
+                  return `W${age} (${d})`;
+              });
+          } else {
+              labels = filteredData.dates;
+          }
+      } else {
+          labels = filteredData.dates;
+      }
+
+      const heData = filteredData.hatch_egg_pct || [];
+      const heStdData = filteredData.std_hatching_egg_pct || [];
+      const jumboData = filteredData.cull_eggs_jumbo_pct || [];
+      const smallData = filteredData.cull_eggs_small_pct || [];
+      const crackData = filteredData.cull_eggs_crack_pct || [];
+      const abnormalData = filteredData.cull_eggs_abnormal_pct || [];
 
       const barMaxCalc = getScaleOptions([jumboData, smallData, crackData, abnormalData], true);
 
@@ -1200,60 +1254,12 @@
           data: {
               labels: labels,
               datasets: [
-                  {
-                      label: 'Jumbo %',
-                      data: jumboData,
-                      backgroundColor: '#70ad47',
-                      yAxisID: 'y',
-                      clip: true
-                  },
-                  {
-                      label: 'Small %',
-                      data: smallData,
-                      backgroundColor: '#4472c4',
-                      yAxisID: 'y',
-                      clip: true
-                  },
-                  {
-                      label: 'Abnormal %',
-                      data: abnormalData,
-                      backgroundColor: '#002060',
-                      yAxisID: 'y',
-                      clip: true
-                  },
-                  {
-                      label: 'Crack %',
-                      data: crackData,
-                      backgroundColor: '#ffc000',
-                      yAxisID: 'y',
-                      clip: true
-                  },
-                  {
-                      label: 'Hatchable Egg %',
-                      data: heData,
-                      type: 'line',
-                      borderColor: '#203764',
-                      borderWidth: 2,
-                      pointRadius: 3,
-                      yAxisID: 'y1',
-                      datalabels: {
-                          align: 'bottom',
-                          anchor: 'start'
-                      },
-                      clip: true
-                  },
-                  {
-                      label: 'Std Hatchable Egg %',
-                      data: heStdData,
-                      type: 'line',
-                      borderColor: '#203764',
-                      borderDash: [5, 5],
-                      borderWidth: 2,
-                      pointRadius: 0,
-                      yAxisID: 'y1',
-                      datalabels: { display: false },
-                      clip: true
-                  }
+                  { label: 'Jumbo %', data: jumboData, backgroundColor: '#70ad47', yAxisID: 'y', clip: true },
+                  { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true },
+                  { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true },
+                  { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true },
+                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#203764', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', datalabels: { align: 'bottom', anchor: 'start' }, clip: true },
+                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#203764', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', datalabels: { display: false }, clip: true }
               ]
           },
           options: {
@@ -1262,45 +1268,25 @@
                   ...commonOptions.plugins,
                   weekSeparator: { enabled: mode === 'daily' },
                   datalabels: {
-                       display: function(context) {
-                           return context.dataset.type === 'line';
-                       },
-                       formatter: function(value, context) {
-                           if (!value) return '';
-                           return parseFloat(value).toFixed(2) + '%';
-                       }
-                  }
+                       display: function(context) { return context.dataset.type === 'line'; },
+                       formatter: function(value, context) { if (!value) return ''; return parseFloat(value).toFixed(2) + '%'; }
+                  },
+                  tooltip: commonOptions.plugins.tooltip
               },
               scales: {
-                  y: {
-                      type: 'linear',
-                      display: true,
-                      position: 'left',
-                      title: { display: true, text: 'Cull Egg %' },
-                      min: 0,
-                      suggestedMax: barMaxCalc.suggestedMax
-                  },
-                  y1: {
-                      type: 'linear',
-                      display: true,
-                      position: 'right',
-                      title: { display: true, text: 'Hatchable Egg %' },
-                      min: 0,
-                      max: 100,
-                      grid: { drawOnChartArea: false }
-                  }
+                  y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, suggestedMax: barMaxCalc.suggestedMax },
+                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
               }
           },
           plugins: [weekSeparatorPlugin]
       });
-
-      renderHatchChart();
   }
 
   function renderHatchChart() {
+      const state = chartStates.hatchability;
+
       // Aggregate hatchRecords by Age Week
       const weeklyHatch = {};
-
       hatchRecords.forEach(r => {
           const week = "Week " + r.age;
           if (!weeklyHatch[week]) {
@@ -1346,18 +1332,15 @@
 
       // --- FILTERING ---
       let finalData = aggregated;
-      if (globalStartDate && globalEndDate) {
-          const startAge = calculateAgeWeeks(globalStartDate);
-          const endAge = calculateAgeWeeks(globalEndDate);
+      if (state.start && state.end) {
+          const startAge = calculateAgeWeeks(state.start);
+          const endAge = calculateAgeWeeks(state.end);
           finalData = aggregated.filter(d => d.age >= startAge && d.age <= endAge);
       } else {
-          // Fallback if no dates (shouldn't happen with default logic)
-          // Default to last 10?
           let start = aggregated.length - 10;
           if (start < 0) start = 0;
           finalData = aggregated.slice(start);
       }
-
 
       // Update Title
       const hatchTitleData = {
@@ -1371,6 +1354,8 @@
       const dClear = finalData.map(r => r.clear);
       const dRotten = finalData.map(r => r.rotten);
       const dMale = finalData.map(r => r.male_ratio);
+
+      if (hatchChart) hatchChart.destroy(); // Fix re-render
 
       const ctx = document.getElementById('hatchChart').getContext('2d');
       hatchChart = new Chart(ctx, {
@@ -1450,7 +1435,9 @@
   }
 
   function switchMode(mode) {
-      renderCharts(mode);
+      currentMode = mode;
+      renderGeneralChart();
+      renderHatchingChart();
   }
 
   function showNoteModal(date, text, photoUrl) {
@@ -1489,15 +1476,55 @@
       const last30 = new Date();
       last30.setDate(today.getDate() - 30);
 
-      // Initialize global vars immediately
-      globalStartDate = last30;
-      globalEndDate = today;
+      // 1. Initialize Global Vars
+      globalPickerStart = last30;
+      globalPickerEnd = today;
 
+      // 2. Helper to set individual pickers
+      function initChartPickers(key, renderFunc) {
+          // Defaults
+          chartStates[key].start = globalPickerStart;
+          chartStates[key].end = globalPickerEnd;
+
+          const config = {
+              dateFormat: "Y-m-d",
+              disableMobile: "true",
+              onChange: function(selectedDates, dateStr, instance) {
+                   const startInst = chartStates[key].pickerStart;
+                   const endInst = chartStates[key].pickerEnd;
+
+                   const sDate = startInst.selectedDates[0];
+                   const eDate = endInst.selectedDates[0];
+
+                   if (sDate && eDate) {
+                       chartStates[key].start = sDate;
+                       chartStates[key].end = eDate;
+                       renderFunc();
+                   }
+              }
+          };
+
+          chartStates[key].pickerStart = flatpickr(`#start_${key}`, {
+              ...config, defaultDate: globalPickerStart
+          });
+          chartStates[key].pickerEnd = flatpickr(`#end_${key}`, {
+              ...config, defaultDate: globalPickerEnd
+          });
+      }
+
+      // 3. Initialize Specific Pickers
+      initChartPickers('general', renderGeneralChart);
+      initChartPickers('hatching', renderHatchingChart);
+      initChartPickers('hatchability', renderHatchChart);
+      initChartPickers('male', renderMaleChart);
+      initChartPickers('female', renderFemaleChart);
+
+      // 4. Initialize Global Picker
       const commonFlatpickrConfig = {
           dateFormat: "Y-m-d",
           disableMobile: "true",
           onChange: function(selectedDates, dateStr, instance) {
-              updateDateRangeAndRender();
+              updateGlobalDateRange();
           }
       };
 
@@ -1511,28 +1538,47 @@
           defaultDate: today
       });
 
-      function updateDateRangeAndRender() {
+      function updateGlobalDateRange() {
           const startDates = fpStart.selectedDates;
           const endDates = fpEnd.selectedDates;
 
           if (startDates.length > 0 && endDates.length > 0) {
-              globalStartDate = startDates[0];
-              globalEndDate = endDates[0];
+              globalPickerStart = startDates[0];
+              globalPickerEnd = endDates[0];
 
               // Update Age Display
-              const startAge = calculateAgeWeeks(globalStartDate);
-              const endAge = calculateAgeWeeks(globalEndDate);
+              const startAge = calculateAgeWeeks(globalPickerStart);
+              const endAge = calculateAgeWeeks(globalPickerEnd);
               document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
 
-              renderCharts(currentMode);
+              // Update ALL individual states and re-render
+              Object.keys(chartStates).forEach(key => {
+                  chartStates[key].start = globalPickerStart;
+                  chartStates[key].end = globalPickerEnd;
+
+                  // Update UI
+                  if (chartStates[key].pickerStart) chartStates[key].pickerStart.setDate(globalPickerStart);
+                  if (chartStates[key].pickerEnd) chartStates[key].pickerEnd.setDate(globalPickerEnd);
+              });
+
+              renderGeneralChart();
+              renderHatchingChart();
+              renderHatchChart();
+              renderMaleChart();
+              renderFemaleChart();
           }
       }
 
-      // Initial Render Logic
-      const startAge = calculateAgeWeeks(globalStartDate);
-      const endAge = calculateAgeWeeks(globalEndDate);
+      // 5. Initial Render
+      const startAge = calculateAgeWeeks(globalPickerStart);
+      const endAge = calculateAgeWeeks(globalPickerEnd);
       document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
-      renderCharts(currentMode);
+
+      renderGeneralChart();
+      renderHatchingChart();
+      renderHatchChart();
+      renderMaleChart();
+      renderFemaleChart();
   });
 </script>
 {% endblock %}
