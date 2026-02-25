@@ -993,7 +993,7 @@
 
       if (waterChart) waterChart.destroy();
 
-      const waterData = data.water_per_bird || [];
+      const waterData = (data.water_per_bird || []).map(v => Math.round(v));
       const flushFlags = data.flushing || [];
 
       // Point Styles
@@ -1097,6 +1097,21 @@
 
       const feedScales = getScaleOptions([feedM, feedF], false);
 
+      // Dynamic Y-axis Min Calculation
+      let minFeed = Infinity;
+      const allFeed = [...(feedM || []), ...(feedF || [])];
+      for (const val of allFeed) {
+          if (val !== null && val !== undefined && !isNaN(val)) {
+              if (val < minFeed) minFeed = val;
+          }
+      }
+      if (minFeed === Infinity) minFeed = 0;
+
+      // Ensure min is at least minFeed - 40, rounded to nearest 0.01
+      // Also ensure it doesn't go below 0
+      let yMin = Math.max(0, minFeed - 40);
+      yMin = Math.floor(yMin * 100) / 100;
+
       feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
           type: 'line',
           data: {
@@ -1111,7 +1126,8 @@
                       display: true,
                       position: 'left',
                       title: { display: true, text: 'Feed (g)' },
-                      ...feedScales
+                      min: yMin,
+                      suggestedMax: feedScales.suggestedMax
                   },
                   y1: {
                       type: 'linear',
