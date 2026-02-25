@@ -209,52 +209,80 @@
         </div>
     </div>
 
+    <!-- Hosting Requirements & Costs -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">Hosting Requirements & Costs</div>
+        <div class="card-body">
+            <h4 class="mb-3">Plan Comparison: Beginner vs. Proposed Production Plan</h4>
+            <p>To ensure system stability and performance for full-scale operations (30 Houses), we recommend upgrading from the Free plan to a Custom Paid plan. Below is the detailed comparison.</p>
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Feature</th>
+                            <th>Beginner (Free)</th>
+                            <th>Proposed Production Plan (Custom)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Monthly Cost</strong></td>
+                            <td class="text-success">$0 / month</td>
+                            <td class="text-primary">~$5 - $15 / month</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Web Workers</strong></td>
+                            <td>1 (Serial Processing)</td>
+                            <td><strong>2 - 4</strong> (Parallel Processing)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CPU Allowance</strong></td>
+                            <td class="text-danger">100 seconds / day</td>
+                            <td class="text-success"><strong>40,000 seconds</strong> / day</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Database</strong></td>
+                            <td class="text-danger">SQLite (File-based)</td>
+                            <td class="text-success"><strong>PostgreSQL</strong> (Managed)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Always-on Tasks</strong></td>
+                            <td class="text-danger">None</td>
+                            <td class="text-success"><strong>1</strong> (Required for Backups)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Disk Space</strong></td>
+                            <td>512 MB</td>
+                            <td><strong>10 - 20 GB</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>External Access</strong></td>
+                            <td>Restricted (Whitelist only)</td>
+                            <td><strong>Unrestricted</strong> (Full Internet)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-4 text-danger">Limitations of the Free Plan for Production</h5>
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    <li class="mb-2"><strong>Database Concurrency:</strong> SQLite allows only one writer at a time. With multiple users entering data simultaneously, the system will frequently lock ("Database Locked" errors), causing data loss and frustration.</li>
+                    <li class="mb-2"><strong>CPU Throttling:</strong> The 100-second CPU limit is insufficient for generating complex ISO and Hatchery reports. Once exceeded, the site becomes extremely slow or unresponsive until the next day.</li>
+                    <li class="mb-2"><strong>No Automated Backups:</strong> The Free plan does not support "Always-on tasks," meaning we cannot run automated nightly database backups. This poses a significant risk to data safety.</li>
+                    <li><strong>Storage Limits:</strong> The 512MB limit will be quickly exhausted by daily logs and photos from 30 flocks, potentially freezing the application.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <!-- Technical Deployment Guide -->
     <div class="card shadow mb-4">
         <div class="card-header bg-dark text-white">Technical Deployment Guide</div>
         <div class="card-body">
             <h4 class="mb-3">Recommended Configuration for 30+ Houses Expansion</h4>
             <p>Based on your current expansion plans (30 houses, 12 new intakes this year), here is the technical roadmap for a "smooth experience" while optimizing costs.</p>
-
-            <h5 class="mt-4">Resource Allocation (PythonAnywhere)</h5>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Feature</th>
-                            <th>Current Selection</th>
-                            <th>Recommendation</th>
-                            <th>Reasoning</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>CPU Seconds</strong></td>
-                            <td>40000s</td>
-                            <td><strong>40000s</strong> (Limit)</td>
-                            <td>Good safety margin. Reports use CPU; keep high to avoid throttling.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Web Workers</strong></td>
-                            <td>20</td>
-                            <td><strong>2 - 4</strong></td>
-                            <td><strong>Biggest cost driver.</strong> 20 workers is overkill for ~5-10 concurrent staff. 4 workers can handle 50+ concurrent requests efficiently. Start small and scale up.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Always-on tasks</strong></td>
-                            <td>1</td>
-                            <td><strong>1</strong></td>
-                            <td><strong>Essential</strong> for nightly backups and background report generation.</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Postgres</strong></td>
-                            <td>Enabled</td>
-                            <td><strong>Enabled</strong></td>
-                            <td><strong>Critical.</strong> Do not use SQLite for production. Postgres handles concurrent writes reliably.</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
 
             <h5 class="mt-4">Technical Setup Steps</h5>
             <ol>
@@ -275,10 +303,6 @@
                     <strong>Static Files:</strong> Configure PythonAnywhere to serve <code>/static/</code> directly to save CPU cycles.
                 </li>
             </ol>
-
-            <div class="alert alert-warning mt-3">
-                <strong>Expected Cost Savings:</strong> By reducing Web Workers from 20 to 3-4, monthly costs could drop by 50% or more without sacrificing perceivable performance.
-            </div>
         </div>
     </div>
 
