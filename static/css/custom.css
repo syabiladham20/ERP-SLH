@@ -68,6 +68,12 @@ body {
     z-index: 1020; /* Ensure it stays above rows */
 }
 
+/* Stacked Header Support (Second Row) - Mobile */
+.table-responsive-sticky .sticky-table-header tr:nth-child(2) th {
+    top: 35px; /* Offset below first row (approx 35px height) */
+    z-index: 1020;
+}
+
 /* --- Desktop Override (Large Screens) --- */
 @media (min-width: 992px) {
     /* Revert to Window-based sticky behavior */
@@ -80,6 +86,11 @@ body {
     .table-responsive-sticky .sticky-table-header th {
         top: var(--navbar-height, 56px);
     }
+    /* Second row offset for desktop */
+    .table-responsive-sticky .sticky-table-header tr:nth-child(2) th {
+        top: calc(var(--navbar-height, 56px) + 35px);
+    }
+
     .table-responsive-sticky .sticky-table-header-offset th {
         top: calc(var(--navbar-height, 56px) + 50px);
     }

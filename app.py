@@ -1745,24 +1745,6 @@ def calculate_flock_summary(flock, daily_stats):
 
         # Standard
         std = std_map.get(pw)
-        std_eggs = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
-        std_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
-
-        row = {
-            'week': pw,
-            'age': days[-1]['week'], # Bio Week
-            'cum_eggs_hha': round(hha_total, 1),
-            'std_cum_eggs_hha': std_eggs,
-            'cum_hatch_hha': round(hha_hatch, 1),
-            'cum_chicks_hha': round(hha_chicks, 1),
-            'std_cum_chicks_hha': std_chicks,
-            'feed_100_chicks': round(feed_100_chicks, 1),
-            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
-            'liveability': round(liveability, 2)
-        }
-        summary_table.append(row)
-
-        # Standard Targets (Dynamic)
         std_hha_total = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
         std_hha_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
 
@@ -1774,6 +1756,21 @@ def calculate_flock_summary(flock, daily_stats):
             gs = GlobalStandard.query.first()
             std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
             std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
+
+        row = {
+            'week': pw,
+            'age': days[-1]['week'], # Bio Week
+            'cum_eggs_hha': round(hha_total, 1),
+            'std_cum_eggs_hha': std_hha_total,
+            'cum_hatch_hha': round(hha_hatch, 1),
+            'std_cum_hatching_eggs_hha': round(std_hha_hatch, 1),
+            'cum_chicks_hha': round(hha_chicks, 1),
+            'std_cum_chicks_hha': std_hha_chicks,
+            'feed_100_chicks': round(feed_100_chicks, 1),
+            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
+            'liveability': round(liveability, 2)
+        }
+        summary_table.append(row)
 
         # Feed Targets (Placeholder or Derived if Standard table doesn't have them)
         # For now, we set them to 0 if not available to avoid hardcoded mismatch
