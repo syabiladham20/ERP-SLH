@@ -6116,13 +6116,14 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
             (l.feed_male + l.feed_female) as total_feed,
             f.intake_female + f.intake_male as intake_total,
             f.intake_female,
+            f.start_of_lay_date,
             SUM(l.mortality_male + l.mortality_female + l.culls_male + l.culls_female)
                 OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss,
             SUM(l.mortality_female + l.culls_female)
                 OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss_f
         FROM daily_log l
         JOIN flock f ON l.flock_id = f.id
-        WHERE l.flock_id IN {ids_tuple} AND strftime('%Y', l.date) = :year
+        WHERE l.flock_id IN {ids_tuple}
     ),
     EnrichedDaily AS (
         SELECT
@@ -6137,6 +6138,7 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
     results = {}
 
     # Define aggregation queries
+    # Filter by Year AND Start of Lay in the Final Step to allow cum_loss to be accurate
     queries = {
         'weekly': f"""
             {cte_sql}
@@ -6147,6 +6149,9 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
                 SUM(stock_f_start) as total_hen_days,
                 COUNT(DISTINCT date) as days_in_period
             FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
             GROUP BY iso_week
             ORDER BY iso_week DESC
         """,
@@ -6159,6 +6164,9 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
                 SUM(stock_f_start) as total_hen_days,
                 COUNT(DISTINCT date) as days_in_period
             FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
             GROUP BY iso_month
             ORDER BY iso_month DESC
         """,
@@ -6171,6 +6179,9 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
                 SUM(stock_f_start) as total_hen_days,
                 COUNT(DISTINCT date) as days_in_period
             FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
             GROUP BY iso_year
             ORDER BY iso_year DESC
         """
