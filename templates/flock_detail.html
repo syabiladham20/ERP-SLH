@@ -43,7 +43,7 @@
 
 #chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
     flex-grow: 1;
-    overflow: hidden;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -335,9 +335,9 @@
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -358,9 +358,9 @@
              <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -380,9 +380,9 @@
             <span id="waterChartTitle" class="fw-bold mb-2 mb-md-0">Daily Water per Bird (mL)</span>
              <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardWater')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -402,9 +402,9 @@
             <span id="feedChartTitle" class="fw-bold mb-2 mb-md-0">Daily Gram per Bird</span>
              <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFeed')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -425,9 +425,9 @@
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -448,9 +448,9 @@
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -1533,38 +1533,51 @@
       globalPickerStart = last30;
       globalPickerEnd = today;
 
-      // 2. Helper to set individual pickers
+      // Helper function to format Date object to YYYY-MM-DD
+      function formatDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        let month = '' + (d.getMonth() + 1),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+
+        return [year, month, day].join('-');
+      }
+
+      // 2. Helper to set individual pickers (Now Native)
       function initChartPickers(key, renderFunc) {
           // Defaults
           chartStates[key].start = globalPickerStart;
           chartStates[key].end = globalPickerEnd;
 
-          const config = {
-              dateFormat: "Y-m-d",
-              // disableMobile: "true", // Removed to allow native mobile picker
-              onChange: function(selectedDates, dateStr, instance) {
-                   const startInst = chartStates[key].pickerStart;
-                   const endInst = chartStates[key].pickerEnd;
+          const startEl = document.getElementById(`start_${key}`);
+          const endEl = document.getElementById(`end_${key}`);
 
-                   // If valid pair logic if needed, but here simple independent inputs
-                   // We need to check both inputs to form a range
-                   const sDate = startInst.selectedDates[0];
-                   const eDate = endInst.selectedDates[0];
+          // Set Initial Values
+          if (startEl) startEl.value = formatDate(globalPickerStart);
+          if (endEl) endEl.value = formatDate(globalPickerEnd);
 
-                   if (sDate && eDate) {
-                       chartStates[key].start = sDate;
-                       chartStates[key].end = eDate;
-                       renderFunc();
-                   }
-              }
+          // Add Change Listeners
+          const updateFunc = function() {
+               const sVal = startEl.value;
+               const eVal = endEl.value;
+
+               if (sVal && eVal) {
+                   // Append time to force local time parsing or ensure consistency
+                   // Native input returns YYYY-MM-DD. new Date("YYYY-MM-DD") is UTC.
+                   // We want start of day in local time or consistent with how data is filtered.
+                   // Adding T00:00:00 often forces local time parsing in browsers.
+                   chartStates[key].start = new Date(sVal + 'T00:00:00');
+                   chartStates[key].end = new Date(eVal + 'T00:00:00');
+                   renderFunc();
+               }
           };
 
-          chartStates[key].pickerStart = flatpickr(`#start_${key}`, {
-              ...config, defaultDate: globalPickerStart
-          });
-          chartStates[key].pickerEnd = flatpickr(`#end_${key}`, {
-              ...config, defaultDate: globalPickerEnd
-          });
+          if (startEl) startEl.addEventListener('change', updateFunc);
+          if (endEl) endEl.addEventListener('change', updateFunc);
       }
 
       // 3. Initialize Specific Pickers
@@ -1612,9 +1625,11 @@
                   chartStates[key].start = globalPickerStart;
                   chartStates[key].end = globalPickerEnd;
 
-                  // Update UI
-                  chartStates[key].pickerStart.setDate(globalPickerStart);
-                  chartStates[key].pickerEnd.setDate(globalPickerEnd);
+                  // Update UI (Native Inputs)
+                  const startEl = document.getElementById(`start_${key}`);
+                  const endEl = document.getElementById(`end_${key}`);
+                  if (startEl) startEl.value = formatDate(globalPickerStart);
+                  if (endEl) endEl.value = formatDate(globalPickerEnd);
               });
 
               renderGeneralChart();
@@ -1638,6 +1653,24 @@
       renderMaleChart();
       renderFemaleChart();
   });
+
+  // Listen for Fullscreen Changes to Resize Charts
+  function onFullScreenChange() {
+      // Small delay to allow CSS transitions to finish before resizing
+      setTimeout(() => {
+          if (maleChart) maleChart.resize();
+          if (femaleChart) femaleChart.resize();
+          if (generalChart) generalChart.resize();
+          if (hatchingEggChart) hatchingEggChart.resize();
+          if (waterChart) waterChart.resize();
+          if (feedChart) feedChart.resize();
+      }, 100);
+  }
+
+  document.addEventListener("fullscreenchange", onFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullScreenChange);
+  document.addEventListener("mozfullscreenchange", onFullScreenChange);
+  document.addEventListener("msfullscreenchange", onFullScreenChange);
 
 
   function showNoteModal(pt) {
