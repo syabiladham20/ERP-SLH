@@ -1359,10 +1359,13 @@
       const notesPoints = (generalData.dates || []).map((d, i) => {
           const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
-              let yVal = (generalData.mortality_cum_female && generalData.mortality_cum_female[i] !== undefined)
-                         ? generalData.mortality_cum_female[i]
-                         : 0;
-              if (yVal === null) yVal = 0;
+              let yVal = 0;
+              if (generalData[mortFKey] && generalData[mortFKey][i] !== undefined && generalData[mortFKey][i] !== null) {
+                  yVal = generalData[mortFKey][i];
+              }
+              // Add offset
+              yVal += 0.05;
+
               return { x: labels[i], y: yVal, note: n.note, photos: n.photos, photo: n.photo, date: d };
           }
           return null;
