@@ -15,6 +15,7 @@ import calendar
 import re
 from functools import wraps
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
+from analytics import analyze_health_events
 from sqlalchemy import text
 
 load_dotenv()
@@ -1941,6 +1942,9 @@ def view_flock(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
+    # --- Health Analytics ---
+    health_events = analyze_health_events(logs)
+
     gs = GlobalStandard.query.first()
     if not gs:
         gs = GlobalStandard()
@@ -2397,7 +2401,7 @@ def view_flock(id):
 
     weekly_data.reverse()
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table)
+    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events)
 
 @app.route('/flock/<int:id>/charts')
 @dept_required('Farm')
