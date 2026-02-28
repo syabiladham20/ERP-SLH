@@ -1,0 +1,31 @@
+Traceback (most recent call last):
+  File "/app/wsgi.py", line 1, in <module>
+    from app import app as application
+  File "/app/app.py", line 13, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+127.0.0.1 - - [28/Feb/2026 04:33:20] "[32mGET /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [28/Feb/2026 04:33:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:33:20] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:33:20] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:33:20] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [28/Feb/2026 04:34:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:03] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:03] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:03] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [28/Feb/2026 04:34:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:44] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:45] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:34:45] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [28/Feb/2026 04:35:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:02] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:02] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:02] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [28/Feb/2026 04:35:39] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:39] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:39] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:35:39] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
+127.0.0.1 - - [28/Feb/2026 04:36:07] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:36:07] "GET /static/css/custom.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:36:07] "GET /flock/1 HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 04:36:07] "[36mGET /static/css/custom.css HTTP/1.1[0m" 304 -
