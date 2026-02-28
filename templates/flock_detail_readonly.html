@@ -343,7 +343,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -360,13 +361,20 @@
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span id="hatchingEggChartTitle" class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="btn-group btn-group-sm ms-2 me-2" role="group">
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" checked onchange="switchModeHatching('daily')">
+                    <label class="btn btn-outline-secondary" for="modeDailyHatching">Daily</label>
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" onchange="switchModeHatching('weekly')">
+                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching">Weekly</label>
+                </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
                     <input type="text" id="start_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
                     <input type="text" id="end_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -389,7 +397,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatchability')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatchability')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -411,7 +420,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardWater')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -433,7 +443,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFeed')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -456,7 +467,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('maleChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -479,7 +491,8 @@
                     <span class="small">-</span>
                     <input type="text" id="end_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('femaleChart', this)" title="Toggle Data Labels">Labels</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -684,6 +697,28 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
   Chart.register(ChartDataLabels);
+  Chart.defaults.set('plugins.datalabels', {
+    display: true,
+    font: { size: 10 },
+    formatter: Math.round
+  });
+  if (Chart.defaults.datasets.line) {
+      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
+  }
+  if (Chart.defaults.datasets.bar) {
+      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
+  }
+  Chart.defaults.set('plugins.datalabels', {
+    display: true,
+    font: { size: 10 },
+    formatter: Math.round
+  });
+  if (Chart.defaults.datasets.line) {
+      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
+  }
+  if (Chart.defaults.datasets.bar) {
+      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
+  }
   // Fix for zoom clipping
   if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
   if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
@@ -724,6 +759,7 @@
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
 
   let currentMode = 'daily';
+  let currentModeHatching = 'daily';
 
   const chartStates = {
       general: { start: null, end: null },
@@ -797,6 +833,41 @@
           ctx.restore();
       }
   };
+
+
+  function toggleDataLabels(chartId, btnElement) {
+      let chartInstance;
+      switch(chartId) {
+          case 'generalChart': chartInstance = generalChart; break;
+          case 'hatchingEggChart': chartInstance = hatchingEggChart; break;
+          case 'waterChart': chartInstance = waterChart; break;
+          case 'feedChart': chartInstance = feedChart; break;
+          case 'maleChart': chartInstance = maleChart; break;
+          case 'femaleChart': chartInstance = femaleChart; break;
+          case 'hatchChart': chartInstance = hatchChart; break;
+      }
+
+      if (!chartInstance) return;
+
+      // Toggle logic
+      let currentDisplay = chartInstance.options.plugins.datalabels.display;
+      // If undefined, default is true due to our global Chart.defaults
+      if (currentDisplay === undefined) currentDisplay = true;
+
+      const newDisplay = !currentDisplay;
+      chartInstance.options.plugins.datalabels.display = newDisplay;
+
+      // Update button style
+      if (newDisplay) {
+          btnElement.classList.remove('btn-secondary');
+          btnElement.classList.add('btn-outline-secondary');
+      } else {
+          btnElement.classList.remove('btn-outline-secondary');
+          btnElement.classList.add('btn-secondary');
+      }
+
+      chartInstance.update();
+  }
 
   // Common Options
   const commonOptions = {
@@ -1451,7 +1522,7 @@
   }
 
   function renderHatchingChart() {
-      const mode = currentMode;
+      const mode = currentModeHatching;
       const state = chartStates.hatching;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
       const filteredData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
@@ -1502,8 +1573,8 @@
               plugins: {
                   ...commonOptions.plugins,
                   weekSeparator: { enabled: mode === 'daily' },
-                  datalabels: {
-                       display: function(context) { return context.dataset.type === 'line'; },
+                                    datalabels: {
+                       display: function(context) { return context.chart.options.plugins.datalabels.display; },
                        formatter: function(value, context) { if (!value) return ''; return parseFloat(value).toFixed(2) + '%'; }
                   },
                   tooltip: commonOptions.plugins.tooltip
@@ -1687,8 +1758,13 @@
   function switchMode(mode) {
       currentMode = mode;
       renderGeneralChart();
+  }
+
+  function switchModeHatching(mode) {
+      currentModeHatching = mode;
       renderHatchingChart();
   }
+
 
   function showNoteModal(date, text, photos) {
       document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
