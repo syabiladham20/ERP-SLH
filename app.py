@@ -2573,9 +2573,25 @@ def flock_vaccines(id):
             stock_history = get_flock_stock_history(id)
             sorted_dates = sorted([d for d in stock_history.keys() if isinstance(d, date)])
 
+            # Batch fetch vaccines
+            vaccines = Vaccine.query.filter(Vaccine.id.in_(vaccine_ids)).all()
+            vaccine_dict = {v.id: v for v in vaccines if v.flock_id == id}
+
+            # Batch fetch inventory items
+            unique_inv_ids = set()
             for vid in vaccine_ids:
-                v = Vaccine.query.get(vid)
-                if not v or v.flock_id != id: continue
+                inv_id_val = request.form.get(f'v_inv_{vid}')
+                if inv_id_val and inv_id_val.isdigit():
+                    unique_inv_ids.add(int(inv_id_val))
+
+            inventory_items_dict = {}
+            if unique_inv_ids:
+                items = InventoryItem.query.filter(InventoryItem.id.in_(unique_inv_ids)).all()
+                inventory_items_dict = {item.id: item for item in items}
+
+            for vid in vaccine_ids:
+                v = vaccine_dict.get(int(vid)) if str(vid).isdigit() else None
+                if not v: continue
 
                 was_completed = v.actual_date is not None
 
@@ -2585,7 +2601,7 @@ def flock_vaccines(id):
                 inv_id_val = request.form.get(f'v_inv_{vid}')
                 if inv_id_val and inv_id_val.isdigit():
                     v.inventory_item_id = int(inv_id_val)
-                    item = InventoryItem.query.get(v.inventory_item_id)
+                    item = inventory_items_dict.get(v.inventory_item_id)
                     if item: v.vaccine_name = item.name
 
                 route = request.form.get(f'route_{vid}')
@@ -2630,7 +2646,7 @@ def flock_vaccines(id):
 
                     units = v.units_needed(applicable_stock)
                     if units > 0:
-                        inv_item = InventoryItem.query.get(v.inventory_item_id)
+                        inv_item = inventory_items_dict.get(v.inventory_item_id)
                         if inv_item:
                             inv_item.current_stock -= units
                             t = InventoryTransaction(
@@ -3275,6 +3291,13 @@ def daily_log():
         med_end_dates = request.form.getlist('med_end_date[]')
         med_remarks = request.form.getlist('med_remarks[]')
 
+        # Batch fetch inventory items
+        unique_inv_ids = {int(iid) for iid in med_inventory_ids if iid and iid.isdigit()}
+        inventory_items_dict = {}
+        if unique_inv_ids:
+            items = InventoryItem.query.filter(InventoryItem.id.in_(unique_inv_ids)).all()
+            inventory_items_dict = {item.id: item for item in items}
+
         for i, name_val in enumerate(med_names):
             inv_id_val = med_inventory_ids[i] if i < len(med_inventory_ids) else None
 
@@ -3284,7 +3307,7 @@ def daily_log():
 
             if inv_id_val and inv_id_val.isdigit():
                 inv_id = int(inv_id_val)
-                item = InventoryItem.query.get(inv_id)
+                item = inventory_items_dict.get(inv_id)
                 if item: item_name = item.name
 
             if not item_name and not inv_id:
@@ -3325,7 +3348,7 @@ def daily_log():
 
             # Auto-Deduct from Inventory
             if inv_id and qty and qty > 0:
-                inv_item = InventoryItem.query.get(inv_id)
+                inv_item = inventory_items_dict.get(inv_id)
                 if inv_item:
                     inv_item.current_stock -= qty
                     t = InventoryTransaction(
@@ -3655,6 +3678,13 @@ def edit_daily_log(id):
         med_end_dates = request.form.getlist('med_end_date[]')
         med_remarks = request.form.getlist('med_remarks[]')
 
+        # Batch fetch inventory items
+        unique_inv_ids = {int(iid) for iid in med_inventory_ids if iid and iid.isdigit()}
+        inventory_items_dict = {}
+        if unique_inv_ids:
+            items = InventoryItem.query.filter(InventoryItem.id.in_(unique_inv_ids)).all()
+            inventory_items_dict = {item.id: item for item in items}
+
         for i, name_val in enumerate(med_names):
             inv_id_val = med_inventory_ids[i] if i < len(med_inventory_ids) else None
 
@@ -3662,7 +3692,7 @@ def edit_daily_log(id):
             inv_id = None
             if inv_id_val and inv_id_val.isdigit():
                 inv_id = int(inv_id_val)
-                item = InventoryItem.query.get(inv_id)
+                item = inventory_items_dict.get(inv_id)
                 if item: item_name = item.name
 
             if not item_name and not inv_id:
@@ -3702,7 +3732,7 @@ def edit_daily_log(id):
             db.session.add(med)
 
             if inv_id and qty and qty > 0:
-                inv_item = InventoryItem.query.get(inv_id)
+                inv_item = inventory_items_dict.get(inv_id)
                 if inv_item:
                     inv_item.current_stock -= qty
                     t = InventoryTransaction(
@@ -5309,6 +5339,8 @@ def health_log_medication():
 
                      inv_id = request.form.get('inventory_item_id')
                      drug_name = request.form.get('drug_name')
+
+                     item = None
                      if inv_id and inv_id.isdigit():
                          inv_id = int(inv_id)
                          item = InventoryItem.query.get(inv_id)
@@ -5334,18 +5366,16 @@ def health_log_medication():
                      )
                      db.session.add(m)
 
-                     if inv_id and qty > 0:
-                         inv_item = InventoryItem.query.get(inv_id)
-                         if inv_item:
-                             inv_item.current_stock -= qty
-                             t = InventoryTransaction(
-                                 inventory_item_id=inv_id,
-                                 transaction_type='Usage',
-                                 quantity=qty,
-                                 transaction_date=s_date,
-                                 notes=f'Used in Health Log'
-                             )
-                             db.session.add(t)
+                     if inv_id and qty > 0 and item:
+                         item.current_stock -= qty
+                         t = InventoryTransaction(
+                             inventory_item_id=inv_id,
+                             transaction_type='Usage',
+                             quantity=qty,
+                             transaction_date=s_date,
+                             notes=f'Used in Health Log'
+                         )
+                         db.session.add(t)
 
                      db.session.commit()
                      flash('Medication added.', 'success')
