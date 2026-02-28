@@ -115,6 +115,17 @@
 </div>
 
 <!-- Navigation Tabs -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Flock Details</h4>
+    <div>
+        {% if session.get('user_role') == 'Admin' %}
+        <a href="{{ url_for('flock_spreadsheet', id=flock.id) }}" class="btn btn-info text-white me-2">
+            <i class="fas fa-table"></i> Spreadsheet View
+        </a>
+        {% endif %}
+    </div>
+</div>
+
 <ul class="nav nav-tabs mb-3" id="flockTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>

@@ -2403,6 +2403,128 @@ def view_flock(id):
 
     return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events)
 
+@app.route('/flock/<int:id>/spreadsheet')
+@dept_required('Farm')
+def flock_spreadsheet(id):
+    if not session.get('is_admin'):
+        flash('Access Denied: Admin only.', 'danger')
+        return redirect(url_for('view_flock', id=id))
+
+    flock = db.session.get(Flock, id)
+    if not flock:
+        flash('Flock not found', 'danger')
+        return redirect(url_for('index'))
+
+    # Load all logs for this flock
+    logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+
+    # Enrich with standards (for benchmarks)
+    standards_list = Standard.query.all()
+    standards_by_week = {s.week: s for s in standards_list}
+    standards_by_prod_week = {s.production_week: s for s in standards_list}
+
+    # Fetch Global Standard for hatching egg %
+    gs = GlobalStandard.query.first()
+    std_hatching_egg_pct = gs.std_hatching_egg_pct if gs and gs.std_hatching_egg_pct is not None else 96.0
+
+    spreadsheet_data = []
+
+    # Needs metrics to figure out correct biological/prod weeks
+    from metrics import enrich_flock_data
+    flock_logs = [l for l in logs]
+    enriched = enrich_flock_data(flock, flock_logs)
+
+    for item in enriched:
+        log = item['log']
+        # Use item dict for calculated values, but use log object for raw DB fields
+        week = item['week']
+        prod_week = item['production_week']
+
+        bio_std = standards_by_week.get(week)
+        prod_std = standards_by_prod_week.get(prod_week)
+
+        spreadsheet_data.append([
+            log.id,
+            log.date.strftime('%Y-%m-%d'),
+            item['age_days'],
+            log.mortality_male,
+            log.mortality_female,
+            log.culls_male,
+            log.culls_female,
+            log.water_reading_1,
+            log.water_reading_2,
+            log.water_reading_3,
+            log.eggs_collected,
+            log.cull_eggs_jumbo,
+            log.cull_eggs_small,
+            log.cull_eggs_crack,
+            log.cull_eggs_abnormal,
+            log.feed_male,
+            log.feed_female,
+            log.body_weight_male,
+            log.body_weight_female,
+            bio_std.std_mortality_female if bio_std else 0, # Benchmark Female Mort
+            prod_std.std_egg_prod if prod_std else 0,       # Benchmark Egg Prod
+            bio_std.std_bw_male if bio_std else 0,        # Benchmark
+            bio_std.std_bw_female if bio_std else 0       # Benchmark
+        ])
+
+    return render_template('flock_spreadsheet.html', flock=flock, spreadsheet_data=spreadsheet_data)
+
+@app.route('/api/flock/<int:flock_id>/spreadsheet_save', methods=['POST'])
+def flock_spreadsheet_save(flock_id):
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    data = request.json.get('data', [])
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+    try:
+        # Fetch logs mapped by ID
+        log_ids = [row.get('id') for row in data if row.get('id')]
+        logs = {log.id: log for log in DailyLog.query.filter(DailyLog.id.in_(log_ids), DailyLog.flock_id == flock_id).all()}
+
+        for row in data:
+            log_id = row.get('id')
+            if not log_id or log_id not in logs:
+                continue
+
+            log = logs[log_id]
+
+            # Update only editable fields
+            editable_fields = [
+                'mortality_male', 'mortality_female', 'culls_male', 'culls_female',
+                'water_reading_1', 'water_reading_2', 'water_reading_3',
+                'eggs_collected', 'eggs_jumbo', 'eggs_small', 'eggs_crack', 'eggs_abnormal',
+                'feed_male', 'feed_female', 'body_weight_male', 'body_weight_female'
+            ]
+
+            for field in editable_fields:
+                val = row.get(field)
+                if val == '': val = None
+                if val is not None:
+                    try:
+                        val = float(val)
+                    except ValueError:
+                        val = None
+
+                setattr(log, field, val)
+
+            # Recalculate basic water intake from readings
+            # In production, more complex logic handles flushing/meters
+            total_readings = (log.water_reading_1 or 0) + (log.water_reading_2 or 0) + (log.water_reading_3 or 0)
+            # Assuming simple continuous accumulation or daily input.
+            # Real recalculation needs full historical sequence, which is complex for bulk edit.
+            # We will just save raw values and let the normal metrics.py handle derived values
+            # or apply a simple override here.
+
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/flock/<int:id>/charts')
 @dept_required('Farm')
 def flock_charts(id):
