@@ -3272,14 +3272,24 @@ def daily_log():
         vaccine_present_ids = request.form.getlist('vaccine_present_ids')
         vaccine_completed_ids = request.form.getlist('vaccine_completed_ids')
 
+        # Convert to integers for precise DB query
+        int_vaccine_present_ids = []
         for vid in vaccine_present_ids:
-            vac = Vaccine.query.get(vid)
-            if vac and vac.flock_id == flock.id:
-                if vid in vaccine_completed_ids:
-                    vac.actual_date = log_date
-                elif vac.actual_date == log_date:
-                    # Only unset if it was set to THIS date (don't clear history if logic changes)
-                    vac.actual_date = None
+            try:
+                int_vaccine_present_ids.append(int(vid))
+            except ValueError:
+                pass
+
+        if int_vaccine_present_ids:
+            # Optimize N+1 Query: Bulk fetch instead of individual gets
+            vaccines = Vaccine.query.filter(Vaccine.id.in_(int_vaccine_present_ids)).all()
+            for vac in vaccines:
+                if vac.flock_id == flock.id:
+                    if str(vac.id) in vaccine_completed_ids:
+                        vac.actual_date = log_date
+                    elif vac.actual_date == log_date:
+                        # Only unset if it was set to THIS date (don't clear history if logic changes)
+                        vac.actual_date = None
 
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
@@ -3660,13 +3670,23 @@ def edit_daily_log(id):
         vaccine_present_ids = request.form.getlist('vaccine_present_ids')
         vaccine_completed_ids = request.form.getlist('vaccine_completed_ids')
 
+        # Convert to integers for precise DB query
+        int_vaccine_present_ids = []
         for vid in vaccine_present_ids:
-            vac = Vaccine.query.get(vid)
-            if vac and vac.flock_id == log.flock_id:
-                if vid in vaccine_completed_ids:
-                    vac.actual_date = log.date
-                elif vac.actual_date == log.date:
-                    vac.actual_date = None
+            try:
+                int_vaccine_present_ids.append(int(vid))
+            except ValueError:
+                pass
+
+        if int_vaccine_present_ids:
+            # Optimize N+1 Query: Bulk fetch instead of individual gets
+            vaccines = Vaccine.query.filter(Vaccine.id.in_(int_vaccine_present_ids)).all()
+            for vac in vaccines:
+                if vac.flock_id == log.flock_id:
+                    if str(vac.id) in vaccine_completed_ids:
+                        vac.actual_date = log.date
+                    elif vac.actual_date == log.date:
+                        vac.actual_date = None
 
         # Handle Multiple Medications
         med_names = request.form.getlist('med_drug_name[]')
