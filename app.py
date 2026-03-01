@@ -3515,9 +3515,13 @@ def admin_ui_update():
         # Form data: id[], order_{id}, label_{id}, visible_{id}
         ids = request.form.getlist('id[]')
 
+        int_ids = [int(id_str) for id_str in ids if id_str.isdigit()]
+        ui_elements = UIElement.query.filter(UIElement.id.in_(int_ids)).all()
+        ui_element_dict = {elem.id: elem for elem in ui_elements}
+
         for id_str in ids:
-            eid = int(id_str)
-            elem = UIElement.query.get(eid)
+            eid = int(id_str) if id_str.isdigit() else 0
+            elem = ui_element_dict.get(eid)
             if not elem: continue
 
             # Update Label
@@ -4959,9 +4963,14 @@ def update_clinical_notes(log, req):
 
     # 2. Handle Existing Updates
     exist_ids = req.form.getlist('existing_note_id[]')
+
+    int_exist_ids = [int(nid) for nid in exist_ids if str(nid).isdigit()]
+    existing_notes = ClinicalNote.query.filter(ClinicalNote.id.in_(int_exist_ids), ClinicalNote.log_id == log.id).all()
+    notes_dict = {str(note.id): note for note in existing_notes}
+
     for nid in exist_ids:
-        note = ClinicalNote.query.get(nid)
-        if note and note.log_id == log.id:
+        note = notes_dict.get(str(nid))
+        if note:
             caption = req.form.get(f'existing_note_caption_{nid}')
             if caption is not None:
                 note.caption = caption
@@ -5062,9 +5071,13 @@ def health_log_vaccines():
             vaccine_ids = [k.split('_')[2] for k in request.form.keys() if k.startswith('v_id_')]
             updated_count = 0
 
+            int_vids = [int(vid) for vid in vaccine_ids if vid.isdigit()]
+            vaccines = Vaccine.query.filter(Vaccine.id.in_(int_vids), Vaccine.flock_id == id).all()
+            vaccine_dict = {str(vac.id): vac for vac in vaccines}
+
             for vid in vaccine_ids:
-                v = Vaccine.query.get(vid)
-                if not v or v.flock_id != id: continue
+                v = vaccine_dict.get(vid)
+                if not v: continue
 
                 age_code = request.form.get(f'age_code_{vid}')
                 name = request.form.get(f'vaccine_name_{vid}')
@@ -5215,8 +5228,11 @@ def health_log_sampling():
             if key.startswith('s_') and key.split('_')[-1].isdigit():
                 s_ids.add(int(key.split('_')[-1]))
 
+        sampling_events = SamplingEvent.query.filter(SamplingEvent.id.in_(s_ids)).all() if s_ids else []
+        sampling_dict = {event.id: event for event in sampling_events}
+
         for sid in s_ids:
-            s = SamplingEvent.query.get(sid)
+            s = sampling_dict.get(sid)
             if not s: continue
 
             test = request.form.get(f's_test_{sid}')
@@ -5363,7 +5379,7 @@ def health_log_medication():
                      item = None
                      if inv_id and inv_id.isdigit():
                          inv_id = int(inv_id)
-                         item = InventoryItem.query.get(inv_id)
+                         item = db.session.get(InventoryItem, inv_id)
                          if item: drug_name = item.name
                      else:
                          inv_id = None
@@ -5408,8 +5424,11 @@ def health_log_medication():
             if key.startswith('m_') and key.split('_')[-1].isdigit():
                 m_ids.add(int(key.split('_')[-1]))
 
+        medications = Medication.query.filter(Medication.id.in_(m_ids)).all() if m_ids else []
+        medication_dict = {med.id: med for med in medications}
+
         for mid in m_ids:
-            m = Medication.query.get(mid)
+            m = medication_dict.get(mid)
             if not m: continue
 
             drug = request.form.get(f'm_drug_{mid}')
