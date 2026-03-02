@@ -724,6 +724,8 @@
   if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
   if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
 
+  const isMobile = window.innerWidth <= 768;
+
   const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
@@ -885,8 +887,8 @@
               y: {min: 'original', max: 'original'},
               y1: {min: 'original', max: 'original'}
             },
-            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
-            pan: { enabled: true, mode: 'xy' }
+            zoom: { wheel: { enabled: isMobile }, pinch: { enabled: isMobile }, mode: 'xy' },
+            pan: { enabled: isMobile, mode: 'xy' }
           },
           datalabels: {
               _showLabels: false,
