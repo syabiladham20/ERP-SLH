@@ -2440,10 +2440,13 @@ def flock_spreadsheet(id):
         bio_std = standards_by_week.get(week)
         prod_std = standards_by_prod_week.get(prod_week)
 
+        clinical_notes_str = ', '.join([note.caption for note in log.clinical_notes_list if note.caption])
+
         spreadsheet_data.append([
             log.id,
             log.date.strftime('%Y-%m-%d'),
             item['age_days'],
+            clinical_notes_str,
             log.mortality_male,
             log.mortality_female,
             log.culls_male,
@@ -2507,6 +2510,16 @@ def flock_spreadsheet_save(flock_id):
                         val = None
 
                 setattr(log, field, val)
+
+            # Handle clinical signs separately
+            clinical_signs_val = row.get('clinical_signs')
+            # Clear existing clinical notes for this log
+            ClinicalNote.query.filter_by(log_id=log.id).delete()
+            if clinical_signs_val:
+                signs = [s.strip() for s in clinical_signs_val.split(',') if s.strip()]
+                for sign in signs:
+                    new_note = ClinicalNote(log_id=log.id, caption=sign)
+                    db.session.add(new_note)
 
             # Assuming simple continuous accumulation or daily input.
             # Real recalculation needs full historical sequence, which is complex for bulk edit.
