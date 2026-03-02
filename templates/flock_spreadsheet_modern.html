@@ -1,0 +1,271 @@
+{% extends "base_modern.html" %}
+
+{% block content %}
+<div class="page-header d-print-none mb-3">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">
+        Spreadsheet View - {{ flock.house.name }}
+      </h2>
+    </div>
+    <div class="col-auto ms-auto d-print-none">
+      <div class="btn-list">
+        <button id="saveBtn" class="btn btn-primary d-none d-sm-inline-block">Save Changes</button>
+        <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-secondary d-none d-sm-inline-block">Back to Flock</a>
+
+        <!-- Mobile Toggle Button -->
+        <button class="btn btn-primary d-sm-none" id="toggleViewBtn">Switch to Card View</button>
+        <button id="saveBtnMobile" class="btn btn-success d-sm-none">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hybrid UI: Mobile Cards Wrapper -->
+<div id="mobileCardView" class="d-none mb-4">
+    <!-- Search / Filter for Cards -->
+    <div class="mb-3">
+        <input type="text" id="cardSearch" class="form-control" placeholder="Search by Date (YYYY-MM-DD)...">
+    </div>
+    <div id="cardsContainer" class="row row-cards">
+        <!-- Cards will be generated here by JS -->
+    </div>
+</div>
+
+<div class="container-xl d-none d-sm-block" id="spreadsheetWrapper">
+    <div id="spreadsheet" style="width: 100%; height: 700px; overflow: auto; border: 1px solid #ccc; background: white;" class="shadow-sm rounded"></div>
+</div>
+
+<!-- Jspreadsheet CSS and JS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.13.3/dist/jspreadsheet.min.css" type="text/css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4.3.2/dist/jsuites.min.css" type="text/css" />
+
+<style>
+    /* Custom styles to differentiate readonly cells */
+    .readonly {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+    }
+    .benchmark {
+        background-color: #e2e3e5 !important;
+        color: #495057 !important;
+        font-style: italic;
+    }
+
+    /* Ensure the container takes up space */
+    #spreadsheet {
+        display: block;
+        min-height: 500px;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.13.3/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsuites@4.3.2/dist/jsuites.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded. Initializing Jspreadsheet.");
+
+    const spreadsheetData = {{ spreadsheet_data | tojson | safe }};
+    const flockId = {{ flock.id }};
+
+    if (typeof jspreadsheet === 'undefined') {
+        console.error("jspreadsheet is not defined! The script may not have loaded correctly.");
+        return;
+    }
+
+    console.log("Data loaded:", spreadsheetData.length, "rows.");
+
+    const columns = [
+        { type: 'hidden', title: 'ID', name: 'id', width: 0, readOnly: true },
+        { type: 'text', title: 'Date', name: 'date', width: 100, readOnly: true },
+        { type: 'numeric', title: 'Age (Days)', name: 'age_days', width: 80, readOnly: true },
+
+        // Editable fields
+        { type: 'text', title: 'Clinical Signs', name: 'clinical_signs', width: 200 },
+        { type: 'numeric', title: 'Mortality (M)', name: 'mortality_male', width: 100 },
+        { type: 'numeric', title: 'Mortality (F)', name: 'mortality_female', width: 100 },
+        { type: 'numeric', title: 'Culls (M)', name: 'culls_male', width: 80 },
+        { type: 'numeric', title: 'Culls (F)', name: 'culls_female', width: 80 },
+        { type: 'numeric', title: 'Water 1', name: 'water_reading_1', width: 100 },
+        { type: 'numeric', title: 'Water 2', name: 'water_reading_2', width: 100 },
+        { type: 'numeric', title: 'Water 3', name: 'water_reading_3', width: 100 },
+        { type: 'numeric', title: 'Eggs Collected', name: 'eggs_collected', width: 120 },
+        { type: 'numeric', title: 'Eggs Jumbo', name: 'eggs_jumbo', width: 100 },
+        { type: 'numeric', title: 'Eggs Small', name: 'eggs_small', width: 100 },
+        { type: 'numeric', title: 'Eggs Crack', name: 'eggs_crack', width: 100 },
+        { type: 'numeric', title: 'Eggs Abnormal', name: 'eggs_abnormal', width: 110 },
+        { type: 'numeric', title: 'Feed (M)', name: 'feed_male', width: 90 },
+        { type: 'numeric', title: 'Feed (F)', name: 'feed_female', width: 90 },
+        { type: 'numeric', title: 'BW (M)', name: 'body_weight_male', width: 90 },
+        { type: 'numeric', title: 'BW (F)', name: 'body_weight_female', width: 90 },
+
+        // Readonly/Benchmark fields
+        { type: 'numeric', title: 'Std Mort %', name: 'std_mortality', width: 100, readOnly: true },
+        { type: 'numeric', title: 'Std Egg Prod %', name: 'std_egg_prod', width: 120, readOnly: true },
+        { type: 'numeric', title: 'Std BW (M)', name: 'std_bw_male', width: 100, readOnly: true },
+        { type: 'numeric', title: 'Std BW (F)', name: 'std_bw_female', width: 100, readOnly: true }
+    ];
+
+    try {
+        const mySpreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
+            data: spreadsheetData,
+            columns: columns,
+            search: true,
+            pagination: 50,
+            columnDrag: true,
+            updateTable: function(instance, cell, col, row, val, label, cellName) {
+                // Apply styling to readOnly columns
+                const colDef = columns[col];
+                if (colDef && colDef.readOnly) {
+                    if (colDef.name && colDef.name.startsWith('std_')) {
+                        cell.classList.add('benchmark');
+                    } else {
+                        cell.classList.add('readonly');
+                    }
+                }
+            }
+        });
+        console.log("Jspreadsheet initialized successfully");
+
+        // --- Mobile Hybrid UI Logic ---
+        const mobileCardView = document.getElementById('mobileCardView');
+        const spreadsheetWrapper = document.getElementById('spreadsheetWrapper');
+        const toggleViewBtn = document.getElementById('toggleViewBtn');
+        const cardsContainer = document.getElementById('cardsContainer');
+
+        let isCardView = false;
+
+        // Detect initial load on mobile
+        if (window.innerWidth < 576) {
+            isCardView = true;
+            spreadsheetWrapper.classList.replace('d-sm-block', 'd-none');
+            mobileCardView.classList.remove('d-none');
+            toggleViewBtn.innerText = 'Switch to Grid View';
+            renderCards();
+        }
+
+        toggleViewBtn.addEventListener('click', function() {
+            isCardView = !isCardView;
+            if (isCardView) {
+                spreadsheetWrapper.classList.add('d-none');
+                spreadsheetWrapper.classList.remove('d-sm-block');
+                mobileCardView.classList.remove('d-none');
+                this.innerText = 'Switch to Grid View';
+                renderCards();
+            } else {
+                mobileCardView.classList.add('d-none');
+                spreadsheetWrapper.classList.remove('d-none');
+                spreadsheetWrapper.classList.add('d-sm-block');
+                this.innerText = 'Switch to Card View';
+            }
+        });
+
+        window.updateSpreadsheetData = function(rowIndex, colIndex, value) {
+            mySpreadsheet.setValueFromCoords(colIndex, rowIndex, value, true);
+        };
+
+        function renderCards(filterText = '') {
+            cardsContainer.innerHTML = '';
+            const data = mySpreadsheet.getData();
+
+            data.forEach((row, rowIndex) => {
+                const dateStr = row[1];
+                if (filterText && !dateStr.includes(filterText)) return;
+
+                const card = document.createElement('div');
+                card.className = 'col-12';
+
+                // Editable fields mapping based on jspreadsheet columns index
+                const fields = [
+                    { idx: 4, label: 'Mort M', type: 'number' },
+                    { idx: 5, label: 'Mort F', type: 'number' },
+                    { idx: 11, label: 'Eggs Collected', type: 'number' },
+                    { idx: 16, label: 'Feed M', type: 'number' },
+                    { idx: 17, label: 'Feed F', type: 'number' },
+                    { idx: 3, label: 'Clinical Signs', type: 'text' }
+                ];
+
+                let fieldsHtml = '';
+                fields.forEach(f => {
+                    fieldsHtml += `
+                        <div class="mb-2 col-6">
+                            <label class="form-label small text-muted mb-1">${f.label}</label>
+                            <input type="${f.type}" class="form-control form-control-sm" value="${row[f.idx] || ''}" onchange="updateSpreadsheetData(${rowIndex}, ${f.idx}, this.value)">
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="card shadow-sm border-0 mb-2">
+                        <div class="card-header py-2 bg-light d-flex justify-content-between">
+                            <h4 class="card-title m-0">Date: ${dateStr}</h4>
+                            <span class="badge bg-secondary">Day ${row[2]}</span>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                ${fieldsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        document.getElementById('cardSearch').addEventListener('input', function(e) {
+            renderCards(e.target.value);
+        });
+
+        // Save functionality
+        function handleSave(btnElement) {
+            btnElement.disabled = true;
+            const originalText = btnElement.textContent;
+            btnElement.textContent = 'Saving...';
+
+            const rawData = mySpreadsheet.getData();
+            const payload = [];
+
+            for (let i = 0; i < rawData.length; i++) {
+                const row = rawData[i];
+                const rowObj = {};
+                for (let j = 0; j < columns.length; j++) {
+                    rowObj[columns[j].name] = row[j] !== '' ? row[j] : null;
+                }
+                payload.push(rowObj);
+            }
+
+            fetch('/api/flock/' + flockId + '/spreadsheet_save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ data: payload })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Changes saved successfully!');
+                } else {
+                    alert('Error saving changes: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving.');
+            })
+            .finally(() => {
+                btnElement.disabled = false;
+                btnElement.textContent = originalText;
+            });
+        }
+
+        document.getElementById('saveBtn').addEventListener('click', function() { handleSave(this); });
+        document.getElementById('saveBtnMobile').addEventListener('click', function() { handleSave(this); });
+
+    } catch (e) {
+        console.error("Error initializing jspreadsheet:", e);
+    }
+});
+</script>
+{% endblock %}

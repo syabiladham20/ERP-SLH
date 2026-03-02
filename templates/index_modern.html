@@ -1,0 +1,138 @@
+{% extends "base_modern.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header d-print-none mb-3">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">
+        Farm Dashboard
+      </h2>
+      <div class="text-muted mt-1">{{ today.strftime('%d %B %Y') }}</div>
+    </div>
+    <div class="col-auto ms-auto d-print-none">
+      <div class="btn-list">
+        <a href="{{ url_for('daily_log') }}" class="btn btn-primary d-none d-sm-inline-block">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+          Add Daily Log
+        </a>
+        <a href="{{ url_for('manage_flocks') }}" class="btn btn-outline-primary d-none d-sm-inline-block">
+          Manage Flocks
+        </a>
+        <!-- Mobile Dropdown -->
+        <div class="dropdown d-sm-none">
+            <a href="#" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">Actions</a>
+            <div class="dropdown-menu dropdown-menu-end">
+                <a href="{{ url_for('daily_log') }}" class="dropdown-item">Add Daily Log</a>
+                <a href="{{ url_for('manage_flocks') }}" class="dropdown-item">Manage Flocks</a>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if low_stock_count > 0 %}
+<div class="alert alert-warning alert-dismissible shadow-sm border-warning" role="alert">
+  <div class="d-flex">
+    <div>
+      <svg xmlns="http://www.w3.org/2000/svg" class="icon alert-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+    </div>
+    <div>
+      <h4 class="alert-title">Low Inventory Alert</h4>
+      <div class="text-secondary">{{ low_stock_count }} items have fallen below their minimum stock level. <a href="{{ url_for('inventory') }}" class="alert-link">Review Inventory</a></div>
+    </div>
+  </div>
+  <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+</div>
+{% endif %}
+
+<div class="row row-cards">
+  {% for flock in active_flocks %}
+  <div class="col-sm-6 col-lg-4">
+    <div class="card card-sm shadow-sm h-100">
+      <div class="card-status-top {% if flock.phase == 'Production' %}bg-success{% else %}bg-primary{% endif %}"></div>
+      <div class="card-body">
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h3 class="m-0 font-weight-bold">{{ flock.flock_id }}</h3>
+          <span class="badge {% if flock.phase == 'Production' %}bg-success-lt{% else %}bg-primary-lt{% endif %}">
+            {{ flock.phase }}
+          </span>
+        </div>
+
+        <div class="text-muted mb-3 d-flex align-items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-inline me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><line x1="3" y1="6" x2="3" y2="19" /><line x1="12" y1="6" x2="12" y2="19" /><line x1="21" y1="6" x2="21" y2="19" /></svg>
+          {{ flock.house.name }}
+          <span class="mx-2">&bull;</span>
+          Week {{ flock.current_week }}
+        </div>
+
+        {% if flock.daily_stats.show_data %}
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <div class="bg-light p-2 rounded text-center">
+              <div class="text-uppercase text-muted font-weight-medium mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Egg Prod</div>
+              <div class="h3 m-0 {% if flock.daily_stats.egg_trend == 'up' %}text-success{% elif flock.daily_stats.egg_trend == 'down' %}text-danger{% endif %}">
+                {{ "%.1f"|format(flock.daily_stats.egg_pct) }}%
+                {% if flock.daily_stats.egg_trend == 'up' %}&uarr;{% elif flock.daily_stats.egg_trend == 'down' %}&darr;{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="bg-light p-2 rounded text-center">
+              <div class="text-uppercase text-muted font-weight-medium mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Mortality (F)</div>
+              <div class="h3 m-0 {% if flock.daily_stats.mort_f_trend == 'down' %}text-success{% elif flock.daily_stats.mort_f_trend == 'up' %}text-danger{% endif %}">
+                {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
+                {% if flock.daily_stats.mort_f_trend == 'up' %}&uarr;{% elif flock.daily_stats.mort_f_trend == 'down' %}&darr;{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="text-muted small text-center mb-3">
+          Latest Data: {{ flock.daily_stats.data_date.strftime('%d %b') if flock.daily_stats.data_date else 'N/A' }}
+          {% if not flock.has_log_today %}
+          <span class="text-danger ms-1 fw-bold">(Log Missing Today)</span>
+          {% else %}
+          <span class="text-success ms-1">(Up to date)</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="alert alert-secondary p-2 text-center text-muted mb-3">
+          No logs entered yet.
+        </div>
+        {% endif %}
+
+      </div>
+      <div class="card-footer p-2 text-center bg-light">
+          <div class="d-flex justify-content-around">
+            <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-ghost-primary btn-sm">See Details</a>
+            <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-ghost-warning btn-sm" onclick="return confirm('Change phase for {{ flock.flock_id }}?');">
+                    Switch to {% if flock.phase == 'Rearing' %}Production{% else %}Rearing{% endif %}
+                </button>
+            </form>
+          </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="empty bg-white rounded shadow-sm py-5">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon text-muted" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9" /><line x1="9" y1="12" x2="15" y2="12" /><line x1="12" y1="9" x2="12" y2="15" /></svg>
+      </div>
+      <p class="empty-title">No active flocks</p>
+      <p class="empty-subtitle text-muted">
+        There are currently no active flocks being managed.
+      </p>
+      <div class="empty-action">
+        <a href="{{ url_for('manage_flocks') }}" class="btn btn-primary">
+          Create New Flock
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
