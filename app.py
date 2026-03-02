@@ -913,6 +913,15 @@ def initialize_vaccine_schedule(flock_id, commit=True):
 
 # --- Routes ---
 
+@app.context_processor
+def inject_system_health():
+    logs = []
+    try:
+        logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).limit(3).all()
+    except Exception:
+        pass
+    return dict(system_health_logs=logs)
+
 @app.before_request
 def load_logged_in_user():
     # TEMPORARY FEATURE: Auto-login if login_required is False
@@ -982,7 +991,7 @@ def login():
         else:
             flash("Invalid username or password.", "danger")
 
-    return render_template('login.html')
+    return render_template('login_modern.html')
 
 @app.route('/logout')
 def logout():
@@ -1218,7 +1227,7 @@ def index():
                 if round(f.daily_stats['egg_diff'], 2) > 0: f.daily_stats['egg_trend'] = 'up'
                 elif round(f.daily_stats['egg_diff'], 2) < 0: f.daily_stats['egg_trend'] = 'down'
 
-    return render_template('index.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
+    return render_template('index_modern.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
 
 @app.route('/history')
 @dept_required('Farm')
@@ -2431,7 +2440,7 @@ def view_flock(id):
 
     weekly_data.reverse()
 
-    return render_template('flock_detail.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events)
+    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events)
 
 @app.route('/flock/<int:id>/spreadsheet')
 @dept_required('Farm')
@@ -2502,7 +2511,7 @@ def flock_spreadsheet(id):
             bio_std.std_bw_female if bio_std else 0       # Benchmark
         ])
 
-    return render_template('flock_spreadsheet.html', flock=flock, spreadsheet_data=spreadsheet_data)
+    return render_template('flock_spreadsheet_modern.html', flock=flock, spreadsheet_data=spreadsheet_data)
 
 @app.route('/api/flock/<int:flock_id>/spreadsheet_save', methods=['POST'])
 def flock_spreadsheet_save(flock_id):
