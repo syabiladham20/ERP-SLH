@@ -227,7 +227,6 @@ class Flock(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
-    weekly_data = db.relationship('WeeklyData', backref='flock', lazy=True, cascade="all, delete-orphan")
     weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
 class DailyLog(db.Model):
@@ -384,6 +383,14 @@ class GlobalStandard(db.Model):
     std_hatching_egg_pct = db.Column(db.Float, default=96.0)
     login_required = db.Column(db.Boolean, default=True) # TEMPORARY FEATURE
 
+class SystemAuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    module = db.Column(db.String(100), nullable=False)
+    action = db.Column(db.String(255), nullable=False)
+    performance_impact = db.Column(db.String(255), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+
 class UIElement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True, nullable=False)
@@ -391,24 +398,6 @@ class UIElement(db.Model):
     section = db.Column(db.String(50), nullable=False) # 'navbar_main', 'navbar_health', 'flock_card', 'flock_detail'
     is_visible = db.Column(db.Boolean, default=True)
     order_index = db.Column(db.Integer, default=0)
-
-class WeeklyData(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
-    week = db.Column(db.Integer, nullable=False)
-
-    mortality_male = db.Column(db.Integer, default=0)
-    mortality_female = db.Column(db.Integer, default=0)
-    culls_male = db.Column(db.Integer, default=0)
-    culls_female = db.Column(db.Integer, default=0)
-
-    eggs_collected = db.Column(db.Integer, default=0)
-
-    bw_male = db.Column(db.Integer, default=0)
-    bw_female = db.Column(db.Integer, default=0)
-
-    feed_male = db.Column(db.Float, default=0.0) # Total Kg
-    feed_female = db.Column(db.Float, default=0.0) # Total Kg
 
 class SamplingEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1019,6 +1008,14 @@ def change_password():
 
     return render_template('change_password.html')
 
+@app.route('/admin/audit_logs')
+def admin_audit_logs():
+    if not session.get('is_admin'):
+        flash("Access Denied.", "danger")
+        return redirect(url_for('index'))
+    logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).all()
+    return render_template('admin/audit_logs.html', logs=logs)
+
 @app.route('/admin/users')
 def admin_users():
     if not session.get('is_admin'):
@@ -1114,7 +1111,7 @@ def hatchery_dashboard():
 @app.route('/')
 @dept_required('Farm')
 def index():
-    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
 
     # Inventory Check for Dashboard
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
@@ -1569,7 +1566,7 @@ def get_chart_data(flock_id):
     mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
 
     hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
-    all_logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+    all_logs = DailyLog.query.options(joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
     # Fetch Health Data
     meds = Medication.query.filter_by(flock_id=flock_id).all()
@@ -1940,7 +1937,7 @@ def view_flock(id):
     active_flocks.sort(key=natural_sort_key)
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
-    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
     # --- Health Analytics ---
     health_events = analyze_health_events(logs)
@@ -2416,7 +2413,7 @@ def flock_spreadsheet(id):
         return redirect(url_for('index'))
 
     # Load all logs for this flock
-    logs = DailyLog.query.filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
     # Enrich with standards (for benchmarks)
     standards_list = Standard.query.all()
@@ -2511,9 +2508,6 @@ def flock_spreadsheet_save(flock_id):
 
                 setattr(log, field, val)
 
-            # Recalculate basic water intake from readings
-            # In production, more complex logic handles flushing/meters
-            total_readings = (log.water_reading_1 or 0) + (log.water_reading_2 or 0) + (log.water_reading_3 or 0)
             # Assuming simple continuous accumulation or daily input.
             # Real recalculation needs full historical sequence, which is complex for bulk edit.
             # We will just save raw values and let the normal metrics.py handle derived values
@@ -3383,7 +3377,6 @@ def daily_log():
     active_houses = [f.house for f in active_flocks]
 
     flock_phases = {}
-    flock_defaults = {}
 
     for f in active_flocks:
         flock_phases[f.house_id] = f.phase
@@ -6689,7 +6682,7 @@ def executive_dashboard():
         return redirect(url_for('index'))
 
     # --- Farm Data ---
-    active_flocks = Flock.query.options(joinedload(Flock.logs), joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
     active_flocks.sort(key=natural_sort_key)
 
     today = date.today()
@@ -6863,7 +6856,7 @@ def executive_flock_detail(id):
     active_flocks.sort(key=natural_sort_key)
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
-    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
+    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
 
     gs = GlobalStandard.query.first()
     if not gs:
