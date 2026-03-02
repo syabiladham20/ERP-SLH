@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}System Audit Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-shield-check me-2 text-primary"></i>System Audit Logs</h1>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Cleanup & Optimization History</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Module/File</th>
+                            <th>Action Taken</th>
+                            <th>Performance Gain</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="text-nowrap">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td><span class="badge bg-secondary">{{ log.module }}</span></td>
+                            <td>{{ log.action }}</td>
+                            <td>
+                                {% if log.performance_impact %}
+                                    <span class="text-success fw-bold"><i class="bi bi-graph-up-arrow"></i> {{ log.performance_impact }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small">{{ log.notes or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">No audit logs found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

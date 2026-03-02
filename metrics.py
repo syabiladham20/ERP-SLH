@@ -61,13 +61,6 @@ METRICS_REGISTRY = {
     'male_ratio_pct': {'label': 'Male Ratio %', 'unit': '%', 'type': 'raw'},
 }
 
-def round_safe(val, digits=2):
-    if val is None: return 0.0
-    try:
-        return round(float(val), digits)
-    except (ValueError, TypeError):
-        return 0.0
-
 def safe_div(num, den, multiplier=100.0):
     if den and den > 0:
         return (num / den) * multiplier
@@ -116,8 +109,6 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         # For now, let's start cumulatives at 0 for the window or pass them?
         cum_mort_m = custom_start_stock.get('cum_mort_male', 0)
         cum_mort_f = custom_start_stock.get('cum_mort_female', 0)
-        cum_cull_m = custom_start_stock.get('cum_culls_male', 0)
-        cum_cull_f = custom_start_stock.get('cum_culls_female', 0)
 
         # Override start_m/f if we want percentages relative to Phase Start
         if 'phase_start_male' in custom_start_stock:
@@ -140,8 +131,6 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         # Cumulative Counters (Reset on Phase Switch)
         cum_mort_m = 0
         cum_mort_f = 0
-        cum_cull_m = 0
-        cum_cull_f = 0
 
     # Global Cumulative (For total flock life) could be tracked if needed,
     # but charts usually respect the "Phase Baseline".
@@ -174,8 +163,6 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
              # Reset Cumulative Loss Counters for the new phase
              cum_mort_m = 0
              cum_mort_f = 0
-             cum_cull_m = 0
-             cum_cull_f = 0
 
         # --- B. Snapshot Stock (Start of Day) ---
         # Used for today's mortality % calculation
@@ -211,8 +198,6 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         # Cumulatives (Add today's loss)
         cum_mort_m += mort_m
         cum_mort_f += mort_f
-        cum_cull_m += cull_m
-        cum_cull_f += cull_f
 
         # Production Week Calculation
         bio_week = (log.date - flock.intake_date).days // 7 + 1
