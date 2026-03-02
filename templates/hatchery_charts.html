@@ -52,14 +52,10 @@
 
     // Calculate Y Max Options
     function getOptions(values, isPercentage) {
-        const valid = values.filter(v => v !== null && v !== undefined && !isNaN(v));
-        if (!valid || valid.length === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 10};
-        const maxVal = Math.max(...valid);
-        let limit = maxVal * 1.25;
-        if (limit === 0) return {min: 0, suggestedMax: isPercentage ? 100 : 1};
-
-        if (isPercentage && limit > 100) return {min: 0, max: 100};
-        return {min: 0, suggestedMax: limit};
+        return {
+            beginAtZero: true,
+            grace: isPercentage ? '5%' : '25%'
+        };
     }
 
     function renderChart() {
@@ -232,6 +228,11 @@
                         }
                     },
                     zoom: {
+                        limits: {
+                            x: {min: 'original', max: 'original'},
+                            y: {min: 'original', max: 'original'},
+                            y1: {min: 'original', max: 'original'}
+                        },
                         zoom: {
                           wheel: { enabled: true },
                           pinch: { enabled: true },

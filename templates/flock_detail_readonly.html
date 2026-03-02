@@ -880,6 +880,11 @@
           legend: { position: 'bottom' },
           weekSeparator: { enabled: false }, // Default disabled
           zoom: {
+            limits: {
+              x: {min: 'original', max: 'original'},
+              y: {min: 'original', max: 'original'},
+              y1: {min: 'original', max: 'original'}
+            },
             zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
             pan: { enabled: true, mode: 'xy' }
           },
@@ -995,24 +1000,10 @@
   }
 
   function getScaleOptions(dataArrays, isPercentage) {
-      let allValues = [];
-      if (Array.isArray(dataArrays)) {
-           // Flatten if array of arrays
-           allValues = dataArrays.flat().filter(v => v !== null && v !== undefined && !isNaN(v));
-      }
-
-      if (allValues.length === 0) return { min: 0, suggestedMax: isPercentage ? 100 : 10 };
-
-      const maxVal = Math.max(...allValues);
-      let limit = maxVal * 1.25;
-
-      if (limit === 0) return { min: 0, suggestedMax: isPercentage ? 100 : 1 };
-
-      if (isPercentage && limit > 100) {
-          return { min: 0, max: 100 };
-      } else {
-          return { min: 0, suggestedMax: limit };
-      }
+      return {
+          beginAtZero: true,
+          grace: isPercentage ? '5%' : '25%', // Add buffer above the highest visible data point
+      };
   }
 
   function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
@@ -1233,7 +1224,7 @@
                       position: 'left',
                       title: { display: true, text: 'Feed (g)' },
                       min: yMin,
-                      suggestedMax: feedScales.suggestedMax
+                      ...feedScales
                   },
                   y1: {
                       type: 'linear',
@@ -1594,7 +1585,7 @@
                   weekSeparator: { enabled: mode === 'daily' }
               },
               scales: {
-                  y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, suggestedMax: barMaxCalc.suggestedMax },
+                  y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, ...barMaxCalc },
                   y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
               }
           },
