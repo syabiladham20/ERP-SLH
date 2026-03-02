@@ -153,6 +153,11 @@ class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
 
+class Farm(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    flocks = db.relationship('Flock', backref='farm', lazy=True)
+
 class House(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
@@ -202,6 +207,7 @@ class InventoryTransaction(db.Model):
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
+    farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=True, index=True)
     flock_id = db.Column(db.String(100), unique=True, nullable=False)
     intake_date = db.Column(db.Date, nullable=False, default=date.today)
     
@@ -1301,11 +1307,24 @@ def edit_flock(id):
         flock.prod_start_male_hosp = int(request.form.get('prod_start_male_hosp') or 0)
         flock.prod_start_female_hosp = int(request.form.get('prod_start_female_hosp') or 0)
 
+        # Farm Update
+        farm_name = request.form.get('farm_name', '').strip()
+        if farm_name:
+            farm = Farm.query.filter_by(name=farm_name).first()
+            if not farm:
+                farm = Farm(name=farm_name)
+                db.session.add(farm)
+                db.session.commit()
+            flock.farm_id = farm.id
+        else:
+            flock.farm_id = None
+
         db.session.commit()
         flash(f'Flock {flock.flock_id} updated.', 'success')
         return redirect(url_for('index'))
 
-    return render_template('flock_edit.html', flock=flock)
+    farms = Farm.query.all()
+    return render_template('flock_edit.html', flock=flock, farms=farms)
 
 @app.route('/flock/<int:id>/delete', methods=['POST'])
 @dept_required('Farm')
@@ -1337,6 +1356,18 @@ def manage_flocks():
         doa_male = int(request.form.get('doa_male') or 0)
         doa_female = int(request.form.get('doa_female') or 0)
         
+        # Find or Create Farm
+        farm_name = request.form.get('farm_name', '').strip()
+        farm_id = None
+        if farm_name:
+            farm = Farm.query.filter_by(name=farm_name).first()
+            if not farm:
+                farm = Farm(name=farm_name)
+                db.session.add(farm)
+                db.session.commit()
+                flash(f'Created new Farm: {farm_name}', 'info')
+            farm_id = farm.id
+
         # Find or Create House
         house = House.query.filter_by(name=house_name).first()
         if not house:
@@ -1363,6 +1394,7 @@ def manage_flocks():
         
         new_flock = Flock(
             house_id=house.id,
+            farm_id=farm_id,
             flock_id=flock_id,
             intake_date=intake_date,
             intake_male=intake_male,
@@ -1381,9 +1413,10 @@ def manage_flocks():
         flash(f'Flock created successfully! Flock ID: {flock_id}', 'success')
         return redirect(url_for('index'))
     
+    farms = Farm.query.all()
     houses = House.query.all()
     flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
-    return render_template('flock_form.html', houses=houses, flocks=flocks)
+    return render_template('flock_form.html', farms=farms, houses=houses, flocks=flocks)
 
 @app.route('/flock/<int:id>/close', methods=['POST'])
 @dept_required('Farm')

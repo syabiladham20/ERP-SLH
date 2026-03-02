@@ -10,6 +10,17 @@
       <div class="card-body">
         <form method="POST">
           <div class="mb-3">
+            <label for="farm_name" class="form-label">Farm Name</label>
+            <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" placeholder="Type to search or add new...">
+            <datalist id="farmOptions">
+              {% for farm in farms %}
+                <option value="{{ farm.name }}">
+              {% endfor %}
+            </datalist>
+            <div class="form-text">Optional. Type a new name to create a new farm.</div>
+          </div>
+
+          <div class="mb-3">
             <label for="house_name" class="form-label">House Name</label>
             <input class="form-control" list="houseOptions" id="house_name" name="house_name" placeholder="Type to search or add new..." required>
             <datalist id="houseOptions">

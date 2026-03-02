@@ -7,6 +7,16 @@
   <div class="card-body">
     <form method="POST">
       <div class="mb-3">
+        <label for="farm_name" class="form-label">Farm</label>
+        <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" value="{{ flock.farm.name if flock.farm else '' }}" placeholder="Type to search or add new...">
+        <datalist id="farmOptions">
+          {% for farm in farms %}
+            <option value="{{ farm.name }}">
+          {% endfor %}
+        </datalist>
+      </div>
+
+      <div class="mb-3">
         <label class="form-label">House</label>
         <input type="text" class="form-control" value="{{ flock.house.name }}" disabled>
       </div>
