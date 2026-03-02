@@ -849,27 +849,25 @@
 
       if (!chartInstance) return;
 
-      // Toggle logic
-      let currentDisplay = chartInstance.options.plugins.datalabels.display;
-      // If undefined, default is true due to our global Chart.defaults
-      if (currentDisplay === undefined) currentDisplay = true;
+      // Toggle logic using custom _showLabels flag
+      let currentDisplay = chartInstance.options.plugins.datalabels._showLabels;
+      if (currentDisplay === undefined) currentDisplay = false;
 
       const newDisplay = !currentDisplay;
-      chartInstance.options.plugins.datalabels.display = newDisplay;
+      chartInstance.options.plugins.datalabels._showLabels = newDisplay;
 
       // Update button style
       if (newDisplay) {
-          btnElement.classList.remove('btn-secondary');
-          btnElement.classList.add('btn-outline-secondary');
-      } else {
           btnElement.classList.remove('btn-outline-secondary');
           btnElement.classList.add('btn-secondary');
+      } else {
+          btnElement.classList.remove('btn-secondary');
+          btnElement.classList.add('btn-outline-secondary');
       }
 
       chartInstance.update();
   }
 
-  // Common Options
   const commonOptions = {
       responsive: true,
       maintainAspectRatio: false,
@@ -886,6 +884,17 @@
             pan: { enabled: true, mode: 'xy' }
           },
           datalabels: {
+              _showLabels: false,
+              display: function(context) {
+                  const label = context.dataset.label || '';
+                  if (label.toLowerCase().includes('std') || label.toLowerCase().includes('standard')) {
+                      return false; // Never show labels for standard metrics
+                  }
+                  if (label.toLowerCase() === 'clinical notes') {
+                      return false;
+                  }
+                  return context.chart.options.plugins.datalabels._showLabels || false;
+              },
               align: 'top',
               anchor: 'end',
                   clip: true,
@@ -1006,8 +1015,8 @@
       }
   }
 
-  function updateChartTitle(chartTitleId, baseTitle, dataObj, isDaily) {
-      const titleEl = document.getElementById(chartTitleId);
+  function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
+      const titleEl = document.getElementById(elementId);
       if (!titleEl) return;
 
       let startAge = '?', endAge = '?';
@@ -1019,26 +1028,37 @@
           endDate = dataObj.dates[count - 1];
 
           if (!isDaily) {
-               // Weekly: dates are "Week X"
                startAge = startDate;
                endAge = endDate;
           } else {
-               // Daily: use 'ages' array (e.g. "20.3")
                if (dataObj.ages && dataObj.ages.length > 0) {
                    startAge = "W" + dataObj.ages[0].split('.')[0];
                    endAge = "W" + dataObj.ages[dataObj.ages.length - 1].split('.')[0];
+               } else {
+                   startAge = "W" + calculateAgeWeeks(new Date(startDate));
+                   endAge = "W" + calculateAgeWeeks(new Date(endDate));
                }
           }
       }
 
-      let dynamicText = `${baseTitle} - ${flockHouseName}`;
-      if (startAge !== '?' && endAge !== '?') {
-          dynamicText += ` - Age: ${startAge} to ${endAge}`;
+      function formatToDDMMYY(dateStr) {
+          if (!dateStr || !dateStr.includes('-')) return dateStr;
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+             return `${parts[2]}-${parts[1]}-${parts[0].slice(2)}`;
+          }
+          return dateStr;
       }
 
-      if (isDaily && startDate && endDate) {
-          dynamicText += ` - Date: ${startDate} to ${endDate}`;
+      let dynamicText = `${baseTitle} - [${flockHouseName}`;
+      if (startAge !== '?' && endAge !== '?') {
+          dynamicText += ` (${startAge} to ${endAge}`;
+          if (isDaily && startDate && endDate) {
+              dynamicText += ` - ${formatToDDMMYY(startDate)} to ${formatToDDMMYY(endDate)}`;
+          }
+          dynamicText += `)`;
       }
+      dynamicText += `]`;
 
       titleEl.innerText = dynamicText;
   }
@@ -1120,12 +1140,15 @@
               plugins: {
                   ...commonOptions.plugins,
                   tooltip: {
+                      ...commonOptions.plugins.tooltip,
                       callbacks: {
+                          ...commonOptions.plugins.tooltip.callbacks,
                           afterBody: function(context) {
                               const idx = context[0].dataIndex;
-                              if (flushFlags[idx]) {
+                              if (flushFlags && flushFlags[idx]) {
                                   return "FLUSHING ACTIVE";
                               }
+                              return commonOptions.plugins.tooltip.callbacks.afterBody ? commonOptions.plugins.tooltip.callbacks.afterBody(context) : '';
                           }
                       }
                   }
@@ -1260,7 +1283,6 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false },
           clip: true
       });
       maleBWValues.push(bwData.bw_male_std);
@@ -1343,7 +1365,6 @@
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
-          datalabels: { display: false },
           clip: true
       });
       femaleBWValues.push(bwData.bw_female_std);
@@ -1453,7 +1474,6 @@
           backgroundColor: 'purple',
           borderColor: 'purple',
           hidden: true,
-          datalabels: { display: false },
           clip: true
       };
 
@@ -1470,12 +1490,12 @@
               labels: labels,
               datasets: [
                   { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
-                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', datalabels:{display:false}, clip: true },
+                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', clip: true },
 
-                  { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', datalabels:{display:false}, clip: true },
-                  { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', datalabels:{display:false}, clip: true },
+                  { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true },
+                  { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true },
+                  { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true },
+                  { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true },
 
                   {
                       label: 'Standard Mort Limit',
@@ -1486,7 +1506,6 @@
                       borderDash: [5, 5],
                       pointRadius: 0,
                       yAxisID: 'y1',
-                      datalabels: { display: false },
                       clip: true
                   },
                   notesDataset
@@ -1564,20 +1583,15 @@
                   { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true },
                   { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true },
                   { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true },
-                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#203764', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', datalabels: { align: 'bottom', anchor: 'start' }, clip: true },
-                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#203764', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', datalabels: { display: false }, clip: true }
+                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#203764', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
+                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#203764', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }
               ]
           },
           options: {
               ...commonOptions,
               plugins: {
                   ...commonOptions.plugins,
-                  weekSeparator: { enabled: mode === 'daily' },
-                                    datalabels: {
-                       display: function(context) { return context.chart.options.plugins.datalabels.display; },
-                       formatter: function(value, context) { if (!value) return ''; return parseFloat(value).toFixed(2) + '%'; }
-                  },
-                  tooltip: commonOptions.plugins.tooltip
+                  weekSeparator: { enabled: mode === 'daily' }
               },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, suggestedMax: barMaxCalc.suggestedMax },
@@ -1681,7 +1695,6 @@
                       borderWidth: 2,
                       yAxisID: 'y1',
                       order: 0,
-                      datalabels: { display: false },
                       clip: true
                   },
                   {
