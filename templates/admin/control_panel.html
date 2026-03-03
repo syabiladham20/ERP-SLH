@@ -1,4 +1,4 @@
-{% extends 'base_modern.html' %}
+{% extends user_theme %}
 
 {% block content %}
 <div class="container">
@@ -44,6 +44,27 @@
                 <div class="card-body">
                     <p>Manage system access, create new users, update roles, or reset passwords.</p>
                     <a href="{{ url_for('admin_users') }}" class="btn btn-dark mb-3">Manage Users</a>
+
+                    <hr>
+
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <div>
+                            <h5 class="mb-1">Theme Preferences</h5>
+                            <p class="mb-0 text-muted">Select a custom layout for your account. This is applied globally for your specific login.</p>
+                        </div>
+                        <form action="{{ url_for('change_theme') }}" method="POST" class="d-flex align-items-center">
+                            <select name="theme" class="form-select me-2" onchange="this.form.submit()">
+                                <option value="base_tabler.html" {% if user_theme == 'base_tabler.html' %}selected{% endif %}>Tabler (Clean Professional)</option>
+                                <option value="base_argon.html" {% if user_theme == 'base_argon.html' %}selected{% endif %}>Argon (Modern Web)</option>
+                                <option value="base_volt.html" {% if user_theme == 'base_volt.html' %}selected{% endif %}>Volt (High-Contrast)</option>
+                                <option value="base_horizon.html" {% if user_theme == 'base_horizon.html' %}selected{% endif %}>Horizon UI (Silicon Valley)</option>
+                                <option value="base_material.html" {% if user_theme == 'base_material.html' %}selected{% endif %}>Material (Google Standard)</option>
+                                <option value="base_soft.html" {% if user_theme == 'base_soft.html' %}selected{% endif %}>Soft UI (Innovative)</option>
+                                <option value="base_lightblue.html" {% if user_theme == 'base_lightblue.html' %}selected{% endif %}>Light Blue (Corporate)</option>
+                                <option value="base_bw.html" {% if user_theme == 'base_bw.html' %}selected{% endif %}>Black & White (Laser-Focused)</option>
+                            </select>
+                        </form>
+                    </div>
 
                     <hr>
 

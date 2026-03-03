@@ -142,6 +142,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     dept = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
+    theme = db.Column(db.String(50), default='base_modern.html')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -920,7 +921,12 @@ def inject_system_health():
         logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).limit(3).all()
     except Exception:
         pass
-    return dict(system_health_logs=logs)
+
+    user_theme = 'base_tabler.html'
+    if g.user and g.user.theme:
+        user_theme = g.user.theme
+
+    return dict(system_health_logs=logs, user_theme=user_theme)
 
 @app.before_request
 def load_logged_in_user():
@@ -3610,6 +3616,30 @@ def admin_control_panel():
     login_required = gs.login_required if gs and hasattr(gs, 'login_required') else True
 
     return render_template('admin/control_panel.html', login_required=login_required)
+
+@app.route('/change_theme', methods=['POST'])
+def change_theme():
+    if not session.get('user_id'):
+        flash("You must be logged in to change your theme.", "warning")
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if user:
+        theme = request.form.get('theme', 'base_tabler.html')
+        # Validate theme input to avoid arbitrary file injection
+        valid_themes = [
+            'base_tabler.html', 'base_argon.html', 'base_volt.html',
+            'base_horizon.html', 'base_material.html', 'base_soft.html',
+            'base_lightblue.html', 'base_bw.html'
+        ]
+        if theme in valid_themes:
+            user.theme = theme
+            db.session.commit()
+            flash("Theme successfully updated.", "success")
+        else:
+            flash("Invalid theme selected.", "danger")
+
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/admin/toggle_login', methods=['POST'])
 def toggle_login():

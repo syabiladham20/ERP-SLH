@@ -1,4 +1,4 @@
-{% extends 'base_modern.html' %}
+{% extends user_theme %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -799,6 +799,17 @@
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
 
+  Chart.defaults.set('plugins.datalabels', {
+    display: true,
+    font: { size: 10 },
+    formatter: Math.round
+  });
+  if (Chart.defaults.datasets.line) {
+      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
+  }
+  if (Chart.defaults.datasets.bar) {
+      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
+  }
   // Fix for zoom clipping
   if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
   if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
