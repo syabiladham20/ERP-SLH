@@ -388,6 +388,7 @@ class GlobalStandard(db.Model):
     std_mortality_weekly = db.Column(db.Float, default=0.3)
     std_hatching_egg_pct = db.Column(db.Float, default=96.0)
     login_required = db.Column(db.Boolean, default=True) # TEMPORARY FEATURE
+    active_theme = db.Column(db.String(50), default='default')
 
 class SystemAuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -921,6 +922,12 @@ def inject_system_health():
     except Exception:
         pass
     return dict(system_health_logs=logs)
+
+@app.context_processor
+def inject_theme():
+    gs = GlobalStandard.query.first()
+    theme = gs.active_theme if gs and hasattr(gs, 'active_theme') and gs.active_theme else 'default'
+    return dict(active_theme=theme)
 
 @app.before_request
 def load_logged_in_user():
@@ -3608,8 +3615,27 @@ def admin_control_panel():
 
     gs = GlobalStandard.query.first()
     login_required = gs.login_required if gs and hasattr(gs, 'login_required') else True
+    current_theme = gs.active_theme if gs and hasattr(gs, 'active_theme') else 'default'
 
-    return render_template('admin/control_panel.html', login_required=login_required)
+    themes = ['default', 'cerulean', 'cosmo', 'darkly', 'flatly', 'journal', 'litera', 'lumen', 'lux', 'materia', 'minty', 'morph', 'pulse', 'quartz', 'sandstone', 'simplex', 'sketchy', 'slate', 'solar', 'spacelab', 'superhero', 'united', 'vapor', 'yeti', 'zephyr']
+
+    return render_template('admin/control_panel.html', login_required=login_required, current_theme=current_theme, themes=themes)
+
+@app.route('/admin/set_theme', methods=['POST'])
+def admin_set_theme():
+    if not session.get('is_admin'):
+        flash("Access Denied: Admin only.", "danger")
+        return redirect(url_for('index'))
+    theme = request.form.get('theme', 'default')
+    gs = GlobalStandard.query.first()
+    if not gs:
+        gs = GlobalStandard()
+        db.session.add(gs)
+
+    gs.active_theme = theme
+    db.session.commit()
+    flash(f"Application theme updated to '{theme}'.", "success")
+    return redirect(url_for('admin_control_panel'))
 
 @app.route('/admin/toggle_login', methods=['POST'])
 def toggle_login():
