@@ -1513,14 +1513,12 @@
               onClick: (e) => {
                   const points = generalChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
                   if (points.length) {
-                      const firstPoint = points[0];
-                      const datasetIndex = firstPoint.datasetIndex;
-                      const index = firstPoint.index;
-                      const dataset = generalChart.data.datasets[datasetIndex];
-                      if (dataset.label === 'Clinical Notes') {
-                          const pt = dataset.data[index];
-                      // Use photos array if available, else fallback to single photo
-                      if (pt) showNoteModal(pt.date, pt.note, pt.photos || pt.photo);
+                      const notePoint = points.find(p => generalChart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
+                      if (notePoint) {
+                          const dataset = generalChart.data.datasets[notePoint.datasetIndex];
+                          const pt = dataset.data[notePoint.index];
+                          // Use photos array if available, else fallback to single photo
+                          if (pt) showNoteModal(pt.date, pt.note, pt.photos || pt.photo);
                       }
                   }
               },

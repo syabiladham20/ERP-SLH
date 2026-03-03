@@ -546,13 +546,10 @@
                 onClick: (e, activeElements, chart) => {
                     const points = chart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
                     if (points.length) {
-                        const firstPoint = points[0];
-                        const datasetIndex = firstPoint.datasetIndex;
-                        const index = firstPoint.index;
-                        const dataset = chart.data.datasets[datasetIndex];
-
-                        if (dataset.label === 'Clinical Notes') {
-                            const pt = dataset.data[index];
+                        const notePoint = points.find(p => chart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
+                        if (notePoint) {
+                            const dataset = chart.data.datasets[notePoint.datasetIndex];
+                            const pt = dataset.data[notePoint.index];
                             if (pt) {
                                 showCustomNoteModal(pt.date, pt.note, pt.photo);
                             }
