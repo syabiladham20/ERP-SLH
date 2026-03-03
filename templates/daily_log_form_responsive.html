@@ -14,7 +14,7 @@
       <div class="card-body">
         <div class="mb-3">
           <label for="house_id" class="form-label">House</label>
-          <select class="form-select form-select-lg" id="house_id" name="house_id" required onchange="onSelectionChange()">
+          <select class="form-select" id="house_id" name="house_id" required onchange="onSelectionChange()">
             {% for house in houses %}
               {# Pass phase info in data attribute #}
               {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
@@ -32,7 +32,7 @@
         <div class="mb-3">
           <label for="date" class="form-label">Date</label>
           <div class="input-group">
-              <input type="date" class="form-control form-control-lg" id="date" name="date" required
+              <input type="date" class="form-control" id="date" name="date" required
                      value="{{ log.date if log else (selected_date if selected_date else date_today) }}"
                      onchange="onSelectionChange()">
               {% if log %}
@@ -48,28 +48,20 @@
       <div class="card-body">
         <div class="row">
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" class="form-control form-control-lg" name="mortality_male" id="mortality_male" placeholder="Mortality Male (Prod)" value="{{ log.mortality_male if log else 0 }}">
-              <label for="mortality_male">Mortality Male (Prod)</label>
-            </div>
+            <label class="form-label">Mortality Male (Prod)</label>
+            <input type="number" class="form-control" name="mortality_male" value="{{ log.mortality_male if log else 0 }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" class="form-control form-control-lg" name="mortality_female" id="mortality_female" placeholder="Mortality Female (Prod)" value="{{ log.mortality_female if log else 0 }}">
-              <label for="mortality_female">Mortality Female (Prod)</label>
-            </div>
+            <label class="form-label">Mortality Female (Prod)</label>
+            <input type="number" class="form-control" name="mortality_female" value="{{ log.mortality_female if log else 0 }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" class="form-control form-control-lg" name="culls_male" id="culls_male" placeholder="Culls Male (Prod)" value="{{ log.culls_male if log else 0 }}">
-              <label for="culls_male">Culls Male (Prod)</label>
-            </div>
+            <label class="form-label">Culls Male (Prod)</label>
+            <input type="number" class="form-control" name="culls_male" value="{{ log.culls_male if log else 0 }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" class="form-control form-control-lg" name="culls_female" id="culls_female" placeholder="Culls Female (Prod)" value="{{ log.culls_female if log else 0 }}">
-              <label for="culls_female">Culls Female (Prod)</label>
-            </div>
+            <label class="form-label">Culls Female (Prod)</label>
+            <input type="number" class="form-control" name="culls_female" value="{{ log.culls_female if log else 0 }}">
           </div>
         </div>
 
@@ -140,7 +132,7 @@
         <div class="row mb-3">
             <div class="col-md-4">
                 <label class="form-label">Feed Program</label>
-                <select class="form-select form-select-lg" name="feed_program">
+                <select class="form-select" name="feed_program">
                     <option value="Full Feed" {{ 'selected' if log and log.feed_program == 'Full Feed' else '' }}>Full Feed</option>
                     <option value="Skip-a-day" {{ 'selected' if log and log.feed_program == 'Skip-a-day' else '' }}>Skip-a-day</option>
                     <option value="2/1" {{ 'selected' if log and log.feed_program == '2/1' else '' }}>2/1</option>
@@ -148,7 +140,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">Male Feed Code</label>
-                <select class="form-select form-select-lg" name="feed_code_male_id">
+                <select class="form-select" name="feed_code_male_id">
                     <option value="">-- Select Code --</option>
                     {% for fc in feed_codes %}
                     <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_male_id == fc.id else '' }}>{{ fc.code }}</option>
@@ -157,7 +149,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">Female Feed Code</label>
-                <select class="form-select form-select-lg" name="feed_code_female_id">
+                <select class="form-select" name="feed_code_female_id">
                     <option value="">-- Select Code --</option>
                     {% for fc in feed_codes %}
                     <option value="{{ fc.id }}" {{ 'selected' if log and log.feed_code_female_id == fc.id else '' }}>{{ fc.code }}</option>
@@ -167,30 +159,22 @@
         </div>
         <div class="row">
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="feed_male_gp_bird" id="feed_male_gp_bird" placeholder="Male Feed (g/bird)" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
-              <label for="feed_male_gp_bird">Male Feed (g/bird)</label>
-            </div>
+            <label class="form-label">Male Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_male_gp_bird" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="feed_female_gp_bird" id="feed_female_gp_bird" placeholder="Female Feed (g/bird)" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
-              <label for="feed_female_gp_bird">Female Feed (g/bird)</label>
-            </div>
+            <label class="form-label">Female Feed (g/bird)</label>
+            <input type="number" step="0.01" class="form-control" name="feed_female_gp_bird" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
           </div>
         </div>
         <div class="row">
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="time" class="form-control form-control-lg" name="feed_cleanup_start" id="feed_cleanup_start" placeholder="Feed Cleanup Start" value="{{ log.feed_cleanup_start if log else '' }}">
-              <label for="feed_cleanup_start">Feed Cleanup Start</label>
-            </div>
+            <label class="form-label">Feed Cleanup Start</label>
+            <input type="time" class="form-control" name="feed_cleanup_start" value="{{ log.feed_cleanup_start if log else '' }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="time" class="form-control form-control-lg" name="feed_cleanup_end" id="feed_cleanup_end" placeholder="Feed Cleanup End" value="{{ log.feed_cleanup_end if log else '' }}">
-              <label for="feed_cleanup_end">Feed Cleanup End</label>
-            </div>
+            <label class="form-label">Feed Cleanup End</label>
+            <input type="time" class="form-control" name="feed_cleanup_end" value="{{ log.feed_cleanup_end if log else '' }}">
           </div>
         </div>
       </div>
@@ -202,15 +186,15 @@
         <div class="row">
           <div class="col-12 col-md-4 mb-2">
             <label class="form-label">Reading 1</label>
-            <input type="number" class="form-control form-control-lg" name="water_reading_1" value="{{ log.water_reading_1 if log else 0 }}" onchange="calculateWater()">
+            <input type="number" class="form-control" name="water_reading_1" value="{{ log.water_reading_1 if log else 0 }}" onchange="calculateWater()">
           </div>
           <div class="col-12 col-md-4 mb-2">
             <label class="form-label">Reading 2</label>
-            <input type="number" class="form-control form-control-lg" name="water_reading_2" value="{{ log.water_reading_2 if log else 0 }}" onchange="calculateWater()">
+            <input type="number" class="form-control" name="water_reading_2" value="{{ log.water_reading_2 if log else 0 }}" onchange="calculateWater()">
           </div>
           <div class="col-12 col-md-4 mb-2">
             <label class="form-label">Reading 3</label>
-            <input type="number" class="form-control form-control-lg" name="water_reading_3" value="{{ log.water_reading_3 if log else 0 }}" onchange="calculateWater()">
+            <input type="number" class="form-control" name="water_reading_3" value="{{ log.water_reading_3 if log else 0 }}" onchange="calculateWater()">
           </div>
         </div>
         <div class="mb-3">
@@ -232,11 +216,11 @@
       <div class="card-body">
         <div class="mb-3">
           <label class="form-label">Eggs Collected</label>
-          <input type="number" class="form-control form-control-lg" name="eggs_collected" value="{{ log.eggs_collected if log else 0 }}">
+          <input type="number" class="form-control" name="eggs_collected" value="{{ log.eggs_collected if log else 0 }}">
         </div>
         <div class="mb-3">
           <label class="form-label">Egg Weight (avg)</label>
-          <input type="number" step="0.01" class="form-control form-control-lg" name="egg_weight" value="{{ log.egg_weight if log else 0 }}">
+          <input type="number" step="0.01" class="form-control" name="egg_weight" value="{{ log.egg_weight if log else 0 }}">
         </div>
         <label class="form-label">Cull Eggs</label>
         <div class="row">
@@ -316,28 +300,20 @@
 
         <div class="row" id="average_section">
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="body_weight_male" id="body_weight_male" placeholder="Avg Male BW" value="{{ log.body_weight_male if log and log.body_weight_male else '' }}">
-              <label for="body_weight_male">Avg Male BW</label>
-            </div>
+            <label class="form-label">Avg Male BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_male" id="body_weight_male" value="{{ log.body_weight_male if log and log.body_weight_male else '' }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="body_weight_female" id="body_weight_female" placeholder="Avg Female BW" value="{{ log.body_weight_female if log and log.body_weight_female else '' }}">
-              <label for="body_weight_female">Avg Female BW</label>
-            </div>
+            <label class="form-label">Avg Female BW</label>
+            <input type="number" step="0.01" class="form-control" name="body_weight_female" id="body_weight_female" value="{{ log.body_weight_female if log and log.body_weight_female else '' }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="uniformity_male" id="uniformity_male" placeholder="Avg Male Unif %" value="{{ log.uniformity_male if log and log.uniformity_male else '' }}">
-              <label for="uniformity_male">Avg Male Unif %</label>
-            </div>
+            <label class="form-label">Avg Male Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_male" id="uniformity_male" value="{{ log.uniformity_male if log and log.uniformity_male else '' }}">
           </div>
           <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="uniformity_female" id="uniformity_female" placeholder="Avg Female Unif %" value="{{ log.uniformity_female if log and log.uniformity_female else '' }}">
-              <label for="uniformity_female">Avg Female Unif %</label>
-            </div>
+            <label class="form-label">Avg Female Unif %</label>
+            <input type="number" step="0.01" class="form-control" name="uniformity_female" id="uniformity_female" value="{{ log.uniformity_female if log and log.uniformity_female else '' }}">
           </div>
         </div>
       </div>
@@ -349,20 +325,20 @@
         <div class="row mb-3">
           <div class="col-12 col-md-6">
             <label class="form-label">Light On</label>
-            <input type="time" class="form-control form-control-lg" name="light_on_time" value="{{ log.light_on_time if log else '' }}">
+            <input type="time" class="form-control" name="light_on_time" value="{{ log.light_on_time if log else '' }}">
           </div>
           <div class="col-12 col-md-6">
             <label class="form-label">Light Off</label>
-            <input type="time" class="form-control form-control-lg" name="light_off_time" value="{{ log.light_off_time if log else '' }}">
+            <input type="time" class="form-control" name="light_off_time" value="{{ log.light_off_time if log else '' }}">
           </div>
         </div>
         <div class="mb-3">
           <label class="form-label">Clinical Notes</label>
-          <textarea class="form-control form-control-lg" name="clinical_notes" rows="3">{{ log.clinical_notes if log else '' }}</textarea>
+          <textarea class="form-control" name="clinical_notes" rows="3">{{ log.clinical_notes if log else '' }}</textarea>
         </div>
         <div class="mb-3">
           <label class="form-label">Photo Upload (Post-Mortem)</label>
-          <input type="file" class="form-control form-control-lg" name="photo" multiple accept="image/*">
+          <input type="file" class="form-control" name="photo" multiple accept="image/*">
 
           {% if log and log.photos %}
             <div class="mt-2">
@@ -408,11 +384,11 @@
                     <input type="hidden" name="existing_note_id[]" value="{{ note.id }}">
                     <div class="mb-2">
                         <label class="form-label">Caption</label>
-                        <input type="text" class="form-control form-control-lg" name="existing_note_caption_{{ note.id }}" value="{{ note.caption }}">
+                        <input type="text" class="form-control" name="existing_note_caption_{{ note.id }}" value="{{ note.caption }}">
                     </div>
                     <div class="mb-2">
                         <label class="form-label">Add Photos</label>
-                        <input type="file" class="form-control form-control-lg" name="existing_note_photos_{{ note.id }}" multiple accept="image/*">
+                        <input type="file" class="form-control" name="existing_note_photos_{{ note.id }}" multiple accept="image/*">
                         {% if note.photos %}
                         <div class="mt-1 small text-muted">
                             Existing:
@@ -571,7 +547,7 @@
         {% endif %}
     </div>
   </form>
-  
+
   <script>
     {% if not log and not selected_date %}
     // Set default date to today only for new logs (if no date selected)
@@ -634,15 +610,15 @@
         // Get values (integers)
         let r1 = parseFloat(document.getElementsByName('water_reading_1')[0].value) || 0;
         let r3 = parseFloat(document.getElementsByName('water_reading_3')[0].value) || 0;
-        
+
         // Convert to real values (divide by 100)
         let r1_real = r1 / 100;
         let r3_real = r3 / 100;
-        
+
         // 12h Consumption = (R3 - R1) * 1000 Liters
         // Wait, unit: meter cubic. 1 m3 = 1000 L.
         // Formula: (R3 - R1) * 1000.
-        
+
         let consumption12h = (r3_real - r1_real) * 1000;
         document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
     }
