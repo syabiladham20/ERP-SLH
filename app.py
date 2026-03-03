@@ -2178,7 +2178,9 @@ def view_flock(id):
         'bw_female_p3': [d['log'].bw_female_p3 if d['log'].bw_female_p3 > 0 else None for d in daily_stats],
         'bw_female_p4': [d['log'].bw_female_p4 if d['log'].bw_female_p4 > 0 else None for d in daily_stats],
 
-        'notes': []
+        'notes': [],
+        'medication_active': [],
+        'medication_names': []
     }
     
     # Fill dynamic partitions and notes
@@ -2208,7 +2210,11 @@ def view_flock(id):
 
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
-        if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
+        chart_data['medication_active'].append(len(active_meds) > 0)
+        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
+
+        # User requested to remove medication from notes, so we don't append to note_parts
+        # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
 
         # Vacs
         done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
@@ -7194,7 +7200,9 @@ def executive_flock_detail(id):
         'feed_male_gp_bird': [round(d['feed_male_gp_bird'], 1) for d in daily_stats],
         'feed_female_gp_bird': [round(d['feed_female_gp_bird'], 1) for d in daily_stats],
         'flushing': [d['log'].flushing for d in daily_stats],
-        'notes': []
+        'notes': [],
+        'medication_active': [],
+        'medication_names': []
     }
 
     for i in range(1, 9):
@@ -7221,7 +7229,11 @@ def executive_flock_detail(id):
 
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
-        if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
+        chart_data['medication_active'].append(len(active_meds) > 0)
+        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
+
+        # User requested to remove medication from notes, so we don't append to note_parts
+        # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
 
         # Vacs
         done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
