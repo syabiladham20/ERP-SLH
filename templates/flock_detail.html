@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -154,7 +154,7 @@
     </div>
     <div class="table-responsive table-responsive-sticky">
       <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
-        <thead class="sticky-table-header table-light">
+        <thead class="sticky-table-header table-light text-dark">
           <tr>
             <th rowspan="2" class="align-middle">Date</th>
             <th rowspan="2" class="align-middle">House</th>
@@ -283,7 +283,7 @@
     <h3>Weekly Summary</h3>
     <div class="table-responsive table-responsive-sticky mb-4">
       <table class="table table-bordered table-sm">
-        <thead class="table-light sticky-table-header">
+        <thead class="table-light text-dark sticky-table-header">
           <tr>
             <th>Week</th>
             <th>Mortality (M/F)</th>
@@ -607,7 +607,7 @@
     <!-- Cumulative Table -->
     <div class="table-responsive table-responsive-sticky mb-4">
         <table class="table table-bordered table-sm text-center align-middle table-hover">
-            <thead class="table-light sticky-table-header">
+            <thead class="table-light text-dark sticky-table-header">
                 <tr>
                     <th rowspan="2" class="align-middle">Prod Week</th>
                     <th rowspan="2" class="align-middle">Age Week</th>
@@ -698,7 +698,7 @@
 
     <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle">
-            <thead class="table-light">
+            <thead class="table-light text-dark">
                 <tr>
                     <th style="width: 120px;">Date / Age</th>
                     <th style="width: 30%;">Clinical Signs & Prediction</th>

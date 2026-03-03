@@ -143,7 +143,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     dept = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
-    theme = db.Column(db.String(50), default='base_modern.html')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -933,11 +932,7 @@ def inject_system_health():
     except Exception:
         pass
 
-    user_theme = 'base_tabler.html'
-    if g.user and g.user.theme:
-        user_theme = g.user.theme
-
-    return dict(system_health_logs=logs, user_theme=user_theme)
+    return dict(system_health_logs=logs)
 
 @app.before_request
 def load_logged_in_user():
@@ -3688,10 +3683,10 @@ def change_theme():
 
     user = User.query.get(session['user_id'])
     if user:
-        theme = request.form.get('theme', 'base_tabler.html')
+        theme = request.form.get('theme', 'base_argon.html')
         # Validate theme input to avoid arbitrary file injection
         valid_themes = [
-            'base_tabler.html', 'base_argon.html', 'base_volt.html',
+            'base_argon.html', 'base_argon.html', 'base_volt.html',
             'base_horizon.html', 'base_material.html', 'base_soft.html',
             'base_lightblue.html', 'base_bw.html'
         ]

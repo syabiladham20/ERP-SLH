@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -125,7 +125,7 @@
   <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
     <div class="table-responsive table-responsive-sticky">
       <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
-        <thead class="sticky-table-header table-light">
+        <thead class="sticky-table-header table-light text-dark">
           <tr>
             <th rowspan="2" class="align-middle">Date</th>
             <th rowspan="2" class="align-middle">Age</th>
@@ -225,7 +225,7 @@
     {% if weekly_data %}
     <div class="table-responsive table-responsive-sticky mb-4">
       <table class="table table-bordered table-sm">
-        <thead class="table-light sticky-table-header">
+        <thead class="table-light text-dark sticky-table-header">
           <tr>
             <th>Week</th>
             <th>Mortality (M/F)</th>
@@ -623,7 +623,7 @@
     <!-- Cumulative Table -->
     <div class="table-responsive table-responsive-sticky mb-4">
         <table class="table table-bordered table-sm text-center align-middle table-hover">
-            <thead class="table-light sticky-table-header">
+            <thead class="table-light text-dark sticky-table-header">
                 <tr>
                     <th rowspan="2" class="align-middle">Prod Week</th>
                     <th rowspan="2" class="align-middle">Age Week</th>
