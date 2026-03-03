@@ -1,0 +1,4 @@
+YES! Dialog appeared! API call POST `201`!
+This means the UI successfully allowed clicking, popping up prompt, and saving it.
+
+Now I just need to verify the screenshot visually.
