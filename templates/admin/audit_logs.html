@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block title %}System Audit Logs{% endblock %}
 
@@ -17,7 +17,7 @@
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle">
-                    <thead class="table-light">
+                    <thead class="table-light text-dark">
                         <tr>
                             <th>Timestamp</th>
                             <th>Module/File</th>

@@ -5,7 +5,7 @@ html {
 }
 
 body {
-    padding-top: 56px; /* Space for fixed navbar */
+    /* Removed padding-top: 56px to let argon handle it */
 }
 
 /* Explicitly scale highly interactive components to ensure they feel "fuller" */

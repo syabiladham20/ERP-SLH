@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -73,31 +73,50 @@
 </div>
 
 <!-- Overview Card -->
-<div class="card mb-4">
-  <div class="card-header sticky-header">
-    Overview
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-header bg-transparent border-0 pb-0">
+    <h6 class="text-uppercase text-muted ls-1 mb-0">Overview</h6>
   </div>
   <div class="card-body">
-    <div class="row">
-      <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
-      <div class="col-md-3"><strong>Farm:</strong> {{ flock.farm.name if flock.farm else 'N/A' }}</div>
-      <div class="col-md-3"><strong>Phase:</strong> {{ flock.phase }}</div>
-      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date | date_fmt }}</div>
-    </div>
-    <div class="row mt-2">
-      <div class="col-md-3"><strong>Intake:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
-      <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
-      <div class="col-md-3 border-start">
-          <strong>Current Prod:</strong> {{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F
-          <br>
-          <small class="text-muted">Male Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</small>
+    <div class="row text-center mb-3">
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">House</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.house.name }}</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Farm</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.farm.name if flock.farm else 'N/A' }}</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Phase</span><br>
+          <span class="badge bg-{{ 'success' if flock.phase == 'Production' else 'primary' }} mt-1">{{ flock.phase }}</span>
       </div>
       <div class="col-md-3">
-          <strong>Current Hosp:</strong> {{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Intake Date</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.intake_date | date_fmt }}</span>
+      </div>
+    </div>
+    <div class="row text-center bg-gray-100 p-2 border-radius-md">
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Intake</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.intake_male }} M / {{ flock.intake_female }} F</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">DOA</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.doa_male }} M / {{ flock.doa_female }} F</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Current Prod</span><br>
+          <span class="text-dark font-weight-bold">{{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F</span><br>
+          <span class="text-xs text-info">Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</span>
+      </div>
+      <div class="col-md-3">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Current Hosp</span><br>
+          <span class="text-dark font-weight-bold">{{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F</span>
       </div>
     </div>
   </div>
-  <div class="card-footer">
+  <div class="card-footer bg-transparent border-0 pt-0 text-center">
     {% for item in get_ui_elements('flock_detail') %}
         {% if item.key == 'detail_kpi' %}
             <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">{{ item.label }}</a>
@@ -127,20 +146,20 @@
 </div>
 
 <ul class="nav nav-tabs mb-3" id="flockTabs" role="tablist">
-  <li class="nav-item" role="presentation">
-    <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
+  <li class="nav-item">
+    <button class="nav-link mb-0 px-0 py-1 active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
+  <li class="nav-item">
+    <button class="nav-link mb-0 px-0 py-1" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
+  <li class="nav-item">
+    <button class="nav-link mb-0 px-0 py-1" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Charts</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Production Summary</button>
+  <li class="nav-item">
+    <button class="nav-link mb-0 px-0 py-1" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Summary</button>
   </li>
-  <li class="nav-item" role="presentation">
-    <button class="nav-link" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health Analytics</button>
+  <li class="nav-item">
+    <button class="nav-link mb-0 px-0 py-1" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health</button>
   </li>
 </ul>
 
@@ -154,52 +173,52 @@
     </div>
     <div class="table-responsive table-responsive-sticky">
       <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
-        <thead class="sticky-table-header table-light">
+        <thead class="sticky-table-header table-light text-dark">
           <tr>
             <th rowspan="2" class="align-middle">Date</th>
             <th rowspan="2" class="align-middle">House</th>
             <th rowspan="2" class="align-middle">Age</th>
             <th colspan="2" class="bg-light">Stock</th>
-            <th colspan="2" class="bg-danger bg-opacity-10">Mortality</th>
-            <th colspan="2" class="bg-warning bg-opacity-10">Culls</th>
+            <th colspan="2" class="bg-danger text-white">Mortality</th>
+            <th colspan="2" class="bg-warning text-white">Culls</th>
             <th rowspan="2" class="align-middle">Feed<br>(Kg)</th>
-            <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
+            <th colspan="2" class="bg-success text-white">Feed/Bird<br>(g)</th>
             <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
             <th rowspan="2" class="align-middle">Medication</th>
-            <th colspan="3" class="bg-info bg-opacity-10">Production</th>
-            <th colspan="2">Jumbo</th>
-            <th colspan="2">Small</th>
-            <th colspan="2">Crack</th>
-            <th colspan="2">Abnormal</th>
-            <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
-            <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
+            <th colspan="3" class="bg-info text-white">Production</th>
+            <th colspan="2" class="bg-light">Jumbo</th>
+            <th colspan="2" class="bg-light">Small</th>
+            <th colspan="2" class="bg-light">Crack</th>
+            <th colspan="2" class="bg-light">Abnormal</th>
+            <th colspan="2" class="bg-primary text-white">Hatching</th>
+            <th colspan="2" class="bg-secondary text-white">Reject</th>
             <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
             <th rowspan="2" class="align-middle">Actions</th>
           </tr>
           <tr>
             <th class="bg-light">M</th>
             <th class="bg-light">F</th>
-            <th class="bg-danger bg-opacity-10">M</th>
-            <th class="bg-danger bg-opacity-10">F</th>
-            <th class="bg-warning bg-opacity-10">M</th>
-            <th class="bg-warning bg-opacity-10">F</th>
-            <th class="bg-success bg-opacity-10">M</th>
-            <th class="bg-success bg-opacity-10">F</th>
-            <th class="bg-info bg-opacity-10">%</th>
-            <th class="bg-info bg-opacity-10">Wt(g)</th>
-            <th class="bg-info bg-opacity-10">Qty</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th class="bg-primary bg-opacity-10">#</th>
-            <th class="bg-primary bg-opacity-10">%</th>
-            <th class="bg-secondary bg-opacity-10">#</th>
-            <th class="bg-secondary bg-opacity-10">%</th>
+            <th class="bg-danger text-white">M</th>
+            <th class="bg-danger text-white">F</th>
+            <th class="bg-warning text-white">M</th>
+            <th class="bg-warning text-white">F</th>
+            <th class="bg-success text-white">M</th>
+            <th class="bg-success text-white">F</th>
+            <th class="bg-info text-white">%</th>
+            <th class="bg-info text-white">Wt(g)</th>
+            <th class="bg-info text-white">Qty</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-primary text-white">#</th>
+            <th class="bg-primary text-white">%</th>
+            <th class="bg-secondary text-white">#</th>
+            <th class="bg-secondary text-white">%</th>
           </tr>
         </thead>
         <tbody>
@@ -282,8 +301,8 @@
     {% if weekly_data %}
     <h3>Weekly Summary</h3>
     <div class="table-responsive table-responsive-sticky mb-4">
-      <table class="table table-bordered table-sm">
-        <thead class="table-light sticky-table-header">
+      <table class="table table-bordered table-sm align-middle text-center">
+        <thead class="table-light text-dark sticky-table-header text-dark">
           <tr>
             <th>Week</th>
             <th>Mortality (M/F)</th>
@@ -527,18 +546,18 @@
   <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
     {% if summary_dashboard %}
     <!-- Dashboard Cards -->
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4 mt-3">
         <!-- Eggs HHA -->
         <div class="col">
-            <div class="card h-100 border-success border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total Eggs HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-success">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Eggs HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-success">{{ summary_dashboard.hha_total }}</h2>
+                        <h2 class="card-title mb-0 text-success fw-bold">{{ summary_dashboard.hha_total }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_total_std }}</span>
                     </div>
                     {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
-                    <small class="{{ 'text-success' if diff_eggs >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_eggs >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_eggs) }} vs Target
                     </small>
                 </div>
@@ -546,15 +565,15 @@
         </div>
         <!-- Hatching Eggs HHA -->
         <div class="col">
-            <div class="card h-100 border-primary border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Hatching Eggs HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-primary">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Hatching Eggs HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-primary">{{ summary_dashboard.hha_hatch }}</h2>
+                        <h2 class="card-title mb-0 text-primary fw-bold">{{ summary_dashboard.hha_hatch }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_hatch_std }}</span>
                     </div>
                     {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
-                    <small class="{{ 'text-success' if diff_hatch >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_hatch >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_hatch) }} vs Target
                     </small>
                 </div>
@@ -562,15 +581,15 @@
         </div>
         <!-- Chicks HHA -->
         <div class="col">
-            <div class="card h-100 border-info border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total Chicks HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-info">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Chicks HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-info">{{ summary_dashboard.hha_chicks }}</h2>
+                        <h2 class="card-title mb-0 text-info fw-bold">{{ summary_dashboard.hha_chicks }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_chicks_std }}</span>
                     </div>
                     {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
-                    <small class="{{ 'text-success' if diff_chicks >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_chicks >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_chicks) }} vs Target
                     </small>
                 </div>
@@ -578,25 +597,25 @@
         </div>
         <!-- Liveability & Feed -->
         <div class="col">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Efficiency Metrics</h6>
+            <div class="card h-100 shadow-sm border-0 bg-gray-100">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Efficiency Metrics</h6>
                     <ul class="list-unstyled mb-0 small">
-                        <li class="d-flex justify-content-between">
-                            <span>Liveability:</span>
-                            <strong>{{ summary_dashboard.liveability }}%</strong>
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Liveability:</span>
+                            <strong class="text-dark">{{ summary_dashboard.liveability }}%</strong>
                         </li>
-                        <li class="d-flex justify-content-between">
-                            <span>Feed/100 Chicks:</span>
-                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Feed/100 Chicks:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
                                 {{ summary_dashboard.feed_100_chicks }} kg
-                            </span>
+                            </strong>
                         </li>
                         <li class="d-flex justify-content-between">
-                            <span>Feed/100 H.Eggs:</span>
-                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
+                            <span class="text-secondary">Feed/100 H.Eggs:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
                                 {{ summary_dashboard.feed_100_h_eggs }} kg
-                            </span>
+                            </strong>
                         </li>
                     </ul>
                 </div>
@@ -607,7 +626,7 @@
     <!-- Cumulative Table -->
     <div class="table-responsive table-responsive-sticky mb-4">
         <table class="table table-bordered table-sm text-center align-middle table-hover">
-            <thead class="table-light sticky-table-header">
+            <thead class="table-light text-dark sticky-table-header text-dark">
                 <tr>
                     <th rowspan="2" class="align-middle">Prod Week</th>
                     <th rowspan="2" class="align-middle">Age Week</th>
@@ -682,23 +701,23 @@
 
   <!-- Health Analytics Tab (Pane 5) -->
   <div class="tab-pane fade" id="health-analytics" role="tabpanel" aria-labelledby="health-analytics-tab">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Health Analytics & Disease Prediction</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+        <h4 class="mb-0">Health Analytics & Disease Prediction</h4>
         <div>
-            <span class="badge bg-secondary">Experimental Feature</span>
+            <span class="badge bg-gradient-secondary">Experimental Feature</span>
         </div>
     </div>
 
     {% if health_events %}
-    <div class="alert alert-info">
+    <div class="alert alert-info text-white border-0 shadow-sm">
         <i class="bi bi-info-circle-fill me-2"></i>
         This tool analyzes daily logs for clinical keywords and correlates them with metric deviations (Mortality spikes, Water intake drops, Feed cleanup delays).
         Predictions are rule-based suggestions and <strong>not a definitive diagnosis</strong>.
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle">
-            <thead class="table-light">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light text-dark">
                 <tr>
                     <th style="width: 120px;">Date / Age</th>
                     <th style="width: 30%;">Clinical Signs & Prediction</th>
@@ -760,8 +779,8 @@
         </table>
     </div>
     {% else %}
-    <div class="text-center p-5 text-muted bg-light rounded border">
-        <h4>No Significant Health Events Detected</h4>
+    <div class="text-center p-5 text-muted bg-gray-100 rounded border shadow-sm">
+        <h4 class="text-secondary">No Significant Health Events Detected</h4>
         <p>No clinical keywords or major metric deviations found in the logs.</p>
     </div>
     {% endif %}

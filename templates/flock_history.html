@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block content %}
 <div class="row mb-4">
@@ -12,7 +12,7 @@
         {% if inactive_flocks %}
         <div class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead class="table-light">
+                <thead class="table-light text-dark">
                     <tr>
                         <th>House</th>
                         <th>Flock ID</th>

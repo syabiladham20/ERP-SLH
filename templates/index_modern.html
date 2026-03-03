@@ -1,4 +1,4 @@
-{% extends user_theme %}
+{% extends "base_argon.html" %}
 
 {% block content %}
 <!-- Page Header -->
@@ -47,11 +47,10 @@
 </div>
 {% endif %}
 
-<div class="row row-cards">
+<div class="row">
   {% for flock in active_flocks %}
-  <div class="col-sm-6 col-lg-4">
-    <div class="card card-sm shadow-sm h-100">
-      <div class="card-status-top {% if flock.phase == 'Production' %}bg-success{% else %}bg-primary{% endif %}"></div>
+  <div class="col-sm-6 col-lg-4 mb-4">
+    <div class="card shadow-sm h-100 border-top border-3 {% if flock.phase == 'Production' %}border-success{% else %}border-primary{% endif %}">
       <div class="card-body">
 
         <div class="d-flex align-items-center justify-content-between mb-3">
@@ -71,30 +70,30 @@
         {% if flock.daily_stats.show_data %}
         <div class="row g-2 mb-3">
           <div class="col-6">
-            <div class="bg-light p-2 rounded text-center">
-              <div class="text-uppercase text-muted font-weight-medium mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Egg Prod</div>
-              <div class="h3 m-0 {% if flock.daily_stats.egg_trend == 'up' %}text-success{% elif flock.daily_stats.egg_trend == 'down' %}text-danger{% endif %}">
+            <div class="bg-gray-100 p-2 rounded text-center border">
+              <div class="text-uppercase text-secondary font-weight-bold mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Egg Prod</div>
+              <div class="h4 m-0 text-dark">
                 {{ "%.1f"|format(flock.daily_stats.egg_pct) }}%
-                {% if flock.daily_stats.egg_trend == 'up' %}&uarr;{% elif flock.daily_stats.egg_trend == 'down' %}&darr;{% endif %}
+                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success ms-1"><i class="fas fa-arrow-up"></i></span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger ms-1"><i class="fas fa-arrow-down"></i></span>{% endif %}
               </div>
             </div>
           </div>
           <div class="col-6">
-            <div class="bg-light p-2 rounded text-center">
-              <div class="text-uppercase text-muted font-weight-medium mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Mortality (F)</div>
-              <div class="h3 m-0 {% if flock.daily_stats.mort_f_trend == 'down' %}text-success{% elif flock.daily_stats.mort_f_trend == 'up' %}text-danger{% endif %}">
+            <div class="bg-gray-100 p-2 rounded text-center border">
+              <div class="text-uppercase text-secondary font-weight-bold mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Mortality (F)</div>
+              <div class="h4 m-0 text-dark">
                 {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
-                {% if flock.daily_stats.mort_f_trend == 'up' %}&uarr;{% elif flock.daily_stats.mort_f_trend == 'down' %}&darr;{% endif %}
+                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger ms-1"><i class="fas fa-arrow-up"></i></span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success ms-1"><i class="fas fa-arrow-down"></i></span>{% endif %}
               </div>
             </div>
           </div>
         </div>
-        <div class="text-muted small text-center mb-3">
+        <div class="text-secondary small text-center mb-3">
           Latest Data: {{ flock.daily_stats.data_date.strftime('%d %b') if flock.daily_stats.data_date else 'N/A' }}
           {% if not flock.has_log_today %}
-          <span class="text-danger ms-1 fw-bold">(Log Missing Today)</span>
+          <span class="text-danger ms-1 font-weight-bold">(Missing Today)</span>
           {% else %}
-          <span class="text-success ms-1">(Up to date)</span>
+          <span class="text-success ms-1 font-weight-bold">(Up to date)</span>
           {% endif %}
         </div>
         {% else %}
@@ -104,11 +103,11 @@
         {% endif %}
 
       </div>
-      <div class="card-footer p-2 text-center bg-light">
-          <div class="d-flex justify-content-around">
-            <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-ghost-primary btn-sm">See Details</a>
+      <div class="card-footer bg-transparent border-0 pt-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-primary btn-sm mb-0">See Details <i class="fas fa-arrow-right ms-1"></i></a>
             <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-ghost-warning btn-sm" onclick="return confirm('Change phase for {{ flock.flock_id }}?');">
+                <button type="submit" class="btn btn-link text-warning text-sm mb-0 px-0 ms-2" onclick="return confirm('Change phase for {{ flock.flock_id }}?');">
                     Switch to {% if flock.phase == 'Rearing' %}Production{% else %}Rearing{% endif %}
                 </button>
             </form>

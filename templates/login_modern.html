@@ -1,20 +1,8 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Login - SLH-OP Dashboard</title>
-    <!-- Tabler Core CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <style>
-        :root {
-            --tblr-primary: #005eb8; /* Arbor Acres Blue */
-        }
-    </style>
-  </head>
-  <body class="d-flex flex-column bg-white">
+{% extends "base_argon.html" %}
+
+{% block content %}
     <div class="page page-center">
-      <div class="container-tight py-4">
+      <div class="container py-4" style="max-width: 400px; margin-top: 5rem;">
         <div class="text-center mb-4">
           <h1 class="text-primary display-4">SLH-OP</h1>
         </div>
@@ -63,7 +51,4 @@
         </div>
       </div>
     </div>
-    <!-- Tabler Core JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
-  </body>
-</html>
+{% endblock %}
