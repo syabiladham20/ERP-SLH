@@ -554,6 +554,45 @@
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
 
+    function prefillPreviousData() {
+        let houseId = document.getElementById('house_id').value;
+        let dateVal = document.getElementById('date').value;
+
+        if (!houseId || !dateVal) return;
+
+        fetch(`{{ url_for('get_previous_daily_log_data') }}?house_id=${houseId}&date=${dateVal}`)
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('No previous data found or error fetching.');
+            })
+            .then(data => {
+                if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
+                if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
+                if (data.feed_code_female_id) document.querySelector('[name="feed_code_female_id"]').value = data.feed_code_female_id;
+
+                let feedMaleInput = document.querySelector('[name="feed_male_gp_bird"]');
+                if (data.feed_male_gp_bird !== null && feedMaleInput.value === '') feedMaleInput.value = data.feed_male_gp_bird;
+
+                let feedFemaleInput = document.querySelector('[name="feed_female_gp_bird"]');
+                if (data.feed_female_gp_bird !== null && feedFemaleInput.value === '') feedFemaleInput.value = data.feed_female_gp_bird;
+
+                let feedCleanupStartInput = document.querySelector('[name="feed_cleanup_start"]');
+                if (data.feed_cleanup_start && feedCleanupStartInput.value === '') feedCleanupStartInput.value = data.feed_cleanup_start;
+
+                let feedCleanupEndInput = document.querySelector('[name="feed_cleanup_end"]');
+                if (data.feed_cleanup_end && feedCleanupEndInput.value === '') feedCleanupEndInput.value = data.feed_cleanup_end;
+
+                let lightOnInput = document.querySelector('[name="light_on_time"]');
+                if (data.light_on_time && lightOnInput.value === '') lightOnInput.value = data.light_on_time;
+
+                let lightOffInput = document.querySelector('[name="light_off_time"]');
+                if (data.light_off_time && lightOffInput.value === '') lightOffInput.value = data.light_off_time;
+            })
+            .catch(error => console.log(error));
+    }
+
     function onSelectionChange() {
         {% if request.endpoint == 'daily_log' %}
         let houseId = document.getElementById('house_id').value;
@@ -834,6 +873,10 @@
         // Let's start with one empty row for convenience, or zero?
         // Existing behavior was one set of fields. Let's add one row by default.
         addMedicationRow();
+
+        {% if not log %}
+        prefillPreviousData();
+        {% endif %}
     };
 
     function deletePhoto(id, name) {

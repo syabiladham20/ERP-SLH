@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, g
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
@@ -3495,6 +3495,46 @@ def daily_log():
                            selected_date=selected_date_str,
                            vaccines_due=vaccines_due,
                            medication_inventory=medication_inventory)
+
+@app.route('/api/daily_log/previous')
+@dept_required('Farm')
+def get_previous_daily_log_data():
+    house_id = request.args.get('house_id')
+    date_str = request.args.get('date')
+
+    if not house_id or not date_str:
+        return jsonify({}), 400
+
+    try:
+        log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({}), 400
+
+    flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
+    if not flock:
+        return jsonify({}), 404
+
+    previous_log = DailyLog.query.filter(
+        DailyLog.flock_id == flock.id,
+        DailyLog.date < log_date
+    ).order_by(DailyLog.date.desc()).first()
+
+    if not previous_log:
+        return jsonify({}), 404
+
+    data = {
+        'feed_program': previous_log.feed_program,
+        'feed_code_male_id': previous_log.feed_code_male_id,
+        'feed_code_female_id': previous_log.feed_code_female_id,
+        'feed_male_gp_bird': previous_log.feed_male_gp_bird,
+        'feed_female_gp_bird': previous_log.feed_female_gp_bird,
+        'feed_cleanup_start': previous_log.feed_cleanup_start,
+        'feed_cleanup_end': previous_log.feed_cleanup_end,
+        'light_on_time': previous_log.light_on_time,
+        'light_off_time': previous_log.light_off_time
+    }
+
+    return jsonify(data), 200
 
 @app.route('/toggle_admin_view')
 def toggle_admin_view():
