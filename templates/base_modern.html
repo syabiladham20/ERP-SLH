@@ -52,7 +52,7 @@
     <div class="page">
       <!-- Navbar -->
       <header class="navbar navbar-expand-md navbar-light d-print-none" data-bs-theme="dark">
-        <div class="container-xl">
+        <div class="container-fluid">
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
@@ -99,7 +99,7 @@
       <header class="navbar-expand-md">
         <div class="collapse navbar-collapse" id="navbar-menu">
           <div class="navbar navbar-light">
-            <div class="container-xl">
+            <div class="container-fluid">
               <ul class="navbar-nav">
                 {% if user_dept == 'Admin' %}
                     <li class="nav-item">
@@ -206,7 +206,7 @@
       <div class="page-wrapper">
         <!-- System Health Widget Injection -->
         {% if system_health_logs and request.endpoint == 'index' %}
-        <div class="container-xl mt-3 mb-2">
+        <div class="container-fluid mt-3 mb-2">
             <div class="alert alert-info alert-dismissible bg-white border-info shadow-sm" role="alert">
                 <div class="d-flex align-items-center mb-2">
                     <h4 class="alert-title text-info mb-0 me-2">System Health</h4>
@@ -225,7 +225,7 @@
         {% endif %}
 
         <!-- Flash Messages -->
-        <div class="container-xl mt-3">
+        <div class="container-fluid mt-3">
           {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
               {% for category, message in messages %}
@@ -242,7 +242,7 @@
 
         <!-- Content -->
         <div class="page-body">
-          <div class="container-xl">
+          <div class="container-fluid">
             {% block content %}{% endblock %}
           </div>
         </div>

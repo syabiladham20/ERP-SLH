@@ -1,34 +1,29 @@
+/* --- Global Typography Scaling --- */
+/* Scale base rem up to 112.5% (approx 18px base) to natively increase size of all Bootstrap/Tabler elements globally */
 html {
-    font-size: 112.5%; /* Increase base font size to 18px (from default 16px). This scales all rem-based elements (fonts, inputs, buttons, spacing). */
+    font-size: 112.5%;
 }
 
 body {
     padding-top: 56px; /* Space for fixed navbar */
 }
 
-/* Explicit scaling for form elements and interactive components for better tap targets and visibility */
+/* Explicitly scale highly interactive components to ensure they feel "fuller" */
 .form-control, .form-select, .btn {
     font-size: 1.1rem;
-    padding: 0.6rem 0.9rem;
+    padding: 0.6rem 1rem;
 }
 
-.card-title, .card-header h4, .card-header h5 {
-    font-size: 1.35rem;
-    font-weight: 600;
-}
-
+/* Table scaling */
 .table th, .table td {
     font-size: 1.05rem;
     padding: 0.75rem;
 }
 
-.form-label {
-    font-weight: 500;
-    font-size: 1.05rem;
-}
-
-.small, small {
-    font-size: 0.9rem;
+/* Increase card title hierarchy */
+.card-title {
+    font-size: 1.3rem;
+    font-weight: 600;
 }
 .navbar {
     position: fixed;
