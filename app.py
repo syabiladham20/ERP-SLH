@@ -345,6 +345,16 @@ class DailyLog(db.Model):
         days = (delta - 1) % 7 + 1
         return f"{weeks}.{days}"
 
+class FloatingNote(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    chart_id = db.Column(db.String(50), nullable=False) # e.g. 'generalChart', 'waterChart'
+    x_value = db.Column(db.String(50), nullable=False) # X-axis date string or value
+    y_value = db.Column(db.Float, nullable=False) # Y-axis value
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class ClinicalNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
@@ -7410,6 +7420,52 @@ def executive_flock_detail(id):
                            summary_table=summary_table,
                            std_hatch_map=std_hatch_map)
 
+
+@app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
+@login_required
+def get_floating_notes(flock_id):
+    notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
+    result = []
+    for note in notes:
+        result.append({
+            'id': note.id,
+            'chart_id': note.chart_id,
+            'x_value': note.x_value,
+            'y_value': note.y_value,
+            'content': note.content
+        })
+    return jsonify(result)
+
+@app.route('/api/floating_notes', methods=['POST'])
+@login_required
+def create_floating_note():
+    data = request.json
+    try:
+        new_note = FloatingNote(
+            flock_id=data['flock_id'],
+            chart_id=data['chart_id'],
+            x_value=data['x_value'],
+            y_value=float(data['y_value']),
+            content=data['content']
+        )
+        db.session.add(new_note)
+        db.session.commit()
+        return jsonify({'success': True, 'id': new_note.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/floating_notes/<int:note_id>', methods=['DELETE'])
+@login_required
+def delete_floating_note(note_id):
+    try:
+        note = FloatingNote.query.get_or_404(note_id)
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

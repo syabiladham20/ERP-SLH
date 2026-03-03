@@ -361,10 +361,10 @@
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
-                    <label class="btn btn-outline-secondary" for="modeDaily">Daily</label>
+                    <label class="btn btn-outline-secondary" for="modeDaily" title="Daily View"><i class="bi bi-calendar-event"></i></label>
 
                     <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
-                    <label class="btn btn-outline-secondary" for="modeWeekly">Weekly</label>
+                    <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
@@ -372,8 +372,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i> Labels</button>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -392,9 +393,9 @@
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="btn-group btn-group-sm ms-2 me-2" role="group">
                     <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" checked onchange="switchModeHatching('daily')">
-                    <label class="btn btn-outline-secondary" for="modeDailyHatching">Daily</label>
+                    <label class="btn btn-outline-secondary" for="modeDailyHatching" title="Daily View"><i class="bi bi-calendar-event"></i></label>
                     <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" onchange="switchModeHatching('weekly')">
-                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching">Weekly</label>
+                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
@@ -402,8 +403,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i> Labels</button>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -425,8 +427,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i> Labels</button>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -448,8 +451,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i> Labels</button>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -472,7 +476,8 @@
                     <span class="small">-</span>
                     <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -495,7 +500,8 @@
                     <span class="small">-</span>
                     <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Full Screen">
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
             </div>
@@ -790,11 +796,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
 
   // Register plugin
   Chart.register(ChartDataLabels);
+  Chart.register(window['chartjs-plugin-annotation']);
   Chart.defaults.set('plugins.datalabels', {
     display: true,
     font: { size: 10 },
@@ -2006,6 +2014,162 @@
       const modal = new bootstrap.Modal(document.getElementById('noteModal'));
       modal.show();
   }
-</script>
 
+// --- Floating Notes Logic ---
+let activeAddNoteChart = null;
+let allFloatingNotes = [];
+
+function toggleAddNoteMode(chartId) {
+    if (activeAddNoteChart === chartId) {
+        activeAddNoteChart = null;
+        document.querySelectorAll('button[onclick="toggleAddNoteMode('' + chartId + '')"]').forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-secondary');
+        });
+    } else {
+        if (activeAddNoteChart) {
+            document.querySelectorAll('button[onclick="toggleAddNoteMode('' + activeAddNoteChart + '')"]').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+        }
+        activeAddNoteChart = chartId;
+        document.querySelectorAll('button[onclick="toggleAddNoteMode('' + chartId + '')"]').forEach(btn => {
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-primary');
+        });
+    }
+}
+
+const floatingNotePlugin = {
+    id: 'floatingNoteInteraction',
+    afterEvent(chart, args) {
+        if (args.event.type === 'click') {
+            const chartId = chart.canvas.id;
+
+            if (activeAddNoteChart === chartId) {
+                const xVal = chart.scales.x.getValueForPixel(args.event.x);
+                const yVal = chart.scales.y.getValueForPixel(args.event.y);
+
+                let xLabel = xVal;
+                if (chart.data.labels && chart.data.labels[xVal] !== undefined) {
+                    xLabel = chart.data.labels[xVal];
+                }
+
+                toggleAddNoteMode(chartId); // turn off mode
+
+                const noteText = prompt("Enter note text:");
+                if (noteText && noteText.trim() !== '') {
+                    const payload = {
+                        flock_id: {{ flock.id }},
+                        chart_id: chartId,
+                        x_value: String(xLabel),
+                        y_value: yVal,
+                        content: noteText.trim()
+                    };
+
+                    fetch('/api/floating_notes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            payload.id = res.id;
+                            allFloatingNotes.push(payload);
+                            updateChartAnnotations(chart);
+                        } else {
+                            alert("Failed to save note: " + res.error);
+                        }
+                    });
+                }
+            }
+        }
+    }
+};
+
+Chart.register(floatingNotePlugin);
+
+function updateChartAnnotations(chart) {
+    if (!chart) return;
+    const chartId = chart.canvas.id;
+    const chartNotes = allFloatingNotes.filter(n => n.chart_id === chartId);
+
+    if (!chart.options.plugins) chart.options.plugins = {};
+    if (!chart.options.plugins.annotation) chart.options.plugins.annotation = {};
+    if (!chart.options.plugins.annotation.annotations) chart.options.plugins.annotation.annotations = {};
+
+    const currentAnns = chart.options.plugins.annotation.annotations;
+    const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
+
+    for (const key of Object.keys(newAnnotations)) {
+        if (key.startsWith('note_')) {
+            delete newAnnotations[key];
+        }
+    }
+
+    chartNotes.forEach(note => {
+        newAnnotations['note_' + note.id] = {
+            type: 'label',
+            xValue: note.x_value,
+            yValue: note.y_value,
+            content: note.content,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            color: 'black',
+            borderWidth: 0,
+            borderRadius: 4,
+            padding: 4,
+            font: { size: 12 },
+            callout: { display: false },
+            click: function(ctx) {
+                if (activeAddNoteChart) return;
+                if (confirm('Delete this note: "' + note.content + '"?')) {
+                    fetch('/api/floating_notes/' + note.id, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            allFloatingNotes = allFloatingNotes.filter(n => n.id !== note.id);
+                            updateChartAnnotations(chart);
+                        } else {
+                            alert("Failed to delete note.");
+                        }
+                    });
+                }
+            }
+        };
+    });
+
+    chart.options.plugins.annotation.annotations = newAnnotations;
+    chart.update();
+}
+
+function fetchAndApplyFloatingNotes() {
+    fetch('/api/floating_notes/{{ flock.id }}')
+    .then(r => r.json())
+    .then(data => {
+        allFloatingNotes = data;
+        const chartsToUpdate = [];
+        if (typeof generalChart !== 'undefined') chartsToUpdate.push(generalChart);
+        if (typeof waterChart !== 'undefined') chartsToUpdate.push(waterChart);
+        if (typeof feedChart !== 'undefined') chartsToUpdate.push(feedChart);
+        if (typeof maleChart !== 'undefined') chartsToUpdate.push(maleChart);
+        if (typeof femaleChart !== 'undefined') chartsToUpdate.push(femaleChart);
+        if (typeof hatchingEggChart !== 'undefined') chartsToUpdate.push(hatchingEggChart);
+        if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
+        if (typeof hatchChart !== 'undefined') chartsToUpdate.push(hatchChart);
+
+        chartsToUpdate.forEach(c => {
+            if (c) updateChartAnnotations(c);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(fetchAndApplyFloatingNotes, 1500);
+});
+
+</script>
 {% endblock %}
