@@ -82,6 +82,10 @@ def process_hatchability_import(file):
             flocks_by_house[f.house_id] = []
         flocks_by_house[f.house_id].append(f)
 
+    logs_cache = {}
+    hatch_cache = {}
+    flock_obj_cache = {f.id: f for f in all_flocks}
+
     created_count = 0
     updated_count = 0
 
@@ -115,6 +119,12 @@ def process_hatchability_import(file):
             # No valid flock found for this date
             continue
 
+        # Populate caches for this flock if needed
+        if target_flock_id not in logs_cache:
+            logs_cache[target_flock_id] = DailyLog.query.filter_by(flock_id=target_flock_id).order_by(DailyLog.date).all()
+        if target_flock_id not in hatch_cache:
+            hatch_cache[target_flock_id] = Hatchability.query.filter_by(flock_id=target_flock_id).order_by(Hatchability.setting_date).all()
+
         # Extract values (None if blank)
         c_date = get_val(row, 'candling_date', parse_date)
         h_date = get_val(row, 'hatching_date', parse_date)
@@ -123,14 +133,25 @@ def process_hatchability_import(file):
         r_eggs = get_val(row, 'rotten_eggs', int)
         h_chicks = get_val(row, 'hatched_chicks', int)
 
+        # Determine last_hatch_date from cache for male ratio calculation
+        last_hatch_date = None
+        for h_rec in reversed(hatch_cache[target_flock_id]):
+            if h_rec.setting_date < s_date:
+                last_hatch_date = h_rec.setting_date
+                break
+
         # Always fetch Male Ratio from Farm Database
         # Note: We do not update male_ratio_pct from Excel unless logic changes.
         # User requested: "Validation: Ensure that the importer still checks that the Flock ID and Setting Date match before applying any updates." - done.
         # "Audit Logging: If an update occurs via Excel, log it... (Fields: Clear Eggs, Culls)".
-        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date)
+        m_ratio, _ = calculate_male_ratio(target_flock_id, s_date,
+                                          flock_obj=flock_obj_cache[target_flock_id],
+                                          logs=logs_cache[target_flock_id],
+                                          last_hatch_date=last_hatch_date,
+                                          hatchery_records=hatch_cache[target_flock_id])
 
-        # Check existing record
-        existing = Hatchability.query.filter_by(flock_id=target_flock_id, setting_date=s_date).first()
+        # Check existing record in cache
+        existing = next((h_rec for h_rec in hatch_cache[target_flock_id] if h_rec.setting_date == s_date), None)
         if existing:
             # Smart Patch Update
             updated_fields = []
