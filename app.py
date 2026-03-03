@@ -126,13 +126,14 @@ from sqlalchemy.engine import Engine
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    # Check if it is SQLite
-    cursor = dbapi_connection.cursor()
-    try:
-        cursor.execute("PRAGMA journal_mode=WAL")
-    except:
-        pass
-    cursor.close()
+    # Only execute PRAGMA for SQLite connections
+    if type(dbapi_connection).__name__ == 'Connection' and 'sqlite3' in type(dbapi_connection).__module__:
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+        except:
+            pass
+        cursor.close()
 
 # --- Models ---
 
@@ -6422,14 +6423,26 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
         ids_tuple = str(ids_tuple)
 
     # Common CTE for calculating daily metrics
+    # Determine the database dialect
+    dialect = db.engine.name
+
+    if dialect == 'sqlite':
+        week_fmt = "strftime('%Y-%W', l.date)"
+        month_fmt = "strftime('%Y-%m', l.date)"
+        year_fmt = "strftime('%Y', l.date)"
+    else:  # postgresql
+        week_fmt = "to_char(l.date, 'IYYY-IW')"
+        month_fmt = "to_char(l.date, 'YYYY-MM')"
+        year_fmt = "to_char(l.date, 'YYYY')"
+
     cte_sql = f"""
     WITH DailyStock AS (
         SELECT
             l.date,
             l.flock_id,
-            strftime('%Y-%W', l.date) as iso_week,
-            strftime('%Y-%m', l.date) as iso_month,
-            strftime('%Y', l.date) as iso_year,
+            {week_fmt} as iso_week,
+            {month_fmt} as iso_month,
+            {year_fmt} as iso_year,
             l.mortality_male + l.mortality_female + l.culls_male + l.culls_female as daily_loss,
             l.mortality_female as mort_f,
             l.eggs_collected,
@@ -6507,33 +6520,42 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
         """
     }
 
-    # Define Hatchery Queries
+    # Define Hatchery Queries based on dialect
+    if dialect == 'sqlite':
+        hatch_week_fmt = "strftime('%Y-%W', hatching_date)"
+        hatch_month_fmt = "strftime('%Y-%m', hatching_date)"
+        hatch_year_fmt = "strftime('%Y', hatching_date)"
+    else: # postgresql
+        hatch_week_fmt = "to_char(hatching_date, 'IYYY-IW')"
+        hatch_month_fmt = "to_char(hatching_date, 'YYYY-MM')"
+        hatch_year_fmt = "to_char(hatching_date, 'YYYY')"
+
     hatch_queries = {
         'weekly': f"""
             SELECT
-                strftime('%Y-%W', hatching_date) as period,
+                {hatch_week_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
-            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
         """,
         'monthly': f"""
             SELECT
-                strftime('%Y-%m', hatching_date) as period,
+                {hatch_month_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
-            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
         """,
         'yearly': f"""
             SELECT
-                strftime('%Y', hatching_date) as period,
+                {hatch_year_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
-            WHERE flock_id IN {ids_tuple} AND strftime('%Y', hatching_date) = :year
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
         """
     }
