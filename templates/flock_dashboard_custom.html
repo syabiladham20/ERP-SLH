@@ -180,9 +180,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // Fix for zoom clipping
-    if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
-    if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
-    if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+    if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+    if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+    if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
 
     const HOUSE_ID = {{ flock.house_id }};
     const FLOCK_ID = {{ flock.id }};

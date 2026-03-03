@@ -808,10 +808,10 @@
     font: { size: 10 },
     formatter: Math.round
   });
-  if (Chart.defaults.datasets.line) {
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) {
       Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
   }
-  if (Chart.defaults.datasets.bar) {
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
   Chart.defaults.set('plugins.datalabels', {
@@ -819,17 +819,17 @@
     font: { size: 10 },
     formatter: Math.round
   });
-  if (Chart.defaults.datasets.line) {
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) {
       Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
   }
-  if (Chart.defaults.datasets.bar) {
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
 
   // Fix for zoom clipping
-  if (Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
-  if (Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
-  if (Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
 
   const isMobile = window.innerWidth <= 768;
 
@@ -2022,19 +2022,19 @@ let allFloatingNotes = [];
 function toggleAddNoteMode(chartId) {
     if (activeAddNoteChart === chartId) {
         activeAddNoteChart = null;
-        document.querySelectorAll('button[onclick="toggleAddNoteMode('' + chartId + '')"]').forEach(btn => {
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
             btn.classList.remove('btn-primary');
             btn.classList.add('btn-outline-secondary');
         });
     } else {
         if (activeAddNoteChart) {
-            document.querySelectorAll('button[onclick="toggleAddNoteMode('' + activeAddNoteChart + '')"]').forEach(btn => {
+            document.querySelectorAll(`button[onclick="toggleAddNoteMode('${activeAddNoteChart}')"]`).forEach(btn => {
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-outline-secondary');
             });
         }
         activeAddNoteChart = chartId;
-        document.querySelectorAll('button[onclick="toggleAddNoteMode('' + chartId + '')"]').forEach(btn => {
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
             btn.classList.remove('btn-outline-secondary');
             btn.classList.add('btn-primary');
         });
