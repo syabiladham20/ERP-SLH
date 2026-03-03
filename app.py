@@ -1240,7 +1240,44 @@ def index():
                 if round(f.daily_stats['egg_diff'], 2) > 0: f.daily_stats['egg_trend'] = 'up'
                 elif round(f.daily_stats['egg_diff'], 2) < 0: f.daily_stats['egg_trend'] = 'down'
 
-    return render_template('index_modern.html', active_flocks=active_flocks, today=today, low_stock_items=low_stock_items, low_stock_count=low_stock_count)
+    # Determine the date range for "This Week" (Monday to Sunday)
+    weekday = today.weekday() # Monday is 0 and Sunday is 6
+    this_week_start = today - timedelta(days=weekday)
+    this_week_end = this_week_start + timedelta(days=6)
+
+    # Determine the date range for "Next Week" (Monday to Sunday)
+    next_week_start = this_week_end + timedelta(days=1)
+    next_week_end = next_week_start + timedelta(days=6)
+
+    active_flock_ids = [f.id for f in active_flocks]
+
+    # Query uncompleted vaccines for these active flocks
+    if active_flock_ids:
+        uncompleted_vaccines = Vaccine.query.options(joinedload(Vaccine.flock).joinedload(Flock.house)).filter(
+            Vaccine.flock_id.in_(active_flock_ids),
+            Vaccine.est_date >= this_week_start,
+            Vaccine.est_date <= next_week_end,
+            Vaccine.actual_date.is_(None)
+        ).order_by(Vaccine.est_date).all()
+    else:
+        uncompleted_vaccines = []
+
+    this_week_vaccines = []
+    next_week_vaccines = []
+
+    for v in uncompleted_vaccines:
+        if this_week_start <= v.est_date <= this_week_end:
+            this_week_vaccines.append(v)
+        elif next_week_start <= v.est_date <= next_week_end:
+            next_week_vaccines.append(v)
+
+    return render_template('index_modern.html',
+                           active_flocks=active_flocks,
+                           today=today,
+                           low_stock_items=low_stock_items,
+                           low_stock_count=low_stock_count,
+                           this_week_vaccines=this_week_vaccines,
+                           next_week_vaccines=next_week_vaccines)
 
 @app.route('/history')
 @dept_required('Farm')

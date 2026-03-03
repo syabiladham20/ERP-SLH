@@ -47,6 +47,78 @@
 </div>
 {% endif %}
 
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card shadow-sm border-top border-3 border-info">
+      <div class="card-header bg-transparent border-bottom-0 pb-0">
+        <h3 class="card-title text-info mb-0">Upcoming Vaccine Schedule</h3>
+      </div>
+      <div class="card-body pt-3">
+        <div class="row">
+          <div class="col-md-6 mb-3 mb-md-0">
+            <h4 class="text-muted border-bottom pb-2">This Week</h4>
+            {% if this_week_vaccines %}
+              <div class="table-responsive">
+                <table class="table table-vcenter table-sm table-borderless table-striped text-nowrap">
+                  <thead>
+                    <tr>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">House</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Age</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Vaccine</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for v in this_week_vaccines %}
+                    <tr>
+                      <td class="font-weight-medium text-dark">{{ v.flock.house.name }}</td>
+                      <td class="text-muted">{{ v.age_code }}</td>
+                      <td class="text-muted">{{ v.vaccine_name }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="alert alert-secondary p-2 text-center text-muted mb-0">
+                No vaccines scheduled for this week.
+              </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <h4 class="text-muted border-bottom pb-2">Next Week</h4>
+            {% if next_week_vaccines %}
+              <div class="table-responsive">
+                <table class="table table-vcenter table-sm table-borderless table-striped text-nowrap">
+                  <thead>
+                    <tr>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">House</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Age</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Vaccine</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for v in next_week_vaccines %}
+                    <tr>
+                      <td class="font-weight-medium text-dark">{{ v.flock.house.name }}</td>
+                      <td class="text-muted">{{ v.age_code }}</td>
+                      <td class="text-muted">{{ v.vaccine_name }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="alert alert-secondary p-2 text-center text-muted mb-0">
+                No vaccines scheduled for next week.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row">
   {% for flock in active_flocks %}
   <div class="col-sm-6 col-lg-4 mb-4">
