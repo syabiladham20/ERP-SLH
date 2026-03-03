@@ -1475,7 +1475,7 @@
           pointHoverRadius: 8,
           backgroundColor: 'purple',
           borderColor: 'purple',
-          hidden: true,
+          hidden: false,
           clip: true
       };
 
@@ -1607,10 +1607,9 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          onClick: (e) => {
-              const points = generalChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
-              if (points.length) {
-                  const notePoint = points.find(p => generalChart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
+          onClick: (e, elements) => {
+              if (elements.length) {
+                  const notePoint = elements.find(p => generalChart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
                   if (notePoint) {
                       const dataset = generalChart.data.datasets[notePoint.datasetIndex];
                       const pt = dataset.data[notePoint.index];
