@@ -620,8 +620,8 @@ def get_flock_stock_history_bulk(flocks):
 
     return result_map
 
-def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last_hatch_date=None):
-    flock = flock_obj or Flock.query.get(flock_id)
+def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last_hatch_date=None, hatchery_records=None):
+    flock = flock_obj or db.session.get(Flock, flock_id)
     if not flock: return None, False
 
     weekday = setting_date.weekday() # Mon=0, Tue=1 ... Fri=4
@@ -640,10 +640,20 @@ def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last
         if last_hatch_date:
             start_date = last_hatch_date
         else:
-            # Find LAST setting date for this flock BEFORE current setting_date
-            last_hatch = Hatchability.query.filter_by(flock_id=flock_id)\
-                .filter(Hatchability.setting_date < setting_date)\
-                .order_by(Hatchability.setting_date.desc()).first()
+            if hatchery_records is not None:
+                # Use cached hatchery_records (assumed sorted or at least we can just find the latest one before setting_date)
+                last_hatch = None
+                # Sort descending to find the first one before setting_date
+                sorted_records = sorted(hatchery_records, key=lambda x: x.setting_date, reverse=True)
+                for rec in sorted_records:
+                    if rec.setting_date < setting_date:
+                        last_hatch = rec
+                        break
+            else:
+                # Find LAST setting date for this flock BEFORE current setting_date from DB
+                last_hatch = Hatchability.query.filter_by(flock_id=flock_id)\
+                    .filter(Hatchability.setting_date < setting_date)\
+                    .order_by(Hatchability.setting_date.desc()).first()
 
             if last_hatch:
                 start_date = last_hatch.setting_date
@@ -2888,8 +2898,12 @@ def flock_hatchability(id):
                 candling_date = datetime.strptime(request.form.get('candling_date'), '%Y-%m-%d').date()
                 hatching_date = datetime.strptime(request.form.get('hatching_date'), '%Y-%m-%d').date()
 
+                # Pre-fetch for optimization before ratio calculation
+                logs = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date).all()
+                hatchery_records = Hatchability.query.filter_by(flock_id=flock.id).order_by(Hatchability.setting_date).all()
+
                 # Calculate Male Ratio
-                male_ratio, large_window = calculate_male_ratio(flock.id, setting_date)
+                male_ratio, large_window = calculate_male_ratio(flock.id, setting_date, flock_obj=flock, logs=logs, hatchery_records=hatchery_records)
 
                 h = Hatchability(
                     flock_id=flock.id,
@@ -4259,7 +4273,8 @@ def process_hatchability_import(file):
         m_ratio, _ = calculate_male_ratio(target_flock_id, s_date,
                                           flock_obj=target_flock,
                                           logs=logs_cache[target_flock_id],
-                                          last_hatch_date=last_hatch_date)
+                                          last_hatch_date=last_hatch_date,
+                                          hatchery_records=hatch_cache[target_flock_id])
 
         # Check existing record in cache
         existing = next((h_rec for h_rec in hatch_cache[target_flock_id] if h_rec.setting_date == s_date), None)
