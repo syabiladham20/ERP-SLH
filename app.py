@@ -143,6 +143,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     dept = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
+    theme = db.Column(db.String(50), default='base_tabler.html')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -3689,10 +3690,10 @@ def change_theme():
 
     user = User.query.get(session['user_id'])
     if user:
-        theme = request.form.get('theme', 'base_argon.html')
+        theme = request.form.get('theme', 'base_tabler.html')
         # Validate theme input to avoid arbitrary file injection
         valid_themes = [
-            'base_argon.html', 'base_argon.html', 'base_volt.html',
+            'base_tabler.html', 'base_argon.html', 'base_volt.html',
             'base_horizon.html', 'base_material.html', 'base_soft.html',
             'base_lightblue.html', 'base_bw.html'
         ]
