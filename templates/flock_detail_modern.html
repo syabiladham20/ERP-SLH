@@ -1477,6 +1477,50 @@
       // 2. Prepare Datasets
       const generalDatasets = [];
 
+      // Add Medication Highlight Background (if daily)
+      if (mode === 'daily' && generalData.medication_active) {
+          generalDatasets.push({
+              label: 'Medication',
+              data: generalData.medication_active.map(active => active ? 1 : null),
+              type: 'bar',
+              yAxisID: 'yMed',
+              backgroundColor: 'rgba(255, 255, 0, 0.2)', // Light yellow
+              barPercentage: 1.0,
+              categoryPercentage: 1.0,
+              grouped: false, // Ensures it overlaps and doesn't push other bars
+              clip: false,
+              tooltip: { enabled: false }, // Optionally disable tooltip for background
+              datalabels: {
+                  display: function(context) {
+                      if (!generalData.medication_names) return false;
+                      const currentMeds = generalData.medication_names[context.dataIndex];
+                      if (!currentMeds) return false; // No meds
+
+                      // Only show on the first day of the contiguous medication block
+                      if (context.dataIndex > 0) {
+                          const prevMeds = generalData.medication_names[context.dataIndex - 1];
+                          if (currentMeds === prevMeds) {
+                              return false;
+                          }
+                      }
+                      return true;
+                  },
+                  formatter: function(value, context) {
+                      return generalData.medication_names ? generalData.medication_names[context.dataIndex] : '';
+                  },
+                  align: 'bottom',
+                  anchor: 'end', // Place text at the top of the highlight bar (which is at y=1)
+                  color: 'rgba(100, 100, 100, 0.9)',
+                  font: {
+                      weight: 'bold',
+                      size: 11
+                  },
+                  padding: 10,
+                  offset: 0
+              }
+          });
+      }
+
       if (!isRearing) {
           generalDatasets.push({
               label: 'Egg Production %',
@@ -1522,6 +1566,10 @@
             y1: {
               type: 'linear', display: true, position: 'left', title: { display: true, text: 'Mortality/Culls %' },
               grid: { drawOnChartArea: false }, ...genMortScales
+            },
+            yMed: {
+              type: 'linear', display: false, position: 'right', min: 0, max: 1,
+              grid: { drawOnChartArea: false }
             }
       };
 

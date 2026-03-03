@@ -1488,32 +1488,80 @@
         baselineData
       ], true);
 
+      const generalDatasets = [];
+
+      // Add Medication Highlight Background (if daily)
+      if (mode === 'daily' && generalData.medication_active) {
+          generalDatasets.push({
+              label: 'Medication',
+              data: generalData.medication_active.map(active => active ? 1 : null),
+              type: 'bar',
+              yAxisID: 'yMed',
+              backgroundColor: 'rgba(255, 255, 0, 0.2)', // Light yellow
+              barPercentage: 1.0,
+              categoryPercentage: 1.0,
+              grouped: false, // Ensures it overlaps and doesn't push other bars
+              clip: false,
+              tooltip: { enabled: false }, // Optionally disable tooltip for background
+              datalabels: {
+                  display: function(context) {
+                      if (!generalData.medication_names) return false;
+                      const currentMeds = generalData.medication_names[context.dataIndex];
+                      if (!currentMeds) return false; // No meds
+
+                      // Only show on the first day of the contiguous medication block
+                      if (context.dataIndex > 0) {
+                          const prevMeds = generalData.medication_names[context.dataIndex - 1];
+                          if (currentMeds === prevMeds) {
+                              return false;
+                          }
+                      }
+                      return true;
+                  },
+                  formatter: function(value, context) {
+                      return generalData.medication_names ? generalData.medication_names[context.dataIndex] : '';
+                  },
+                  align: 'bottom',
+                  anchor: 'end', // Place text at the top of the highlight bar (which is at y=1)
+                  color: 'rgba(100, 100, 100, 0.9)',
+                  font: {
+                      weight: 'bold',
+                      size: 11
+                  },
+                  padding: 10,
+                  offset: 0
+              }
+          });
+      }
+
+      generalDatasets.push(
+          { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
+          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', clip: true },
+
+          { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true },
+          { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true },
+          { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true },
+          { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true },
+
+          {
+              label: 'Standard Mort Limit',
+              data: baselineData,
+              type: 'line',
+              borderColor: 'red',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              yAxisID: 'y1',
+              clip: true
+          },
+          notesDataset
+      );
+
       generalChart = new Chart(document.getElementById('generalChart'), {
           type: 'bar',
           data: {
               labels: labels,
-              datasets: [
-                  { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
-                  { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', clip: true },
-
-                  { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true },
-                  { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true },
-                  { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true },
-                  { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true },
-
-                  {
-                      label: 'Standard Mort Limit',
-                      data: baselineData,
-                      type: 'line',
-                      borderColor: 'red',
-                      borderWidth: 2,
-                      borderDash: [5, 5],
-                      pointRadius: 0,
-                      yAxisID: 'y1',
-                      clip: true
-                  },
-                  notesDataset
-              ]
+              datasets: generalDatasets
           },
           options: {
               ...commonOptions,
