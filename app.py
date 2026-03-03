@@ -2498,7 +2498,15 @@ def flock_spreadsheet(id):
         bio_std = standards_by_week.get(week)
         prod_std = standards_by_prod_week.get(prod_week)
 
-        clinical_notes_str = ', '.join([note.caption for note in log.clinical_notes_list if note.caption])
+        notes_parts = []
+        if log.clinical_notes:
+            notes_parts.append(log.clinical_notes)
+
+        list_notes = [note.caption for note in log.clinical_notes_list if note.caption]
+        if list_notes:
+            notes_parts.extend(list_notes)
+
+        clinical_notes_str = ', '.join(notes_parts)
 
         spreadsheet_data.append([
             log.id,
@@ -2573,11 +2581,11 @@ def flock_spreadsheet_save(flock_id):
             clinical_signs_val = row.get('clinical_signs')
             # Clear existing clinical notes for this log
             ClinicalNote.query.filter_by(log_id=log.id).delete()
-            if clinical_signs_val:
-                signs = [s.strip() for s in clinical_signs_val.split(',') if s.strip()]
-                for sign in signs:
-                    new_note = ClinicalNote(log_id=log.id, caption=sign)
-                    db.session.add(new_note)
+
+            if clinical_signs_val and clinical_signs_val.strip():
+                log.clinical_notes = clinical_signs_val.strip()
+            else:
+                log.clinical_notes = None
 
             # Assuming simple continuous accumulation or daily input.
             # Real recalculation needs full historical sequence, which is complex for bulk edit.
@@ -3442,7 +3450,7 @@ def daily_log():
         try:
             db.session.commit()
             flash(flash_msg, 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
             db.session.rollback()
             flash(f"Database Error: {str(e)}", 'danger')
@@ -3915,7 +3923,7 @@ def edit_daily_log(id):
         try:
             db.session.commit()
             flash('Log updated successfully.', 'success')
-            return redirect(url_for('view_flock', id=log.flock_id))
+            return redirect(url_for('edit_daily_log', id=id))
         except Exception as e:
             db.session.rollback()
             flash(f"Database Error: {str(e)}", 'danger')
@@ -5246,7 +5254,7 @@ def health_log_vaccines():
             db.session.commit()
             flash(f'Updated {updated_count} records.', 'success')
 
-        return redirect(url_for('health_log_vaccines', year=year, month=month, flock_id=selected_flock_id))
+        return redirect(url_for('health_log_vaccines', year=year, month=month, flock_id=flock_id_param, edit_flock_id=edit_flock_id))
 
     cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdatescalendar(year, month)
@@ -5419,7 +5427,9 @@ def health_log_sampling():
             db.session.commit()
             flash(f'Updated {updated_count} records.', 'success')
 
-        return redirect(url_for('health_log_sampling', year=year, month=month, flock_id=selected_flock_id))
+        flock_id_param = request.form.get('flock_id') or selected_flock_id
+
+        return redirect(url_for('health_log_sampling', year=year, month=month, flock_id=flock_id_param, edit_flock_id=edit_flock_id))
 
     cal = calendar.Calendar(firstweekday=6)
     month_days = cal.monthdatescalendar(year, month)
@@ -5596,7 +5606,9 @@ def health_log_medication():
             db.session.commit()
             flash(f'Updated {updated_count} records.', 'success')
 
-        return redirect(url_for('health_log_medication', flock_id=selected_flock_id))
+        flock_id_param = request.form.get('flock_id') or selected_flock_id
+
+        return redirect(url_for('health_log_medication', flock_id=flock_id_param, edit_flock_id=edit_flock_id))
 
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
