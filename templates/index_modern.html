@@ -62,17 +62,21 @@
                 <table class="table table-vcenter table-sm table-borderless table-striped text-nowrap">
                   <thead>
                     <tr>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Date</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">House</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Age</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Vaccine</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Route</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for v in this_week_vaccines %}
                     <tr>
+                      <td class="text-muted">{{ v.est_date.strftime('%d %b') if v.est_date else 'N/A' }}</td>
                       <td class="font-weight-medium text-dark">{{ v.flock.house.name }}</td>
                       <td class="text-muted">{{ v.age_code }}</td>
                       <td class="text-muted">{{ v.vaccine_name }}</td>
+                      <td class="text-muted">{{ v.route or '-' }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -91,17 +95,21 @@
                 <table class="table table-vcenter table-sm table-borderless table-striped text-nowrap">
                   <thead>
                     <tr>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Date</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">House</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Age</th>
                       <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Vaccine</th>
+                      <th class="text-muted text-uppercase font-weight-bold" style="font-size: 0.65rem; letter-spacing: .04em;">Route</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for v in next_week_vaccines %}
                     <tr>
+                      <td class="text-muted">{{ v.est_date.strftime('%d %b') if v.est_date else 'N/A' }}</td>
                       <td class="font-weight-medium text-dark">{{ v.flock.house.name }}</td>
                       <td class="text-muted">{{ v.age_code }}</td>
                       <td class="text-muted">{{ v.vaccine_name }}</td>
+                      <td class="text-muted">{{ v.route or '-' }}</td>
                     </tr>
                     {% endfor %}
                   </tbody>
