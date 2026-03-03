@@ -36,6 +36,18 @@ def natural_sort_key(flock):
     return [int(text) if text.isdigit() else text.lower()
             for text in _ns_re.split(s)]
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_dept = session.get('user_dept')
+        if user_dept is None:
+            if request.path == url_for('login'): # Avoid loop
+                return f(*args, **kwargs)
+            flash("Please log in to continue.", "info")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def dept_required(required_dept):
     def decorator(f):
         @wraps(f)
@@ -46,9 +58,14 @@ def dept_required(required_dept):
             if user_dept == 'Admin':
                 return f(*args, **kwargs)
 
-            # If user matches required dept
-            if user_dept == required_dept:
-                return f(*args, **kwargs)
+            # Check if required_dept is a list/tuple
+            if isinstance(required_dept, (list, tuple)):
+                if user_dept in required_dept:
+                    return f(*args, **kwargs)
+            else:
+                # If user matches required dept
+                if user_dept == required_dept:
+                    return f(*args, **kwargs)
 
             # If guest (None)
             if user_dept is None:
@@ -58,7 +75,8 @@ def dept_required(required_dept):
                 return redirect(url_for('login'))
 
             # If user is logged in but wrong department
-            flash(f"Access Denied: You do not have permission to view the {required_dept} Department", "danger")
+            dept_str = ', '.join(required_dept) if isinstance(required_dept, (list, tuple)) else required_dept
+            flash(f"Access Denied: You do not have permission to view the {dept_str} Department", "danger")
 
             # Redirect to their own dashboard
             if user_dept == 'Hatchery':
@@ -7422,7 +7440,7 @@ def executive_flock_detail(id):
 
 
 @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
-@login_required
+@dept_required(['Farm', 'Admin'])
 def get_floating_notes(flock_id):
     notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
     result = []
@@ -7437,7 +7455,7 @@ def get_floating_notes(flock_id):
     return jsonify(result)
 
 @app.route('/api/floating_notes', methods=['POST'])
-@login_required
+@dept_required(['Farm', 'Admin'])
 def create_floating_note():
     data = request.json
     try:
@@ -7456,7 +7474,7 @@ def create_floating_note():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/floating_notes/<int:note_id>', methods=['DELETE'])
-@login_required
+@dept_required(['Farm', 'Admin'])
 def delete_floating_note(note_id):
     try:
         note = FloatingNote.query.get_or_404(note_id)
