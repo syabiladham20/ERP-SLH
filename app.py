@@ -1144,7 +1144,7 @@ def admin_user_reset_password(user_id):
 @dept_required('Hatchery')
 def hatchery_dashboard():
     active_flocks = Flock.query.filter_by(status='Active', phase='Production').all()
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
@@ -1173,7 +1173,7 @@ def index():
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
     low_stock_count = len(low_stock_items)
 
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -2054,7 +2054,7 @@ def toggle_phase(id):
 @dept_required('Farm')
 def view_flock(id):
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -6410,7 +6410,7 @@ def additional_report():
 
     # Active Flocks
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     prod_flocks = [f for f in active_flocks if f.phase == 'Production']
     rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
@@ -6938,7 +6938,7 @@ def executive_dashboard():
 
     # --- Farm Data ---
     active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     today = date.today()
 
@@ -7100,6 +7100,23 @@ def executive_dashboard():
                            selected_year=selected_year,
                            active_tab=active_tab)
 
+
+@app.route('/executive/flock_select')
+def flock_detail_readonly_select():
+    # Role Check: Admin or Management
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        flash("Access Denied: Executive View Only.", "danger")
+        return redirect(url_for('index'))
+
+    active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+
+    if not active_flocks:
+        flash("No active flocks found.", "warning")
+        return redirect(url_for('executive_dashboard'))
+
+    return render_template('flock_detail_readonly_select.html', active_flocks=active_flocks)
+
 @app.route('/executive/flock/<int:id>')
 def executive_flock_detail(id):
     # Role Check: Admin or Management
@@ -7108,7 +7125,7 @@ def executive_flock_detail(id):
         return redirect(url_for('index'))
 
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-    active_flocks.sort(key=natural_sort_key)
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()

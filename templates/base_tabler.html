@@ -112,6 +112,11 @@
                             <span class="nav-link-title">Executive</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-info" href="{{ url_for('flock_detail_readonly_select') }}">
+                            <span class="nav-link-title">Flock Detail</span>
+                        </a>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle fw-bold" href="#navbar-farm" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
                             <span class="nav-link-title">FARM</span>
@@ -190,6 +195,7 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
                 {% elif user_dept == 'Management' %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('flock_detail_readonly_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                 {% endif %}
 
                 <li class="nav-item ms-auto">

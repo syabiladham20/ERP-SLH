@@ -1,0 +1,33 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="container-xl">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          Flock Detail - Select House
+        </h2>
+        <div class="text-muted mt-1">Please select an active house to view its details.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="container-xl">
+    <div class="row row-cards">
+      {% for flock in active_flocks %}
+      <div class="col-md-6 col-lg-3">
+        <a href="{{ url_for('executive_flock_detail', id=flock.id) }}" class="card card-link">
+          <div class="card-body text-center">
+            <h3 class="mb-3">{{ flock.house.name if flock.house else 'Unknown' }}</h3>
+            <div class="text-muted">{{ flock.breed }} ({{ flock.status }})</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
