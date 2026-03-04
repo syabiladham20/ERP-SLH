@@ -127,6 +127,8 @@
                                     <a class="dropdown-item" href="{{ url_for('index') }}">{{ item.label }}</a>
                                 {% elif item.key == 'nav_daily_entry' %}
                                     <a class="dropdown-item" href="{{ url_for('daily_log') }}">{{ item.label }}</a>
+                                {% elif item.key == 'nav_inventory' %}
+                                    <a class="dropdown-item" href="{{ url_for('inventory') }}">{{ item.label }}</a>
                                 {% elif item.key == 'nav_health_log' %}
                                     <div class="dropend">
                                         <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
@@ -167,6 +169,8 @@
                             <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_daily_entry' %}
                             <li class="nav-item"><a class="nav-link" href="{{ url_for('daily_log') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                        {% elif item.key == 'nav_inventory' %}
+                            <li class="nav-item"><a class="nav-link" href="{{ url_for('inventory') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_health_log' %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#navbar-health" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
