@@ -53,3 +53,37 @@ While your current setup is perfectly fine, you would only start hitting the 20,
 3. **Heavy Excel Processing:** If users frequently (multiple times a day) upload massive, unoptimized Excel files containing tens of thousands of rows using pandas (`pd.read_excel`), parsing these files is a highly CPU-intensive task.
 4. **Machine Learning / Predictive Models:** If you move away from your current rule-based Disease Prediction system and implement a heavy Machine Learning model (e.g., neural networks processing images or large datasets) directly on the PythonAnywhere server.
 5. **Image Processing:** If users begin uploading thousands of high-resolution photos for the clinical notes, and your application is set up to resize, compress, or apply filters to those images on the server (using libraries like `Pillow`). Image manipulation is notoriously CPU-heavy.
+
+---
+
+## Evaluating Your Proposed PythonAnywhere Plan ($39.05/month)
+
+You are looking at a custom plan with the following specs:
+- **CPU time:** 10,000 seconds
+- **Web apps:** 1
+- **Web workers:** 5
+- **Always-on tasks:** 1
+- **Disk space:** 50 GB
+- **Postgres disk space:** 20 GB
+
+For **5 daily users**, this configuration is **overkill and unnecessarily expensive**. You can safely downgrade to save money without sacrificing any performance.
+
+### The Ideal, Cost-Optimized Plan for 5 Users
+
+Here is what you actually need:
+
+*   **CPU time per day: 2,000 to 4,000 seconds (Downgrade)**
+    *   *Why:* As calculated earlier, 5 users doing data entry and viewing dashboards will consume less than 300 seconds a day. Even 2,000 seconds (which is roughly the base "Hacker" plan level) gives you a massive 6x buffer for complex SQL queries or database backups. 10,000 is vastly more than you need.
+*   **Number of web apps: 1 (Keep)**
+    *   *Why:* You only need 1 app for the farm management system.
+*   **Number of web workers: 2 (Downgrade)**
+    *   *Why:* You selected 5 workers. A "worker" handles one HTTP request at a time. With 5 users, the chances of 5 people clicking "Save" or "Load Dashboard" at the *exact same millisecond* is incredibly low. **2 workers** are more than enough to handle your traffic smoothly.
+*   **Number of always-on tasks: 0 or 1 (Optional)**
+    *   *Why:* If you only use scheduled tasks (Cron jobs) for nightly backups or alerts, you do **not** need an "Always-on task" (which is meant for continuous loops, like a Discord bot). Scheduled tasks are included for free in paid plans. Set this to 0 unless you specifically build a continuous background queue (like Celery) later.
+*   **Disk space: 5 GB to 10 GB (Downgrade)**
+    *   *Why:* You selected 50 GB. The only files taking up space are the codebase, some Excel templates, and user-uploaded photos for clinical notes. Unless your users are uploading thousands of high-resolution, uncompressed photos every month, 5 GB to 10 GB will last you years. (You can always upgrade this later with one click if it gets full).
+*   **Postgres disk space: 1 GB to 2 GB (Downgrade)**
+    *   *Why:* You selected 20 GB. Text data (which makes up 99% of your database: daily logs, metrics, flock names) is tiny. 1 GB of PostgreSQL can hold literally millions of rows of `DailyLog` entries. 20 GB is meant for massive enterprise applications.
+
+### Summary
+By dropping your Web Workers to 2, Disk Space to 10 GB, Postgres to 2 GB, and CPU to 2,000-4,000 seconds, your monthly bill should drop from **$39.05** down to closer to **$10 to $15 per month**, and your 5 users will not notice any difference in speed or performance.
