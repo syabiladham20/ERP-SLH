@@ -119,8 +119,11 @@ class FarmTestCase(unittest.TestCase):
             'water_reading_1': 10500
         }, follow_redirects=True)
         
+        log_day1 = DailyLog.query.all()[0] # First log
+        self.assertEqual(log_day1.water_intake_calculated, 5000.0)
+
         log_day2 = DailyLog.query.all()[1] # Second log
-        self.assertEqual(log_day2.water_intake_calculated, 5000.0)
+        self.assertEqual(log_day2.water_intake_calculated, 0.0) # Should be 0 since day 3 is not there yet
 
     def test_manual_house_creation(self):
         # Create flock with NEW house
