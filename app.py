@@ -2272,7 +2272,7 @@ def view_flock(id):
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
         chart_data['medication_active'].append(len(active_meds) > 0)
-        chart_data['medication_names'].append("\n".join(active_meds) if active_meds else "")
+        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
 
         # User requested to remove medication from notes, so we don't append to note_parts
         # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
@@ -4890,18 +4890,13 @@ def process_import(file, commit=True, preview=False):
         
         all_logs = sorted(existing_logs_dict.values(), key=lambda x: x.date)
         for i, log in enumerate(all_logs):
-            if i < len(all_logs) - 1:
-                next_log = all_logs[i+1]
-                if next_log.water_reading_1 is not None and log.water_reading_1 is not None:
-                    r1_next = next_log.water_reading_1 / 100.0
+            if i > 0:
+                prev_log = all_logs[i-1]
+                if prev_log.water_reading_1 and log.water_reading_1:
                     r1_today = log.water_reading_1 / 100.0
-                    log.water_intake_calculated = (r1_next - r1_today) * 1000.0
-                else:
-                    log.water_intake_calculated = 0.0
-            else:
-                log.water_intake_calculated = 0.0
-
-            db.session.add(log)
+                    r1_prev = prev_log.water_reading_1 / 100.0
+                    log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
+                    db.session.add(log)
 
         if commit:
             db.session.commit()
@@ -5137,24 +5132,15 @@ def update_log_from_request(log, req):
                 db.session.add(new_photo)
 
     from datetime import timedelta
-    tomorrow = log.date + timedelta(days=1)
-    tomorrow_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=tomorrow).first()
-
-    if tomorrow_log and tomorrow_log.water_reading_1 is not None and log.water_reading_1 is not None:
-        r1_tomorrow_real = tomorrow_log.water_reading_1 / 100.0
-        r1_today_real = log.water_reading_1 / 100.0
-        log.water_intake_calculated = (r1_tomorrow_real - r1_today_real) * 1000.0
-    else:
-        log.water_intake_calculated = 0.0
-
     yesterday = log.date - timedelta(days=1)
     yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
 
-    if yesterday_log and yesterday_log.water_reading_1 is not None and log.water_reading_1 is not None:
-        r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
+    if yesterday_log:
         r1_today_real = log.water_reading_1 / 100.0
-        yesterday_log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
-        db.session.add(yesterday_log)
+        r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
+        log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
+    else:
+        log.water_intake_calculated = 0.0
 
     update_clinical_notes(log, req)
 
@@ -7322,7 +7308,7 @@ def executive_flock_detail(id):
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
         chart_data['medication_active'].append(len(active_meds) > 0)
-        chart_data['medication_names'].append("\n".join(active_meds) if active_meds else "")
+        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
 
         # User requested to remove medication from notes, so we don't append to note_parts
         # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
