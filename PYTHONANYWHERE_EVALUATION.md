@@ -42,3 +42,14 @@ If you implement real-time auto-alerts (e.g., sending a Telegram or WhatsApp mes
 If you decide to implement real-time alerts:
 - **Use Webhooks:** Integrate with the Telegram Bot API or WhatsApp Business API via standard Python `requests`.
 - **Background Workers (Optional but Recommended):** If the external API is slow, it could make the user's web page load slowly while it waits for the message to send. To fix this, you can dispatch the alert task to a background queue (like Celery or RQ), but for 5 users, simply using a fire-and-forget background thread (`threading.Thread`) or running it inline is perfectly acceptable and keeps the codebase simple.
+
+---
+
+## When WOULD You Need High CPU Usage?
+While your current setup is perfectly fine, you would only start hitting the 20,000 CPU seconds limit under the following specific conditions:
+
+1. **Massive Increase in Traffic:** If you scale up from 5 daily users to **hundreds of users actively clicking through the application concurrently**. Every HTTP request requires a small amount of CPU to process; thousands of requests per hour would begin to stack up.
+2. **Years of Historical Data (Without Caching):** Currently, the `executive_dashboard` aggregates data dynamically using SQL queries. If you accumulate 5 to 10 years of daily logs across dozens of flocks and do not implement **pre-aggregation** (as suggested above), the database will have to scan and compute millions of rows every single time a user loads the dashboard. This forces the CPU to work very hard.
+3. **Heavy Excel Processing:** If users frequently (multiple times a day) upload massive, unoptimized Excel files containing tens of thousands of rows using pandas (`pd.read_excel`), parsing these files is a highly CPU-intensive task.
+4. **Machine Learning / Predictive Models:** If you move away from your current rule-based Disease Prediction system and implement a heavy Machine Learning model (e.g., neural networks processing images or large datasets) directly on the PythonAnywhere server.
+5. **Image Processing:** If users begin uploading thousands of high-resolution photos for the clinical notes, and your application is set up to resize, compress, or apply filters to those images on the server (using libraries like `Pillow`). Image manipulation is notoriously CPU-heavy.
