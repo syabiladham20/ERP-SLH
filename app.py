@@ -770,6 +770,7 @@ def init_ui_elements(commit=True):
         {'key': 'nav_dashboard', 'label': 'Dashboard', 'section': 'navbar_main', 'order': 1},
         {'key': 'nav_daily_entry', 'label': 'Daily Entry', 'section': 'navbar_main', 'order': 2},
         {'key': 'nav_health_log', 'label': 'Health Log', 'section': 'navbar_main', 'order': 3},
+        {'key': 'nav_inventory', 'label': 'Inventory', 'section': 'navbar_main', 'order': 4},
 
         # Navbar Health Dropdown
         {'key': 'nav_health_vaccine', 'label': 'Vaccine', 'section': 'navbar_health', 'order': 1},
