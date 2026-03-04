@@ -110,6 +110,30 @@ This plan aligns exactly with the "Ideal Configuration" calculated above. It is 
 
 ---
 
+## Your Selected $17.00/month Custom Postgres Plan
+
+Because the standard $10/month "Developer" plan uses **MySQL** instead of **PostgreSQL**, and your codebase is actively preparing for a migration to PostgreSQL, you have opted for a **$17.00/month Custom Plan**.
+
+**Specs:**
+- **CPU time:** 5,000 seconds
+- **Web apps:** 1
+- **Web workers:** 3
+- **Always-on tasks:** 1
+- **Disk space:** 5 GB
+- **Postgres disk space:** 1 GB
+- **Price:** $17.00 / month
+
+### Verdict: An Excellent Choice
+
+This is a fantastic configuration. Here is why it works perfectly for you:
+
+1. **PostgreSQL Support:** The primary reason for the extra $7/month is access to the dedicated PostgreSQL server. Since your application's `executive_dashboard` relies on heavy SQL aggregations (like `to_char` for dates), PostgreSQL will handle these analytical queries much faster and more reliably than SQLite or MySQL.
+2. **1 GB Postgres Storage:** As mentioned earlier, text data is incredibly small. 1 GB of database storage will comfortably hold all your daily logs, clinical notes, and farm metrics for the next 5 to 10 years without breaking a sweat.
+3. **3 Web Workers:** Moving from 2 workers to 3 workers provides an extra layer of stability. If two users are simultaneously uploading photos or generating a heavy dashboard, the third worker is still immediately available to load the site instantly for the next user.
+4. **1 Always-on Task:** This gives you the flexibility to build a continuous background worker (like a Celery worker or a dedicated polling script for WhatsApp API responses) in the future without needing to upgrade your plan again.
+
+---
+
 ## When Should You Consider Upgrading?
 
 Even though the $10/month plan is perfect for now, you should monitor your usage over time. Here are the exact triggers for when you should consider upgrading your plan:
