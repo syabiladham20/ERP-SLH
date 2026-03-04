@@ -31,8 +31,7 @@ INITIAL_USERS = [
 # Pre-compile regex for natural sorting
 _ns_re = re.compile('([0-9]+)')
 
-def natural_sort_key(flock):
-    s = flock.house.name
+def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower()
             for text in _ns_re.split(s)]
 
