@@ -87,3 +87,58 @@ Here is what you actually need:
 
 ### Summary
 By dropping your Web Workers to 2, Disk Space to 10 GB, Postgres to 2 GB, and CPU to 2,000-4,000 seconds, your monthly bill should drop from **$39.05** down to closer to **$10 to $15 per month**, and your 5 users will not notice any difference in speed or performance.
+
+---
+
+## Evaluating the $10/month "Developer" Plan
+
+You also looked at the standard **Developer ($10/month)** plan:
+- **Web apps:** 1 (Custom domain supported)
+- **CPU time:** 5,000 seconds per day
+- **Disk space:** 5 GB
+- **Traffic rating:** "Enough power to run a typical 150,000 hit/day website"
+
+### Verdict: This is the PERFECT Plan for You
+
+This plan aligns exactly with the "Ideal Configuration" calculated above. It is highly recommended that you choose this plan over the custom $39.05 plan.
+
+**Why it is a perfect fit:**
+1. **5,000 CPU Seconds is Huge for Your App:** As mentioned, your 5 users will barely scratch 300 CPU seconds a day. 5,000 seconds is massive. You could easily run your daily backups, pre-aggregation scripts, and real-time WhatsApp alerts, and you still wouldn't even hit 10% of this limit.
+2. **150,000 hits/day:** Your app will likely see under 1,000 hits (page loads/saves) per day from 5 users. This means you have a 150x buffer for traffic spikes.
+3. **5 GB Disk Space is Plenty:** 99% of your data is just text stored in a database, which takes up mere megabytes. 5 GB is more than enough to store the application code, years of database logs, and a reasonable amount of user-uploaded clinical note photos. If you ever hit the 5 GB limit years from now, you can upgrade just the storage for a few extra dollars without changing your whole plan.
+4. **Cost-Effective:** At $10/month, you are getting enterprise-grade reliability and plenty of overhead for future growth, saving you almost $350 a year compared to the $39.05/month custom plan.
+
+---
+
+## Your Selected $17.00/month Custom Postgres Plan
+
+Because the standard $10/month "Developer" plan uses **MySQL** instead of **PostgreSQL**, and your codebase is actively preparing for a migration to PostgreSQL, you have opted for a **$17.00/month Custom Plan**.
+
+**Specs:**
+- **CPU time:** 5,000 seconds
+- **Web apps:** 1
+- **Web workers:** 3
+- **Always-on tasks:** 1
+- **Disk space:** 5 GB
+- **Postgres disk space:** 1 GB
+- **Price:** $17.00 / month
+
+### Verdict: An Excellent Choice
+
+This is a fantastic configuration. Here is why it works perfectly for you:
+
+1. **PostgreSQL Support:** The primary reason for the extra $7/month is access to the dedicated PostgreSQL server. Since your application's `executive_dashboard` relies on heavy SQL aggregations (like `to_char` for dates), PostgreSQL will handle these analytical queries much faster and more reliably than SQLite or MySQL.
+2. **1 GB Postgres Storage:** As mentioned earlier, text data is incredibly small. 1 GB of database storage will comfortably hold all your daily logs, clinical notes, and farm metrics for the next 5 to 10 years without breaking a sweat.
+3. **3 Web Workers:** Moving from 2 workers to 3 workers provides an extra layer of stability. If two users are simultaneously uploading photos or generating a heavy dashboard, the third worker is still immediately available to load the site instantly for the next user.
+4. **1 Always-on Task:** This gives you the flexibility to build a continuous background worker (like a Celery worker or a dedicated polling script for WhatsApp API responses) in the future without needing to upgrade your plan again.
+
+---
+
+## When Should You Consider Upgrading?
+
+Even though the $10/month plan is perfect for now, you should monitor your usage over time. Here are the exact triggers for when you should consider upgrading your plan:
+
+1. **Storage Hits 4.5 GB:** Check your PythonAnywhere dashboard occasionally. If your storage usage creeps up to 4.5 GB (usually due to thousands of uploaded clinical note photos or un-deleted daily database backups), you can easily add more storage for a few dollars a month via the custom plan slider.
+2. **CPU "Tarpitting" Occurs:** If you consistently exceed your 5,000 CPU seconds limit, PythonAnywhere will put your app in the "tarpit." This means your app will still work, but it will be given a lower priority and will load **very slowly**. If your users start complaining that the app takes 10-20 seconds to load a page, check your CPU usage graph. If it's hitting the red line, it's time to upgrade your CPU allocation.
+3. **You Need Multiple Applications:** The $10/month plan only allows 1 web app (e.g., `farm.yourdomain.com`). If you ever need to host a completely separate application (like a public marketing website or a different tool on a different subdomain), you will need to upgrade to a plan that supports 2+ web apps.
+4. **"Worker timeouts" in Error Logs:** If your users experience "504 Gateway Timeout" or "502 Bad Gateway" errors, check your PythonAnywhere `error.log`. If you see a lot of "worker timeout" messages, it means your current web workers are overwhelmed by too many simultaneous users. *At that point*, you should upgrade to add more web workers (e.g., from the default 2 up to 3 or 4).
