@@ -2211,7 +2211,7 @@ def view_flock(id):
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
         chart_data['medication_active'].append(len(active_meds) > 0)
-        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
+        chart_data['medication_names'].append("\n".join(active_meds) if active_meds else "")
 
         # User requested to remove medication from notes, so we don't append to note_parts
         # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))
@@ -7230,7 +7230,7 @@ def executive_flock_detail(id):
         # Meds
         active_meds = [m.drug_name for m in medications if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
         chart_data['medication_active'].append(len(active_meds) > 0)
-        chart_data['medication_names'].append(", ".join(active_meds) if active_meds else "")
+        chart_data['medication_names'].append("\n".join(active_meds) if active_meds else "")
 
         # User requested to remove medication from notes, so we don't append to note_parts
         # if active_meds: note_parts.append("Meds: " + ", ".join(active_meds))

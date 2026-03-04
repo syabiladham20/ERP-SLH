@@ -1583,7 +1583,8 @@
               },
               scales: {
                   y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, ...genEggScales },
-                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, ...genMortScales }
+                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, ...genMortScales },
+                  yMed: { type: 'linear', display: false, position: 'right', min: 0, max: 1, grid: { drawOnChartArea: false } }
               }
           },
           plugins: [weekSeparatorPlugin]
