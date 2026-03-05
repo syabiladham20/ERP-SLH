@@ -496,7 +496,7 @@
 
         <!-- Note Modal -->
         <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
@@ -2139,7 +2139,16 @@ function updateChartAnnotations(chart) {
 
 function fetchAndApplyFloatingNotes() {
     fetch('/api/floating_notes/{{ flock.id }}')
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok || r.redirected) {
+            window.location.reload();
+            return [];
+        }
+        return r.json().catch(() => {
+            window.location.reload();
+            return [];
+        });
+    })
     .then(data => {
         allFloatingNotes = data;
         const chartsToUpdate = [];
