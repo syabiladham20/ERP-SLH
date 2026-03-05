@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
 import os
 import time
+import requests
 from dotenv import load_dotenv
 import json
 import pandas as pd
@@ -5873,11 +5874,44 @@ def get_templates():
         })
     return json.dumps(res)
 
+def get_gemini_lite_response(user_prompt):
+    api_key = os.getenv('GEMINI_API_KEY')
+    # Use the 1.5-flash model for the lite version—it's fast and reliable
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+
+    # System context for the Poultry AI
+    context = (
+        "You are a Poultry Expert at Sin Long Heng Breeding Farm. "
+        "Provide concise advice for Arbor Acres Plus S broiler breeders."
+    )
+
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"{context}\n\nUser Question: {user_prompt}"}]
+        }]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status() # Check for errors
+        data = response.json()
+        # Navigate the JSON structure to get the text
+        return data['candidates'][0]['content']['parts'][0]['text']
+    except Exception as e:
+        return f"AI Connection Error: {str(e)}"
+
 @app.route('/api/chat', methods=['POST'])
 @login_required
-def chat_api():
-    # Return mock message per user request instead of connecting to real Gemini API
-    return jsonify({'success': True, 'reply': 'AI Smart-Advisor: Connection Pending. Full health-auditing will be activated upon system license upgrade.'})
+def chat():
+    user_input = request.json.get('message')
+    api_key = os.getenv('GEMINI_API_KEY')
+
+    if not api_key:
+        return jsonify({"response": "The AI assistant is in maintenance mode. Please contact the Technical Director."})
+
+    # Call the Lite function we discussed
+    ai_reply = get_gemini_lite_response(user_input)
+    return jsonify({"response": ai_reply})
 
 # --- Inventory Routes ---
 
