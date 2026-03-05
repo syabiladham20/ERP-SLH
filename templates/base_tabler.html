@@ -273,11 +273,6 @@
     <!-- Tabler Core JS & Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
     <script>
-        // Alias Tabler's bundled Bootstrap so existing scripts that rely on `new bootstrap.Modal()` continue to work.
-        if (typeof window.bootstrap === 'undefined' && typeof window.tabler !== 'undefined') {
-            window.bootstrap = window.tabler;
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
             const mybutton = document.getElementById("btn-back-to-top");
 

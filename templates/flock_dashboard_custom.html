@@ -65,6 +65,7 @@
 </div>
 
 <!-- Add/Edit Chart Modal -->
+<button id="hiddenChartModalBtn" data-bs-toggle="modal" data-bs-target="#chartModal" style="display: none;"></button>
 <div class="modal fade" id="chartModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -157,6 +158,9 @@
         </div>
     </div>
 </div>
+
+<!-- Note Modal Trigger -->
+<button id="hiddenCustomNoteModalBtn" data-bs-toggle="modal" data-bs-target="#customNoteModal" style="display: none;"></button>
 
 <!-- Note Modal -->
 <div class="modal fade" id="customNoteModal" tabindex="-1" aria-hidden="true">
@@ -702,8 +706,7 @@
             });
         }
 
-        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
-        modal.show();
+        document.getElementById('hiddenChartModalBtn').click();
     }
 
     async function saveChart() {
@@ -866,8 +869,7 @@
             imgDiv.style.display = 'none';
         }
 
-        const modal = new bootstrap.Modal(document.getElementById('customNoteModal'));
-        modal.show();
+        document.getElementById('hiddenCustomNoteModalBtn').click();
     }
 </script>
 

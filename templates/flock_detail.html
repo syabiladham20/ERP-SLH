@@ -494,6 +494,9 @@
         </div>
         </div>
 
+        <!-- Note Modal Trigger -->
+        <button id="hiddenNoteModalBtn" data-bs-toggle="modal" data-bs-target="#noteModal" style="display: none;"></button>
+
         <!-- Note Modal -->
         <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-md-down">
@@ -2002,8 +2005,7 @@
           inner.appendChild(div);
       });
 
-      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
-      modal.show();
+      document.getElementById('hiddenNoteModalBtn').click();
   }
 
 // --- Floating Notes Logic ---
@@ -2140,12 +2142,16 @@ function updateChartAnnotations(chart) {
 function fetchAndApplyFloatingNotes() {
     fetch('/api/floating_notes/{{ flock.id }}')
     .then(r => {
-        if (!r.ok || r.redirected) {
-            window.location.reload();
+        if (r.redirected || (r.headers.get('content-type') && r.headers.get('content-type').includes('text/html'))) {
+            console.warn('Session timeout or HTML response received instead of JSON. Stopping floating notes polling.');
+            return [];
+        }
+        if (!r.ok) {
+            console.warn('Failed to fetch floating notes, status:', r.status);
             return [];
         }
         return r.json().catch(() => {
-            window.location.reload();
+            console.warn('Failed to parse floating notes as JSON.');
             return [];
         });
     })
