@@ -18,9 +18,17 @@ try:
     from google import genai
     from google.genai import types
     USING_LEGACY_GENAI = False
+    AI_AVAILABLE = True
 except ImportError:
-    import google.generativeai as genai
-    USING_LEGACY_GENAI = True
+    try:
+        import google.generativeai as genai
+        USING_LEGACY_GENAI = True
+        AI_AVAILABLE = True
+    except ImportError:
+        genai = None
+        types = None
+        USING_LEGACY_GENAI = None
+        AI_AVAILABLE = False
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
@@ -30,7 +38,7 @@ load_dotenv()
 # Configure Gemini AI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ai_client = None
-if GEMINI_API_KEY:
+if GEMINI_API_KEY and AI_AVAILABLE:
     if USING_LEGACY_GENAI:
         genai.configure(api_key=GEMINI_API_KEY)
         ai_client = genai.GenerativeModel("gemini-3-flash-preview", system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data.")
@@ -5893,6 +5901,9 @@ def get_templates():
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat_api():
+    if not AI_AVAILABLE:
+        return jsonify({'success': False, 'error': 'AI is currently unavailable due to missing dependencies.'}), 503
+
     if not ai_client:
         return jsonify({'success': False, 'error': 'Gemini API Key is not configured.'}), 500
 
