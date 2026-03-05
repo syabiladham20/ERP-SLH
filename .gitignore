@@ -8,3 +8,4 @@ uploads/
 verification/
 test-env/
 venv/
+node_modules/
