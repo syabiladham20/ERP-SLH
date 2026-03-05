@@ -1140,6 +1140,7 @@
           },
           options: {
               ...commonOptions,
+              onClick: null,
               scales: {
                   y: {
                       type: 'linear',
@@ -1238,6 +1239,7 @@
           },
           options: {
               ...commonOptions,
+              onClick: null,
               scales: {
                   y: {
                       type: 'linear',
@@ -1320,6 +1322,7 @@
         },
         options: {
             ...commonOptions,
+            onClick: null,
             scales: {
                 y: {
                     type: 'linear',
@@ -1402,6 +1405,7 @@
         },
         options: {
             ...commonOptions,
+            onClick: null,
             scales: {
                 y: {
                     type: 'linear',
@@ -1483,6 +1487,7 @@
           pointStyle: 'rectRot',
           pointRadius: 6,
           pointHoverRadius: 8,
+          pointHitRadius: 20, // Increase mobile sensitivity
           backgroundColor: 'purple',
           borderColor: 'purple',
           hidden: false,
@@ -1573,13 +1578,19 @@
           },
           options: {
               ...commonOptions,
+              onClick: null,
               plugins: {
                   ...commonOptions.plugins,
                   weekSeparator: { enabled: mode === 'daily' }
               },
               onClick: (e, elements) => {
                   if (elements.length) {
-                      const notePoint = elements.find(p => generalChart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
+                      // Find the index of the Clinical Notes dataset
+                      const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
+
+                      // Check if any of the clicked elements belong to the Clinical Notes dataset
+                      const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
+
                       if (notePoint) {
                           const dataset = generalChart.data.datasets[notePoint.datasetIndex];
                           const pt = dataset.data[notePoint.index];
@@ -1811,6 +1822,7 @@
           },
           options: {
               ...commonOptions,
+              onClick: null,
               scales: {
                   y: {
                       type: 'linear', position: 'left', stacked: true, title: {display:true, text:'Egg Status %'},
@@ -1871,8 +1883,13 @@
           carousel.style.display = 'none';
       }
 
-      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
-      modal.show();
+      if (window.bootstrap) {
+          const modalEl = document.getElementById('noteModal');
+          const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+          modal.show();
+      } else {
+          console.error("Bootstrap is not defined on the window object.");
+      }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
