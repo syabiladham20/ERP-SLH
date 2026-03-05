@@ -14,7 +14,8 @@ import pandas as pd
 import calendar
 import re
 from functools import wraps
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
@@ -23,8 +24,9 @@ load_dotenv()
 
 # Configure Gemini AI
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+ai_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Initial User Data for Seeding
 INITIAL_USERS = [
@@ -5882,7 +5884,7 @@ def get_templates():
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat_api():
-    if not GEMINI_API_KEY:
+    if not ai_client:
         return jsonify({'success': False, 'error': 'Gemini API Key is not configured.'}), 500
 
     data = request.get_json()
@@ -5892,13 +5894,14 @@ def chat_api():
         return jsonify({'success': False, 'error': 'Message is empty.'}), 400
 
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
-        )
-
         # Basic generation (stateless for now, or could pass history if needed)
-        response = model.generate_content(user_message)
+        response = ai_client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=user_message,
+            config=types.GenerateContentConfig(
+                system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
+            )
+        )
 
         if response.text:
             return jsonify({'success': True, 'reply': response.text})
