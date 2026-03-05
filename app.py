@@ -3699,13 +3699,20 @@ def utility_processor():
             query = query.filter_by(is_visible=True)
         return query.all()
 
+    from flask import g
+    class AnonymousUser:
+        is_authenticated = False
+        username = ''
+        role = ''
+
     return dict(get_partition_val=get_partition_val,
                 get_ui_elements=get_ui_elements,
                 is_admin=effective_is_admin,
                 real_is_admin=real_is_admin,
                 user_dept=effective_dept,
                 user_role=effective_role,
-                is_debug=app.debug)
+                is_debug=app.debug,
+                current_user=g.user if hasattr(g, 'user') and g.user else AnonymousUser())
 
 @app.route('/admin/ui', methods=['GET', 'POST'])
 def admin_ui_update():
