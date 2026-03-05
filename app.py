@@ -7494,7 +7494,7 @@ def executive_flock_detail(id):
 
 
 @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
-@dept_required(['Farm', 'Admin'])
+@dept_required(['Farm', 'Admin', 'Management'])
 def get_floating_notes(flock_id):
     notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
     result = []
