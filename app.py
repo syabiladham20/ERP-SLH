@@ -33,7 +33,7 @@ ai_client = None
 if GEMINI_API_KEY:
     if USING_LEGACY_GENAI:
         genai.configure(api_key=GEMINI_API_KEY)
-        ai_client = genai.GenerativeModel("gemini-1.5-flash", system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data.")
+        ai_client = genai.GenerativeModel("gemini-3-flash-preview", system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data.")
     else:
         ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -5910,7 +5910,7 @@ def chat_api():
             # Using new google.genai
             # Basic generation (stateless for now, or could pass history if needed)
             response = ai_client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3-flash-preview",
                 contents=user_message,
                 config=types.GenerateContentConfig(
                     system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
