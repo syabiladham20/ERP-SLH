@@ -15,7 +15,7 @@ import calendar
 import re
 from functools import wraps
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
-from analytics import analyze_health_events
+from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
 
 load_dotenv()
@@ -2140,7 +2140,6 @@ def view_flock(id):
         cleanup_duration_mins = None
         if log.feed_cleanup_start and log.feed_cleanup_end:
             try:
-                from analytics import calculate_feed_cleanup_duration
                 cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
             except Exception:
                 pass
@@ -7217,6 +7216,14 @@ def executive_flock_detail(id):
                 if m.end_date is None or m.end_date >= log.date:
                     active_meds.append(m.drug_name)
         meds_str = ", ".join(active_meds)
+
+        cleanup_duration_mins = None
+        if log.feed_cleanup_start and log.feed_cleanup_end:
+            try:
+                cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
+            except Exception:
+                pass
+        feed_cleanup_hours = round(cleanup_duration_mins / 60.0, 1) if cleanup_duration_mins else None
 
         enriched_logs.append({
             'log': log,
