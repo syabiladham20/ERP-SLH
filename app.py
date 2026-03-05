@@ -14,11 +14,17 @@ import pandas as pd
 import calendar
 import re
 from functools import wraps
+import google.generativeai as genai
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
 
 load_dotenv()
+
+# Configure Gemini AI
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 # Initial User Data for Seeding
 INITIAL_USERS = [
@@ -5872,6 +5878,35 @@ def get_templates():
             'house_name': t.house.name
         })
     return json.dumps(res)
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def chat_api():
+    if not GEMINI_API_KEY:
+        return jsonify({'success': False, 'error': 'Gemini API Key is not configured.'}), 500
+
+    data = request.get_json()
+    user_message = data.get('message', '').strip()
+
+    if not user_message:
+        return jsonify({'success': False, 'error': 'Message is empty.'}), 400
+
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
+        )
+
+        # Basic generation (stateless for now, or could pass history if needed)
+        response = model.generate_content(user_message)
+
+        if response.text:
+            return jsonify({'success': True, 'reply': response.text})
+        else:
+             return jsonify({'success': False, 'error': 'Empty response from AI.'}), 500
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # --- Inventory Routes ---
 
