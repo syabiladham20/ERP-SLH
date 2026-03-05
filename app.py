@@ -2137,6 +2137,15 @@ def view_flock(id):
                     active_meds.append(m.drug_name)
         meds_str = ", ".join(active_meds)
 
+        cleanup_duration_mins = None
+        if log.feed_cleanup_start and log.feed_cleanup_end:
+            try:
+                from analytics import calculate_feed_cleanup_duration
+                cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
+            except Exception:
+                pass
+        feed_cleanup_hours = round(cleanup_duration_mins / 60.0, 1) if cleanup_duration_mins else None
+
         enriched_logs.append({
             'log': log,
             'stock_male': d['stock_male_start'],
@@ -2145,6 +2154,7 @@ def view_flock(id):
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
             'total_feed': d['feed_total_kg'],
+            'feed_cleanup_hours': feed_cleanup_hours,
             'egg_data': {
                 'jumbo': d['cull_eggs_jumbo'],
                 'jumbo_pct': d['cull_eggs_jumbo_pct'],
@@ -2175,6 +2185,7 @@ def view_flock(id):
             'culls_female': ws['culls_female'],
             'eggs': ws['eggs_collected'],
             'hatch_eggs_sum': ws['hatch_eggs'],
+            'cull_eggs_total': ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal'],
 
             # Derived
             'mort_pct_m': ws['mortality_male_pct'],
@@ -2183,6 +2194,14 @@ def view_flock(id):
             'cull_pct_f': ws['culls_female_pct'],
             'egg_prod_pct': ws['egg_prod_pct'],
             'hatching_egg_pct': ws['hatch_egg_pct'],
+            'cull_eggs_jumbo': ws['cull_eggs_jumbo'],
+            'cull_eggs_jumbo_pct': ws['cull_eggs_jumbo_pct'] * 100 if ws.get('cull_eggs_jumbo_pct') else 0,
+            'cull_eggs_small': ws['cull_eggs_small'],
+            'cull_eggs_small_pct': ws['cull_eggs_small_pct'] * 100 if ws.get('cull_eggs_small_pct') else 0,
+            'cull_eggs_crack': ws['cull_eggs_crack'],
+            'cull_eggs_crack_pct': ws['cull_eggs_crack_pct'] * 100 if ws.get('cull_eggs_crack_pct') else 0,
+            'cull_eggs_abnormal': ws['cull_eggs_abnormal'],
+            'cull_eggs_abnormal_pct': ws['cull_eggs_abnormal_pct'] * 100 if ws.get('cull_eggs_abnormal_pct') else 0,
 
             'avg_bw_male': round_to_whole(ws['body_weight_male']),
             'avg_bw_female': round_to_whole(ws['body_weight_female']),
@@ -7207,6 +7226,7 @@ def executive_flock_detail(id):
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
             'total_feed': d['feed_total_kg'],
+            'feed_cleanup_hours': feed_cleanup_hours,
             'egg_data': {
                 'jumbo': d['cull_eggs_jumbo'],
                 'jumbo_pct': d['cull_eggs_jumbo_pct'],
@@ -7234,12 +7254,21 @@ def executive_flock_detail(id):
             'culls_female': ws['culls_female'],
             'eggs': ws['eggs_collected'],
             'hatch_eggs_sum': ws['hatch_eggs'],
+            'cull_eggs_total': ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal'],
             'mort_pct_m': ws['mortality_male_pct'],
             'mort_pct_f': ws['mortality_female_pct'],
             'cull_pct_m': ws['culls_male_pct'],
             'cull_pct_f': ws['culls_female_pct'],
             'egg_prod_pct': ws['egg_prod_pct'],
             'hatching_egg_pct': ws['hatch_egg_pct'],
+            'cull_eggs_jumbo': ws['cull_eggs_jumbo'],
+            'cull_eggs_jumbo_pct': ws['cull_eggs_jumbo_pct'] * 100 if ws.get('cull_eggs_jumbo_pct') else 0,
+            'cull_eggs_small': ws['cull_eggs_small'],
+            'cull_eggs_small_pct': ws['cull_eggs_small_pct'] * 100 if ws.get('cull_eggs_small_pct') else 0,
+            'cull_eggs_crack': ws['cull_eggs_crack'],
+            'cull_eggs_crack_pct': ws['cull_eggs_crack_pct'] * 100 if ws.get('cull_eggs_crack_pct') else 0,
+            'cull_eggs_abnormal': ws['cull_eggs_abnormal'],
+            'cull_eggs_abnormal_pct': ws['cull_eggs_abnormal_pct'] * 100 if ws.get('cull_eggs_abnormal_pct') else 0,
             'avg_bw_male': round_to_whole(ws['body_weight_male']),
             'avg_bw_female': round_to_whole(ws['body_weight_female']),
             'notes': ws['notes'],
