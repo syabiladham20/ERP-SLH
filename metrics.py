@@ -276,7 +276,8 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'cull_eggs_crack_pct': safe_div(crack, eggs),
             'cull_eggs_abnormal_pct': safe_div(abnormal, eggs),
 
-            'water_per_bird': safe_div(log.water_intake_calculated * 1000, (stock_m_start + stock_f_start), multiplier=1.0)
+            'water_per_bird': safe_div(log.water_intake_calculated * 1000, (stock_m_start + stock_f_start), multiplier=1.0),
+            'water_feed_ratio': safe_div(log.water_reading_1 / 100.0, feed_m_kg + feed_f_kg, multiplier=1.0) if (feed_m_kg + feed_f_kg) > 0 else 0
         }
 
         # Hatchability Merge
@@ -354,7 +355,9 @@ def aggregate_weekly_metrics(daily_stats):
                 'cull_eggs_crack': 0, 'cull_eggs_abnormal': 0,
                 'feed_total_kg': 0,
                 'feed_sum_m_kg': 0, 'feed_sum_f_kg': 0,
+                'feed_m_gp_birds': [], 'feed_f_gp_birds': [],
                 'water_total_vol': 0,
+                'water_12h_vol': 0,
                 'stock_sum_male': 0, 'stock_sum_female': 0, # For weighted avgs
 
                 # Averages (Sum then divide)
@@ -386,7 +389,14 @@ def aggregate_weekly_metrics(daily_stats):
         ws['feed_total_kg'] += d['feed_total_kg']
         ws['feed_sum_m_kg'] += d['feed_m_kg']
         ws['feed_sum_f_kg'] += d['feed_f_kg']
+
+        if d['feed_male_gp_bird'] is not None:
+            ws['feed_m_gp_birds'].append(d['feed_male_gp_bird'])
+        if d['feed_female_gp_bird'] is not None:
+            ws['feed_f_gp_birds'].append(d['feed_female_gp_bird'])
+
         ws['water_total_vol'] += (d['water_total'] or 0)
+        ws['water_12h_vol'] += (d['log'].water_meter_12h or 0) if hasattr(d['log'], 'water_meter_12h') else 0
         ws['stock_sum_male'] += d['stock_male_start']
         ws['stock_sum_female'] += d['stock_female_start']
 
@@ -453,8 +463,17 @@ def aggregate_weekly_metrics(daily_stats):
         # I'll calculate Water per bird.
         ws['water_per_bird'] = safe_div(ws['water_total_vol'] * 1000, ws['stock_sum_male'] + ws['stock_sum_female'], multiplier=1.0)
 
-        ws['feed_male_gp_bird'] = safe_div(ws['feed_sum_m_kg'] * 1000, ws['stock_sum_male'], multiplier=1.0)
-        ws['feed_female_gp_bird'] = safe_div(ws['feed_sum_f_kg'] * 1000, ws['stock_sum_female'], multiplier=1.0)
+        ws['water_feed_ratio'] = safe_div(ws['water_12h_vol'], ws['feed_sum_m_kg'] + ws['feed_sum_f_kg'], multiplier=1.0) if (ws['feed_sum_m_kg'] + ws['feed_sum_f_kg']) > 0 else 0
+
+        # Mode for gp_bird
+        def get_mode(lst):
+            if not lst: return 0
+            from collections import Counter
+            c = Counter(lst)
+            return c.most_common(1)[0][0]
+
+        ws['feed_male_gp_bird'] = get_mode(ws['feed_m_gp_birds'])
+        ws['feed_female_gp_bird'] = get_mode(ws['feed_f_gp_birds'])
 
         result.append(ws)
 
@@ -485,7 +504,9 @@ def aggregate_monthly_metrics(daily_stats):
                 'eggs_collected': 0, 'hatch_eggs': 0,
                 'feed_total_kg': 0,
                 'feed_sum_m_kg': 0, 'feed_sum_f_kg': 0,
+                'feed_m_gp_birds': [], 'feed_f_gp_birds': [],
                 'water_total_vol': 0,
+                'water_12h_vol': 0,
                 'stock_sum_male': 0, 'stock_sum_female': 0,
 
                 # Averages (Sum then divide)
@@ -513,7 +534,10 @@ def aggregate_monthly_metrics(daily_stats):
         ms['feed_total_kg'] += d['feed_total_kg']
         ms['feed_sum_m_kg'] += d['feed_m_kg']
         ms['feed_sum_f_kg'] += d['feed_f_kg']
+        if d['log'].feed_male_gp_bird: ms['feed_m_gp_birds'].append(d['log'].feed_male_gp_bird)
+        if d['log'].feed_female_gp_bird: ms['feed_f_gp_birds'].append(d['log'].feed_female_gp_bird)
         ms['water_total_vol'] += (d['water_total'] or 0)
+        ms['water_12h_vol'] += (d['log'].water_reading_1 / 100.0 if d['log'].water_reading_1 else 0)
         ms['stock_sum_male'] += d['stock_male_start']
         ms['stock_sum_female'] += d['stock_female_start']
 
@@ -565,8 +589,17 @@ def aggregate_monthly_metrics(daily_stats):
         ms['uniformity_female'] = ms['unif_female_sum'] / ms['unif_female_count'] if ms['unif_female_count'] > 0 else 0
 
         ms['water_per_bird'] = safe_div(ms['water_total_vol'] * 1000, ms['stock_sum_male'] + ms['stock_sum_female'], multiplier=1.0)
-        ms['feed_male_gp_bird'] = safe_div(ms['feed_sum_m_kg'] * 1000, ms['stock_sum_male'], multiplier=1.0)
-        ms['feed_female_gp_bird'] = safe_div(ms['feed_sum_f_kg'] * 1000, ms['stock_sum_female'], multiplier=1.0)
+        ms['water_feed_ratio'] = safe_div(ms['water_12h_vol'], ms['feed_sum_m_kg'] + ms['feed_sum_f_kg'], multiplier=1.0) if (ms['feed_sum_m_kg'] + ms['feed_sum_f_kg']) > 0 else 0
+
+        # Mode for gp_bird
+        def get_mode(lst):
+            if not lst: return 0
+            from collections import Counter
+            c = Counter(lst)
+            return c.most_common(1)[0][0]
+
+        ms['feed_male_gp_bird'] = get_mode(ms['feed_m_gp_birds'])
+        ms['feed_female_gp_bird'] = get_mode(ms['feed_f_gp_birds'])
 
         result.append(ms)
 

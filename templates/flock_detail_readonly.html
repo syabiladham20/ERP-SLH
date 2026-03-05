@@ -346,10 +346,10 @@
             <span class="fw-bold mb-2 mb-md-0" id="generalChartTitle">General Performance</span>
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group btn-group-sm" role="group">
-                    <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" checked onchange="switchMode('daily')">
+                    <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" onchange="switchMode('daily')">
                     <label class="btn btn-outline-secondary" for="modeDaily" title="Daily View"><i class="bi bi-calendar-event"></i></label>
 
-                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" onchange="switchMode('weekly')">
+                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" checked onchange="switchMode('weekly')">
                     <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
@@ -358,7 +358,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -378,9 +378,9 @@
             <span id="hatchingEggChartTitle" class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="btn-group btn-group-sm ms-2 me-2" role="group">
-                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" checked onchange="switchModeHatching('daily')">
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" onchange="switchModeHatching('daily')">
                     <label class="btn btn-outline-secondary" for="modeDailyHatching" title="Daily View"><i class="bi bi-calendar-event"></i></label>
-                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" onchange="switchModeHatching('weekly')">
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" checked onchange="switchModeHatching('weekly')">
                     <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
@@ -389,7 +389,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -414,7 +414,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('hatchChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('hatchChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatchability')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
                 </button>
@@ -437,7 +437,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -461,7 +461,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -486,7 +486,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('maleChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('maleChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -511,7 +511,7 @@
                     <span class="small">-</span>
                     <input type="text" id="end_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-outline-secondary ms-2" onclick="toggleDataLabels('femaleChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
+                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('femaleChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
                 <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
                     <i class="bi bi-arrows-fullscreen"></i>
@@ -794,8 +794,8 @@
   // Sort by date ASCENDING for chart logic (table is descending)
   hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
 
-  let currentMode = 'daily';
-  let currentModeHatching = 'daily';
+  let currentMode = 'weekly';
+  let currentModeHatching = 'weekly';
 
   const chartStates = {
       general: { start: null, end: null },
@@ -887,7 +887,7 @@
 
       // Toggle logic using custom _showLabels flag
       let currentDisplay = chartInstance.options.plugins.datalabels._showLabels;
-      if (currentDisplay === undefined) currentDisplay = false;
+      if (currentDisplay === undefined) currentDisplay = true;
 
       const newDisplay = !currentDisplay;
       chartInstance.options.plugins.datalabels._showLabels = newDisplay;
@@ -925,7 +925,7 @@
             pan: { enabled: isMobile, mode: 'xy' }
           },
           datalabels: {
-              _showLabels: false,
+              _showLabels: true,
               display: function(context) {
                   const label = context.dataset.label || '';
                   if (label.toLowerCase().includes('std') || label.toLowerCase().includes('standard')) {
@@ -1143,6 +1143,18 @@
           pointRadius: 8,
           pointBackgroundColor: 'red',
           pointBorderColor: 'red'
+      },
+      {
+          label: 'Water:Feed Ratio',
+          data: data.water_feed_ratio,
+          type: 'line',
+          borderColor: '#2fb344',
+          backgroundColor: '#2fb344',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          yAxisID: 'y1',
+          clip: true
       }];
 
       const scales = getScaleOptions(waterData, false);
@@ -1219,11 +1231,11 @@
           {
               label: 'Egg Prod %',
               data: eggProd,
-              borderColor: 'green',
-              borderDash: [5, 5],
+              borderColor: '#2fb344',
+              borderDash: [],
               pointRadius: 0,
               yAxisID: 'y1',
-              hidden: true,
+              hidden: false,
               clip: true
           }
       ];
@@ -1242,8 +1254,11 @@
 
       // Ensure min is at least minFeed - 40, rounded to nearest 0.01
       // Also ensure it doesn't go below 0
-      let yMin = Math.max(0, minFeed - 40);
-      yMin = Math.floor(yMin * 100) / 100;
+      // Dynamically calculate yMax so feed stays on bottom
+      let yMax = 180;
+      if (minFeed !== Infinity && minFeed > 0) {
+          yMax = Math.max(180, Math.max(...allFeed) * 2.5);
+      }
 
       feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
           type: 'line',
@@ -1259,7 +1274,8 @@
                       display: true,
                       position: 'left',
                       title: { display: true, text: 'Feed (g)' },
-                      min: yMin,
+                      min: 0,
+                      suggestedMax: yMax,
                       ...feedScales
                   },
                   y1: {
@@ -1267,7 +1283,7 @@
                       display: true,
                       position: 'right',
                       title: { display: true, text: 'Egg Prod %' },
-                      min: 0, max: 100,
+                      min: -100, max: 110,
                       grid: { drawOnChartArea: false }
                   }
               }
@@ -1292,7 +1308,7 @@
            maleDatasets.push({
                 label: 'Avg BW Male',
                 data: bwData[maleKey],
-                borderColor: '#000',
+                borderColor: '#0d6efd',
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
@@ -1305,8 +1321,8 @@
       maleDatasets.push({
           label: 'Std BW',
           data: bwData.bw_male_std,
-          borderColor: '#000000',
-          borderDash: [5, 5],
+          borderColor: '#dc3545',
+          borderDash: [],
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
@@ -1374,7 +1390,7 @@
            femaleDatasets.push({
                 label: 'Avg BW Female',
                 data: bwData[femaleKey],
-                borderColor: '#000',
+                borderColor: '#0d6efd',
                 backgroundColor: '#000',
                 borderWidth: 2,
                 tension: 0.1,
@@ -1387,8 +1403,8 @@
       femaleDatasets.push({
           label: 'Std BW',
           data: bwData.bw_female_std,
-          borderColor: '#000000',
-          borderDash: [5, 5],
+          borderColor: '#dc3545',
+          borderDash: [],
           pointRadius: 0,
           borderWidth: 1,
           yAxisID: 'y',
@@ -1559,7 +1575,7 @@
 
       generalDatasets.push(
           { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
-          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'darkgreen', borderDash:[5,5], pointRadius:0, yAxisID:'y', clip: true },
+          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'#dc3545', borderDash:[], pointRadius:0, yAxisID:'y', clip: true },
 
           { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true },
           { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true },
@@ -1575,7 +1591,8 @@
               borderDash: [5, 5],
               pointRadius: 0,
               yAxisID: 'y1',
-              clip: true
+              clip: true,
+              order: -1
           },
           notesDataset
       );
@@ -1655,8 +1672,8 @@
                   { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true },
                   { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true },
                   { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true },
-                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#203764', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
-                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#203764', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }
+                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#0d6efd', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
+                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#dc3545', borderDash: [], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }
               ]
           },
           options: {
@@ -1761,8 +1778,8 @@
                       label: 'Std Hatchability %',
                       data: dStdHatch,
                       type: 'line',
-                      borderColor: '#198754', // Bootstrap Success Green
-                      borderDash: [5, 5],
+                      borderColor: '#dc3545',
+                      borderDash: [],
                       pointRadius: 0,
                       borderWidth: 2,
                       yAxisID: 'y1',
@@ -1772,7 +1789,7 @@
                   {
                       label: 'Fertile %',
                       data: dFertile,
-                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                      backgroundColor: '#2fb344',
                       stack: 'Stack 0',
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
@@ -1781,7 +1798,7 @@
                   {
                       label: 'Clear %',
                       data: dClear,
-                      backgroundColor: 'rgba(255, 205, 86, 0.7)',
+                      backgroundColor: '#f59f00',
                       stack: 'Stack 0',
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
@@ -1790,7 +1807,7 @@
                   {
                       label: 'Rotten %',
                       data: dRotten,
-                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                      backgroundColor: '#d63939',
                       stack: 'Stack 0',
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
@@ -1814,8 +1831,7 @@
                       type: 'line',
                       borderColor: 'rgba(153, 102, 255, 1)',
                       backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                      borderWidth: 2,
-                      borderDash: [5, 5],
+                      borderWidth: 2, borderDash: [],
                       pointStyle: 'circle',
                       yAxisID: 'y1',
                       order: 0,
