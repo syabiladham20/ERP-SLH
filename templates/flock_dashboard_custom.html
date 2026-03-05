@@ -65,7 +65,6 @@
 </div>
 
 <!-- Add/Edit Chart Modal -->
-<button id="hiddenChartModalBtn" data-bs-toggle="modal" data-bs-target="#chartModal" style="display: none;"></button>
 <div class="modal fade" id="chartModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -159,13 +158,9 @@
     </div>
 </div>
 
-<!-- Note Modal Trigger -->
-<button id="hiddenCustomNoteModalBtn" data-bs-toggle="modal" data-bs-target="#customNoteModal" style="display: none;"></button>
-
 <!-- Note Modal -->
 <div class="modal fade" id="customNoteModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">
-    <div class="modal-content">
+  <div class="modal-dialog modal-dialog-centered modal-fullscreen-md-down">    <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="customNoteModalTitle">Clinical Note</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -706,7 +701,8 @@
             });
         }
 
-        document.getElementById('hiddenChartModalBtn').click();
+        const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+        modal.show();
     }
 
     async function saveChart() {
@@ -869,7 +865,8 @@
             imgDiv.style.display = 'none';
         }
 
-        document.getElementById('hiddenCustomNoteModalBtn').click();
+        const modal = new bootstrap.Modal(document.getElementById('customNoteModal'));
+        modal.show();
     }
 </script>
 

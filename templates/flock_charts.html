@@ -70,9 +70,6 @@
     </div>
 </div>
 
-<!-- Modal Trigger -->
-<button id="hiddenEventModalBtn" data-bs-toggle="modal" data-bs-target="#eventModal" style="display: none;"></button>
-
 <!-- Modal for Notes/Photos -->
 <div class="modal fade" id="eventModal" tabindex="-1">
     <div class="modal-dialog">
@@ -120,6 +117,11 @@
 
     // Initial Load
     document.addEventListener('DOMContentLoaded', function() {
+        try {
+            if (typeof bootstrap !== 'undefined') {
+                eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+            }
+        } catch(e) { console.error("Bootstrap Modal init error:", e); }
         loadData();
     });
 
@@ -483,7 +485,7 @@
                 } else {
                     img.classList.add('d-none');
                 }
-                document.getElementById('hiddenEventModalBtn').click();
+                eventModal.show();
             }
             return;
         }
