@@ -4,5 +4,3 @@ pandas
 openpyxl
 python-dotenv
 Flask-Migrate
-google-genai
-google-generativeai
