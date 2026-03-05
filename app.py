@@ -7220,6 +7220,7 @@ def executive_flock_detail(id):
         cleanup_duration_mins = None
         if log.feed_cleanup_start and log.feed_cleanup_end:
             try:
+                from analytics import calculate_feed_cleanup_duration
                 cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
             except Exception:
                 pass
@@ -7530,7 +7531,7 @@ def executive_flock_detail(id):
 
 
 @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
-@dept_required(['Farm', 'Admin'])
+@dept_required(['Farm', 'Admin', 'Management'])
 def get_floating_notes(flock_id):
     notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
     result = []
