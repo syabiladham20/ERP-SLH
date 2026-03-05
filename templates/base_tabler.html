@@ -5,7 +5,138 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>SLH-OP Dashboard</title>
     <!-- Tabler Core CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css">                            <span class="nav-link-title">FARM</span>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <style>
+      /* Ensure dropdowns display properly on mobile */
+      @media (max-width: 991.98px) {
+        .navbar-expand-lg .navbar-collapse {
+          background-color: white;
+          padding: 1rem;
+          border-radius: 4px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+      }
+      /* Loading Overlay styles */
+      #loading-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(255, 255, 255, 0.7);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      /* AI Assistant Styles */
+      #ai-chat-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      #ai-chat-btn:hover {
+        transform: scale(1.1);
+      }
+      #ai-chat-window {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        z-index: 1050;
+        display: none;
+        flex-direction: column;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      #ai-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #f4f6fa;
+      }
+      .chat-msg {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        max-width: 85%;
+        word-wrap: break-word;
+      }
+      .chat-msg.user {
+        background-color: #206bc4;
+        color: white;
+        align-self: flex-end;
+        margin-left: auto;
+      }
+      .chat-msg.bot {
+        background-color: white;
+        color: #1d273b;
+        border: 1px solid #e6e8e9;
+        align-self: flex-start;
+      }
+    </style>
+    {% block head %}{% endblock %}
+  </head>
+  <body class="theme-light">
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+
+    <div class="page">
+      <!-- Navbar -->
+      <header class="navbar navbar-expand-lg navbar-light d-print-none">
+        <div class="container-fluid">
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+            <a href="{{ url_for('index') }}" class="text-decoration-none">
+                <i class="bi bi-egg-fried text-primary me-2"></i>SLH-OP
+            </a>
+          </h1>
+          <div class="navbar-nav flex-row order-md-last">
+            <div class="nav-item dropdown">
+              <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Open user menu">
+                <span class="avatar avatar-sm bg-primary-lt">{{ current_user.username[0]|upper if current_user.is_authenticated else 'U' }}</span>
+                <div class="d-none d-xl-block ps-2">
+                  <div>{{ current_user.username if current_user.is_authenticated else 'Guest' }}</div>
+                  <div class="mt-1 small text-muted">{{ current_user.role if current_user.is_authenticated else '' }}</div>
+                </div>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
+                <a href="{{ url_for('logout') }}" class="dropdown-item">Logout</a>
+              </div>
+            </div>
+          </div>
+          <div class="collapse navbar-collapse" id="navbar-menu">
+            <div class="d-flex flex-column flex-md-row flex-fill align-items-stretch align-items-md-center">
+              <ul class="navbar-nav">
+                {% if user_dept == 'Admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-bold" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >                            <span class="nav-link-title">ADMIN</span>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for('admin_users') }}">Users & Permissions</a>
+                            <a class="dropdown-item" href="{{ url_for('admin_audit_logs') }}">System Audit Log</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle fw-bold" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >                            <span class="nav-link-title">FARM</span>
                         </a>
                         <div class="dropdown-menu">
                             {% for item in get_ui_elements('navbar_main') %}
