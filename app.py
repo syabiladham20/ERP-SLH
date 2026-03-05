@@ -14,8 +14,13 @@ import pandas as pd
 import calendar
 import re
 from functools import wraps
-from google import genai
-from google.genai import types
+try:
+    from google import genai
+    from google.genai import types
+    USING_LEGACY_GENAI = False
+except ImportError:
+    import google.generativeai as genai
+    USING_LEGACY_GENAI = True
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
@@ -26,7 +31,11 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ai_client = None
 if GEMINI_API_KEY:
-    ai_client = genai.Client(api_key=GEMINI_API_KEY)
+    if USING_LEGACY_GENAI:
+        genai.configure(api_key=GEMINI_API_KEY)
+        ai_client = genai.GenerativeModel("gemini-3-flash-preview", system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data.")
+    else:
+        ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Initial User Data for Seeding
 INITIAL_USERS = [
@@ -5894,14 +5903,19 @@ def chat_api():
         return jsonify({'success': False, 'error': 'Message is empty.'}), 400
 
     try:
-        # Basic generation (stateless for now, or could pass history if needed)
-        response = ai_client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
+        if USING_LEGACY_GENAI:
+            # Using legacy google.generativeai
+            response = ai_client.generate_content(user_message)
+        else:
+            # Using new google.genai
+            # Basic generation (stateless for now, or could pass history if needed)
+            response = ai_client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction="You are the Chief AI Advisor for Sin Long Heng Breeding Farm. You are an expert in Arbor Acres Plus S broiler breeder performance. Your goal is to help the Farm Executive analyze mortality, feed, and health data."
+                )
             )
-        )
 
         if response.text:
             return jsonify({'success': True, 'reply': response.text})
