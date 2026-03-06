@@ -919,8 +919,8 @@
       spanGaps: true,
       interaction: {
         mode: 'index',
-        intersect: false,
-      },
+        intersect: false
+},
       plugins: {
           legend: { position: 'bottom' },
           weekSeparator: { enabled: false }, // Default disabled
@@ -1141,7 +1141,7 @@
           tension: 0.1,
           yAxisID: 'y',
           clip: true
-      },
+},
       {
           label: 'Flushing',
           data: [],
@@ -1163,7 +1163,21 @@
           tension: 0.1,
           yAxisID: 'y1',
           clip: true
-              onClick: null,              scales: {
+}
+      ];
+
+      const scales = getScaleOptions(waterData, false);
+
+      waterChart = new Chart(document.getElementById("waterChart").getContext("2d"), {
+          type: "line",
+          data: {
+              labels: data.dates,
+              datasets: datasets
+          },
+          options: {
+              ...commonOptions,
+              onClick: null,
+              scales: {
                   y: {
                       type: 'linear',
                       display: true,
@@ -1214,7 +1228,7 @@
               tension: 0.1,
               yAxisID: 'y',
               clip: true
-          },
+},
           {
               label: 'Female Feed (g)',
               data: feedF,
@@ -1223,7 +1237,7 @@
               tension: 0.1,
               yAxisID: 'y',
               clip: true
-          },
+},
           {
               label: 'Egg Prod %',
               data: eggProd,
@@ -1232,7 +1246,7 @@
               pointRadius: 0,
               yAxisID: 'y1',
               hidden: false,              clip: true
-          }
+}
       ];
 
       const feedScales = getScaleOptions([feedM, feedF], false);
@@ -1262,9 +1276,7 @@
           },
           options: {
               ...commonOptions,
-=======
               onClick: null,
->>>>>>> origin/fix-clinical-notes-popup-14486851990546828791
               scales: {
                   y: {
                       type: 'linear',
@@ -1309,7 +1321,7 @@
                 tension: 0.1,
                 yAxisID: 'y',
                 clip: true
-           });
+});
            maleBWValues.push(bwData[maleKey]);
       }
 
@@ -1321,7 +1333,7 @@
           borderWidth: 1,
           yAxisID: 'y',
           clip: true
-      });
+});
       maleBWValues.push(bwData.bw_male_std);
 
       maleDatasets.push({
@@ -1332,7 +1344,7 @@
           pointStyle: 'rectRot',
           yAxisID: 'y1',
           clip: true
-      });
+});
 
       const maleBWScales = getScaleOptions(maleBWValues, false);
       const maleUniScales = getScaleOptions([bwData.unif_male], true);
@@ -1345,10 +1357,8 @@
         },
         options: {
             ...commonOptions,
-=======
             onClick: null,
->>>>>>> origin/fix-clinical-notes-popup-14486851990546828791
-            scales: {
+              scales: {
                 y: {
                     type: 'linear',
                     display: true,
@@ -1393,7 +1403,7 @@
                 tension: 0.1,
                 yAxisID: 'y',
                 clip: true
-           });
+});
            femaleBWValues.push(bwData[femaleKey]);
       }
 
@@ -1405,7 +1415,7 @@
           borderWidth: 1,
           yAxisID: 'y',
           clip: true
-      });
+});
       femaleBWValues.push(bwData.bw_female_std);
 
       femaleDatasets.push({
@@ -1416,7 +1426,7 @@
           pointStyle: 'rectRot',
           yAxisID: 'y1',
           clip: true
-      });
+});
 
       const femaleBWScales = getScaleOptions(femaleBWValues, false);
       const femaleUniScales = getScaleOptions([bwData.unif_female], true);
@@ -1429,10 +1439,8 @@
         },
         options: {
             ...commonOptions,
-=======
             onClick: null,
->>>>>>> origin/fix-clinical-notes-popup-14486851990546828791
-            scales: {
+              scales: {
                 y: {
                     type: 'linear',
                     display: true,
@@ -1518,7 +1526,7 @@
           borderColor: 'purple',
           hidden: false,
           clip: true
-      };
+};
 
       const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
       const genMortScales = getScaleOptions([
@@ -1574,12 +1582,18 @@
       }
 
       generalDatasets.push(
-          { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true },
-          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'#dc3545', borderDash:[], pointRadius:0, yAxisID:'y', clip: true },
-          { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true },
-          { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true },
-          { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true },
-          { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true },
+          { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true
+},
+          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'#dc3545', borderDash:[], pointRadius:0, yAxisID:'y', clip: true
+},
+          { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true
+},
+          { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true
+},
+          { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true
+},
+          { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true
+},
 
           {
               label: 'Standard Mort Limit',
@@ -1603,19 +1617,7 @@
           },
           options: {
               ...commonOptions,
-                      // Find the index of the Clinical Notes dataset
-                      const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
-
-                      // Check if any of the clicked elements belong to the Clinical Notes dataset
-                      const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
-                      if (notePoint) {
-                          const dataset = generalChart.data.datasets[notePoint.datasetIndex];
-                          const pt = dataset.data[notePoint.index];
-                          // Use photos array if available, else fallback to single photo
-                          if (pt) showNoteModal(pt.date, pt.note, pt.photos || pt.photo);
-                      }
-                  }
-              },
+              onClick: null,
               scales: {
                   y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, ...genEggScales },
                   y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, ...genMortScales }
@@ -1664,12 +1666,18 @@
           data: {
               labels: labels,
               datasets: [
-                  { label: 'Jumbo %', data: jumboData, backgroundColor: '#70ad47', yAxisID: 'y', clip: true },
-                  { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true },
-                  { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true },
-                  { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true },
-                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#0d6efd', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
-                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#dc3545', borderDash: [], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }              ]
+                  { label: 'Jumbo %', data: jumboData, backgroundColor: '#70ad47', yAxisID: 'y', clip: true
+},
+                  { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true
+},
+                  { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true
+},
+                  { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true
+},
+                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#0d6efd', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true
+},
+                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#dc3545', borderDash: [], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true
+}              ]
           },
           options: {
               ...commonOptions,
@@ -1779,7 +1787,7 @@
                       yAxisID: 'y1',
                       order: 0,
                       clip: true
-                  },
+},
                   {
                       label: 'Fertile %',
                       data: dFertile,
@@ -1787,7 +1795,7 @@
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
                       clip: true
-                  },
+},
                   {
                       label: 'Clear %',
                       data: dClear,
@@ -1795,7 +1803,7 @@
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
                       clip: true
-                  },
+},
                   {
                       label: 'Rotten %',
                       data: dRotten,
@@ -1803,7 +1811,7 @@
                       order: 2,
                       datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
                       clip: true
-                  },
+},
                   {
                       label: 'Hatchability %',
                       data: dHatch,
@@ -1815,7 +1823,7 @@
                       order: 1,
                       datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
                       clip: true
-                  },
+},
                   {
                       label: 'Male Ratio %',
                       data: dMale,
@@ -1827,14 +1835,12 @@
                       order: 0,
                       datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
                       clip: true
-                  }
+}
               ]
           },
           options: {
               ...commonOptions,
-=======
               onClick: null,
->>>>>>> origin/fix-clinical-notes-popup-14486851990546828791
               scales: {
                   y: {
                       type: 'linear', position: 'left', stacked: true, title: {display:true, text:'Egg Status %'},
