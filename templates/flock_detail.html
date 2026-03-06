@@ -2088,11 +2088,11 @@ function fetchAndApplyFloatingNotes() {
     fetch('/api/floating_notes/{{ flock.id }}')
     .then(r => {
         if (!r.ok || r.redirected) {
-            window.location.reload();
+            console.error("Failed to fetch floating notes");
             return [];
         }
         return r.json().catch(() => {
-            window.location.reload();
+            console.error("Failed to fetch floating notes");
             return [];
         });
     })    .then(data => {
