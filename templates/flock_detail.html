@@ -1411,7 +1411,7 @@
               };
           }
           return null;
-      }).filter(p => p !== null);
+      });
 
       const notesDataset = {
           label: 'Clinical Notes',
@@ -1557,7 +1557,8 @@
           maintainAspectRatio: false,
           onClick: (e, elements) => {
               if (elements.length) {
-                  const notePoint = elements.find(p => generalChart.data.datasets[p.datasetIndex].label === 'Clinical Notes');
+                  const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
+                  const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
                   if (notePoint) {
                       const dataset = generalChart.data.datasets[notePoint.datasetIndex];
                       const pt = dataset.data[notePoint.index];
