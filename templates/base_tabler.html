@@ -40,6 +40,64 @@
             font-size: 24px;
             padding: 0;
         }
+
+        /* AI Chat Widget */
+        .ai-chat-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            z-index: 1090;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .ai-chat-box {
+            position: fixed;
+            bottom: 140px;
+            right: 20px;
+            width: 320px;
+            max-width: calc(100vw - 40px);
+            z-index: 1095;
+            display: none;
+            flex-direction: column;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        .ai-chat-body {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        .ai-msg {
+            max-width: 85%;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+        .ai-msg-user {
+            background-color: var(--tblr-primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 0;
+            margin-left: auto;
+        }
+        .ai-msg-bot {
+            background-color: white;
+            border: 1px solid #e9ecef;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+            margin-right: auto;
+        }
+        .chat-spinner {
+            display: none;
+            align-self: flex-start;
+            margin-bottom: 10px;
+        }
     </style>
     {% block extra_head %}{% endblock %}
   </head>
@@ -270,6 +328,48 @@
         </svg>
     </button>
 
+    {% if session.get('user_id') %}
+    <!-- AI Chat Widget -->
+    <button type="button" class="btn btn-info ai-chat-btn text-white" id="ai-chat-btn" title="AI Assistant">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-chatbot" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+           <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+           <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12z"></path>
+           <path d="M9.5 9h.01"></path>
+           <path d="M14.5 9h.01"></path>
+           <path d="M9.5 13a3.5 3.5 0 0 0 5 0"></path>
+        </svg>
+    </button>
+
+    <div class="card ai-chat-box" id="ai-chat-box">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-2">
+            <h5 class="card-title mb-0 d-flex align-items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-sparkles me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                   <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"></path>
+                </svg>
+                AI Assistant
+            </h5>
+            <button type="button" class="btn-close btn-close-white" id="ai-chat-close"></button>
+        </div>
+        <div class="card-body ai-chat-body p-3 d-flex flex-column" id="ai-chat-body">
+            <div class="ai-msg ai-msg-bot">Hello! I'm your SLH Poultry AI. Ask me anything about Arbor Acres Plus S broiler breeders.</div>
+            <div class="spinner-border text-info spinner-border-sm chat-spinner ms-2" role="status" id="ai-chat-spinner"></div>
+        </div>
+        <div class="card-footer p-2">
+            <form id="ai-chat-form" class="d-flex">
+                <input type="text" class="form-control me-2" id="ai-chat-input" placeholder="Type a message..." required autocomplete="off">
+                <button type="submit" class="btn btn-info btn-icon" title="Send">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-send" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                       <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                       <path d="M10 14l11 -11"></path>
+                       <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Tabler Core JS & Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
     <script>
@@ -287,6 +387,74 @@
                     mybutton.style.display = "none";
                 }
             };
+
+            // AI Chat Logic
+            const aiChatBtn = document.getElementById('ai-chat-btn');
+            const aiChatBox = document.getElementById('ai-chat-box');
+            if (aiChatBtn && aiChatBox) {
+                const aiChatClose = document.getElementById('ai-chat-close');
+                const aiChatForm = document.getElementById('ai-chat-form');
+                const aiChatInput = document.getElementById('ai-chat-input');
+                const aiChatBody = document.getElementById('ai-chat-body');
+                const aiChatSpinner = document.getElementById('ai-chat-spinner');
+
+                aiChatBtn.addEventListener('click', function() {
+                    if (aiChatBox.style.display === 'flex') {
+                        aiChatBox.style.display = 'none';
+                    } else {
+                        aiChatBox.style.display = 'flex';
+                        aiChatInput.focus();
+                    }
+                });
+
+                aiChatClose.addEventListener('click', function() {
+                    aiChatBox.style.display = 'none';
+                });
+
+                function addMessage(text, isUser) {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `ai-msg ${isUser ? 'ai-msg-user' : 'ai-msg-bot'}`;
+                    msgDiv.innerText = text;
+                    aiChatBody.insertBefore(msgDiv, aiChatSpinner);
+                    aiChatBody.scrollTop = aiChatBody.scrollHeight;
+                }
+
+                aiChatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const text = aiChatInput.value.trim();
+                    if (!text) return;
+
+                    addMessage(text, true);
+                    aiChatInput.value = '';
+                    aiChatInput.disabled = true;
+                    aiChatSpinner.style.display = 'block';
+                    aiChatBody.scrollTop = aiChatBody.scrollHeight;
+
+                    fetch('/api/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: text })
+                    })
+                    .then(response => {
+                        if (!response.ok || response.redirected) {
+                            throw new Error('Session expired or network error.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        aiChatSpinner.style.display = 'none';
+                        aiChatInput.disabled = false;
+                        aiChatInput.focus();
+                        addMessage(data.response, false);
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        aiChatSpinner.style.display = 'none';
+                        aiChatInput.disabled = false;
+                        addMessage('Sorry, I encountered an error connecting to the server.', false);
+                    });
+                });
+            }
 
             mybutton.addEventListener("click", function() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
