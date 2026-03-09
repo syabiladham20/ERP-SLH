@@ -5907,17 +5907,54 @@ def get_gemini_lite_response(user_prompt):
     except Exception as e:
         return f"AI Connection Error: {str(e)}"
 
+def get_openai_lite_response(user_prompt):
+    api_key = os.getenv('OPENAI_API_KEY')
+    url = "https://api.openai.com/v1/chat/completions"
+
+    # System context for the Poultry AI
+    context = (
+        "You are a Poultry Expert at Sin Long Heng Breeding Farm. "
+        "Provide concise advice for Arbor Acres Plus S broiler breeders."
+    )
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": context},
+            {"role": "user", "content": user_prompt}
+        ],
+        "max_tokens": 500
+    }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response.raise_for_status() # Check for errors
+        data = response.json()
+        # Navigate the JSON structure to get the text
+        return data['choices'][0]['message']['content']
+    except Exception as e:
+        return f"AI Connection Error: {str(e)}"
+
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat():
     user_input = request.json.get('message')
-    api_key = os.getenv('GEMINI_API_KEY')
 
-    if not api_key:
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+
+    if openai_api_key:
+        ai_reply = get_openai_lite_response(user_input)
+    elif gemini_api_key:
+        ai_reply = get_gemini_lite_response(user_input)
+    else:
         return jsonify({"response": "The AI assistant is in maintenance mode. Please contact the Technical Director."})
 
-    # Call the Lite function we discussed
-    ai_reply = get_gemini_lite_response(user_input)
     return jsonify({"response": ai_reply})
 
 # --- Inventory Routes ---
