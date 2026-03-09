@@ -1385,6 +1385,21 @@
 
       if (generalChart) generalChart.destroy();
 
+      // Labels logic must precede notes map
+      let labels = [];
+      if (mode === 'daily') {
+          if (generalData.dates && generalData.ages) {
+              labels = generalData.dates.map((d, i) => {
+                  const age = generalData.ages[i];
+                  return `W${age} (${d})`;
+              });
+          } else {
+              labels = generalData.dates;
+          }
+      } else {
+          labels = generalData.dates;
+      }
+
       const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
       const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
@@ -1549,7 +1564,7 @@
       generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
         type: 'bar',
         data: {
-          labels: generalData.dates,
+          labels: labels,
           datasets: generalDatasets
         },
         options: {

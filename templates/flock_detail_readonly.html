@@ -1634,7 +1634,7 @@
                       if (notePoint) {
                           const dataset = generalChart.data.datasets[notePoint.datasetIndex];
                           const pt = dataset.data[notePoint.index];
-                          if (pt) showNoteModal(pt);
+                          if (pt) showNoteModal(pt.date, pt.note, pt.photos);
                       }
                   }
               },
