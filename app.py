@@ -6006,7 +6006,7 @@ def inventory_transaction():
 
     item = InventoryItem.query.get_or_404(item_id)
 
-    if type_ in ['Usage', 'Waste']:
+    if type_ in {'Usage', 'Waste'}:
         item.current_stock -= qty
     else: # Purchase, Adjustment
         item.current_stock += qty
