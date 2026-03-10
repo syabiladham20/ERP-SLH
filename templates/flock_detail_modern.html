@@ -1679,16 +1679,7 @@
   }
 
   function renderHatchingChart() {
-      // Hatching Chart relies on DAILY data mainly, or follows General Chart Mode?
-      // The original code used `generalData` which was filtered based on `mode`.
-      // Let's assume it follows `currentMode` as well for data source, but it's usually meaningful in Daily.
-      // However, usually detailed cull analysis is daily. If `currentMode` is weekly, `chartDataWeekly` might not have all these fields broken down?
-      // Checking `chartDataWeekly` structure... usually summary.
-      // Let's assume Hatching Egg chart is primarily Daily or follows mode if data exists.
-      // Original code: `const generalData = filterDataByDate(fullData...); ... const heData = generalData.hatch_egg_pct ...`
-      // So it strictly followed the global mode.
-
-      const mode = currentMode;
+      const mode = currentModeHatching;
       const state = chartStates.hatching;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
       const filteredData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
@@ -1743,7 +1734,11 @@
   function switchMode(mode) {
       currentMode = mode;
       renderGeneralChart();
-      renderHatchingChart(); // Re-render this too as it depends on mode
+  }
+
+  function switchModeHatching(mode) {
+      currentModeHatching = mode;
+      renderHatchingChart();
   }
 
   function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
