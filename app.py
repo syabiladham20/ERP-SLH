@@ -5883,8 +5883,8 @@ def get_templates():
 
 def get_gemini_lite_response(user_prompt):
     api_key = os.getenv('GEMINI_API_KEY')
-    # Use the 1.5-flash model for the lite version—it's fast and reliable
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Use the 1.5-flash-latest model for the lite version
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
 
     # System context for the Poultry AI
     context = (
