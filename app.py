@@ -261,6 +261,8 @@ class DailyLog(db.Model):
     date = db.Column(db.Date, nullable=False, default=date.today, index=True)
     
     # Metrics
+    males_at_start = db.Column(db.Integer, nullable=True)
+    females_at_start = db.Column(db.Integer, nullable=True)
     mortality_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Mortality
     mortality_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     
@@ -3536,6 +3538,7 @@ def daily_log():
 
         try:
             db.session.commit()
+            recalculate_flock_inventory(flock.id)
             flash(flash_msg, 'success')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
@@ -4016,6 +4019,7 @@ def edit_daily_log(id):
 
         try:
             db.session.commit()
+            recalculate_flock_inventory(log.flock_id)
             flash('Log updated successfully.', 'success')
             return redirect(url_for('edit_daily_log', id=id))
         except Exception as e:
@@ -4941,6 +4945,83 @@ def process_import(file, commit=True, preview=False):
         db.session.rollback()
         return changes, all_warnings
 
+def recalculate_flock_inventory(flock_id):
+    """
+    Recalculates males_at_start, females_at_start, and recalculates feed requirements
+    by iterating chronologically from the start of the flock to avoid repetitive
+    summation queries.
+    """
+    flock = Flock.query.get(flock_id)
+    if not flock:
+        return
+
+    # Fetch all logs in order
+    logs = DailyLog.query.filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    curr_males = flock.intake_male or 0
+    curr_females = flock.intake_female or 0
+
+    for log in logs:
+        # Update start of day columns
+        log.males_at_start = curr_males
+        log.females_at_start = curr_females
+
+        # Feed Multiplier Logic
+        multiplier = 1.0
+        if log.feed_program == 'Skip-a-day':
+            multiplier = 2.0
+        elif log.feed_program == '2/1':
+            multiplier = 1.5
+
+        # Calculate Total Kg based on updated stock only if feed_male_gp_bird/feed_female_gp_bird are provided
+        # Or if we want to overwrite them if they're 0, but as requested:
+        # "Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
+        # Wait, if we DO NOT modify total_feed_kg unless it's null, then we calculate g/bird.
+
+        # Calculate feed_male_gp_bird and feed_female_gp_bird:
+        if log.feed_male is not None and log.feed_male > 0:
+            # We have total feed kg. Calculate g/bird
+            if curr_males > 0:
+                # log.feed_male_gp_bird = (total_feed_kg * 1000.0) / (multiplier * curr_males)
+                # But wait, we should only NOT modify total_feed_kg unless it's null?
+                pass
+
+        # Original instruction:
+        # "Crucial: Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
+
+        # So we have feed_male (total) and feed_male_gp_bird.
+        if log.feed_male is None:
+            # Recompute total feed if null based on g/bird and stock
+            if curr_males > 0 and log.feed_male_gp_bird:
+                log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
+            else:
+                log.feed_male = 0.0
+
+        if log.feed_female is None:
+            if curr_females > 0 and log.feed_female_gp_bird:
+                log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
+            else:
+                log.feed_female = 0.0
+
+        # Now re-calculate gp_bird based on Total Feed and Stock
+        if curr_males > 0 and log.feed_male is not None:
+            log.feed_male_gp_bird = (log.feed_male * 1000.0) / (curr_males * multiplier)
+        else:
+            log.feed_male_gp_bird = 0.0
+
+        if curr_females > 0 and log.feed_female is not None:
+            log.feed_female_gp_bird = (log.feed_female * 1000.0) / (curr_females * multiplier)
+        else:
+            log.feed_female_gp_bird = 0.0
+
+        # Update stock for the next day
+        # Only mortality and culls affect total house stock.
+        curr_males -= ((log.mortality_male or 0) + (log.culls_male or 0))
+        curr_females -= ((log.mortality_female or 0) + (log.culls_female or 0))
+
+    db.session.commit()
+
+
 def update_log_from_request(log, req):
     log.mortality_male = int(req.form.get('mortality_male') or 0)
     log.mortality_female = int(req.form.get('mortality_female') or 0)
@@ -4973,31 +5054,24 @@ def update_log_from_request(log, req):
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
 
-    # --- Calculate Feed Kg ---
-    # Need current stock for calculation.
-    # We must calculate stock BEFORE today's mortality?
-    # Usually: Feed is given to birds alive at start of day (or end of previous day).
-    # Mortality happens during the day.
-    # So stock = Intake - (Cum Mort + Culls up to YESTERDAY).
+    # Fetch logs before today to sum mortality
+    # We query once and sum in Python to avoid N+1 and slow sum queries
+    previous_logs = DailyLog.query.filter(
+        DailyLog.flock_id == log.flock_id,
+        DailyLog.date < log.date
+    ).order_by(DailyLog.date.asc()).all()
 
-    # Fetch previous logs to sum mortality
-    # Optimized: We can query the sum directly or iterate if in memory.
-    # Since we are in a request context, let's do a quick query.
+    cum_mort_m = 0
+    cum_culls_m = 0
+    cum_mort_f = 0
+    cum_culls_f = 0
 
-    stmt_m = db.session.query(
-        db.func.sum(DailyLog.mortality_male),
-        db.func.sum(DailyLog.culls_male),
-        db.func.sum(DailyLog.males_moved_to_hosp),
-        db.func.sum(DailyLog.males_moved_to_prod)
-    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
+    for prev_log in previous_logs:
+        cum_mort_m += (prev_log.mortality_male or 0)
+        cum_culls_m += (prev_log.culls_male or 0)
+        cum_mort_f += (prev_log.mortality_female or 0)
+        cum_culls_f += (prev_log.culls_female or 0)
 
-    stmt_f = db.session.query(
-        db.func.sum(DailyLog.mortality_female),
-        db.func.sum(DailyLog.culls_female)
-    ).filter(DailyLog.flock_id == log.flock_id, DailyLog.date < log.date).first()
-
-    cum_mort_m = (stmt_m[0] or 0)
-    cum_culls_m = (stmt_m[1] or 0)
     # Transfers logic: If moved to hosp, they are out of prod.
     # But wait, males in hosp still eat?
     # Assuming "Feed Male" covers all males in the house (Prod + Hosp)?
@@ -5005,27 +5079,19 @@ def update_log_from_request(log, req):
     # If so, we just need Total Males Alive in House.
     # Total Alive = Intake - Total Dead - Total Culled.
     # Transfers between pens (Prod <-> Hosp) don't change house population.
-    # However, if 'males_moved_to_hosp' means moved OUT of house, that's different.
-    # Based on `DailyLog` model, `males_moved_to_hosp` seems internal.
     # Let's assume total stock in house.
 
-    # Re-checking stock logic in `index()` route:
-    # curr_m_prod = ... - moved_to_hosp + moved_to_prod
-    # curr_m_hosp = ... + moved_to_hosp - moved_to_prod
-    # Total Males = curr_m_prod + curr_m_hosp.
-    # So transfers cancel out for total house stock.
-
-    start_m = log.flock.intake_male
-    start_f = log.flock.intake_female
+    start_m = log.flock.intake_male or 0
+    start_f = log.flock.intake_female or 0
 
     current_stock_m = start_m - cum_mort_m - cum_culls_m
-    current_stock_f = start_f - (stmt_f[0] or 0) - (stmt_f[1] or 0)
+    current_stock_f = start_f - cum_mort_f - cum_culls_f
 
     # Data Integrity: Validation Layer
-    if log.mortality_male > current_stock_m:
-        raise ValueError(f"Mortality Male ({log.mortality_male}) exceeds Current Stock ({current_stock_m}).")
-    if log.mortality_female > current_stock_f:
-        raise ValueError(f"Mortality Female ({log.mortality_female}) exceeds Current Stock ({current_stock_f}).")
+    if log.mortality_male + log.culls_male > current_stock_m:
+        raise ValueError(f"Male reductions (Mortality + Culls: {log.mortality_male + log.culls_male}) exceeds Current Stock ({current_stock_m}).")
+    if log.mortality_female + log.culls_female > current_stock_f:
+        raise ValueError(f"Female reductions (Mortality + Culls: {log.mortality_female + log.culls_female}) exceeds Current Stock ({current_stock_f}).")
 
     # Automated Alerts: Mortality Spike
     alert_triggered = False
