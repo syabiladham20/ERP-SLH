@@ -1484,21 +1484,6 @@
       const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
       updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
 
-      // Labels logic
-      let labels = [];
-      if (mode === 'daily') {
-          if (generalData.dates && generalData.ages) {
-              labels = generalData.dates.map((d, i) => {
-                  const age = generalData.ages[i];
-                  return `W${age} (${d})`;
-              });
-          } else {
-              labels = generalData.dates;
-          }
-      } else {
-          labels = generalData.dates;
-      }
-
       const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
       const mortFKey = mode === 'daily' ? 'mortality_daily_female' : 'mortality_weekly_female';
@@ -1507,20 +1492,41 @@
 
       const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
 
-      // Notes
-      const notesPoints = (generalData.dates || []).map((d, i) => {
+      let labels = [];
+      const notesPoints = [];
+
+      // Single loop to ensure absolute index alignment
+      (generalData.dates || []).forEach((date, i) => {
+          // 1. Create the Label
+          let labelString = date;
+          if (mode === 'daily' && generalData.ages && generalData.ages[i] !== undefined) {
+              const age = generalData.ages[i];
+              labelString = `W${age} (${date})`;
+          }
+          labels.push(labelString);
+
+          // 2. Create the Point if a note exists
           const n = generalData.notes ? generalData.notes[i] : null;
           if (n) {
               let yVal = 0;
               if (generalData[mortFKey] && generalData[mortFKey][i] !== undefined && generalData[mortFKey][i] !== null) {
                   yVal = generalData[mortFKey][i];
               }
-              // Add offset
-              yVal += 0.05;
+              yVal += 0.05; // Visual offset
 
-              return { x: labels[i], y: yVal, note: n.note, photos: n.photos, photo: n.photo, date: d };
+              notesPoints.push({
+                  x: labelString, // Matches the axis perfectly
+                  y: yVal,
+                  note: n.note,
+                  photos: n.photos,
+                  photo: n.photo,
+                  date: date, // Keep raw date for the modal
+                  originalIndex: i // Backup safety
+              });
+          } else {
+              // IMPORTANT: Push null to keep the array lengths identical
+              notesPoints.push(null);
           }
-          return null;
       });
 
       const notesDataset = {
@@ -1633,9 +1639,11 @@
                       const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
                       const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
                       if (notePoint) {
-                          const dataset = generalChart.data.datasets[notePoint.datasetIndex];
-                          const pt = dataset.data[notePoint.index];
-                          if (pt) showNoteModal(pt.date, pt.note, pt.photos);
+                          const rawData = generalChart.data.datasets[notePoint.datasetIndex].data[notePoint.index];
+                          if (rawData && rawData.note) {
+                              // Use the rawData.date we saved in the point, not a calculated one
+                              showNoteModal(rawData.date, rawData.note, rawData.photos || rawData.photo);
+                          }
                       }
                   }
               },
