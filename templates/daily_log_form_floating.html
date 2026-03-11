@@ -584,7 +584,7 @@
 
         if (!houseId || !dateVal) return;
 
-        fetch(`{{ url_for('get_previous_daily_log_data') }}?house_id=${houseId}&date=${dateVal}`)
+        fetch(`/api/daily_log/previous?house_id=${houseId}&date=${dateVal}`)
             .then(response => {
                 if (response.ok) {
                     return response.json();
