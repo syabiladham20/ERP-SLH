@@ -40,6 +40,7 @@ echo "Running migrations..."
 flask db upgrade
 
 echo "Initializing/Updating database..."
+python migrate_schema_v11.py
 python init_db.py
 
 echo "Deployment setup complete!"
