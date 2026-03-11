@@ -1,127 +1,246 @@
-import sys
 import time
-from app import app, db, User, Flock, InventoryItem, DailyLog, GlobalStandard, Medication
+from sqlalchemy import text
+from app import app, db, Flock, get_iso_aggregated_data_sql, DailyLog
 
-def setup_data():
-    with app.app_context():
-        # Setup users, standards and flock
-        gs = GlobalStandard.query.first()
-        if not gs:
-            gs = GlobalStandard(login_required=False)
-            db.session.add(gs)
+def get_iso_aggregated_data_sql_optimized(flock_ids, target_year):
+    if not flock_ids:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
 
-        user = User.query.filter_by(username='admin').first()
-        if not user:
-            user = User(username='admin', dept='Farm')
-            user.set_password('admin')
-            user.role = 'admin'
-            db.session.add(user)
+    ids_tuple = tuple(flock_ids)
+    if len(ids_tuple) == 1:
+        ids_tuple = f"({ids_tuple[0]})"
+    else:
+        ids_tuple = str(ids_tuple)
 
-        flock = Flock.query.filter_by(flock_id='TEST_FLOCK_PERF').first()
-        if not flock:
-            # Create a house for the flock
-            from app import House
+    dialect = db.engine.name
 
-            house = House.query.first()
-            if not house:
-                house = House(name="Test House")
-                db.session.add(house)
-                db.session.commit()
+    if dialect == 'sqlite':
+        week_fmt = "strftime('%Y-%W', l.date)"
+        month_fmt = "strftime('%Y-%m', l.date)"
+        year_fmt = "strftime('%Y', l.date)"
+        hatch_week_fmt = "strftime('%Y-%W', hatching_date)"
+        hatch_month_fmt = "strftime('%Y-%m', hatching_date)"
+        hatch_year_fmt = "strftime('%Y', hatching_date)"
+    else:
+        week_fmt = "to_char(l.date, 'IYYY-IW')"
+        month_fmt = "to_char(l.date, 'YYYY-MM')"
+        year_fmt = "to_char(l.date, 'YYYY')"
+        hatch_week_fmt = "to_char(hatching_date, 'IYYY-IW')"
+        hatch_month_fmt = "to_char(hatching_date, 'YYYY-MM')"
+        hatch_year_fmt = "to_char(hatching_date, 'YYYY')"
 
-            from datetime import date
-            flock = Flock(house_id=house.id, flock_id='TEST_FLOCK_PERF', intake_date=date(2025, 1, 1), intake_male=100, intake_female=100)
-            db.session.add(flock)
-            db.session.commit()
+    cte_sql = f"""
+    WITH DailyStock AS (
+        SELECT
+            l.date,
+            l.flock_id,
+            {week_fmt} as iso_week,
+            {month_fmt} as iso_month,
+            {year_fmt} as iso_year,
+            l.mortality_male + l.mortality_female + l.culls_male + l.culls_female as daily_loss,
+            l.mortality_female as mort_f,
+            l.eggs_collected,
+            (l.feed_male + l.feed_female) as total_feed,
+            f.intake_female + f.intake_male as intake_total,
+            f.intake_female,
+            f.start_of_lay_date,
+            SUM(l.mortality_male + l.mortality_female + l.culls_male + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss,
+            SUM(l.mortality_female + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss_f
+        FROM daily_log l
+        JOIN flock f ON l.flock_id = f.id
+        WHERE l.flock_id IN {ids_tuple}
+    ),
+    EnrichedDaily AS (
+        SELECT
+            *,
+            (intake_female - cum_loss_f) as stock_f_end,
+            (intake_female - (cum_loss_f - (mort_f + 0))) as stock_f_start
+        FROM DailyStock
+    ),
+    WeeklyLogs AS (
+        SELECT
+            'weekly' as type,
+            iso_week as period,
+            SUM(eggs_collected) as total_eggs,
+            SUM(mort_f) as total_mort_f,
+            SUM(stock_f_start) as total_hen_days,
+            COUNT(DISTINCT date) as days_in_period
+        FROM EnrichedDaily
+        WHERE iso_year = :year
+          AND start_of_lay_date IS NOT NULL
+          AND date >= start_of_lay_date
+        GROUP BY iso_week
+    ),
+    MonthlyLogs AS (
+        SELECT
+            'monthly' as type,
+            iso_month as period,
+            SUM(eggs_collected) as total_eggs,
+            SUM(mort_f) as total_mort_f,
+            SUM(stock_f_start) as total_hen_days,
+            COUNT(DISTINCT date) as days_in_period
+        FROM EnrichedDaily
+        WHERE iso_year = :year
+          AND start_of_lay_date IS NOT NULL
+          AND date >= start_of_lay_date
+        GROUP BY iso_month
+    ),
+    YearlyLogs AS (
+        SELECT
+            'yearly' as type,
+            iso_year as period,
+            SUM(eggs_collected) as total_eggs,
+            SUM(mort_f) as total_mort_f,
+            SUM(stock_f_start) as total_hen_days,
+            COUNT(DISTINCT date) as days_in_period
+        FROM EnrichedDaily
+        WHERE iso_year = :year
+          AND start_of_lay_date IS NOT NULL
+          AND date >= start_of_lay_date
+        GROUP BY iso_year
+    )
+    SELECT * FROM WeeklyLogs
+    UNION ALL
+    SELECT * FROM MonthlyLogs
+    UNION ALL
+    SELECT * FROM YearlyLogs
+    """
 
-        items = []
-        # Create 50 inventory items
-        for i in range(50):
-            item_name = f'TestMed_{i}'
-            item = InventoryItem.query.filter_by(name=item_name).first()
-            if not item:
-                item = InventoryItem(name=item_name, type='Medication', current_stock=1000.0, unit='g')
-                db.session.add(item)
-            items.append(item)
+    hatch_sql = f"""
+    WITH WeeklyHatch AS (
+        SELECT
+            'weekly' as type,
+            {hatch_week_fmt} as period,
+            SUM(hatched_chicks) as hatched,
+            SUM(egg_set) as egg_set
+        FROM hatchability
+        WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+        GROUP BY period
+    ),
+    MonthlyHatch AS (
+        SELECT
+            'monthly' as type,
+            {hatch_month_fmt} as period,
+            SUM(hatched_chicks) as hatched,
+            SUM(egg_set) as egg_set
+        FROM hatchability
+        WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+        GROUP BY period
+    ),
+    YearlyHatch AS (
+        SELECT
+            'yearly' as type,
+            {hatch_year_fmt} as period,
+            SUM(hatched_chicks) as hatched,
+            SUM(egg_set) as egg_set
+        FROM hatchability
+        WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+        GROUP BY period
+    )
+    SELECT * FROM WeeklyHatch
+    UNION ALL
+    SELECT * FROM MonthlyHatch
+    UNION ALL
+    SELECT * FROM YearlyHatch
+    """
 
-        db.session.commit()
-        return flock.id, [item.id for item in items]
+    # Execute only two queries instead of six
+    all_logs = db.session.execute(text(cte_sql), {'year': str(target_year)}).fetchall()
+    all_hatch = db.session.execute(text(hatch_sql), {'year': str(target_year)}).fetchall()
+
+    # Process results
+    results = {'weekly': [], 'monthly': [], 'yearly': []}
+
+    # Organize hatch data: type -> period -> (hatched, egg_set)
+    hatch_map = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    for row in all_hatch:
+        type_key, period, hatched, egg_set = row
+        if period:
+            hatch_map[type_key][period] = (hatched, egg_set)
+
+    # Organize logs data
+    logs_by_type = {'weekly': [], 'monthly': [], 'yearly': []}
+    for row in all_logs:
+        type_key, period, total_eggs, total_mort_f, total_hen_days, days_in_period = row
+        if period:
+            logs_by_type[type_key].append({
+                'period': period,
+                'total_eggs': total_eggs or 0,
+                'total_mort_f': total_mort_f or 0,
+                'total_hen_days': total_hen_days or 0,
+                'days_in_period': days_in_period or 0
+            })
+
+    for key in ['weekly', 'monthly', 'yearly']:
+        # Sort logs by period descending
+        logs = sorted(logs_by_type[key], key=lambda x: x['period'], reverse=True)
+
+        for log in logs:
+            period = log['period']
+            total_eggs = log['total_eggs']
+            total_mort = log['total_mort_f']
+            total_hen_days = log['total_hen_days']
+            days_in_period = log['days_in_period']
+
+            # Hatchery
+            h_data = hatch_map[key].get(period)
+            hatched = h_data[0] if h_data else 0
+            set_cnt = h_data[1] if h_data else 0
+
+            avg_stock = (total_hen_days / days_in_period) if days_in_period > 0 else 0
+            mort_pct = (total_mort / avg_stock * 100) if avg_stock > 0 else 0
+            egg_prod_pct = (total_eggs / total_hen_days * 100) if total_hen_days > 0 else 0
+            hatch_pct = (hatched / set_cnt * 100) if set_cnt > 0 else 0
+
+            results[key].append({
+                'period': period,
+                'avg_prod_females': int(avg_stock),
+                'avg_female_stock': int(avg_stock),
+                'total_eggs': total_eggs,
+                'total_chicks': hatched,
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'overall_egg_prod_pct': round(egg_prod_pct, 2),
+                'egg_production_pct': round(egg_prod_pct, 2)
+            })
+
+    return results
 
 def run_benchmark():
-    flock_id, item_ids = setup_data()
+    with app.app_context():
+        log = DailyLog.query.first()
+        target_year = log.date.year if log else 2025
 
-    with app.test_client() as client:
-        # Turn off login requirement
-        with app.app_context():
-            gs = GlobalStandard.query.first()
-            if gs:
-                gs.login_required = False
-                db.session.commit()
+        flocks = Flock.query.all()
+        flock_ids = [f.id for f in flocks]
 
-        # Login
-        with app.app_context():
-            user = User.query.filter_by(username='admin').first()
-            if not user:
-                user = User(username='admin', dept='Farm', role='Admin')
-                user.set_password('admin')
-                db.session.add(user)
-                db.session.commit()
+        if not flock_ids:
+            return
 
-        client.post('/login', data={'username': 'admin', 'password': 'admin'})
+        start = time.time()
+        for _ in range(50):
+            res1 = get_iso_aggregated_data_sql(flock_ids, target_year)
+        end = time.time()
 
-        data = {
-            'date': '2025-01-02',
-            'mortality_male': 0,
-            'mortality_female': 0,
-            'feed_male': 10,
-            'feed_female': 10,
-            'water_intake': 20,
-            'body_weight_male': 100,
-            'body_weight_female': 100,
-            'eggs_collected': 0,
-        }
+        time1 = end - start
+        print(f"Original Elapsed: {time1:.4f} seconds")
 
-        for i, item_id in enumerate(item_ids):
-            data.setdefault('med_drug_name[]', []).append(f'Med_{i}')
-            data.setdefault('med_inventory_id[]', []).append(str(item_id))
-            data.setdefault('med_dosage[]', []).append('1g')
-            data.setdefault('med_amount_used[]', []).append('1g')
-            data.setdefault('med_amount_qty[]', []).append('1')
-            data.setdefault('med_start_date[]', []).append('2025-01-02')
-            data.setdefault('med_end_date[]', []).append('2025-01-03')
-            data.setdefault('med_remarks[]', []).append('None')
+        start = time.time()
+        for _ in range(50):
+            res2 = get_iso_aggregated_data_sql_optimized(flock_ids, target_year)
+        end = time.time()
 
-        # Clear existing logs for this date
-        with app.app_context():
-            DailyLog.query.filter_by(flock_id=flock_id, date='2025-01-02').delete()
-            Medication.query.filter_by(flock_id=flock_id).delete()
-            db.session.commit()
+        time2 = end - start
+        print(f"Optimized Elapsed: {time2:.4f} seconds")
+        print(f"Improvement: {(time1 - time2) / time1 * 100:.2f}%")
 
-        # Warmup
-        client.get('/')
-
-        # Get house id
-        with app.app_context():
-            flock = Flock.query.get(flock_id)
-            house_id = flock.house_id
-            data['house_id'] = str(house_id)
-
-        start_time = time.time()
-        for _ in range(10):
-            # we need to change date since it must be unique or delete log each time
-            with app.app_context():
-                DailyLog.query.filter_by(flock_id=flock_id, date='2025-01-02').delete()
-                Medication.query.filter_by(flock_id=flock_id).delete()
-                db.session.commit()
-
-            response = client.post(f'/daily_log', data=data, follow_redirects=True)
-            if response.status_code != 200:
-                print(f"Error: Status code {response.status_code}")
-                print(response.data.decode())
-            assert response.status_code == 200
-
-        end_time = time.time()
-        avg_time = (end_time - start_time) / 10
-        print(f"Average time for /daily_log with 50 medications: {avg_time:.4f} seconds")
+        # Verify correctness
+        assert res1['weekly'] == res2['weekly']
+        assert res1['monthly'] == res2['monthly']
+        assert res1['yearly'] == res2['yearly']
+        print("Verification passed! Data matches exactly.")
 
 if __name__ == '__main__':
     run_benchmark()
