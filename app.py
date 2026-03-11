@@ -6717,12 +6717,13 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
 
     results = {}
 
-    # Define aggregation queries
+    # Define aggregation queries with UNION ALL to reduce db calls from 6 to 2
     # Filter by Year AND Start of Lay in the Final Step to allow cum_loss to be accurate
-    queries = {
-        'weekly': f"""
-            {cte_sql}
+    combined_cte_sql = f"""
+        {cte_sql},
+        WeeklyLogs AS (
             SELECT
+                'weekly' as type,
                 iso_week as period,
                 SUM(eggs_collected) as total_eggs,
                 SUM(mort_f) as total_mort_f,
@@ -6733,11 +6734,10 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
               AND start_of_lay_date IS NOT NULL
               AND date >= start_of_lay_date
             GROUP BY iso_week
-            ORDER BY iso_week DESC
-        """,
-        'monthly': f"""
-            {cte_sql}
+        ),
+        MonthlyLogs AS (
             SELECT
+                'monthly' as type,
                 iso_month as period,
                 SUM(eggs_collected) as total_eggs,
                 SUM(mort_f) as total_mort_f,
@@ -6748,11 +6748,10 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
               AND start_of_lay_date IS NOT NULL
               AND date >= start_of_lay_date
             GROUP BY iso_month
-            ORDER BY iso_month DESC
-        """,
-        'yearly': f"""
-            {cte_sql}
+        ),
+        YearlyLogs AS (
             SELECT
+                'yearly' as type,
                 iso_year as period,
                 SUM(eggs_collected) as total_eggs,
                 SUM(mort_f) as total_mort_f,
@@ -6763,9 +6762,13 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
               AND start_of_lay_date IS NOT NULL
               AND date >= start_of_lay_date
             GROUP BY iso_year
-            ORDER BY iso_year DESC
-        """
-    }
+        )
+        SELECT * FROM WeeklyLogs
+        UNION ALL
+        SELECT * FROM MonthlyLogs
+        UNION ALL
+        SELECT * FROM YearlyLogs
+    """
 
     # Define Hatchery Queries based on dialect
     if dialect == 'sqlite':
@@ -6777,58 +6780,89 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
         hatch_month_fmt = "to_char(hatching_date, 'YYYY-MM')"
         hatch_year_fmt = "to_char(hatching_date, 'YYYY')"
 
-    hatch_queries = {
-        'weekly': f"""
+    combined_hatch_sql = f"""
+        WITH WeeklyHatch AS (
             SELECT
+                'weekly' as type,
                 {hatch_week_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
             WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
-        """,
-        'monthly': f"""
+        ),
+        MonthlyHatch AS (
             SELECT
+                'monthly' as type,
                 {hatch_month_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
             WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
-        """,
-        'yearly': f"""
+        ),
+        YearlyHatch AS (
             SELECT
+                'yearly' as type,
                 {hatch_year_fmt} as period,
                 SUM(hatched_chicks) as hatched,
                 SUM(egg_set) as egg_set
             FROM hatchability
             WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
             GROUP BY period
-        """
-    }
+        )
+        SELECT * FROM WeeklyHatch
+        UNION ALL
+        SELECT * FROM MonthlyHatch
+        UNION ALL
+        SELECT * FROM YearlyHatch
+    """
+
+    # Fetch all data at once to avoid multiple db calls
+    all_logs = db.session.execute(text(combined_cte_sql), {'year': str(target_year)}).fetchall()
+    all_hatch = db.session.execute(text(combined_hatch_sql), {'year': str(target_year)}).fetchall()
+
+    # Process results into typed dictionaries
+    hatch_map = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    for row in all_hatch:
+        # Expected tuple: (type, period, hatched, egg_set)
+        type_key = row[0]
+        period = row[1]
+        hatched = row[2]
+        egg_set = row[3]
+        if period:
+            hatch_map[type_key][period] = (hatched, egg_set)
+
+    logs_by_type = {'weekly': [], 'monthly': [], 'yearly': []}
+    for row in all_logs:
+        # Expected tuple: (type, period, total_eggs, total_mort_f, total_hen_days, days_in_period)
+        type_key = row[0]
+        period = row[1]
+        if period:
+            logs_by_type[type_key].append({
+                'period': period,
+                'total_eggs': row[2] or 0,
+                'total_mort_f': row[3] or 0,
+                'total_hen_days': row[4] or 0,
+                'days_in_period': row[5] or 0
+            })
 
     for key in ['weekly', 'monthly', 'yearly']:
-        # Fetch Logs Data
-        raw_logs = db.session.execute(text(queries[key]), {'year': str(target_year)}).fetchall()
-
-        # Fetch Hatchery Data
-        raw_hatch = db.session.execute(text(hatch_queries[key]), {'year': str(target_year)}).fetchall()
-        hatch_map = {row[0]: row for row in raw_hatch}
+        # The frontend expects periods to be descending ordered, which is not guaranteed by UNION ALL
+        sorted_logs = sorted(logs_by_type[key], key=lambda x: x['period'], reverse=True)
 
         processed_list = []
-        for row in raw_logs:
-            period = row[0]
-            if not period: continue
-
-            total_eggs = row[1] or 0
-            total_mort = row[2] or 0
-            total_hen_days = row[3] or 0
-            days_in_period = row[4] or 0
+        for log in sorted_logs:
+            period = log['period']
+            total_eggs = log['total_eggs']
+            total_mort = log['total_mort_f']
+            total_hen_days = log['total_hen_days']
+            days_in_period = log['days_in_period']
 
             # Hatchery
-            h_data = hatch_map.get(period)
-            hatched = h_data[1] if h_data else 0
-            set_cnt = h_data[2] if h_data else 0
+            h_data = hatch_map[key].get(period)
+            hatched = h_data[0] if h_data else 0
+            set_cnt = h_data[1] if h_data else 0
 
             # Avg Prod Females = Total Hen Days / Days in Period
             # This represents the average number of birds present on any given day in the period
