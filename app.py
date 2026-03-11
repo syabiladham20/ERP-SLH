@@ -969,10 +969,13 @@ def inject_system_health():
 @app.before_request
 def load_logged_in_user():
     # TEMPORARY FEATURE: Auto-login if login_required is False
-    gs = GlobalStandard.query.first()
     login_not_required = False
-    if gs and hasattr(gs, 'login_required') and not gs.login_required:
-        login_not_required = True
+    try:
+        gs = GlobalStandard.query.first()
+        if gs and hasattr(gs, 'login_required') and not gs.login_required:
+            login_not_required = True
+    except Exception:
+        pass # Table might not exist yet during initial setup/migration
 
     user_id = session.get('user_id')
 
@@ -3615,7 +3618,6 @@ def daily_log():
                            medication_inventory=medication_inventory)
 
 @app.route('/api/daily_log/previous')
-@dept_required('Farm')
 def get_previous_daily_log_data():
     house_id = request.args.get('house_id')
     date_str = request.args.get('date')
