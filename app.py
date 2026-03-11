@@ -3632,25 +3632,51 @@ def get_previous_daily_log_data():
     if not flock:
         return jsonify({}), 404
 
+    # Get previous log for pre-fill
     previous_log = DailyLog.query.filter(
         DailyLog.flock_id == flock.id,
         DailyLog.date < log_date
     ).order_by(DailyLog.date.desc()).first()
 
-    if not previous_log:
-        return jsonify({}), 404
+    # Get EXACT yesterday and day_minus_2 for validation
+    from datetime import timedelta
+    yesterday_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date - timedelta(days=1)).first()
+    day_minus_2_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date - timedelta(days=2)).first()
+
+    # Calculate current stock for live calculation
+    # Sum mortality and culls up to the given date (exclusive)
+    all_prev_logs = DailyLog.query.filter(
+        DailyLog.flock_id == flock.id,
+        DailyLog.date < log_date
+    ).all()
+
+    cum_mort_m = sum((l.mortality_male or 0) + (l.culls_male or 0) for l in all_prev_logs)
+    cum_mort_f = sum((l.mortality_female or 0) + (l.culls_female or 0) for l in all_prev_logs)
+
+    current_stock_m = (flock.intake_male or 0) - cum_mort_m
+    current_stock_f = (flock.intake_female or 0) - cum_mort_f
 
     data = {
-        'feed_program': previous_log.feed_program,
-        'feed_code_male_id': previous_log.feed_code_male_id,
-        'feed_code_female_id': previous_log.feed_code_female_id,
-        'feed_male_gp_bird': previous_log.feed_male_gp_bird,
-        'feed_female_gp_bird': previous_log.feed_female_gp_bird,
-        'feed_cleanup_start': previous_log.feed_cleanup_start,
-        'feed_cleanup_end': previous_log.feed_cleanup_end,
-        'light_on_time': previous_log.light_on_time,
-        'light_off_time': previous_log.light_off_time
+        'current_stock_m': current_stock_m,
+        'current_stock_f': current_stock_f,
+        'yesterday_feed_m': yesterday_log.feed_male_gp_bird if yesterday_log else 0,
+        'yesterday_feed_f': yesterday_log.feed_female_gp_bird if yesterday_log else 0,
+        'day_minus_2_feed_m': day_minus_2_log.feed_male_gp_bird if day_minus_2_log else 0,
+        'day_minus_2_feed_f': day_minus_2_log.feed_female_gp_bird if day_minus_2_log else 0
     }
+
+    if previous_log:
+        data.update({
+            'feed_program': previous_log.feed_program,
+            'feed_code_male_id': previous_log.feed_code_male_id,
+            'feed_code_female_id': previous_log.feed_code_female_id,
+            'feed_male_gp_bird': previous_log.feed_male_gp_bird,
+            'feed_female_gp_bird': previous_log.feed_female_gp_bird,
+            'feed_cleanup_start': previous_log.feed_cleanup_start,
+            'feed_cleanup_end': previous_log.feed_cleanup_end,
+            'light_on_time': previous_log.light_on_time,
+            'light_off_time': previous_log.light_off_time
+        })
 
     return jsonify(data), 200
 
@@ -5110,6 +5136,26 @@ def update_log_from_request(log, req):
     if alert_triggered:
         # Simulate sending email
         app.logger.warning(f"Mortality Alert Triggered for Flock {log.flock_id}")
+
+    # Feed Guardian Validation
+    override = req.form.get('override_validation') == 'true'
+    is_feeding_attempt = log.feed_male_gp_bird > 0 or log.feed_female_gp_bird > 0
+
+    if is_feeding_attempt and not override:
+        from datetime import timedelta
+        if log.feed_program == 'Skip-a-day':
+            yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=log.date - timedelta(days=1)).first()
+            if yesterday_log and (yesterday_log.feed_male_gp_bird > 0 or yesterday_log.feed_female_gp_bird > 0):
+                raise ValueError("Invalid Entry: Yesterday was an ON-day. Today must be a Fasting Day (0g) for Skip-a-Day program.")
+        elif log.feed_program == '2/1':
+            yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=log.date - timedelta(days=1)).first()
+            day_minus_2_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=log.date - timedelta(days=2)).first()
+
+            y_fed = yesterday_log and (yesterday_log.feed_male_gp_bird > 0 or yesterday_log.feed_female_gp_bird > 0)
+            d2_fed = day_minus_2_log and (day_minus_2_log.feed_male_gp_bird > 0 or day_minus_2_log.feed_female_gp_bird > 0)
+
+            if y_fed and d2_fed:
+                raise ValueError("Invalid Entry: The last 2 days were ON-days. Today must be a Fasting Day (0g) for 2/1 program.")
 
     # Feed Multiplier Logic
     multiplier = 1.0
