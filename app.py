@@ -7874,8 +7874,8 @@ def api_daily_log_trend():
         log = entry['log']
         item = {
             'date': log.date.strftime('%Y-%m-%d'),
-            'mort_m_pct': entry['mort_pct_m'],
-            'mort_f_pct': entry['mort_pct_f'],
+            'mort_m_pct': entry['mortality_male_pct'],
+            'mort_f_pct': entry['mortality_female_pct'],
             'egg_prod_pct': entry['egg_data']['egg_prod_pct'],
             'std_egg_prod': entry['std_egg_prod'],
             'hatching_eggs': entry['egg_data']['total_hatching_eggs'],
