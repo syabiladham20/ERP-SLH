@@ -7911,15 +7911,17 @@ def api_daily_log_trend():
     ).all()
     meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
 
-    total_feed_kg = ((log.feed_male_gp_bird * end_day_log['males_at_start']) + (log.feed_female_gp_bird * end_day_log['females_at_start'])) / 1000
+    stock_m = end_day_log.get('stock_male_start', 0)
+    stock_f = end_day_log.get('stock_female_start', 0)
+    total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
     report_info = {
         'empty': False,
         'house_name': flock.house.name,
         'age_week': end_day_log['age_weeks'],
         'date': end_date.strftime('%d-%m-%Y'),
-        'stock_m': end_day_log['males_at_start'],
-        'stock_f': end_day_log['females_at_start'],
+        'stock_m': stock_m,
+        'stock_f': stock_f,
         'cum_mort_m_pct': round(cum_mort_m_pct, 2),
         'cum_mort_f_pct': round(cum_mort_f_pct, 2),
         'egg_weight': log.egg_weight or 0.0,
