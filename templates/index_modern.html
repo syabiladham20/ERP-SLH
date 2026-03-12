@@ -351,12 +351,13 @@
                         <div style="width: 297mm; height: 210mm; background: white; padding: 15mm; font-family: sans-serif; box-sizing: border-box; position: relative;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                                 <div>
-                                    <h1 style="margin: 0; font-size: 28px;">${data.house_name} - W${data.age_week}</h1>
+                                    <h1 style="margin: 0; font-size: 28px;">${data.house_name} - W${data.age_week} (${data.phase} Phase)</h1>
                                     <div style="font-size: 16px; margin-top: 5px;">Cumulative Mortality (M: ${data.cum_mort_m_pct}% | F: ${data.cum_mort_f_pct}%)</div>
                                     <div style="font-size: 16px;">Stock (M: ${data.stock_m} | F: ${data.stock_f})</div>
                                 </div>
-                                <div style="font-size: 24px; font-weight: bold;">
-                                    ${data.date}
+                                <div style="text-align: right;">
+                                    <div style="font-size: 24px; font-weight: bold;">${data.date}</div>
+                                    <div style="font-size: 16px; margin-top: 5px;">(Lighting: ${data.lighting_hours} h)</div>
                                 </div>
                             </div>
 
@@ -371,7 +372,7 @@
 
                             <div style="margin-top: 15px; font-size: 16px; line-height: 1.5;">
                                 <div><strong>Egg weight:</strong> ${data.egg_weight}g (Std: ${data.std_egg_weight}g)</div>
-                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg</div>
+                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg &nbsp;&nbsp;&nbsp; <strong>Feed Time:</strong> ${data.feed_cleanup_hours} h</div>
                                 <div><strong>Medication:</strong> ${data.medication}</div>
                                 <div><strong>Clinical notes:</strong> ${data.notes}</div>
                             </div>

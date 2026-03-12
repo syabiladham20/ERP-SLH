@@ -7915,17 +7915,24 @@ def api_daily_log_trend():
     stock_f = end_day_log.get('stock_female_start', 0)
     total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
+    # Get proper standard egg weight for the current week
+    std_obj = Standard.query.filter_by(week=end_day_log.get('week', 0)).first()
+    std_egg_weight = std_obj.std_egg_weight if std_obj and std_obj.std_egg_weight else 0.0
+
     report_info = {
         'empty': False,
         'house_name': flock.house.name,
         'age_week': end_day_log.get('week', 0),
+        'phase': flock.phase,
         'date': end_date.strftime('%d-%m-%Y'),
+        'lighting_hours': log.lighting_hours or 0.0,
+        'feed_cleanup_hours': log.feed_cleanup_hours or 0.0,
         'stock_m': stock_m,
         'stock_f': stock_f,
         'cum_mort_m_pct': round(cum_mort_m_pct, 2),
         'cum_mort_f_pct': round(cum_mort_f_pct, 2),
         'egg_weight': log.egg_weight or 0.0,
-        'std_egg_weight': end_day_log.get('std_egg_weight', 0.0),
+        'std_egg_weight': std_egg_weight,
         'feed_m': log.feed_male_gp_bird,
         'feed_f': log.feed_female_gp_bird,
         'total_feed_kg': round(total_feed_kg, 2),
