@@ -144,6 +144,7 @@
             <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
             <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
             <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
+            <th rowspan="2" class="align-middle">Actions</th>
           </tr>
           <tr>
             <th class="bg-light">M</th>
@@ -217,6 +218,13 @@
             <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
             <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
             <td>{{ item.lighting_hours }} hour</td>
+            <td>
+              {% if item.log.date.strftime('%Y-%m-%d') in available_reports %}
+              <a href="{{ url_for('static', filename='reports/' + item.log.date.strftime('%Y-%m-%d') + '_' + flock.house.name|replace(' ', '_') + '_W' + item.age_weeks|string + '.png') }}" target="_blank" class="btn btn-sm btn-outline-info py-0 mb-1 d-block" style="font-size: 0.75rem;" title="View Report">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin: 0;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg>
+              </a>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

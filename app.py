@@ -2548,7 +2548,20 @@ def view_flock(id):
 
     weekly_data.reverse()
 
-    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events)
+    # Pre-check available reports for this flock
+    import os
+    from werkzeug.utils import secure_filename
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    available_reports = set()
+    if os.path.exists(reports_dir):
+        # We need a quick way to know which dates have reports
+        prefix_to_match = f"_{secure_filename(flock.house.name)}_"
+        for f in os.listdir(reports_dir):
+            if prefix_to_match in f and f.endswith(".png"):
+                date_str = f.split("_")[0]
+                available_reports.add(date_str)
+
+    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
 
 @app.route('/flock/<int:id>/spreadsheet')
 @dept_required('Farm')
@@ -7747,8 +7760,21 @@ def executive_flock_detail(id):
 
     weekly_data.reverse()
 
+    # Pre-check available reports for this flock
+    import os
+    from werkzeug.utils import secure_filename
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    available_reports = set()
+    if os.path.exists(reports_dir):
+        prefix_to_match = f"_{secure_filename(flock.house.name)}_"
+        for f in os.listdir(reports_dir):
+            if prefix_to_match in f and f.endswith(".png"):
+                date_str = f.split("_")[0]
+                available_reports.add(date_str)
+
     return render_template('flock_detail_readonly.html',
                            flock=flock,
+                           available_reports=available_reports,
                            logs=list(reversed(enriched_logs)),
                            weekly_data=weekly_data,
                            chart_data=chart_data,
@@ -7807,6 +7833,156 @@ def delete_floating_note(note_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/daily_log/trend')
+@login_required
+def api_daily_log_trend():
+    flock_id = request.args.get('flock_id', type=int)
+    end_date_str = request.args.get('date')
+    if not flock_id or not end_date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+
+    try:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    start_date = end_date - timedelta(days=7)
+
+    flock = Flock.query.get_or_404(flock_id)
+
+    logs = DailyLog.query.filter(
+        DailyLog.flock_id == flock_id,
+        DailyLog.date >= start_date,
+        DailyLog.date <= end_date
+    ).order_by(DailyLog.date.asc()).all()
+
+    gs = GlobalStandard.query.first()
+    enriched = enrich_flock_data(flock, logs, global_std=gs)
+
+    cum_mort_m = db.session.query(db.func.sum(DailyLog.mortality_male)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
+    cum_mort_f = db.session.query(db.func.sum(DailyLog.mortality_female)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
+
+    intake_m = flock.intake_male or 0
+    intake_f = flock.intake_female or 0
+
+    cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
+    cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
+
+    trend_data = []
+    end_day_log = None
+    for entry in enriched:
+        log = entry['log']
+        item = {
+            'date': log.date.strftime('%Y-%m-%d'),
+            'mort_m_pct': entry['mort_pct_m'],
+            'mort_f_pct': entry['mort_pct_f'],
+            'egg_prod_pct': entry['egg_data']['egg_prod_pct'],
+            'std_egg_prod': entry['std_egg_prod'],
+            'hatching_eggs': entry['egg_data']['total_hatching_eggs'],
+            'hatching_egg_pct': entry['egg_data']['hatching_egg_pct'],
+            'std_hatching_pct': entry['std_hatching_pct'],
+            'cull_jumbo': log.cull_eggs_jumbo or 0,
+            'cull_small': log.cull_eggs_small or 0,
+            'cull_abnormal': log.cull_eggs_abnormal or 0,
+            'cull_crack': log.cull_eggs_crack or 0,
+            'is_target_day': log.date == end_date
+        }
+        trend_data.append(item)
+        if log.date == end_date:
+            end_day_log = entry
+
+    # If no data for the exact target date, we return empty data flag but not an error
+    if not end_day_log:
+        return jsonify({
+            'empty': True,
+            'house_name': flock.house.name,
+            'date': end_date.strftime('%d-%m-%Y')
+        })
+
+    log = end_day_log['log']
+
+    notes = [n.description for n in log.clinical_notes_list] if log.clinical_notes_list else []
+    notes_str = ", ".join(notes) if notes else "None"
+
+    medications_used = db.session.query(Medication).filter(
+        Medication.flock_id == flock_id,
+        Medication.start_date <= log.date,
+        db.or_(Medication.end_date == None, Medication.end_date >= log.date)
+    ).all()
+    meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
+
+    total_feed_kg = ((log.feed_male_gp_bird * end_day_log['males_at_start']) + (log.feed_female_gp_bird * end_day_log['females_at_start'])) / 1000
+
+    report_info = {
+        'empty': False,
+        'house_name': flock.house.name,
+        'age_week': end_day_log['age_weeks'],
+        'date': end_date.strftime('%d-%m-%Y'),
+        'stock_m': end_day_log['males_at_start'],
+        'stock_f': end_day_log['females_at_start'],
+        'cum_mort_m_pct': round(cum_mort_m_pct, 2),
+        'cum_mort_f_pct': round(cum_mort_f_pct, 2),
+        'egg_weight': log.egg_weight or 0.0,
+        'std_egg_weight': end_day_log.get('std_egg_weight', 0.0),
+        'feed_m': log.feed_male_gp_bird,
+        'feed_f': log.feed_female_gp_bird,
+        'total_feed_kg': round(total_feed_kg, 2),
+        'medication': meds_str,
+        'notes': notes_str,
+        'trend': trend_data
+    }
+
+    return jsonify(report_info)
+
+
+import os
+import base64
+from werkzeug.utils import secure_filename
+
+@app.route('/api/reports/backup', methods=['POST'])
+@login_required
+def backup_report_image():
+    data = request.json
+    if not data or 'image' not in data or 'date' not in data or 'house' not in data or 'age' not in data:
+        return jsonify({'error': 'Missing data'}), 400
+
+    image_data = data['image']
+    if ',' in image_data:
+        image_data = image_data.split(',')[1]
+
+    date_str = data['date'] # YYYY-MM-DD
+    house_name = data['house']
+    age_week = data['age']
+
+    filename = f"{date_str}_{secure_filename(house_name)}_W{age_week}.png"
+
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    if not os.path.exists(reports_dir):
+        os.makedirs(reports_dir)
+
+    filepath = os.path.join(reports_dir, filename)
+
+    try:
+        with open(filepath, "wb") as fh:
+            fh.write(base64.b64decode(image_data))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    try:
+        current_time = datetime.now()
+        for f in os.listdir(reports_dir):
+            f_path = os.path.join(reports_dir, f)
+            if os.path.isfile(f_path):
+                mtime = datetime.fromtimestamp(os.path.getmtime(f_path))
+                if (current_time - mtime).days > 7:
+                    os.remove(f_path)
+    except Exception as e:
+        pass
+
+    return jsonify({'success': True, 'path': f'/static/reports/{filename}'})
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
