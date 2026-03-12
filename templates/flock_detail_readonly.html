@@ -1039,13 +1039,7 @@
           });
       }
 
-      if (indices.length === 0) {
-           const emptyObj = {};
-           for (let key in dataObj) {
-                emptyObj[key] = [];
-           }
-           return emptyObj;
-      }
+      if (indices.length === 0) { return dataObj; }
 
       const firstIdx = indices[0];
       const lastIdx = indices[indices.length - 1];
@@ -1895,11 +1889,13 @@
   function switchMode(mode) {
       currentMode = mode;
       renderGeneralChart();
+      if (typeof updateChartAnnotations === 'function' && typeof generalChart !== 'undefined') updateChartAnnotations(generalChart);
   }
 
   function switchModeHatching(mode) {
       currentModeHatching = mode;
       renderHatchingChart();
+      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
   }
 
 
