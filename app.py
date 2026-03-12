@@ -429,6 +429,38 @@ class SystemAuditLog(db.Model):
     performance_impact = db.Column(db.String(255), nullable=True)
     notes = db.Column(db.Text, nullable=True)
 
+class UserActivityLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    action = db.Column(db.String(50), nullable=False) # e.g., 'Add', 'Edit', 'Delete', 'Save'
+    resource_type = db.Column(db.String(50), nullable=False) # e.g., 'Flock', 'DailyLog'
+    resource_id = db.Column(db.String(100), nullable=True) # ID or name of the resource
+    details = db.Column(db.Text, nullable=True) # JSON string of changes
+
+    user = db.relationship('User', backref=db.backref('activity_logs', lazy=True, cascade="all, delete-orphan"))
+
+def log_user_activity(user_id, action, resource_type, resource_id=None, details=None):
+    """
+    Globally log user activities safely without interrupting the main transaction.
+    """
+    if not user_id:
+        return
+    try:
+        details_str = json.dumps(details) if details else None
+        log = UserActivityLog(
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=str(resource_id) if resource_id else None,
+            details=details_str
+        )
+        # Avoid flushing or committing the main transaction prematurely.
+        # Just add it to the session; it will commit when the route commits.
+        db.session.add(log)
+    except Exception as e:
+        app.logger.error(f"Failed to create UserActivityLog: {e}")
+
 class UIElement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True, nullable=False)
@@ -1078,6 +1110,31 @@ def admin_audit_logs():
     logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).all()
     return render_template('admin/audit_logs.html', logs=logs)
 
+@app.route('/admin/activity_log')
+def admin_activity_log():
+    if not session.get('is_admin'):
+        flash("Access Denied.", "danger")
+        return redirect(url_for('index'))
+
+    user_id = request.args.get('user_id')
+    resource_type = request.args.get('resource_type')
+
+    query = UserActivityLog.query
+
+    if user_id:
+        query = query.filter_by(user_id=user_id)
+    if resource_type:
+        query = query.filter_by(resource_type=resource_type)
+
+    logs = query.order_by(UserActivityLog.timestamp.desc()).limit(200).all()
+    users = User.query.order_by(User.username).all()
+
+    # Extract unique resource types for filter dropdown
+    resource_types = db.session.query(UserActivityLog.resource_type).distinct().all()
+    resource_types = [r[0] for r in resource_types]
+
+    return render_template('admin/activity_log.html', logs=logs, users=users, resource_types=resource_types)
+
 @app.route('/admin/users')
 def admin_users():
     if not session.get('is_admin'):
@@ -1364,6 +1421,13 @@ def clinical_notes():
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
     if request.method == 'POST':
+        old_data = {
+            'flock_id': flock.flock_id,
+            'intake_date': flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else None,
+            'intake_male': flock.intake_male,
+            'intake_female': flock.intake_female
+        }
+
         # Flock ID (ID) Update
         new_flock_id = request.form.get('flock_id').strip()
         if new_flock_id and new_flock_id != flock.flock_id:
@@ -1412,6 +1476,17 @@ def edit_flock(id):
         else:
             flock.farm_id = None
 
+        new_data = {
+            'flock_id': flock.flock_id,
+            'intake_date': flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else None,
+            'intake_male': flock.intake_male,
+            'intake_female': flock.intake_female
+        }
+
+        changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+        if changes:
+            log_user_activity(session.get('user_id'), 'Edit', 'Flock', flock.flock_id, details=changes)
+
         db.session.commit()
         flash(f'Flock {flock.flock_id} updated.', 'success')
         return redirect(url_for('index'))
@@ -1423,9 +1498,13 @@ def edit_flock(id):
 @dept_required('Farm')
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
+    flock_id_str = flock.flock_id
+
+    log_user_activity(session.get('user_id'), 'Delete', 'Flock', flock_id_str)
+
     db.session.delete(flock)
     db.session.commit()
-    flash(f'Flock {flock.flock_id} deleted.', 'warning')
+    flash(f'Flock {flock_id_str} deleted.', 'warning')
     return redirect(url_for('manage_flocks'))
 
 @app.route('/help')
@@ -1498,6 +1577,14 @@ def manage_flocks():
         )
         
         db.session.add(new_flock)
+        db.session.flush()
+
+        log_user_activity(session.get('user_id'), 'Add', 'Flock', new_flock.flock_id, details={
+            'house': house_name,
+            'intake_male': intake_male,
+            'intake_female': intake_female
+        })
+
         db.session.commit()
 
         initialize_sampling_schedule(new_flock.id)
@@ -1649,6 +1736,9 @@ def delete_daily_log(id):
 
     log = DailyLog.query.get_or_404(id)
     flock_id = log.flock_id
+    date_str = log.date.strftime('%Y-%m-%d')
+
+    log_user_activity(session.get('user_id'), 'Delete', 'DailyLog', log.id, details={'date': date_str, 'flock_id': flock_id})
 
     # Cascade delete handles partitions, but maybe not Inventory Transactions (Usage)?
     # We should probably revert usage if tracked?
@@ -2662,6 +2752,8 @@ def flock_spreadsheet_save(flock_id):
 
             log = logs[log_id]
 
+            old_data = {}
+
             # Update only editable fields
             editable_fields = [
                 'mortality_male', 'mortality_female', 'culls_male', 'culls_female',
@@ -2671,6 +2763,7 @@ def flock_spreadsheet_save(flock_id):
             ]
 
             for field in editable_fields:
+                old_data[field] = getattr(log, field)
                 val = row.get(field)
                 if val == '': val = None
                 if val is not None:
@@ -2682,6 +2775,7 @@ def flock_spreadsheet_save(flock_id):
                 setattr(log, field, val)
 
             # Handle clinical signs separately
+            old_data['clinical_notes'] = log.clinical_notes
             clinical_signs_val = row.get('clinical_signs')
             # Clear existing clinical notes for this log
             ClinicalNote.query.filter_by(log_id=log.id).delete()
@@ -2690,6 +2784,15 @@ def flock_spreadsheet_save(flock_id):
                 log.clinical_notes = clinical_signs_val.strip()
             else:
                 log.clinical_notes = None
+
+            new_data = {}
+            for field in editable_fields:
+                new_data[field] = getattr(log, field)
+            new_data['clinical_notes'] = log.clinical_notes
+
+            changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+            if changes:
+                log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
 
             # Assuming simple continuous accumulation or daily input.
             # Real recalculation needs full historical sequence, which is complex for bulk edit.
@@ -3035,6 +3138,10 @@ def flock_hatchability(id):
                     male_ratio_pct=male_ratio
                 )
                 db.session.add(h)
+                db.session.flush()
+
+                log_user_activity(session.get('user_id'), 'Add', 'Hatchability', h.id, details={'flock_id': flock.flock_id, 'setting_date': setting_date.strftime('%Y-%m-%d')})
+
                 db.session.commit()
 
                 msg = 'Hatchability record added.'
@@ -3056,6 +3163,10 @@ def delete_hatchability(id, record_id):
     record = Hatchability.query.get_or_404(record_id)
     if record.flock_id != id:
         return "Unauthorized", 403
+
+    date_str = record.setting_date.strftime('%Y-%m-%d')
+    log_user_activity(session.get('user_id'), 'Delete', 'Hatchability', record_id, details={'flock_id': record.flock.flock_id, 'setting_date': date_str})
+
     db.session.delete(record)
     db.session.commit()
     flash('Record deleted.', 'info')
@@ -5063,6 +5174,21 @@ def recalculate_flock_inventory(flock_id):
 
 
 def update_log_from_request(log, req):
+    old_data = {
+        'mortality_male': log.mortality_male,
+        'mortality_female': log.mortality_female,
+        'culls_male': log.culls_male,
+        'culls_female': log.culls_female,
+        'feed_male_gp_bird': log.feed_male_gp_bird,
+        'feed_female_gp_bird': log.feed_female_gp_bird,
+        'eggs_collected': log.eggs_collected,
+        'cull_eggs_jumbo': log.cull_eggs_jumbo,
+        'cull_eggs_small': log.cull_eggs_small,
+        'cull_eggs_crack': log.cull_eggs_crack,
+        'cull_eggs_abnormal': log.cull_eggs_abnormal,
+        'water_reading_1': log.water_reading_1
+    }
+
     log.mortality_male = int(req.form.get('mortality_male') or 0)
     log.mortality_female = int(req.form.get('mortality_female') or 0)
     log.mortality_male_hosp = int(req.form.get('mortality_male_hosp') or 0)
@@ -5295,6 +5421,25 @@ def update_log_from_request(log, req):
         log.water_intake_calculated = 0.0
 
     update_clinical_notes(log, req)
+
+    new_data = {
+        'mortality_male': log.mortality_male,
+        'mortality_female': log.mortality_female,
+        'culls_male': log.culls_male,
+        'culls_female': log.culls_female,
+        'feed_male_gp_bird': log.feed_male_gp_bird,
+        'feed_female_gp_bird': log.feed_female_gp_bird,
+        'eggs_collected': log.eggs_collected,
+        'cull_eggs_jumbo': log.cull_eggs_jumbo,
+        'cull_eggs_small': log.cull_eggs_small,
+        'cull_eggs_crack': log.cull_eggs_crack,
+        'cull_eggs_abnormal': log.cull_eggs_abnormal,
+        'water_reading_1': log.water_reading_1
+    }
+
+    changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+    if changes:
+        log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
 
 def save_note_photos(log, note, files):
     for file in files:
@@ -6137,6 +6282,10 @@ def add_inventory_item():
         batch_number=batch, expiry_date=exp_date
     )
     db.session.add(item)
+    db.session.flush()
+
+    log_user_activity(session.get('user_id'), 'Add', 'InventoryItem', item.id, details={'name': name, 'type': type_, 'initial_stock': stock})
+
     db.session.commit()
 
     if stock > 0:
@@ -6186,6 +6335,8 @@ def inventory_transaction():
     )
     db.session.add(t)
     try:
+        db.session.flush()
+        log_user_activity(session.get('user_id'), 'Add', 'InventoryTransaction', t.id, details={'item_name': item.name, 'type': type_, 'quantity': qty})
         db.session.commit()
         flash('Transaction recorded.', 'success')
     except Exception as e:
@@ -6200,10 +6351,22 @@ def edit_inventory_item(id):
     item = InventoryItem.query.get_or_404(id)
 
     if request.form.get('delete') == '1':
+        item_name = item.name
+        log_user_activity(session.get('user_id'), 'Delete', 'InventoryItem', id, details={'name': item_name})
         db.session.delete(item)
         db.session.commit()
         flash('Item deleted.', 'info')
         return redirect(url_for('inventory'))
+
+    old_data = {
+        'name': item.name,
+        'type': item.type,
+        'unit': item.unit,
+        'min_stock_level': item.min_stock_level,
+        'doses_per_unit': item.doses_per_unit,
+        'batch_number': item.batch_number,
+        'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+    }
 
     item.name = request.form.get('name')
     item.type = request.form.get('type')
@@ -6221,6 +6384,20 @@ def edit_inventory_item(id):
     else:
         item.expiry_date = None
 
+    new_data = {
+        'name': item.name,
+        'type': item.type,
+        'unit': item.unit,
+        'min_stock_level': item.min_stock_level,
+        'doses_per_unit': item.doses_per_unit,
+        'batch_number': item.batch_number,
+        'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+    }
+
+    changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+    if changes:
+        log_user_activity(session.get('user_id'), 'Edit', 'InventoryItem', item.id, details=changes)
+
     db.session.commit()
     flash('Item updated.', 'success')
     return redirect(url_for('inventory'))
@@ -6232,6 +6409,11 @@ def delete_inventory_transaction(id):
 
     t = InventoryTransaction.query.get_or_404(id)
     item = InventoryItem.query.get(t.inventory_item_id)
+    t_type = t.transaction_type
+    t_qty = t.quantity
+    item_name = item.name if item else "Unknown"
+
+    log_user_activity(session.get('user_id'), 'Delete', 'InventoryTransaction', id, details={'item_name': item_name, 'type': t_type, 'quantity': t_qty})
 
     # Revert Stock
     if item:
@@ -6252,6 +6434,13 @@ def edit_inventory_transaction(id):
 
     t = InventoryTransaction.query.get_or_404(id)
     item = InventoryItem.query.get(t.inventory_item_id)
+
+    old_data = {
+        'quantity': t.quantity,
+        'transaction_type': t.transaction_type,
+        'transaction_date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else None,
+        'notes': t.notes
+    }
 
     new_qty = float(request.form.get('quantity') or 0)
     new_date_str = request.form.get('transaction_date')
@@ -6283,6 +6472,17 @@ def edit_inventory_transaction(id):
         try:
             t.transaction_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
         except: pass
+
+    new_data = {
+        'quantity': t.quantity,
+        'transaction_type': t.transaction_type,
+        'transaction_date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else None,
+        'notes': t.notes
+    }
+
+    changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+    if changes:
+        log_user_activity(session.get('user_id'), 'Edit', 'InventoryTransaction', t.id, details=changes)
 
     # Apply New Effect
     if item:
