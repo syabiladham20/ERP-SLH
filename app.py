@@ -2549,7 +2549,6 @@ def view_flock(id):
     weekly_data.reverse()
 
     # Pre-check available reports for this flock
-    import os
     from werkzeug.utils import secure_filename
     reports_dir = os.path.join(app.root_path, 'static', 'reports')
     available_reports = set()
@@ -7761,7 +7760,6 @@ def executive_flock_detail(id):
     weekly_data.reverse()
 
     # Pre-check available reports for this flock
-    import os
     from werkzeug.utils import secure_filename
     reports_dir = os.path.join(app.root_path, 'static', 'reports')
     available_reports = set()
@@ -7859,7 +7857,7 @@ def api_daily_log_trend():
     ).order_by(DailyLog.date.asc()).all()
 
     gs = GlobalStandard.query.first()
-    enriched = enrich_flock_data(flock, logs, global_std=gs)
+    enriched = enrich_flock_data(flock, logs)
 
     cum_mort_m = db.session.query(db.func.sum(DailyLog.mortality_male)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
     cum_mort_f = db.session.query(db.func.sum(DailyLog.mortality_female)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
@@ -7937,7 +7935,6 @@ def api_daily_log_trend():
     return jsonify(report_info)
 
 
-import os
 import base64
 from werkzeug.utils import secure_filename
 
