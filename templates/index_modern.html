@@ -19,12 +19,17 @@
         <a href="{{ url_for('manage_flocks') }}" class="btn btn-outline-primary d-none d-sm-inline-block">
           Manage Flocks
         </a>
+        <button type="button" class="btn btn-outline-secondary d-none d-sm-inline-block" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M9 15l2 2l4 -4" /></svg>
+          Generate Daily Report
+        </button>
         <!-- Mobile Dropdown -->
         <div class="dropdown d-sm-none">
             <a href="#" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">Actions</a>
             <div class="dropdown-menu dropdown-menu-end">
                 <a href="{{ url_for('daily_log') }}" class="dropdown-item">Add Daily Log</a>
                 <a href="{{ url_for('manage_flocks') }}" class="dropdown-item">Manage Flocks</a>
+                <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#generateReportModal">Generate Daily Report</a>
             </div>
         </div>
       </div>
@@ -214,4 +219,377 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Generate Report Modal -->
+<div class="modal modal-blur fade" id="generateReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Generate Daily House Report</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+            <label class="form-label">Report Date</label>
+            <input type="date" class="form-control" id="reportDate" value="">
+        </div>
+        <div class="mb-3">
+            <label class="form-label d-flex justify-content-between">
+                <span>Select Houses</span>
+                <a href="#" class="text-primary text-decoration-none" id="selectAllHouses">Select All</a>
+            </label>
+            <div class="row" id="reportHousesList">
+                {% if active_flocks %}
+                    {% for flock in active_flocks %}
+                        <div class="col-6 mb-2">
+                            <label class="form-check">
+                                <input class="form-check-input house-checkbox" type="checkbox" value="{{ flock.id }}" data-house-name="{{ flock.house.name }}">
+                                <span class="form-check-label">{{ flock.house.name }}</span>
+                            </label>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No active flocks found.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="text-muted small">
+            Tip: Images are automatically saved for 7 days for quick sharing.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnGenerateReport">Generate Reports</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="reportGenerationOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white;">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <div class="mt-3 fs-3" id="reportGenerationStatus">Initializing...</div>
+</div>
+
+<!-- Hidden container for rendering charts and canvas before converting to PDF/Image -->
+<div id="reportRenderContainer" style="position: absolute; left: -9999px; top: -9999px; width: 297mm; height: 210mm; background: white; box-sizing: border-box; padding: 20px;">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('reportDate').value = today;
+
+        document.getElementById('selectAllHouses').addEventListener('click', (e) => {
+            e.preventDefault();
+            const checkboxes = document.querySelectorAll('.house-checkbox');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            checkboxes.forEach(cb => cb.checked = !allChecked);
+        });
+
+        document.getElementById('btnGenerateReport').addEventListener('click', async () => {
+            const date = document.getElementById('reportDate').value;
+            const checkboxes = document.querySelectorAll('.house-checkbox:checked');
+            if (checkboxes.length === 0) {
+                alert('Please select at least one house.');
+                return;
+            }
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('generateReportModal'));
+            modal.hide();
+
+            const overlay = document.getElementById('reportGenerationOverlay');
+            const statusText = document.getElementById('reportGenerationStatus');
+            const container = document.getElementById('reportRenderContainer');
+
+            overlay.style.display = 'flex';
+
+            const pdf = new jspdf.jsPDF('l', 'mm', 'a4');
+            let firstPage = true;
+
+            for (let i = 0; i < checkboxes.length; i++) {
+                const flockId = checkboxes[i].value;
+                const houseName = checkboxes[i].getAttribute('data-house-name');
+                statusText.innerText = `Fetching data for ${houseName}...`;
+
+                try {
+                    const response = await fetch(`/api/daily_log/trend?flock_id=${flockId}&date=${date}`);
+                    if (!response.ok) {
+                        console.error(`Skipping ${houseName}, error fetching data.`);
+                        continue;
+                    }
+                    const data = await response.json();
+
+                    statusText.innerText = `Rendering report for ${houseName}...`;
+
+                    if (data.empty) {
+                        // Render ZERO DATA page
+                        container.innerHTML = `
+                            <div style="width: 297mm; height: 210mm; background: white; padding: 15mm; font-family: sans-serif; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #ddd;">
+                                <h1 style="color: #666; font-size: 32px; letter-spacing: 2px;">HOUSE ${data.house_name}</h1>
+                                <h2 style="color: #999; font-size: 24px;">NO DATA LOGGED FOR ${data.date}</h2>
+                            </div>
+                        `;
+
+                        await new Promise(r => setTimeout(r, 50));
+                        const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
+                        const imgData = canvas.toDataURL('image/png');
+
+                        if (!firstPage) {
+                            pdf.addPage();
+                        }
+                        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                        firstPage = false;
+                        continue; // Skip the rest for this house, no image backup needed
+                    }
+
+                    // Render HTML template dynamically into the container
+                    container.innerHTML = `
+                        <div style="width: 297mm; height: 210mm; background: white; padding: 15mm; font-family: sans-serif; box-sizing: border-box; position: relative;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div>
+                                    <h1 style="margin: 0; font-size: 28px;">${data.house_name} - W${data.age_week}</h1>
+                                    <div style="font-size: 16px; margin-top: 5px;">Cumulative Mortality (M: ${data.cum_mort_m_pct}% | F: ${data.cum_mort_f_pct}%)</div>
+                                    <div style="font-size: 16px;">Stock (M: ${data.stock_m} | F: ${data.stock_f})</div>
+                                </div>
+                                <div style="font-size: 24px; font-weight: bold;">
+                                    ${data.date}
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; gap: 20px; height: 110mm;">
+                                <div style="width: 48%; height: 100%;">
+                                    <canvas id="chart1"></canvas>
+                                </div>
+                                <div style="width: 48%; height: 100%;">
+                                    <canvas id="chart2"></canvas>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 15px; font-size: 16px; line-height: 1.5;">
+                                <div><strong>Egg weight:</strong> ${data.egg_weight}g (Std: ${data.std_egg_weight}g)</div>
+                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg</div>
+                                <div><strong>Medication:</strong> ${data.medication}</div>
+                                <div><strong>Clinical notes:</strong> ${data.notes}</div>
+                            </div>
+                        </div>
+                    `;
+
+                    await new Promise(r => setTimeout(r, 50));
+
+                    const trend = data.trend;
+                    const labels = trend.map(t => t.date.split('-').reverse().slice(0, 2).join('-')); // DD-MM
+
+                    // Chart Configs with Current Day Distinction
+                    const pointRadii = trend.map(t => t.is_target_day ? 6 : 3);
+                    const pointBorderWidths = trend.map(t => t.is_target_day ? 3 : 1);
+                    const barBorderWidths = trend.map(t => t.is_target_day ? {top:2, right:2, bottom:0, left:2} : 0);
+                    const borderColors = trend.map(t => t.is_target_day ? 'black' : 'transparent');
+
+                    // Chart 1: Mortality & Egg Production
+                    const ctx1 = document.getElementById('chart1').getContext('2d');
+                    new Chart(ctx1, {
+                        type: 'bar',
+                        plugins: [ChartDataLabels],
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: 'Actual Egg Prod %',
+                                    data: trend.map(t => t.egg_prod_pct),
+                                    borderColor: 'blue',
+                                    backgroundColor: 'blue',
+                                    yAxisID: 'yLeft',
+                                    pointRadius: pointRadii,
+                                    pointBorderWidth: pointBorderWidths,
+                                    pointBorderColor: 'black',
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                },
+                                {
+                                    type: 'line',
+                                    label: 'Std Egg Prod %',
+                                    data: trend.map(t => t.std_egg_prod),
+                                    borderColor: 'red',
+                                    backgroundColor: 'red',
+                                    yAxisID: 'yLeft',
+                                    pointRadius: 0,
+                                    datalabels: { display: false }
+                                },
+                                {
+                                    type: 'line',
+                                    label: 'Std Mortality 0.05%',
+                                    data: trend.map(() => 0.05),
+                                    borderColor: 'orange',
+                                    borderDash: [5, 5],
+                                    borderWidth: 2.25,
+                                    yAxisID: 'yRight',
+                                    pointRadius: 0,
+                                    datalabels: { display: false }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Male Mort %',
+                                    data: trend.map(t => t.mort_m_pct),
+                                    backgroundColor: 'darkred',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yRight',
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkred', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Female Mort %',
+                                    data: trend.map(t => t.mort_f_pct),
+                                    backgroundColor: '#ff6666',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yRight',
+                                    datalabels: { align: 'top', anchor: 'end', color: '#ff6666', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            scales: {
+                                yLeft: { type: 'linear', position: 'left', min: 0, max: 100 },
+                                yRight: { type: 'linear', position: 'right', min: 0, max: 0.5, grid: { drawOnChartArea: false } }
+                            }
+                        }
+                    });
+
+                    // Chart 2: Cull and Hatching Egg
+                    const ctx2 = document.getElementById('chart2').getContext('2d');
+                    new Chart(ctx2, {
+                        type: 'bar',
+                        plugins: [ChartDataLabels],
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    type: 'line',
+                                    label: 'Actual Hatching %',
+                                    data: trend.map(t => t.hatching_egg_pct),
+                                    borderColor: 'blue',
+                                    backgroundColor: 'blue',
+                                    yAxisID: 'yRight',
+                                    pointRadius: pointRadii,
+                                    pointBorderWidth: pointBorderWidths,
+                                    pointBorderColor: 'black',
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                },
+                                {
+                                    type: 'line',
+                                    label: 'Std Hatching %',
+                                    data: trend.map(t => t.std_hatching_pct),
+                                    borderColor: 'red',
+                                    backgroundColor: 'red',
+                                    yAxisID: 'yRight',
+                                    pointRadius: 0,
+                                    datalabels: { display: false }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Jumbo',
+                                    data: trend.map(t => t.cull_jumbo),
+                                    backgroundColor: 'green',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yLeft',
+                                    stacked: false,
+                                    datalabels: { align: 'top', anchor: 'end', color: 'green', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Small',
+                                    data: trend.map(t => t.cull_small),
+                                    backgroundColor: 'lightblue',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yLeft',
+                                    stacked: false,
+                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Abnormal',
+                                    data: trend.map(t => t.cull_abnormal),
+                                    backgroundColor: 'darkblue',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yLeft',
+                                    stacked: false,
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                },
+                                {
+                                    type: 'bar',
+                                    label: 'Crack',
+                                    data: trend.map(t => t.cull_crack),
+                                    backgroundColor: 'yellow',
+                                    borderColor: borderColors,
+                                    borderWidth: barBorderWidths,
+                                    yAxisID: 'yLeft',
+                                    stacked: false,
+                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            scales: {
+                                yLeft: { type: 'linear', position: 'left', min: 0 },
+                                yRight: { type: 'linear', position: 'right', min: 0, max: 110, grid: { drawOnChartArea: false } }
+                            }
+                        }
+                    });
+
+                    // Wait for rendering
+                    await new Promise(r => setTimeout(r, 500));
+
+                    const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
+                    const imgData = canvas.toDataURL('image/png');
+
+                    if (!firstPage) {
+                        pdf.addPage();
+                    }
+                    pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                    firstPage = false;
+
+                    // Send backup to server
+                    statusText.innerText = `Saving backup for ${houseName}...`;
+                    await fetch('/api/reports/backup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: imgData,
+                            date: date,
+                            house: data.house_name,
+                            age: data.age_week
+                        })
+                    });
+
+                } catch (err) {
+                    console.error('Error processing ' + houseName, err);
+                }
+            }
+
+            if (!firstPage) {
+                statusText.innerText = `Downloading PDF...`;
+                pdf.save(`Daily House Report (${date}).pdf`);
+            } else {
+                alert('No reports were generated.');
+            }
+
+            overlay.style.display = 'none';
+        });
+    });
+</script>
+
 {% endblock %}
