@@ -495,47 +495,47 @@
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Jumbo',
-                                    data: trend.map(t => t.cull_jumbo),
+                                    label: 'Jumbo (%)',
+                                    data: trend.map(t => t.cull_jumbo_pct),
                                     backgroundColor: 'green',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'green', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'green', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Small',
-                                    data: trend.map(t => t.cull_small),
+                                    label: 'Small (%)',
+                                    data: trend.map(t => t.cull_small_pct),
                                     backgroundColor: 'lightblue',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Abnormal',
-                                    data: trend.map(t => t.cull_abnormal),
+                                    label: 'Abnormal (%)',
+                                    data: trend.map(t => t.cull_abnormal_pct),
                                     backgroundColor: 'darkblue',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Crack',
-                                    data: trend.map(t => t.cull_crack),
+                                    label: 'Crack (%)',
+                                    data: trend.map(t => t.cull_crack_pct),
                                     backgroundColor: 'yellow',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 }
                             ]
                         },

@@ -7881,10 +7881,10 @@ def api_daily_log_trend():
             'hatching_eggs': entry.get('hatch_eggs', 0),
             'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
             'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
-            'cull_jumbo': log.cull_eggs_jumbo or 0,
-            'cull_small': log.cull_eggs_small or 0,
-            'cull_abnormal': log.cull_eggs_abnormal or 0,
-            'cull_crack': log.cull_eggs_crack or 0,
+            'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
+            'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
+            'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
+            'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
             'is_target_day': log.date == end_date
         }
         trend_data.append(item)
