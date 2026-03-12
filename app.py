@@ -343,6 +343,8 @@ class DailyLog(db.Model):
     clinical_notes = db.Column(db.Text)
     # photo_path removed, use relation 'photos'
     flushing = db.Column(db.Boolean, default=False)
+    selection_done = db.Column(db.Boolean, default=False)
+    spiking = db.Column(db.Boolean, default=False)
 
     photos = db.relationship('DailyLogPhoto', backref='log', lazy=True, cascade="all, delete-orphan")
     clinical_notes_list = db.relationship('ClinicalNote', backref='log', lazy=True, cascade="all, delete-orphan")
@@ -5385,6 +5387,8 @@ def update_log_from_request(log, req):
     log.water_reading_2 = int(req.form.get('water_reading_2') or 0)
     log.water_reading_3 = int(req.form.get('water_reading_3') or 0)
     log.flushing = True if req.form.get('flushing') else False
+    log.selection_done = True if req.form.get('selection_done') else False
+    log.spiking = True if req.form.get('spiking') else False
 
     log.light_on_time = req.form.get('light_on_time')
     log.light_off_time = req.form.get('light_off_time')
@@ -5413,6 +5417,9 @@ def update_log_from_request(log, req):
     yesterday = log.date - timedelta(days=1)
     yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
 
+    # Note: user clarified: "water consumption is from daily water consumption ml per bird... tomorrow's first reading minus today's first reading"
+    # Or usually water calculated is reading 1 today - reading 1 yesterday (which represents yesterday's consumption).
+    # Since the request doesn't ask me to change how it is calculated initially but rather add the chart, I'll keep the existing calculation logic untouched and just use the calculated field.
     if yesterday_log:
         r1_today_real = log.water_reading_1 / 100.0
         r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
@@ -8046,7 +8053,7 @@ def api_daily_log_trend():
     except ValueError:
         return jsonify({'error': 'Invalid date format'}), 400
 
-    start_date = end_date - timedelta(days=7)
+    start_date = end_date - timedelta(days=70) # Fetch up to 10 weeks
 
     flock = Flock.query.get_or_404(flock_id)
 
@@ -8070,26 +8077,57 @@ def api_daily_log_trend():
 
     trend_data = []
     end_day_log = None
+
+    # Track weekly stats
+    from metrics import aggregate_weekly_metrics
+    weekly_stats = aggregate_weekly_metrics(enriched)
+
     for entry in enriched:
         log = entry['log']
-        item = {
-            'date': log.date.strftime('%Y-%m-%d'),
-            'mort_m_pct': entry.get('mortality_male_pct', 0.0),
-            'mort_f_pct': entry.get('mortality_female_pct', 0.0),
-            'egg_prod_pct': entry.get('egg_prod_pct', 0.0),
-            'std_egg_prod': entry.get('std_egg_prod', 0.0),
-            'hatching_eggs': entry.get('hatch_eggs', 0),
-            'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
-            'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
-            'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
-            'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
-            'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
-            'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
-            'is_target_day': log.date == end_date
-        }
-        trend_data.append(item)
+        if (end_date - log.date).days <= 7: # Only keep last 7 days for the main trend list
+            item = {
+                'date': log.date.strftime('%Y-%m-%d'),
+                'mort_m_pct': entry.get('mortality_male_pct', 0.0),
+                'mort_f_pct': entry.get('mortality_female_pct', 0.0),
+                'egg_prod_pct': entry.get('egg_prod_pct', 0.0),
+                'std_egg_prod': entry.get('std_egg_prod', 0.0),
+                'hatching_eggs': entry.get('hatch_eggs', 0),
+                'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
+                'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
+                'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
+                'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
+                'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
+                'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
+                'water_per_bird': entry.get('water_per_bird', 0.0),
+                'water_feed_ratio': entry.get('water_feed_ratio', 0.0),
+                'flushing': log.flushing,
+                'is_target_day': log.date == end_date
+            }
+            trend_data.append(item)
         if log.date == end_date:
             end_day_log = entry
+
+    # Prepare weekly BW data
+    weekly_trend = []
+    for w in weekly_stats[-10:]: # Get up to the last 10 weeks
+        w_log = w.get('log')
+        w_item = {
+            'week': w.get('week', 0),
+            'bw_male': w.get('body_weight_male', 0.0),
+            'bw_female': w.get('body_weight_female', 0.0),
+            'uniformity_male': w.get('uniformity_male', 0.0),
+            'uniformity_female': w.get('uniformity_female', 0.0),
+            'std_bw_male': 0.0,
+            'std_bw_female': 0.0,
+            'selection_done': any(e['log'].selection_done for e in enriched if e.get('week') == w.get('week')),
+            'spiking': any(e['log'].spiking for e in enriched if e.get('week') == w.get('week'))
+        }
+        # Add std
+        std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
+        if std_w:
+            w_item['std_bw_male'] = std_w.std_body_weight_male or 0.0
+            w_item['std_bw_female'] = std_w.std_body_weight_female or 0.0
+        weekly_trend.append(w_item)
 
     # If no data for the exact target date, we return empty data flag but not an error
     if not end_day_log:
@@ -8110,6 +8148,11 @@ def api_daily_log_trend():
         db.or_(Medication.end_date == None, Medication.end_date >= log.date)
     ).all()
     meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
+
+    # Get Vaccinations for the day
+    from models import VaccineRecord
+    vaccines_used = VaccineRecord.query.filter_by(flock_id=flock_id, date=log.date).all()
+    vaccines_str = ", ".join([v.vaccine.name for v in vaccines_used if v.vaccine]) if vaccines_used else ""
 
     stock_m = end_day_log.get('stock_male_start', 0)
     stock_f = end_day_log.get('stock_female_start', 0)
@@ -8156,8 +8199,10 @@ def api_daily_log_trend():
         'feed_f': log.feed_female_gp_bird,
         'total_feed_kg': round(total_feed_kg, 2),
         'medication': meds_str,
+        'vaccination': vaccines_str,
         'notes': notes_str,
-        'trend': trend_data
+        'trend': trend_data,
+        'weekly_trend': weekly_trend
     }
 
     return jsonify(report_info)
