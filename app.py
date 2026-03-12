@@ -1206,7 +1206,7 @@ def admin_user_reset_password(user_id):
 @app.route('/hatchery')
 @dept_required('Hatchery')
 def hatchery_dashboard():
-    active_flocks = Flock.query.filter_by(status='Active', phase='Production').all()
+    active_flocks = Flock.query.filter(Flock.status == 'Active', Flock.phase.in_(['Pre-lay', 'Production'])).all()
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
     today = date.today()
     for f in active_flocks:
@@ -1226,6 +1226,45 @@ def hatchery_dashboard():
     avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
 
     return render_template('hatchery_dashboard.html', active_flocks=active_flocks, avg_hatch_pct=avg_hatch_pct, current_month=today.strftime('%B %Y'))
+
+
+def update_flock_phase(flock_id):
+    from metrics import enrich_flock_data
+    from datetime import date
+
+    flock = Flock.query.get(flock_id)
+    if not flock: return
+
+    current_phase = 'Brooding'
+    logs = sorted(flock.logs, key=lambda x: x.date)
+
+    if not logs:
+        if flock.production_start_date and flock.production_start_date <= date.today():
+            current_phase = 'Pre-lay'
+        if flock.phase != current_phase:
+            flock.phase = current_phase
+            db.session.commit()
+        return
+
+    daily_stats = enrich_flock_data(flock, logs)
+
+    for stat in daily_stats:
+        log_date = stat['date']
+        log_obj = stat['log']
+
+        if current_phase == 'Brooding' and log_obj.feed_program == 'Skip-a-day':
+            current_phase = 'Growing'
+
+        if current_phase in ['Brooding', 'Growing'] and flock.production_start_date and log_date >= flock.production_start_date:
+            current_phase = 'Pre-lay'
+
+        if current_phase in ['Brooding', 'Growing', 'Pre-lay'] and stat.get('egg_prod_pct', 0) >= 5.0:
+            current_phase = 'Production'
+
+    if flock.phase != current_phase:
+        flock.phase = current_phase
+        db.session.commit()
+
 
 @app.route('/')
 @dept_required('Farm')
@@ -1264,7 +1303,7 @@ def index():
                 f.has_log_today = True
 
             # Cumulative Pct (Phase specific)
-            if f.phase == 'Rearing':
+            if f.phase in ['Brooding', 'Growing']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
@@ -1752,6 +1791,8 @@ def delete_daily_log(id):
 
     db.session.delete(log)
     db.session.commit()
+    recalculate_flock_inventory(flock_id)
+    update_flock_phase(flock_id)
     flash("Daily Log deleted.", "info")
     return redirect(url_for('view_flock', id=flock_id))
 
@@ -2090,62 +2131,47 @@ def calculate_flock_summary(flock, daily_stats):
 
     return dashboard_metrics, summary_table
 
-@app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
+@app.route('/flock/<int:id>/toggle_prelay', methods=['POST'])
 @dept_required('Farm')
-def toggle_phase(id):
+def toggle_prelay(id):
     flock = Flock.query.get_or_404(id)
-    if flock.phase == 'Rearing':
-        flock.phase = 'Production'
 
-        prod_date_str = request.form.get('production_start_date')
-        if prod_date_str:
-            flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
-        else:
-            flock.production_start_date = date.today()
+    is_revert = request.form.get('revert') == 'true'
 
-        # Capture Start Counts
-        prod_m = int(request.form.get('prod_start_male') or 0)
-        prod_f = int(request.form.get('prod_start_female') or 0)
-        hosp_m = int(request.form.get('prod_start_male_hosp') or 0)
-        hosp_f = int(request.form.get('prod_start_female_hosp') or 0)
-
-        flock.prod_start_male = prod_m
-        flock.prod_start_female = prod_f
-        flock.prod_start_male_hosp = hosp_m
-        flock.prod_start_female_hosp = hosp_f
-
-        # Calculate Loss Check (Expected vs Actual)
-        stmt = db.session.query(
-            db.func.sum(DailyLog.mortality_male),
-            db.func.sum(DailyLog.mortality_female),
-            db.func.sum(DailyLog.culls_male),
-            db.func.sum(DailyLog.culls_female)
-        ).filter(DailyLog.flock_id == id).first()
-
-        rearing_loss_m = (stmt[0] or 0) + (stmt[2] or 0)
-        rearing_loss_f = (stmt[1] or 0) + (stmt[3] or 0)
-
-        expected_m = flock.intake_male - rearing_loss_m
-        expected_f = flock.intake_female - rearing_loss_f
-
-        actual_m = prod_m + hosp_m
-        actual_f = prod_f + hosp_f
-
-        diff_m = expected_m - actual_m
-        diff_f = expected_f - actual_f
-
-        msg = f'Flock {flock.flock_id} switched to Production.'
-        if diff_m != 0 or diff_f != 0:
-            msg += f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.'
-
-        flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
-    else:
-        flock.phase = 'Rearing'
+    if is_revert:
         flock.production_start_date = None
-        flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
-    db.session.commit()
-    return redirect(url_for('index'))
+        flock.prod_start_male = 0
+        flock.prod_start_female = 0
+        flock.prod_start_male_hosp = 0
+        flock.prod_start_female_hosp = 0
+        db.session.commit()
+        update_flock_phase(flock.id)
+        flash(f'Pre-Lay date cleared for flock {flock.flock_id}.', 'warning')
+        log_user_activity(session.get('user_id'), 'Edit', 'Flock Phase', flock.id, details={'flock_id': flock.flock_id, 'action': 'Reverted Pre-lay'})
+        return redirect(request.referrer or url_for('view_flock', id=flock.id))
 
+    prod_date_str = request.form.get('production_start_date')
+    if prod_date_str:
+        flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
+    else:
+        flock.production_start_date = date.today()
+
+    prod_m = int(request.form.get('prod_start_male') or 0)
+    prod_f = int(request.form.get('prod_start_female') or 0)
+    hosp_m = int(request.form.get('prod_start_male_hosp') or 0)
+    hosp_f = int(request.form.get('prod_start_female_hosp') or 0)
+
+    flock.prod_start_male = prod_m
+    flock.prod_start_female = prod_f
+    flock.prod_start_male_hosp = hosp_m
+    flock.prod_start_female_hosp = hosp_f
+
+    db.session.commit()
+    update_flock_phase(flock.id)
+
+    flash(f'Flock {flock.flock_id} Pre-lay date set.', 'success')
+    log_user_activity(session.get('user_id'), 'Edit', 'Flock Phase', flock.id, details={'flock_id': flock.flock_id, 'action': 'Started Pre-lay'})
+    return redirect(request.referrer or url_for('view_flock', id=flock.id))
 @app.route('/flock/<int:id>')
 @dept_required('Farm')
 def view_flock(id):
@@ -3665,6 +3691,7 @@ def daily_log():
         try:
             db.session.commit()
             recalculate_flock_inventory(flock.id)
+            update_flock_phase(flock.id)
             flash(flash_msg, 'success')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
@@ -4171,6 +4198,7 @@ def edit_daily_log(id):
         try:
             db.session.commit()
             recalculate_flock_inventory(log.flock_id)
+            update_flock_phase(log.flock_id)
             flash('Log updated successfully.', 'success')
             return redirect(url_for('edit_daily_log', id=id))
         except Exception as e:
@@ -5328,7 +5356,7 @@ def update_log_from_request(log, req):
     uni_m_val = float(req.form.get('uniformity_male') or 0)
     uni_f_val = float(req.form.get('uniformity_female') or 0)
 
-    if log.flock.phase == 'Rearing':
+    if log.flock.phase in ['Brooding', 'Growing']:
         PartitionWeight.query.filter_by(log_id=log.id).delete()
 
         f_parts = [f'F{i}' for i in range(1, 9)]
@@ -6826,8 +6854,8 @@ def additional_report():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
-    prod_flocks = [f for f in active_flocks if f.phase == 'Production']
-    rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
+    prod_flocks = [f for f in active_flocks if f.phase in ['Pre-lay', 'Production']]
+    rearing_flocks = [f for f in active_flocks if f.phase in ['Brooding', 'Growing']]
 
     # Get Aggregated Data
     # We fetch ALL data in one go or per group? One go is fine, then filter in template or here.
@@ -7234,7 +7262,7 @@ def get_iso_aggregated_data(flocks, target_year=None):
             is_prod = False
             if flock.production_start_date and d_date >= flock.production_start_date:
                 is_prod = True
-            elif flock.phase == 'Production':
+            elif flock.phase in ['Pre-lay', 'Production']:
                 # Fallback: if no date set, assume phase is valid for all fetched logs?
                 # No, historical logs might be rearing.
                 # If eggs collected > 0, assume prod.
@@ -7312,7 +7340,7 @@ def get_hatchery_analytics():
     today = date.today()
 
     # Common filter for Active Production Flocks
-    flock_filter = and_(Flock.status == 'Active', Flock.phase == 'Production')
+    flock_filter = and_(Flock.status == 'Active', Flock.phase.in_(['Pre-lay', 'Production']))
 
     # Previous Hatch
     # Max date <= today with hatched_chicks > 0
@@ -7452,7 +7480,7 @@ def executive_dashboard():
             if last['date'] == today:
                 f.has_log_today = True
 
-            if f.phase == 'Rearing':
+            if f.phase in ['Brooding', 'Growing']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:

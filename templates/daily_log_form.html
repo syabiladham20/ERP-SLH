@@ -20,7 +20,7 @@
               {# Pass phase info in data attribute #}
               {% set flock = house.flocks|selectattr("status", "equalto", "Active")|first %}
               <option value="{{ house.id }}"
-                      data-phase="{{ flock.phase if flock else 'Rearing' }}"
+                      data-phase="{{ flock.phase if flock else 'Brooding' }}"
                       {{ 'selected' if (log and log.flock.house_id == house.id) or (selected_house_id == house.id) else '' }}>
                 {{ house.name }}
               </option>
@@ -661,21 +661,21 @@
     // Phase & Partition Logic
     function updatePhase() {
         let houseSelect = document.getElementById('house_id');
-        let phase = 'Rearing';
+        let phase = 'Brooding';
         if (houseSelect && houseSelect.selectedIndex >= 0) {
             let option = houseSelect.options[houseSelect.selectedIndex];
-            phase = option.getAttribute('data-phase') || 'Rearing';
+            phase = option.getAttribute('data-phase') || 'Brooding';
         } else {
             // Fallback (though houseSelect should exist now)
             let phaseInput = document.getElementById('phase_val');
-            phase = phaseInput ? phaseInput.value : 'Rearing';
+            phase = phaseInput ? phaseInput.value : 'Brooding';
         }
 
         let partitionsDiv = document.getElementById('partitions_section');
         let avgDiv = document.getElementById('average_section');
         let weighingCheck = document.getElementById('is_weighing_day');
 
-        if (phase === 'Production') {
+        if (phase === 'Pre-lay' || phase === 'Production') {
             partitionsDiv.style.display = 'none';
             avgDiv.style.display = 'flex'; // Show row
             setAvgReadonly(false);
@@ -691,14 +691,14 @@
 
         // Double check phase
         let houseSelect = document.getElementById('house_id');
-        let phase = 'Rearing';
+        let phase = 'Brooding';
         if (houseSelect && houseSelect.selectedIndex >= 0) {
              phase = houseSelect.options[houseSelect.selectedIndex].getAttribute('data-phase');
         } else if (document.getElementById('phase_val')) {
              phase = document.getElementById('phase_val').value;
         }
 
-        if (phase === 'Production') {
+        if (phase === 'Pre-lay' || phase === 'Production') {
             partitionsDiv.style.display = 'none';
             avgDiv.style.display = 'flex';
             setAvgReadonly(false);
