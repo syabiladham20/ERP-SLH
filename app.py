@@ -2556,7 +2556,7 @@ def view_flock(id):
         # We need a quick way to know which dates have reports
         prefix_to_match = f"_{secure_filename(flock.house.name)}_"
         for f in os.listdir(reports_dir):
-            if prefix_to_match in f and f.endswith(".png"):
+            if prefix_to_match in f and f.endswith(".jpg"):
                 date_str = f.split("_")[0]
                 available_reports.add(date_str)
 
@@ -7766,7 +7766,7 @@ def executive_flock_detail(id):
     if os.path.exists(reports_dir):
         prefix_to_match = f"_{secure_filename(flock.house.name)}_"
         for f in os.listdir(reports_dir):
-            if prefix_to_match in f and f.endswith(".png"):
+            if prefix_to_match in f and f.endswith(".jpg"):
                 date_str = f.split("_")[0]
                 available_reports.add(date_str)
 
@@ -7881,10 +7881,10 @@ def api_daily_log_trend():
             'hatching_eggs': entry.get('hatch_eggs', 0),
             'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
             'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
-            'cull_jumbo': log.cull_eggs_jumbo or 0,
-            'cull_small': log.cull_eggs_small or 0,
-            'cull_abnormal': log.cull_eggs_abnormal or 0,
-            'cull_crack': log.cull_eggs_crack or 0,
+            'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
+            'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
+            'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
+            'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
             'is_target_day': log.date == end_date
         }
         trend_data.append(item)
@@ -7915,17 +7915,24 @@ def api_daily_log_trend():
     stock_f = end_day_log.get('stock_female_start', 0)
     total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
+    # Get proper standard egg weight for the current week
+    std_obj = Standard.query.filter_by(week=end_day_log.get('week', 0)).first()
+    std_egg_weight = std_obj.std_egg_weight if std_obj and std_obj.std_egg_weight else 0.0
+
     report_info = {
         'empty': False,
         'house_name': flock.house.name,
         'age_week': end_day_log.get('week', 0),
+        'phase': flock.phase,
         'date': end_date.strftime('%d-%m-%Y'),
+        'lighting_hours': log.lighting_hours or 0.0,
+        'feed_cleanup_hours': log.feed_cleanup_hours or 0.0,
         'stock_m': stock_m,
         'stock_f': stock_f,
         'cum_mort_m_pct': round(cum_mort_m_pct, 2),
         'cum_mort_f_pct': round(cum_mort_f_pct, 2),
         'egg_weight': log.egg_weight or 0.0,
-        'std_egg_weight': end_day_log.get('std_egg_weight', 0.0),
+        'std_egg_weight': std_egg_weight,
         'feed_m': log.feed_male_gp_bird,
         'feed_f': log.feed_female_gp_bird,
         'total_feed_kg': round(total_feed_kg, 2),
@@ -7955,7 +7962,7 @@ def backup_report_image():
     house_name = data['house']
     age_week = data['age']
 
-    filename = f"{date_str}_{secure_filename(house_name)}_W{age_week}.png"
+    filename = f"{date_str}_{secure_filename(house_name)}_W{age_week}.jpg"
 
     reports_dir = os.path.join(app.root_path, 'static', 'reports')
     if not os.path.exists(reports_dir):

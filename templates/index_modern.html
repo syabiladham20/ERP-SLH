@@ -336,12 +336,12 @@
 
                         await new Promise(r => setTimeout(r, 50));
                         const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
-                        const imgData = canvas.toDataURL('image/png');
+                        const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                         if (!firstPage) {
                             pdf.addPage();
                         }
-                        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                        pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
                         firstPage = false;
                         continue; // Skip the rest for this house, no image backup needed
                     }
@@ -351,12 +351,13 @@
                         <div style="width: 297mm; height: 210mm; background: white; padding: 15mm; font-family: sans-serif; box-sizing: border-box; position: relative;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
                                 <div>
-                                    <h1 style="margin: 0; font-size: 28px;">${data.house_name} - W${data.age_week}</h1>
+                                    <h1 style="margin: 0; font-size: 28px;">${data.house_name} - W${data.age_week} (${data.phase} Phase)</h1>
                                     <div style="font-size: 16px; margin-top: 5px;">Cumulative Mortality (M: ${data.cum_mort_m_pct}% | F: ${data.cum_mort_f_pct}%)</div>
                                     <div style="font-size: 16px;">Stock (M: ${data.stock_m} | F: ${data.stock_f})</div>
                                 </div>
-                                <div style="font-size: 24px; font-weight: bold;">
-                                    ${data.date}
+                                <div style="text-align: right;">
+                                    <div style="font-size: 24px; font-weight: bold;">${data.date}</div>
+                                    <div style="font-size: 16px; margin-top: 5px;">(Lighting: ${data.lighting_hours} h)</div>
                                 </div>
                             </div>
 
@@ -371,7 +372,7 @@
 
                             <div style="margin-top: 15px; font-size: 16px; line-height: 1.5;">
                                 <div><strong>Egg weight:</strong> ${data.egg_weight}g (Std: ${data.std_egg_weight}g)</div>
-                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg</div>
+                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg &nbsp;&nbsp;&nbsp; <strong>Feed Time:</strong> ${data.feed_cleanup_hours} h</div>
                                 <div><strong>Medication:</strong> ${data.medication}</div>
                                 <div><strong>Clinical notes:</strong> ${data.notes}</div>
                             </div>
@@ -407,7 +408,7 @@
                                     pointRadius: pointRadii,
                                     pointBorderWidth: pointBorderWidths,
                                     pointBorderColor: 'black',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'line',
@@ -438,7 +439,7 @@
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yRight',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'darkred', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkred', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -448,7 +449,7 @@
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yRight',
-                                    datalabels: { align: 'top', anchor: 'end', color: '#ff6666', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#ff6666', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 }
                             ]
                         },
@@ -481,7 +482,7 @@
                                     pointRadius: pointRadii,
                                     pointBorderWidth: pointBorderWidths,
                                     pointBorderColor: 'black',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'line',
@@ -495,47 +496,47 @@
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Jumbo',
-                                    data: trend.map(t => t.cull_jumbo),
+                                    label: 'Jumbo (%)',
+                                    data: trend.map(t => t.cull_jumbo_pct),
                                     backgroundColor: 'green',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'green', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'green', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Small',
-                                    data: trend.map(t => t.cull_small),
+                                    label: 'Small (%)',
+                                    data: trend.map(t => t.cull_small_pct),
                                     backgroundColor: 'lightblue',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Abnormal',
-                                    data: trend.map(t => t.cull_abnormal),
+                                    label: 'Abnormal (%)',
+                                    data: trend.map(t => t.cull_abnormal_pct),
                                     backgroundColor: 'darkblue',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
-                                    label: 'Crack',
-                                    data: trend.map(t => t.cull_crack),
+                                    label: 'Crack (%)',
+                                    data: trend.map(t => t.cull_crack_pct),
                                     backgroundColor: 'yellow',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', font: {size: 10}, formatter: v => v > 0 ? v : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 }
                             ]
                         },
@@ -554,12 +555,12 @@
                     await new Promise(r => setTimeout(r, 500));
 
                     const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
-                    const imgData = canvas.toDataURL('image/png');
+                    const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                     if (!firstPage) {
                         pdf.addPage();
                     }
-                    pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
                     firstPage = false;
 
                     // Send backup to server
