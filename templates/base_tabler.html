@@ -165,6 +165,15 @@
                             <span class="nav-link-title">Admin Panel</span>
                         </a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-warning" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
+                            <span class="nav-link-title">Audit Logs</span>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for('admin_audit_logs') }}">System Audit Logs</a>
+                            <a class="dropdown-item" href="{{ url_for('admin_activity_log') }}">User Activity Logs</a>
+                        </div>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link text-info" href="{{ url_for('executive_dashboard') }}">
                             <span class="nav-link-title">Executive</span>

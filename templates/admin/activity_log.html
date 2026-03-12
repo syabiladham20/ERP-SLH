@@ -1,0 +1,82 @@
+{% extends "base_tabler.html" %}
+
+{% block title %}User Activity Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-person-lines-fill me-2 text-primary"></i>User Activity Logs</h1>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Activity Trail</h6>
+            <form class="d-flex" method="GET" action="{{ url_for('admin_activity_log') }}">
+                <select name="user_id" class="form-select me-2" aria-label="Filter by User">
+                    <option value="">All Users</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}" {% if request.args.get('user_id') == user.id|string %}selected{% endif %}>{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+                <select name="resource_type" class="form-select me-2" aria-label="Filter by Resource">
+                    <option value="">All Resources</option>
+                    {% for rt in resource_types %}
+                        <option value="{{ rt }}" {% if request.args.get('resource_type') == rt %}selected{% endif %}>{{ rt }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light text-dark">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Resource</th>
+                            <th>Resource ID</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="text-nowrap">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ log.user.username if log.user else 'Unknown' }}</td>
+                            <td>
+                                {% if log.action == 'Add' %}
+                                    <span class="badge bg-success">Add</span>
+                                {% elif log.action == 'Edit' %}
+                                    <span class="badge bg-warning text-dark">Edit</span>
+                                {% elif log.action == 'Delete' %}
+                                    <span class="badge bg-danger">Delete</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ log.action }}</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-info">{{ log.resource_type }}</span></td>
+                            <td>{{ log.resource_id or '-' }}</td>
+                            <td class="text-muted small">
+                                {% if log.details %}
+                                    <pre class="mb-0" style="max-height: 100px; overflow-y: auto;">{{ log.details }}</pre>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">No activity logs found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
