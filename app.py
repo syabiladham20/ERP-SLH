@@ -7918,7 +7918,7 @@ def api_daily_log_trend():
     report_info = {
         'empty': False,
         'house_name': flock.house.name,
-        'age_week': end_day_log['age_weeks'],
+        'age_week': end_day_log.get('week', 0),
         'date': end_date.strftime('%d-%m-%Y'),
         'stock_m': stock_m,
         'stock_f': stock_f,
