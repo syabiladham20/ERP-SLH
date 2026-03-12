@@ -7919,14 +7919,33 @@ def api_daily_log_trend():
     std_obj = Standard.query.filter_by(week=end_day_log.get('week', 0)).first()
     std_egg_weight = std_obj.std_egg_weight if std_obj and std_obj.std_egg_weight else 0.0
 
+    # Calculate Lighting and Feed Cleanup manually as they are view-specific in other parts of app.py
+    lighting_hours = 0.0
+    if log.light_on_time and log.light_off_time:
+        try:
+            t1 = datetime.strptime(log.light_on_time, '%H:%M')
+            t2 = datetime.strptime(log.light_off_time, '%H:%M')
+            diff = (t2 - t1).total_seconds() / 3600
+            if diff < 0: diff += 24
+            lighting_hours = round(diff, 1)
+        except: pass
+
+    feed_cleanup_hours = 0.0
+    if log.feed_cleanup_start and log.feed_cleanup_end:
+        try:
+            from app import calculate_feed_cleanup_duration
+            duration = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
+            if duration: feed_cleanup_hours = round(duration / 60.0, 1)
+        except: pass
+
     report_info = {
         'empty': False,
         'house_name': flock.house.name,
         'age_week': end_day_log.get('week', 0),
         'phase': flock.phase,
         'date': end_date.strftime('%d-%m-%Y'),
-        'lighting_hours': log.lighting_hours or 0.0,
-        'feed_cleanup_hours': log.feed_cleanup_hours or 0.0,
+        'lighting_hours': lighting_hours,
+        'feed_cleanup_hours': feed_cleanup_hours,
         'stock_m': stock_m,
         'stock_f': stock_f,
         'cum_mort_m_pct': round(cum_mort_m_pct, 2),
