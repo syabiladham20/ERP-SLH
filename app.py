@@ -2556,7 +2556,7 @@ def view_flock(id):
         # We need a quick way to know which dates have reports
         prefix_to_match = f"_{secure_filename(flock.house.name)}_"
         for f in os.listdir(reports_dir):
-            if prefix_to_match in f and f.endswith(".png"):
+            if prefix_to_match in f and f.endswith(".jpg"):
                 date_str = f.split("_")[0]
                 available_reports.add(date_str)
 
@@ -7766,7 +7766,7 @@ def executive_flock_detail(id):
     if os.path.exists(reports_dir):
         prefix_to_match = f"_{secure_filename(flock.house.name)}_"
         for f in os.listdir(reports_dir):
-            if prefix_to_match in f and f.endswith(".png"):
+            if prefix_to_match in f and f.endswith(".jpg"):
                 date_str = f.split("_")[0]
                 available_reports.add(date_str)
 
@@ -7962,7 +7962,7 @@ def backup_report_image():
     house_name = data['house']
     age_week = data['age']
 
-    filename = f"{date_str}_{secure_filename(house_name)}_W{age_week}.png"
+    filename = f"{date_str}_{secure_filename(house_name)}_W{age_week}.jpg"
 
     reports_dir = os.path.join(app.root_path, 'static', 'reports')
     if not os.path.exists(reports_dir):

@@ -336,12 +336,12 @@
 
                         await new Promise(r => setTimeout(r, 50));
                         const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
-                        const imgData = canvas.toDataURL('image/png');
+                        const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                         if (!firstPage) {
                             pdf.addPage();
                         }
-                        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                        pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
                         firstPage = false;
                         continue; // Skip the rest for this house, no image backup needed
                     }
@@ -408,7 +408,7 @@
                                     pointRadius: pointRadii,
                                     pointBorderWidth: pointBorderWidths,
                                     pointBorderColor: 'black',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'line',
@@ -439,7 +439,7 @@
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yRight',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'darkred', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkred', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -449,7 +449,7 @@
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yRight',
-                                    datalabels: { align: 'top', anchor: 'end', color: '#ff6666', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#ff6666', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 }
                             ]
                         },
@@ -482,7 +482,7 @@
                                     pointRadius: pointRadii,
                                     pointBorderWidth: pointBorderWidths,
                                     pointBorderColor: 'black',
-                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'line',
@@ -503,7 +503,7 @@
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'green', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'green', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -514,7 +514,7 @@
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -525,7 +525,7 @@
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: 'darkblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -536,7 +536,7 @@
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(1) : '' }
                                 }
                             ]
                         },
@@ -555,12 +555,12 @@
                     await new Promise(r => setTimeout(r, 500));
 
                     const canvas = await html2canvas(container.firstElementChild, { scale: 2 });
-                    const imgData = canvas.toDataURL('image/png');
+                    const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
                     if (!firstPage) {
                         pdf.addPage();
                     }
-                    pdf.addImage(imgData, 'PNG', 0, 0, 297, 210);
+                    pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
                     firstPage = false;
 
                     // Send backup to server
