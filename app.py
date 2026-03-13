@@ -8125,8 +8125,8 @@ def api_daily_log_trend():
         # Add std
         std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
         if std_w:
-            w_item['std_bw_male'] = std_w.std_body_weight_male or None
-            w_item['std_bw_female'] = std_w.std_body_weight_female or None
+            w_item['std_bw_male'] = std_w.std_bw_male or None
+            w_item['std_bw_female'] = std_w.std_bw_female or None
         weekly_trend.append(w_item)
 
     # If no data for the exact target date, we return empty data flag but not an error
