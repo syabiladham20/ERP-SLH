@@ -324,9 +324,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'stock_male_prod_end': curr_m_prod,
             'stock_female_prod_end': curr_f_prod,
             'stock_male_hosp_end': curr_m_hosp,
-            'stock_female_hosp_end': curr_f_hosp,
-            'stock_male_end': curr_m_prod + curr_m_hosp,
-            'stock_female_end': curr_f_prod + curr_f_hosp
+            'stock_female_hosp_end': curr_f_hosp
         })
 
         daily_stats.append(d)
