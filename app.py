@@ -253,7 +253,6 @@ class Flock(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
-    weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
 class DailyLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -565,17 +564,6 @@ class Vaccine(db.Model):
         unit_size = dpu if dpu > 0 else 1000
         import math
         return math.ceil(live_stock / unit_size)
-
-class ImportedWeeklyBenchmark(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
-    week = db.Column(db.Integer, nullable=False)
-
-    mortality_male = db.Column(db.Integer, default=0)
-    mortality_female = db.Column(db.Integer, default=0)
-    eggs_collected = db.Column(db.Integer, default=0)
-    bw_male = db.Column(db.Integer, default=0)
-    bw_female = db.Column(db.Integer, default=0)
 
 class Hatchability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -2245,8 +2233,8 @@ def view_flock(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d['stock_male_end'],
+            'stock_female': d['stock_female_end'],
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -5126,46 +5114,16 @@ def recalculate_flock_inventory(flock_id):
         elif log.feed_program == '2/1':
             multiplier = 1.5
 
-        # Calculate Total Kg based on updated stock only if feed_male_gp_bird/feed_female_gp_bird are provided
-        # Or if we want to overwrite them if they're 0, but as requested:
-        # "Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
-        # Wait, if we DO NOT modify total_feed_kg unless it's null, then we calculate g/bird.
-
-        # Calculate feed_male_gp_bird and feed_female_gp_bird:
-        if log.feed_male is not None and log.feed_male > 0:
-            # We have total feed kg. Calculate g/bird
-            if curr_males > 0:
-                # log.feed_male_gp_bird = (total_feed_kg * 1000.0) / (multiplier * curr_males)
-                # But wait, we should only NOT modify total_feed_kg unless it's null?
-                pass
-
-        # Original instruction:
-        # "Crucial: Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
-
-        # So we have feed_male (total) and feed_male_gp_bird.
-        if log.feed_male is None:
-            # Recompute total feed if null based on g/bird and stock
-            if curr_males > 0 and log.feed_male_gp_bird:
-                log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
-            else:
-                log.feed_male = 0.0
-
-        if log.feed_female is None:
-            if curr_females > 0 and log.feed_female_gp_bird:
-                log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
-            else:
-                log.feed_female = 0.0
-
-        # Now re-calculate gp_bird based on Total Feed and Stock
-        if curr_males > 0 and log.feed_male is not None:
-            log.feed_male_gp_bird = (log.feed_male * 1000.0) / (curr_males * multiplier)
+        # Store g/b and calculate total feed kg
+        if curr_males > 0 and log.feed_male_gp_bird:
+            log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
         else:
-            log.feed_male_gp_bird = 0.0
+            log.feed_male = 0.0
 
-        if curr_females > 0 and log.feed_female is not None:
-            log.feed_female_gp_bird = (log.feed_female * 1000.0) / (curr_females * multiplier)
+        if curr_females > 0 and log.feed_female_gp_bird:
+            log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
         else:
-            log.feed_female_gp_bird = 0.0
+            log.feed_female = 0.0
 
         # Update stock for the next day
         # Only mortality and culls affect total house stock.
@@ -5510,31 +5468,8 @@ def update_clinical_notes(log, req):
                 save_note_photos(log, note, files)
 
 def verify_import_data(flock, logs=None):
-    weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
-    if logs is None:
-        logs = DailyLog.query.filter_by(flock_id=flock.id).all()
-
-    warnings = []
-    agg = {}
-    for log in logs:
-        delta = (log.date - flock.intake_date).days
-        week = (delta // 7) + 1
-        if week not in agg:
-            agg[week] = {'mort_f': 0, 'eggs': 0}
-
-        agg[week]['mort_f'] += log.mortality_female
-        agg[week]['eggs'] += log.eggs_collected
-
-    for wd in weekly_records:
-        if wd.week in agg:
-            calc = agg[wd.week]
-            if abs(calc['mort_f'] - wd.mortality_female) > 1:
-                warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
-
-            if abs(calc['eggs'] - wd.eggs_collected) > 5:
-                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
-
-    return warnings
+    # ImportedWeeklyBenchmark removed per SSOT. Return empty warnings list.
+    return []
 
 @app.route('/health_log')
 def health_log():
@@ -7679,8 +7614,8 @@ def executive_flock_detail(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d['stock_male_end'],
+            'stock_female': d['stock_female_end'],
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -8066,15 +8001,6 @@ def api_daily_log_trend():
     gs = GlobalStandard.query.first()
     enriched = enrich_flock_data(flock, logs)
 
-    cum_mort_m = db.session.query(db.func.sum(DailyLog.mortality_male)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-    cum_mort_f = db.session.query(db.func.sum(DailyLog.mortality_female)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-
-    intake_m = flock.intake_male or 0
-    intake_f = flock.intake_female or 0
-
-    cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
-    cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
-
     trend_data = []
     end_day_log = None
 
@@ -8137,6 +8063,9 @@ def api_daily_log_trend():
             'date': end_date.strftime('%d-%m-%Y')
         })
 
+    cum_mort_m_pct = end_day_log.get('mortality_cum_male_pct', 0)
+    cum_mort_f_pct = end_day_log.get('mortality_cum_female_pct', 0)
+
     log = end_day_log['log']
 
     notes = [n.description for n in log.clinical_notes_list] if log.clinical_notes_list else []
@@ -8154,8 +8083,8 @@ def api_daily_log_trend():
     vaccines_used = VaccineRecord.query.filter_by(flock_id=flock_id, date=log.date).all()
     vaccines_str = ", ".join([v.vaccine.name for v in vaccines_used if v.vaccine]) if vaccines_used else ""
 
-    stock_m = end_day_log.get('stock_male_start', 0)
-    stock_f = end_day_log.get('stock_female_start', 0)
+    stock_m = end_day_log.get('stock_male_end', 0)
+    stock_f = end_day_log.get('stock_female_end', 0)
     total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
     # Get proper standard egg weight for the current week
