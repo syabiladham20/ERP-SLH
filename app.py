@@ -253,7 +253,6 @@ class Flock(db.Model):
     end_date = db.Column(db.Date, nullable=True)
     
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
-    weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
 class DailyLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -565,17 +564,6 @@ class Vaccine(db.Model):
         unit_size = dpu if dpu > 0 else 1000
         import math
         return math.ceil(live_stock / unit_size)
-
-class ImportedWeeklyBenchmark(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
-    week = db.Column(db.Integer, nullable=False)
-
-    mortality_male = db.Column(db.Integer, default=0)
-    mortality_female = db.Column(db.Integer, default=0)
-    eggs_collected = db.Column(db.Integer, default=0)
-    bw_male = db.Column(db.Integer, default=0)
-    bw_female = db.Column(db.Integer, default=0)
 
 class Hatchability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1208,7 +1196,7 @@ def admin_user_reset_password(user_id):
 @app.route('/hatchery')
 @dept_required('Hatchery')
 def hatchery_dashboard():
-    active_flocks = Flock.query.filter_by(status='Active', phase='Production').all()
+    active_flocks = Flock.query.filter(Flock.status == 'Active', Flock.phase.in_(['Pre-lay', 'Production'])).all()
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
     today = date.today()
     for f in active_flocks:
@@ -1228,6 +1216,45 @@ def hatchery_dashboard():
     avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
 
     return render_template('hatchery_dashboard.html', active_flocks=active_flocks, avg_hatch_pct=avg_hatch_pct, current_month=today.strftime('%B %Y'))
+
+
+def update_flock_phase(flock_id):
+    from metrics import enrich_flock_data
+    from datetime import date
+
+    flock = Flock.query.get(flock_id)
+    if not flock: return
+
+    current_phase = 'Brooding'
+    logs = sorted(flock.logs, key=lambda x: x.date)
+
+    if not logs:
+        if flock.production_start_date and flock.production_start_date <= date.today():
+            current_phase = 'Pre-lay'
+        if flock.phase != current_phase:
+            flock.phase = current_phase
+            db.session.commit()
+        return
+
+    daily_stats = enrich_flock_data(flock, logs)
+
+    for stat in daily_stats:
+        log_date = stat['date']
+        log_obj = stat['log']
+
+        if current_phase == 'Brooding' and log_obj.feed_program == 'Skip-a-day':
+            current_phase = 'Growing'
+
+        if current_phase in ['Brooding', 'Growing'] and flock.production_start_date and log_date >= flock.production_start_date:
+            current_phase = 'Pre-lay'
+
+        if current_phase in ['Brooding', 'Growing', 'Pre-lay'] and stat.get('egg_prod_pct', 0) >= 5.0:
+            current_phase = 'Production'
+
+    if flock.phase != current_phase:
+        flock.phase = current_phase
+        db.session.commit()
+
 
 @app.route('/')
 @dept_required('Farm')
@@ -1266,7 +1293,7 @@ def index():
                 f.has_log_today = True
 
             # Cumulative Pct (Phase specific)
-            if f.phase == 'Rearing':
+            if f.phase in ['Brooding', 'Growing']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
@@ -1754,6 +1781,8 @@ def delete_daily_log(id):
 
     db.session.delete(log)
     db.session.commit()
+    recalculate_flock_inventory(flock_id)
+    update_flock_phase(flock_id)
     flash("Daily Log deleted.", "info")
     return redirect(url_for('view_flock', id=flock_id))
 
@@ -2092,62 +2121,47 @@ def calculate_flock_summary(flock, daily_stats):
 
     return dashboard_metrics, summary_table
 
-@app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
+@app.route('/flock/<int:id>/toggle_prelay', methods=['POST'])
 @dept_required('Farm')
-def toggle_phase(id):
+def toggle_prelay(id):
     flock = Flock.query.get_or_404(id)
-    if flock.phase == 'Rearing':
-        flock.phase = 'Production'
 
-        prod_date_str = request.form.get('production_start_date')
-        if prod_date_str:
-            flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
-        else:
-            flock.production_start_date = date.today()
+    is_revert = request.form.get('revert') == 'true'
 
-        # Capture Start Counts
-        prod_m = int(request.form.get('prod_start_male') or 0)
-        prod_f = int(request.form.get('prod_start_female') or 0)
-        hosp_m = int(request.form.get('prod_start_male_hosp') or 0)
-        hosp_f = int(request.form.get('prod_start_female_hosp') or 0)
-
-        flock.prod_start_male = prod_m
-        flock.prod_start_female = prod_f
-        flock.prod_start_male_hosp = hosp_m
-        flock.prod_start_female_hosp = hosp_f
-
-        # Calculate Loss Check (Expected vs Actual)
-        stmt = db.session.query(
-            db.func.sum(DailyLog.mortality_male),
-            db.func.sum(DailyLog.mortality_female),
-            db.func.sum(DailyLog.culls_male),
-            db.func.sum(DailyLog.culls_female)
-        ).filter(DailyLog.flock_id == id).first()
-
-        rearing_loss_m = (stmt[0] or 0) + (stmt[2] or 0)
-        rearing_loss_f = (stmt[1] or 0) + (stmt[3] or 0)
-
-        expected_m = flock.intake_male - rearing_loss_m
-        expected_f = flock.intake_female - rearing_loss_f
-
-        actual_m = prod_m + hosp_m
-        actual_f = prod_f + hosp_f
-
-        diff_m = expected_m - actual_m
-        diff_f = expected_f - actual_f
-
-        msg = f'Flock {flock.flock_id} switched to Production.'
-        if diff_m != 0 or diff_f != 0:
-            msg += f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.'
-
-        flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
-    else:
-        flock.phase = 'Rearing'
+    if is_revert:
         flock.production_start_date = None
-        flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
-    db.session.commit()
-    return redirect(url_for('index'))
+        flock.prod_start_male = 0
+        flock.prod_start_female = 0
+        flock.prod_start_male_hosp = 0
+        flock.prod_start_female_hosp = 0
+        db.session.commit()
+        update_flock_phase(flock.id)
+        flash(f'Pre-Lay date cleared for flock {flock.flock_id}.', 'warning')
+        log_user_activity(session.get('user_id'), 'Edit', 'Flock Phase', flock.id, details={'flock_id': flock.flock_id, 'action': 'Reverted Pre-lay'})
+        return redirect(request.referrer or url_for('view_flock', id=flock.id))
 
+    prod_date_str = request.form.get('production_start_date')
+    if prod_date_str:
+        flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
+    else:
+        flock.production_start_date = date.today()
+
+    prod_m = int(request.form.get('prod_start_male') or 0)
+    prod_f = int(request.form.get('prod_start_female') or 0)
+    hosp_m = int(request.form.get('prod_start_male_hosp') or 0)
+    hosp_f = int(request.form.get('prod_start_female_hosp') or 0)
+
+    flock.prod_start_male = prod_m
+    flock.prod_start_female = prod_f
+    flock.prod_start_male_hosp = hosp_m
+    flock.prod_start_female_hosp = hosp_f
+
+    db.session.commit()
+    update_flock_phase(flock.id)
+
+    flash(f'Flock {flock.flock_id} Pre-lay date set.', 'success')
+    log_user_activity(session.get('user_id'), 'Edit', 'Flock Phase', flock.id, details={'flock_id': flock.flock_id, 'action': 'Started Pre-lay'})
+    return redirect(request.referrer or url_for('view_flock', id=flock.id))
 @app.route('/flock/<int:id>')
 @dept_required('Farm')
 def view_flock(id):
@@ -2245,8 +2259,8 @@ def view_flock(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d['stock_male_end'],
+            'stock_female': d['stock_female_end'],
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -3667,6 +3681,7 @@ def daily_log():
         try:
             db.session.commit()
             recalculate_flock_inventory(flock.id)
+            update_flock_phase(flock.id)
             flash(flash_msg, 'success')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
@@ -4173,6 +4188,7 @@ def edit_daily_log(id):
         try:
             db.session.commit()
             recalculate_flock_inventory(log.flock_id)
+            update_flock_phase(log.flock_id)
             flash('Log updated successfully.', 'success')
             return redirect(url_for('edit_daily_log', id=id))
         except Exception as e:
@@ -5126,46 +5142,16 @@ def recalculate_flock_inventory(flock_id):
         elif log.feed_program == '2/1':
             multiplier = 1.5
 
-        # Calculate Total Kg based on updated stock only if feed_male_gp_bird/feed_female_gp_bird are provided
-        # Or if we want to overwrite them if they're 0, but as requested:
-        # "Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
-        # Wait, if we DO NOT modify total_feed_kg unless it's null, then we calculate g/bird.
-
-        # Calculate feed_male_gp_bird and feed_female_gp_bird:
-        if log.feed_male is not None and log.feed_male > 0:
-            # We have total feed kg. Calculate g/bird
-            if curr_males > 0:
-                # log.feed_male_gp_bird = (total_feed_kg * 1000.0) / (multiplier * curr_males)
-                # But wait, we should only NOT modify total_feed_kg unless it's null?
-                pass
-
-        # Original instruction:
-        # "Crucial: Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
-
-        # So we have feed_male (total) and feed_male_gp_bird.
-        if log.feed_male is None:
-            # Recompute total feed if null based on g/bird and stock
-            if curr_males > 0 and log.feed_male_gp_bird:
-                log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
-            else:
-                log.feed_male = 0.0
-
-        if log.feed_female is None:
-            if curr_females > 0 and log.feed_female_gp_bird:
-                log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
-            else:
-                log.feed_female = 0.0
-
-        # Now re-calculate gp_bird based on Total Feed and Stock
-        if curr_males > 0 and log.feed_male is not None:
-            log.feed_male_gp_bird = (log.feed_male * 1000.0) / (curr_males * multiplier)
+        # Store g/b and calculate total feed kg
+        if curr_males > 0 and log.feed_male_gp_bird:
+            log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
         else:
-            log.feed_male_gp_bird = 0.0
+            log.feed_male = 0.0
 
-        if curr_females > 0 and log.feed_female is not None:
-            log.feed_female_gp_bird = (log.feed_female * 1000.0) / (curr_females * multiplier)
+        if curr_females > 0 and log.feed_female_gp_bird:
+            log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
         else:
-            log.feed_female_gp_bird = 0.0
+            log.feed_female = 0.0
 
         # Update stock for the next day
         # Only mortality and culls affect total house stock.
@@ -5330,7 +5316,7 @@ def update_log_from_request(log, req):
     uni_m_val = float(req.form.get('uniformity_male') or 0)
     uni_f_val = float(req.form.get('uniformity_female') or 0)
 
-    if log.flock.phase == 'Rearing':
+    if log.flock.phase in ['Brooding', 'Growing']:
         PartitionWeight.query.filter_by(log_id=log.id).delete()
 
         f_parts = [f'F{i}' for i in range(1, 9)]
@@ -5510,31 +5496,8 @@ def update_clinical_notes(log, req):
                 save_note_photos(log, note, files)
 
 def verify_import_data(flock, logs=None):
-    weekly_records = ImportedWeeklyBenchmark.query.filter_by(flock_id=flock.id).order_by(ImportedWeeklyBenchmark.week).all()
-    if logs is None:
-        logs = DailyLog.query.filter_by(flock_id=flock.id).all()
-
-    warnings = []
-    agg = {}
-    for log in logs:
-        delta = (log.date - flock.intake_date).days
-        week = (delta // 7) + 1
-        if week not in agg:
-            agg[week] = {'mort_f': 0, 'eggs': 0}
-
-        agg[week]['mort_f'] += log.mortality_female
-        agg[week]['eggs'] += log.eggs_collected
-
-    for wd in weekly_records:
-        if wd.week in agg:
-            calc = agg[wd.week]
-            if abs(calc['mort_f'] - wd.mortality_female) > 1:
-                warnings.append(f"Week {wd.week}: Calc Mort F ({calc['mort_f']}) != Imported ({wd.mortality_female})")
-
-            if abs(calc['eggs'] - wd.eggs_collected) > 5:
-                warnings.append(f"Week {wd.week}: Calc Eggs ({calc['eggs']}) != Imported ({wd.eggs_collected})")
-
-    return warnings
+    # ImportedWeeklyBenchmark removed per SSOT. Return empty warnings list.
+    return []
 
 @app.route('/health_log')
 def health_log():
@@ -6833,8 +6796,8 @@ def additional_report():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
-    prod_flocks = [f for f in active_flocks if f.phase == 'Production']
-    rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
+    prod_flocks = [f for f in active_flocks if f.phase in ['Pre-lay', 'Production']]
+    rearing_flocks = [f for f in active_flocks if f.phase in ['Brooding', 'Growing']]
 
     # Get Aggregated Data
     # We fetch ALL data in one go or per group? One go is fine, then filter in template or here.
@@ -7241,7 +7204,7 @@ def get_iso_aggregated_data(flocks, target_year=None):
             is_prod = False
             if flock.production_start_date and d_date >= flock.production_start_date:
                 is_prod = True
-            elif flock.phase == 'Production':
+            elif flock.phase in ['Pre-lay', 'Production']:
                 # Fallback: if no date set, assume phase is valid for all fetched logs?
                 # No, historical logs might be rearing.
                 # If eggs collected > 0, assume prod.
@@ -7319,7 +7282,7 @@ def get_hatchery_analytics():
     today = date.today()
 
     # Common filter for Active Production Flocks
-    flock_filter = and_(Flock.status == 'Active', Flock.phase == 'Production')
+    flock_filter = and_(Flock.status == 'Active', Flock.phase.in_(['Pre-lay', 'Production']))
 
     # Previous Hatch
     # Max date <= today with hatched_chicks > 0
@@ -7459,7 +7422,7 @@ def executive_dashboard():
             if last['date'] == today:
                 f.has_log_today = True
 
-            if f.phase == 'Rearing':
+            if f.phase in ['Brooding', 'Growing']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
@@ -7679,8 +7642,8 @@ def executive_flock_detail(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d['stock_male_end'],
+            'stock_female': d['stock_female_end'],
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -8066,15 +8029,6 @@ def api_daily_log_trend():
     gs = GlobalStandard.query.first()
     enriched = enrich_flock_data(flock, logs)
 
-    cum_mort_m = db.session.query(db.func.sum(DailyLog.mortality_male)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-    cum_mort_f = db.session.query(db.func.sum(DailyLog.mortality_female)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-
-    intake_m = flock.intake_male or 0
-    intake_f = flock.intake_female or 0
-
-    cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
-    cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
-
     trend_data = []
     end_day_log = None
 
@@ -8125,8 +8079,8 @@ def api_daily_log_trend():
         # Add std
         std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
         if std_w:
-            w_item['std_bw_male'] = std_w.std_body_weight_male or None
-            w_item['std_bw_female'] = std_w.std_body_weight_female or None
+            w_item['std_bw_male'] = std_w.std_bw_male or 0.0
+            w_item['std_bw_female'] = std_w.std_bw_female or 0.0
         weekly_trend.append(w_item)
 
     # If no data for the exact target date, we return empty data flag but not an error
@@ -8136,6 +8090,9 @@ def api_daily_log_trend():
             'house_name': flock.house.name,
             'date': end_date.strftime('%d-%m-%Y')
         })
+
+    cum_mort_m_pct = end_day_log.get('mortality_cum_male_pct', 0)
+    cum_mort_f_pct = end_day_log.get('mortality_cum_female_pct', 0)
 
     log = end_day_log['log']
 
@@ -8147,15 +8104,14 @@ def api_daily_log_trend():
         Medication.start_date <= log.date,
         db.or_(Medication.end_date == None, Medication.end_date >= log.date)
     ).all()
-    meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
+    meds_str = ", ".join([m.drug_name for m in medications_used]) if medications_used else "None"
 
     # Get Vaccinations for the day
-    from models import VaccineRecord
-    vaccines_used = VaccineRecord.query.filter_by(flock_id=flock_id, date=log.date).all()
-    vaccines_str = ", ".join([v.vaccine.name for v in vaccines_used if v.vaccine]) if vaccines_used else ""
+    vaccines_used = Vaccine.query.filter_by(flock_id=flock_id, actual_date=log.date).all()
+    vaccines_str = ", ".join([v.vaccine_name for v in vaccines_used if v.vaccine_name]) if vaccines_used else ""
 
-    stock_m = end_day_log.get('stock_male_start', 0)
-    stock_f = end_day_log.get('stock_female_start', 0)
+    stock_m = end_day_log.get('stock_male_end', 0)
+    stock_f = end_day_log.get('stock_female_end', 0)
     total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
     # Get proper standard egg weight for the current week
