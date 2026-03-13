@@ -89,7 +89,7 @@
       </div>
       <div class="col-md-3 border-end">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Phase</span><br>
-          <span class="badge bg-{{ 'success' if flock.phase == 'Production' else 'primary' }} mt-1">{{ flock.phase }}</span>
+          <span class="badge bg-{{ 'success' if flock.phase in ['Pre-lay', 'Production'] else 'primary' }} mt-1">{{ flock.phase }}</span>
       </div>
       <div class="col-md-3">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Intake Date</span><br>
@@ -706,7 +706,7 @@
         <h4 class="alert-heading">Production Summary Not Available</h4>
         <p>This flock has not started production or missing production start data.</p>
         <hr>
-        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date'.</p>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Pre-lay Start Date'.</p>
         {% if not flock.start_of_lay_date %}
         <p class="mb-0 fw-bold text-danger mt-2">
             Missing 'Start of Lay Date' (First Egg).
