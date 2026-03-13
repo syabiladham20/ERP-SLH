@@ -8113,20 +8113,20 @@ def api_daily_log_trend():
         w_log = w.get('log')
         w_item = {
             'week': w.get('week', 0),
-            'bw_male': w.get('body_weight_male', 0.0),
-            'bw_female': w.get('body_weight_female', 0.0),
-            'uniformity_male': w.get('uniformity_male', 0.0),
-            'uniformity_female': w.get('uniformity_female', 0.0),
-            'std_bw_male': 0.0,
-            'std_bw_female': 0.0,
+            'bw_male': w.get('body_weight_male', 0.0) or None,
+            'bw_female': w.get('body_weight_female', 0.0) or None,
+            'uniformity_male': w.get('uniformity_male', 0.0) or None,
+            'uniformity_female': w.get('uniformity_female', 0.0) or None,
+            'std_bw_male': None,
+            'std_bw_female': None,
             'selection_done': any(e['log'].selection_done for e in enriched if e.get('week') == w.get('week')),
             'spiking': any(e['log'].spiking for e in enriched if e.get('week') == w.get('week'))
         }
         # Add std
         std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
         if std_w:
-            w_item['std_bw_male'] = std_w.std_body_weight_male or 0.0
-            w_item['std_bw_female'] = std_w.std_body_weight_female or 0.0
+            w_item['std_bw_male'] = std_w.std_body_weight_male or None
+            w_item['std_bw_female'] = std_w.std_body_weight_female or None
         weekly_trend.append(w_item)
 
     # If no data for the exact target date, we return empty data flag but not an error
