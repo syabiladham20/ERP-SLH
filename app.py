@@ -8253,6 +8253,19 @@ def api_daily_log_trend():
     cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
     cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
 
+    # Fetch Standards
+    all_standards = GlobalStandard.query.all()
+    prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+
+    # Attach Standards
+    for d in enriched:
+        prod_std = None
+        if d.get('production_week'):
+            prod_std = prod_std_map.get(d['production_week'])
+
+        d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+
     trend_data = []
     end_day_log = None
 
