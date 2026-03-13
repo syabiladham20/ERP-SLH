@@ -2678,6 +2678,10 @@ def flock_spreadsheet(id):
     gs = GlobalStandard.query.first()
     std_hatching_egg_pct = gs.std_hatching_egg_pct if gs and gs.std_hatching_egg_pct is not None else 96.0
 
+    # Fetch Feed Codes
+    feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
+    feed_code_options = [fc.code for fc in feed_codes]
+
     spreadsheet_data = []
 
     # Needs metrics to figure out correct biological/prod weeks
@@ -2704,34 +2708,73 @@ def flock_spreadsheet(id):
 
         clinical_notes_str = ', '.join(notes_parts)
 
-        spreadsheet_data.append([
+        # Get partition weights
+        p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
+        p_uni_map = {pw.partition_name: pw.uniformity for pw in log.partition_weights}
+
+        row_data = [
             log.id,
             log.date.strftime('%Y-%m-%d'),
             item['age_days'],
             clinical_notes_str,
             log.mortality_male,
             log.mortality_female,
+            log.mortality_male_hosp,
+            log.mortality_female_hosp,
             log.culls_male,
             log.culls_female,
+            log.culls_male_hosp,
+            log.culls_female_hosp,
+            log.males_moved_to_hosp,
+            log.females_moved_to_hosp,
+            log.males_moved_to_prod,
+            log.females_moved_to_prod,
+            log.feed_program,
+            log.feed_code_male.code if log.feed_code_male else '',
+            log.feed_code_female.code if log.feed_code_female else '',
+            log.feed_male_gp_bird,
+            log.feed_female_gp_bird,
+            log.feed_cleanup_start,
+            log.feed_cleanup_end,
             log.water_reading_1,
             log.water_reading_2,
             log.water_reading_3,
+            True if log.flushing else False,
             log.eggs_collected,
+            log.egg_weight,
             log.cull_eggs_jumbo,
             log.cull_eggs_small,
-            log.cull_eggs_crack,
             log.cull_eggs_abnormal,
-            log.feed_male,
-            log.feed_female,
+            log.cull_eggs_crack,
+            True if log.is_weighing_day else False,
             log.body_weight_male,
             log.body_weight_female,
+            log.uniformity_male,
+            log.uniformity_female,
+            log.standard_bw_male,
+            log.standard_bw_female
+        ]
+
+        # Add partitions
+        for i in range(1, 9):
+            row_data.append(p_map.get(f'M{i}', getattr(log, f'bw_male_p{i}', None) if i <= 2 else None))
+            row_data.append(p_uni_map.get(f'M{i}', getattr(log, f'unif_male_p{i}', None) if i <= 2 else None))
+        for i in range(1, 9):
+            row_data.append(p_map.get(f'F{i}', getattr(log, f'bw_female_p{i}', None) if i <= 4 else None))
+            row_data.append(p_uni_map.get(f'F{i}', getattr(log, f'unif_female_p{i}', None) if i <= 4 else None))
+
+        row_data.extend([
+            log.light_on_time,
+            log.light_off_time,
             bio_std.std_mortality_female if bio_std else 0, # Benchmark Female Mort
             prod_std.std_egg_prod if prod_std else 0,       # Benchmark Egg Prod
             bio_std.std_bw_male if bio_std else 0,        # Benchmark
             bio_std.std_bw_female if bio_std else 0       # Benchmark
         ])
 
-    return render_template('flock_spreadsheet_modern.html', flock=flock, spreadsheet_data=spreadsheet_data)
+        spreadsheet_data.append(row_data)
+
+    return render_template('flock_spreadsheet_modern.html', flock=flock, spreadsheet_data=spreadsheet_data, feed_codes=feed_code_options)
 
 @app.route('/api/flock/<int:flock_id>/spreadsheet_save', methods=['POST'])
 def flock_spreadsheet_save(flock_id):
@@ -2743,65 +2786,200 @@ def flock_spreadsheet_save(flock_id):
         return jsonify({'success': False, 'error': 'No data provided'}), 400
 
     try:
+        # Pre-fetch Feed Codes
+        feed_codes = FeedCode.query.all()
+        feed_code_map = {fc.code: fc.id for fc in feed_codes}
+
         # Fetch logs mapped by ID
         log_ids = [row.get('id') for row in data if row.get('id')]
         logs = {log.id: log for log in DailyLog.query.filter(DailyLog.id.in_(log_ids), DailyLog.flock_id == flock_id).all()}
 
+        flock = Flock.query.get(flock_id)
+        if not flock:
+            return jsonify({'success': False, 'error': 'Flock not found'}), 404
+
         for row in data:
             log_id = row.get('id')
-            if not log_id or log_id not in logs:
-                continue
+            is_new = False
+            if not log_id:
+                # Handle new row
+                date_str = row.get('date')
+                if not date_str:
+                    continue
+                try:
+                    log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                except ValueError:
+                    continue
 
-            log = logs[log_id]
+                # Check if it exists
+                log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
+                if not log:
+                    log = DailyLog(flock_id=flock_id, date=log_date)
+                    db.session.add(log)
+                    is_new = True
+            else:
+                if log_id not in logs:
+                    continue
+                log = logs[log_id]
 
             old_data = {}
 
-            # Update only editable fields
-            editable_fields = [
-                'mortality_male', 'mortality_female', 'culls_male', 'culls_female',
+            # Update fields
+            numeric_fields = [
+                'mortality_male', 'mortality_female', 'mortality_male_hosp', 'mortality_female_hosp',
+                'culls_male', 'culls_female', 'culls_male_hosp', 'culls_female_hosp',
+                'males_moved_to_hosp', 'females_moved_to_hosp', 'males_moved_to_prod', 'females_moved_to_prod',
                 'water_reading_1', 'water_reading_2', 'water_reading_3',
-                'eggs_collected', 'eggs_jumbo', 'eggs_small', 'eggs_crack', 'eggs_abnormal',
-                'feed_male', 'feed_female', 'body_weight_male', 'body_weight_female'
+                'eggs_collected', 'cull_eggs_jumbo', 'cull_eggs_small', 'cull_eggs_abnormal', 'cull_eggs_crack'
             ]
 
-            for field in editable_fields:
-                old_data[field] = getattr(log, field)
-                val = row.get(field)
-                if val == '': val = None
-                if val is not None:
-                    try:
-                        val = float(val)
-                    except ValueError:
-                        val = None
+            float_fields = [
+                'feed_male_gp_bird', 'feed_female_gp_bird', 'egg_weight',
+                'body_weight_male', 'body_weight_female', 'uniformity_male', 'uniformity_female',
+                'standard_bw_male', 'standard_bw_female'
+            ]
 
+            string_fields = [
+                'feed_program', 'feed_cleanup_start', 'feed_cleanup_end', 'light_on_time', 'light_off_time'
+            ]
+
+            boolean_fields = [
+                'flushing', 'is_weighing_day'
+            ]
+
+            for field in numeric_fields:
+                if not is_new: old_data[field] = getattr(log, field)
+                val = row.get(field)
+                if val == '': val = 0
+                if val is not None:
+                    try: val = int(float(val))
+                    except ValueError: val = 0
+                else: val = 0
                 setattr(log, field, val)
 
-            # Handle clinical signs separately
-            old_data['clinical_notes'] = log.clinical_notes
-            clinical_signs_val = row.get('clinical_signs')
-            # Clear existing clinical notes for this log
-            ClinicalNote.query.filter_by(log_id=log.id).delete()
+            for field in float_fields:
+                if not is_new: old_data[field] = getattr(log, field)
+                val = row.get(field)
+                if val == '': val = 0.0
+                if val is not None:
+                    try: val = float(val)
+                    except ValueError: val = 0.0
+                else: val = 0.0
+                setattr(log, field, val)
 
+            for field in string_fields:
+                if not is_new: old_data[field] = getattr(log, field)
+                val = row.get(field)
+                setattr(log, field, val if val else None)
+
+            for field in boolean_fields:
+                if not is_new: old_data[field] = getattr(log, field)
+                val = row.get(field)
+                if isinstance(val, str):
+                    val = val.lower() == 'true'
+                setattr(log, field, bool(val))
+
+            # Feed Codes
+            if not is_new:
+                old_data['feed_code_male'] = log.feed_code_male.code if log.feed_code_male else ''
+                old_data['feed_code_female'] = log.feed_code_female.code if log.feed_code_female else ''
+            fc_m_code = row.get('feed_code_male')
+            if fc_m_code and fc_m_code in feed_code_map:
+                log.feed_code_male_id = feed_code_map[fc_m_code]
+            else:
+                log.feed_code_male_id = None
+
+            fc_f_code = row.get('feed_code_female')
+            if fc_f_code and fc_f_code in feed_code_map:
+                log.feed_code_female_id = feed_code_map[fc_f_code]
+            else:
+                log.feed_code_female_id = None
+
+            # Handle clinical signs
+            if not is_new: old_data['clinical_notes'] = log.clinical_notes
+            clinical_signs_val = row.get('clinical_signs')
+
+            # Since ClinicalNote model list represents detailed notes and clinical_notes text is main note:
             if clinical_signs_val and clinical_signs_val.strip():
                 log.clinical_notes = clinical_signs_val.strip()
             else:
                 log.clinical_notes = None
 
-            new_data = {}
-            for field in editable_fields:
-                new_data[field] = getattr(log, field)
-            new_data['clinical_notes'] = log.clinical_notes
+            # Handle Partitions
+            if log.id:
+                PartitionWeight.query.filter_by(log_id=log.id).delete()
+            else:
+                db.session.flush() # Get log.id
 
-            changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
-            if changes:
-                log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
+            sum_bw_m = 0; count_bw_m = 0
+            sum_uni_m = 0; count_uni_m = 0
+            sum_bw_f = 0; count_bw_f = 0
+            sum_uni_f = 0; count_uni_f = 0
 
-            # Assuming simple continuous accumulation or daily input.
-            # Real recalculation needs full historical sequence, which is complex for bulk edit.
-            # We will just save raw values and let the normal metrics.py handle derived values
-            # or apply a simple override here.
+            for i in range(1, 9):
+                # Male partitions
+                p_m_bw = row.get(f'bw_M{i}')
+                p_m_uni = row.get(f'uni_M{i}')
+                try: p_m_bw = int(float(p_m_bw)) if p_m_bw else 0
+                except: p_m_bw = 0
+                try: p_m_uni = float(p_m_uni) if p_m_uni else 0.0
+                except: p_m_uni = 0.0
+
+                if p_m_bw > 0:
+                    pw_m = PartitionWeight(log_id=log.id, partition_name=f'M{i}', body_weight=p_m_bw, uniformity=p_m_uni)
+                    db.session.add(pw_m)
+                    sum_bw_m += p_m_bw
+                    count_bw_m += 1
+                    if p_m_uni > 0:
+                        sum_uni_m += p_m_uni
+                        count_uni_m += 1
+
+                # Female partitions
+                p_f_bw = row.get(f'bw_F{i}')
+                p_f_uni = row.get(f'uni_F{i}')
+                try: p_f_bw = int(float(p_f_bw)) if p_f_bw else 0
+                except: p_f_bw = 0
+                try: p_f_uni = float(p_f_uni) if p_f_uni else 0.0
+                except: p_f_uni = 0.0
+
+                if p_f_bw > 0:
+                    pw_f = PartitionWeight(log_id=log.id, partition_name=f'F{i}', body_weight=p_f_bw, uniformity=p_f_uni)
+                    db.session.add(pw_f)
+                    sum_bw_f += p_f_bw
+                    count_bw_f += 1
+                    if p_f_uni > 0:
+                        sum_uni_f += p_f_uni
+                        count_uni_f += 1
+
+            # Auto calculate average if not provided but partitions exist
+            if log.body_weight_male == 0 and count_bw_m > 0:
+                log.body_weight_male = round_to_whole(sum_bw_m / count_bw_m)
+            if log.body_weight_female == 0 and count_bw_f > 0:
+                log.body_weight_female = round_to_whole(sum_bw_f / count_bw_f)
+            if log.uniformity_male == 0.0 and count_uni_m > 0:
+                log.uniformity_male = sum_uni_m / count_uni_m
+            if log.uniformity_female == 0.0 and count_uni_f > 0:
+                log.uniformity_female = sum_uni_f / count_uni_f
+
+            if not is_new:
+                new_data = {}
+                for field in numeric_fields + float_fields + string_fields + boolean_fields:
+                    new_data[field] = getattr(log, field)
+                new_data['clinical_notes'] = log.clinical_notes
+                new_data['feed_code_male'] = log.feed_code_male.code if log.feed_code_male else ''
+                new_data['feed_code_female'] = log.feed_code_female.code if log.feed_code_female else ''
+
+                changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data.get(k)}
+                if changes:
+                    log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
+            else:
+                log_user_activity(session.get('user_id'), 'Add', 'DailyLog', log.id, details={'date': str(log.date)})
 
         db.session.commit()
+
+        # Recalculate inventory cascading after bulk save
+        recalculate_flock_inventory(flock_id)
+
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()

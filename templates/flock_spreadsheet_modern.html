@@ -10,6 +10,7 @@
     </div>
     <div class="col-auto ms-auto d-print-none">
       <div class="btn-list">
+        <button id="addRowBtn" class="btn btn-info text-white d-none d-sm-inline-block">+ Add Row</button>
         <button id="saveBtn" class="btn btn-primary d-none d-sm-inline-block">Save Changes</button>
         <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-secondary d-none d-sm-inline-block">Back to Flock</a>
 
@@ -76,35 +77,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log("Data loaded:", spreadsheetData.length, "rows.");
 
+    const feedCodesSource = {{ feed_codes | tojson | safe }};
+
     const columns = [
         { type: 'hidden', title: 'ID', name: 'id', width: 0, readOnly: true },
-        { type: 'text', title: 'Date', name: 'date', width: 100, readOnly: true },
+        { type: 'calendar', title: 'Date', name: 'date', width: 100, options: { format: 'YYYY-MM-DD' } },
         { type: 'numeric', title: 'Age (Days)', name: 'age_days', width: 80, readOnly: true },
 
-        // Editable fields
         { type: 'text', title: 'Clinical Signs', name: 'clinical_signs', width: 200 },
+
+        // Mortality & Culls
         { type: 'numeric', title: 'Mortality (M)', name: 'mortality_male', width: 100 },
         { type: 'numeric', title: 'Mortality (F)', name: 'mortality_female', width: 100 },
+        { type: 'numeric', title: 'Hosp Mort (M)', name: 'mortality_male_hosp', width: 100 },
+        { type: 'numeric', title: 'Hosp Mort (F)', name: 'mortality_female_hosp', width: 100 },
+
         { type: 'numeric', title: 'Culls (M)', name: 'culls_male', width: 80 },
         { type: 'numeric', title: 'Culls (F)', name: 'culls_female', width: 80 },
-        { type: 'numeric', title: 'Water 1', name: 'water_reading_1', width: 100 },
-        { type: 'numeric', title: 'Water 2', name: 'water_reading_2', width: 100 },
-        { type: 'numeric', title: 'Water 3', name: 'water_reading_3', width: 100 },
-        { type: 'numeric', title: 'Eggs Collected', name: 'eggs_collected', width: 120 },
-        { type: 'numeric', title: 'Eggs Jumbo', name: 'eggs_jumbo', width: 100 },
-        { type: 'numeric', title: 'Eggs Small', name: 'eggs_small', width: 100 },
-        { type: 'numeric', title: 'Eggs Crack', name: 'eggs_crack', width: 100 },
-        { type: 'numeric', title: 'Eggs Abnormal', name: 'eggs_abnormal', width: 110 },
-        { type: 'numeric', title: 'Feed (M)', name: 'feed_male', width: 90 },
-        { type: 'numeric', title: 'Feed (F)', name: 'feed_female', width: 90 },
-        { type: 'numeric', title: 'BW (M)', name: 'body_weight_male', width: 90 },
-        { type: 'numeric', title: 'BW (F)', name: 'body_weight_female', width: 90 },
+        { type: 'numeric', title: 'Hosp Culls (M)', name: 'culls_male_hosp', width: 100 },
+        { type: 'numeric', title: 'Hosp Culls (F)', name: 'culls_female_hosp', width: 100 },
+
+        // Transfers
+        { type: 'numeric', title: 'Moved to Hosp (M)', name: 'males_moved_to_hosp', width: 120 },
+        { type: 'numeric', title: 'Moved to Hosp (F)', name: 'females_moved_to_hosp', width: 120 },
+        { type: 'numeric', title: 'Moved to Prod (M)', name: 'males_moved_to_prod', width: 120 },
+        { type: 'numeric', title: 'Moved to Prod (F)', name: 'females_moved_to_prod', width: 120 },
+
+        // Feed
+        { type: 'dropdown', title: 'Feed Program', name: 'feed_program', width: 120, source: ['Full Feed', 'Skip-a-day', '2/1'], autocomplete: false, strict: true },
+        { type: 'dropdown', title: 'Feed Code (M)', name: 'feed_code_male', width: 120, source: feedCodesSource, autocomplete: false, strict: true },
+        { type: 'dropdown', title: 'Feed Code (F)', name: 'feed_code_female', width: 120, source: feedCodesSource, autocomplete: false, strict: true },
+        { type: 'numeric', title: 'Feed (g/bird M)', name: 'feed_male_gp_bird', width: 110 },
+        { type: 'numeric', title: 'Feed (g/bird F)', name: 'feed_female_gp_bird', width: 110 },
+        { type: 'text', title: 'Feed Cleanup Start', name: 'feed_cleanup_start', width: 120 },
+        { type: 'text', title: 'Feed Cleanup End', name: 'feed_cleanup_end', width: 120 },
+
+        // Water
+        { type: 'numeric', title: 'Water 1', name: 'water_reading_1', width: 80 },
+        { type: 'numeric', title: 'Water 2', name: 'water_reading_2', width: 80 },
+        { type: 'numeric', title: 'Water 3', name: 'water_reading_3', width: 80 },
+        { type: 'checkbox', title: 'Flushing', name: 'flushing', width: 80 },
+
+        // Production
+        { type: 'numeric', title: 'Eggs Collected', name: 'eggs_collected', width: 110 },
+        { type: 'numeric', title: 'Egg Weight', name: 'egg_weight', width: 90 },
+        { type: 'numeric', title: 'Eggs Jumbo', name: 'cull_eggs_jumbo', width: 90 },
+        { type: 'numeric', title: 'Eggs Small', name: 'cull_eggs_small', width: 90 },
+        { type: 'numeric', title: 'Eggs Abnormal', name: 'cull_eggs_abnormal', width: 100 },
+        { type: 'numeric', title: 'Eggs Crack', name: 'cull_eggs_crack', width: 90 },
+
+        // BW & Uniformity
+        { type: 'checkbox', title: 'Weighing Day', name: 'is_weighing_day', width: 100 },
+        { type: 'numeric', title: 'Avg BW (M)', name: 'body_weight_male', width: 90 },
+        { type: 'numeric', title: 'Avg BW (F)', name: 'body_weight_female', width: 90 },
+        { type: 'numeric', title: 'Avg Unif (M)', name: 'uniformity_male', width: 90 },
+        { type: 'numeric', title: 'Avg Unif (F)', name: 'uniformity_female', width: 90 },
+        { type: 'numeric', title: 'Std BW (M)', name: 'standard_bw_male', width: 90 },
+        { type: 'numeric', title: 'Std BW (F)', name: 'standard_bw_female', width: 90 },
+
+        // Partitions
+        // M1-M8 BW and Uni
+        {% for i in range(1, 9) %}
+        { type: 'numeric', title: 'M{{i}} BW', name: 'bw_M{{i}}', width: 80 },
+        { type: 'numeric', title: 'M{{i}} Unif', name: 'uni_M{{i}}', width: 80 },
+        {% endfor %}
+
+        // F1-F8 BW and Uni
+        {% for i in range(1, 9) %}
+        { type: 'numeric', title: 'F{{i}} BW', name: 'bw_F{{i}}', width: 80 },
+        { type: 'numeric', title: 'F{{i}} Unif', name: 'uni_F{{i}}', width: 80 },
+        {% endfor %}
+
+        { type: 'text', title: 'Light On', name: 'light_on_time', width: 80 },
+        { type: 'text', title: 'Light Off', name: 'light_off_time', width: 80 },
 
         // Readonly/Benchmark fields
         { type: 'numeric', title: 'Std Mort %', name: 'std_mortality', width: 100, readOnly: true },
         { type: 'numeric', title: 'Std Egg Prod %', name: 'std_egg_prod', width: 120, readOnly: true },
-        { type: 'numeric', title: 'Std BW (M)', name: 'std_bw_male', width: 100, readOnly: true },
-        { type: 'numeric', title: 'Std BW (F)', name: 'std_bw_female', width: 100, readOnly: true }
+        { type: 'numeric', title: 'Std BW (M) Bench', name: 'bench_std_bw_male', width: 100, readOnly: true },
+        { type: 'numeric', title: 'Std BW (F) Bench', name: 'bench_std_bw_female', width: 100, readOnly: true }
     ];
 
     try {
@@ -164,6 +215,53 @@ document.addEventListener('DOMContentLoaded', function() {
         window.updateSpreadsheetData = function(rowIndex, colIndex, value) {
             mySpreadsheet.setValueFromCoords(colIndex, rowIndex, value, true);
         };
+
+        document.getElementById('addRowBtn').addEventListener('click', function() {
+            let nextDateStr = "";
+            let currentData = mySpreadsheet.getData();
+            if (currentData.length > 0) {
+                // Get the last row's date
+                let lastDateVal = currentData[currentData.length - 1][1]; // Assuming date is index 1
+                if (lastDateVal && typeof lastDateVal === 'string' && lastDateVal.includes('-')) {
+                    let parts = lastDateVal.split('-');
+                    let d = new Date(parts[0], parts[1] - 1, parts[2]);
+                    if (!isNaN(d.getTime())) {
+                        d.setDate(d.getDate() + 1);
+                        let month = '' + (d.getMonth() + 1);
+                        let day = '' + d.getDate();
+                        let year = d.getFullYear();
+
+                        if (month.length < 2) month = '0' + month;
+                        if (day.length < 2) day = '0' + day;
+
+                        nextDateStr = [year, month, day].join('-');
+                    }
+                }
+            }
+
+            if (!nextDateStr) {
+                // Default to today if no rows or parsing failed
+                let d = new Date();
+                let month = '' + (d.getMonth() + 1);
+                let day = '' + d.getDate();
+                let year = d.getFullYear();
+
+                if (month.length < 2) month = '0' + month;
+                if (day.length < 2) day = '0' + day;
+                nextDateStr = [year, month, day].join('-');
+            }
+
+            let newRow = new Array(columns.length).fill('');
+            newRow[1] = nextDateStr; // Set date column
+
+            mySpreadsheet.insertRow(newRow);
+
+            // Scroll to bottom
+            const tableDiv = document.getElementById('spreadsheet').querySelector('.jspreadsheet-content');
+            if (tableDiv) {
+                tableDiv.scrollTop = tableDiv.scrollHeight;
+            }
+        });
 
         function renderCards(filterText = '') {
             cardsContainer.innerHTML = '';
