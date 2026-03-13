@@ -8075,6 +8075,19 @@ def api_daily_log_trend():
     cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
     cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
 
+    # Fetch Standards
+    all_standards = GlobalStandard.query.all()
+    prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+
+    # Attach Standards
+    for d in enriched:
+        prod_std = None
+        if d.get('production_week'):
+            prod_std = prod_std_map.get(d['production_week'])
+
+        d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+        d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+
     trend_data = []
     end_day_log = None
 
@@ -8125,8 +8138,8 @@ def api_daily_log_trend():
         # Add std
         std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
         if std_w:
-            w_item['std_bw_male'] = std_w.std_body_weight_male or None
-            w_item['std_bw_female'] = std_w.std_body_weight_female or None
+            w_item['std_bw_male'] = std_w.std_bw_male or None
+            w_item['std_bw_female'] = std_w.std_bw_female or None
         weekly_trend.append(w_item)
 
     # If no data for the exact target date, we return empty data flag but not an error
@@ -8150,9 +8163,8 @@ def api_daily_log_trend():
     meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
 
     # Get Vaccinations for the day
-    from models import VaccineRecord
-    vaccines_used = VaccineRecord.query.filter_by(flock_id=flock_id, date=log.date).all()
-    vaccines_str = ", ".join([v.vaccine.name for v in vaccines_used if v.vaccine]) if vaccines_used else ""
+    vaccines_used = Vaccine.query.filter_by(flock_id=flock_id, actual_date=log.date).all()
+    vaccines_str = ", ".join([v.vaccine_name for v in vaccines_used if v.vaccine_name]) if vaccines_used else ""
 
     stock_m = end_day_log.get('stock_male_start', 0)
     stock_f = end_day_log.get('stock_female_start', 0)
