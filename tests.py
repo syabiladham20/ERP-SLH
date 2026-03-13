@@ -143,14 +143,14 @@ class FarmTestCase(unittest.TestCase):
         flock = Flock.query.filter_by(house_id=1).first() # VA1 is id 1
         
         # Toggle
-        self.app.post(f'/flock/{flock.id}/toggle_prelay', data={'production_start_date': '2023-06-01'}, follow_redirects=True)
+        self.app.post(f'/flock/{flock.id}/toggle_phase', follow_redirects=True)
         updated_flock = Flock.query.get(flock.id)
-        self.assertEqual(updated_flock.phase, 'Pre-lay')
+        self.assertEqual(updated_flock.phase, 'Production')
         
         # Toggle back
-        self.app.post(f'/flock/{flock.id}/toggle_prelay', data={'revert': 'true'}, follow_redirects=True)
+        self.app.post(f'/flock/{flock.id}/toggle_phase', follow_redirects=True)
         updated_flock = Flock.query.get(flock.id)
-        self.assertEqual(updated_flock.phase, 'Brooding')
+        self.assertEqual(updated_flock.phase, 'Rearing')
 
     def test_edit_log(self):
         # Create flock & log
