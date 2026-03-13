@@ -426,11 +426,13 @@
                             </div>
 
                             <div style="display: flex; justify-content: space-between; gap: 20px; height: 110mm;">
-                                <div style="width: 48%; height: 100%;">
-                                    <canvas id="chart1"></canvas>
+                                <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
+                                    <div style="flex-grow: 1; position: relative;"><canvas id="chart1"></canvas></div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Depletion and Egg Production %</div>
                                 </div>
-                                <div style="width: 48%; height: 100%;">
-                                    <canvas id="chart2"></canvas>
+                                <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
+                                    <div style="flex-grow: 1; position: relative;"><canvas id="chart2"></canvas></div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Cull and Hatching Egg %</div>
                                 </div>
                             </div>
 
@@ -640,15 +642,18 @@
                                 </div>
                             </div>
 
-                            <div style="height: 50mm; margin-bottom: 5mm;">
-                                <canvas id="chart3"></canvas>
+                            <div style="height: 50mm; margin-bottom: 5mm; display: flex; flex-direction: column;">
+                                <div style="flex-grow: 1; position: relative;"><canvas id="chart3"></canvas></div>
+                                <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">ml per bird and water:feed ratio</div>
                             </div>
                             <div style="display: flex; justify-content: space-between; gap: 20px; height: 110mm;">
-                                <div style="width: 48%; height: 100%;">
-                                    <canvas id="chart4"></canvas>
+                                <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
+                                    <div style="flex-grow: 1; position: relative;"><canvas id="chart4"></canvas></div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Male Bodyweight and Uniformity</div>
                                 </div>
-                                <div style="width: 48%; height: 100%;">
-                                    <canvas id="chart5"></canvas>
+                                <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
+                                    <div style="flex-grow: 1; position: relative;"><canvas id="chart5"></canvas></div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Female Bodyweight and Uniformity</div>
                                 </div>
                             </div>
                         </div>
@@ -682,7 +687,7 @@
                                     borderColor: 'green',
                                     backgroundColor: 'green',
                                     yAxisID: 'yRight',
-                                    datalabels: { align: 'bottom', color: 'green', formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', color: 'green', formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 }
                             ]
                         },
@@ -719,11 +724,13 @@
                                 type: 'label',
                                 content: '+' + gain + 'g',
                                 position: 'center',
-                                xValue: 'W' + w.week, // Position ON the data point (user clarified in previous fix requests that annotation on point is fine if it doesn't cross, but spanning is better. I'll offset X slightly backwards)
+                                xValue: 'W' + w.week,
                                 xAdjust: -15, // Move slightly to the left to appear "between"
-                                yValue: w[bwKey] - (gain / 2),
-                                color: 'rgba(0,0,0,0.5)',
-                                font: { size: 10 }
+                                yValue: w[bwKey], // Anchor near current BW
+                                yAdjust: -15, // Adjusted to sit slightly lower so data labels can stay right above the line
+                                color: 'rgba(0,0,0,0.8)',
+                                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                font: { size: 10, weight: 'bold' }
                             };
                         }).filter(Boolean);
 
@@ -737,7 +744,9 @@
                                 content: parts.join(', '),
                                 position: 'start',
                                 xValue: 'W' + w.week,
-                                yValue: w[bwKey] + 100, // Slightly above data label
+                                yValue: w[bwKey],
+                                yAdjust: -35, // Adjusted to sit slightly above weight gain annotation, leaving room for top data label
+                                backgroundColor: 'rgba(255, 255, 255, 0.7)',
                                 color: 'purple',
                                 font: { size: 10, weight: 'bold' }
                             };
@@ -755,7 +764,8 @@
                                         borderColor: 'yellow',
                                         borderDash: [5, 5],
                                         yAxisID: 'yRight',
-                                        datalabels: { align: 'top', color: '#b8860b' }
+                                        spanGaps: true,
+                                        datalabels: { align: 'top', color: '#b8860b', backgroundColor: 'rgba(255, 255, 255, 0.7)', font: {weight: 'bold'} }
                                     },
                                     {
                                         label: 'Actual BW',
@@ -763,7 +773,8 @@
                                         borderColor: 'blue',
                                         backgroundColor: 'blue',
                                         yAxisID: 'yLeft',
-                                        datalabels: { align: 'bottom', color: 'blue' }
+                                        spanGaps: true,
+                                        datalabels: { align: 'top', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', font: {weight: 'bold'} }
                                     },
                                     {
                                         label: 'Std BW',
@@ -772,6 +783,7 @@
                                         backgroundColor: 'red',
                                         yAxisID: 'yLeft',
                                         pointRadius: 0,
+                                        spanGaps: true,
                                         datalabels: { display: false }
                                     }
                                 ]
@@ -779,8 +791,8 @@
                             options: {
                                 responsive: true, maintainAspectRatio: false, animation: false,
                                 scales: {
-                                    yLeft: { type: 'linear', position: 'left', suggestedMax: yLeftMax, suggestedMin: 0, title: {display: true, text: 'Bodyweight (g)'} },
-                                    yRight: { type: 'linear', position: 'right', min: 40, max: 105, grid: { drawOnChartArea: false }, title: {display: true, text: 'Uniformity (%)'} }
+                                    yLeft: { type: 'linear', position: 'left', max: yLeftMax, min: 0, title: {display: true, text: 'Bodyweight (g)'} },
+                                    yRight: { type: 'linear', position: 'right', min: 0, max: 150, grid: { drawOnChartArea: false }, title: {display: true, text: 'Uniformity (%)'} }
                                 },
                                 plugins: {
                                     annotation: { annotations: [...customAnnotations, ...selectionAnnos] }
