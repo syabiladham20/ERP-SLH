@@ -449,6 +449,7 @@ def log_user_activity(user_id, action, resource_type, resource_id=None, details=
     if not user_id:
         return
     try:
+        # Wrap in a nested try-except block so if it fails, it doesn't block the caller.
         details_str = json.dumps(details) if details else None
         log = UserActivityLog(
             user_id=user_id,
@@ -459,9 +460,10 @@ def log_user_activity(user_id, action, resource_type, resource_id=None, details=
         )
         # Avoid flushing or committing the main transaction prematurely.
         # Just add it to the session; it will commit when the route commits.
-        db.session.add(log)
+        with db.session.no_autoflush:
+            db.session.add(log)
     except Exception as e:
-        app.logger.error(f"Failed to create UserActivityLog: {e}")
+        app.logger.warning(f"Failed to create UserActivityLog: {e}")
 
 class UIElement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -8443,6 +8445,13 @@ def backup_report_image():
 
     return jsonify({'success': True, 'path': f'/static/reports/{filename}'})
 
+
+# Ensure tables are created on startup if they don't exist
+with app.app_context():
+    try:
+        db.create_all()
+    except Exception as e:
+        app.logger.warning(f"Error during db.create_all(): {e}")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
