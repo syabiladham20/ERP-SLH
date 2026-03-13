@@ -8104,12 +8104,11 @@ def api_daily_log_trend():
         Medication.start_date <= log.date,
         db.or_(Medication.end_date == None, Medication.end_date >= log.date)
     ).all()
-    meds_str = ", ".join([m.name for m in medications_used]) if medications_used else "None"
+    meds_str = ", ".join([m.drug_name for m in medications_used]) if medications_used else "None"
 
     # Get Vaccinations for the day
-    from models import VaccineRecord
-    vaccines_used = VaccineRecord.query.filter_by(flock_id=flock_id, date=log.date).all()
-    vaccines_str = ", ".join([v.vaccine.name for v in vaccines_used if v.vaccine]) if vaccines_used else ""
+    vaccines_used = Vaccine.query.filter_by(flock_id=flock_id, actual_date=log.date).all()
+    vaccines_str = ", ".join([v.vaccine_name for v in vaccines_used if v.vaccine_name]) if vaccines_used else ""
 
     stock_m = end_day_log.get('stock_male_end', 0)
     stock_f = end_day_log.get('stock_female_end', 0)
