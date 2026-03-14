@@ -969,12 +969,12 @@ def initialize_vaccine_schedule(flock_id, commit=True):
         if age_code.startswith('D'):
             try:
                 days = int(age_code[1:])
-                offset = days - 1
+                offset = days
             except: pass
         elif age_code.startswith('W'):
             try:
                 weeks = int(age_code[1:])
-                offset = (weeks * 7)
+                offset = (weeks - 1) * 7 + 1
             except: pass
 
         est_date = flock.intake_date + timedelta(days=offset)
@@ -3444,8 +3444,16 @@ def hatchery_charts(flock_id):
         # Gather Notes & Medications for the specific week (Age based)
         # Week starts at: Intake + (Week-1)*7
         # Week ends at: Intake + Week*7 - 1
-        start_date = flock.intake_date + timedelta(days=(week - 1) * 7)
-        end_date = flock.intake_date + timedelta(days=(week * 7) - 1)
+        if week == 0:
+            start_date = flock.intake_date
+            end_date = flock.intake_date
+        elif week > 0:
+            start_date = flock.intake_date + timedelta(days=((week - 1) * 7) + 1)
+            end_date = flock.intake_date + timedelta(days=(week * 7))
+        else:
+            # Negative weeks (e.g. week -1 means days -7 to -1 before intake)
+            start_date = flock.intake_date + timedelta(days=(week * 7))
+            end_date = flock.intake_date + timedelta(days=((week + 1) * 7) - 1)
 
         logs = DailyLog.query.filter(
             DailyLog.flock_id == flock_id,
@@ -6925,7 +6933,7 @@ def get_weekly_data_aggregated(flocks):
             # Age Calculation (at end of week)
             age_days = (w_data['end_date'] - flock.intake_date).days
             age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
-            if age_week < 1: age_week = 1
+            if age_week < 0: age_week = 0
 
             # Standards
             std_bio = std_map.get(age_week) # Biological Standard (BW)
