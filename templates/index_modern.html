@@ -154,13 +154,13 @@
 <div class="row">
   {% for flock in active_flocks %}
   <div class="col-sm-6 col-lg-4 mb-4">
-    <div class="card shadow-sm h-100 border-top border-3 {% if flock.phase == 'Production' %}border-success{% else %}border-primary{% endif %}">
+    <div class="card shadow-sm h-100 border-top border-3 {% if flock.calculated_phase == 'Brooding' %}border-primary{% elif flock.calculated_phase == 'Growing' %}border-info{% elif flock.calculated_phase == 'Pre-lay' %}border-warning{% else %}border-success{% endif %}">
       <div class="card-body">
 
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="m-0 font-weight-bold">{{ flock.house.name }} - Week {{ flock.current_week }}</h3>
-          <span class="badge {% if flock.phase == 'Production' %}bg-success-lt{% else %}bg-primary-lt{% endif %}">
-            {{ flock.phase }}
+          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary-lt{% elif flock.calculated_phase == 'Growing' %}bg-info-lt{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning-lt{% else %}bg-success-lt{% endif %}">
+            {{ flock.calculated_phase }}
           </span>
         </div>
 
@@ -210,7 +210,7 @@
             <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-primary btn-sm mb-0">See Details <i class="fas fa-arrow-right ms-1"></i></a>
             <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" style="display: inline;">
                 <button type="submit" class="btn btn-link text-warning text-sm mb-0 px-0 ms-2" onclick="return confirm('Change phase for {{ flock.flock_id }}?');">
-                    Switch to {% if flock.phase == 'Rearing' %}Production{% else %}Rearing{% endif %}
+                    Switch to {% if flock.calculated_phase in ['Brooding', 'Growing'] %}Production{% else %}Rearing{% endif %}
                 </button>
             </form>
           </div>
