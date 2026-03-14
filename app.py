@@ -2972,7 +2972,7 @@ def flock_spreadsheet_save(flock_id):
             clinical_signs_val = row.get('clinical_signs')
 
             # Since ClinicalNote model list represents detailed notes and clinical_notes text is main note:
-            if clinical_signs_val and clinical_signs_val.strip():
+            if clinical_signs_val and clinical_signs_val.strip() and clinical_signs_val.strip().lower() not in ('none', 'nan'):
                 log.clinical_notes = clinical_signs_val.strip()
             else:
                 log.clinical_notes = None
@@ -5215,7 +5215,14 @@ def process_import(file, commit=True, preview=False):
             log.feed_cleanup_end = get_time(row, idx_feed_end)
 
             val_rem = row.iloc[idx_remarks] if (idx_remarks and len(row) > idx_remarks) else None
-            log.clinical_notes = str(val_rem) if pd.notna(val_rem) else None
+            if pd.notna(val_rem):
+                rem_str = str(val_rem).strip()
+                if rem_str and rem_str.lower() not in ('none', 'nan'):
+                    log.clinical_notes = rem_str
+                else:
+                    log.clinical_notes = None
+            else:
+                log.clinical_notes = None
 
             bw_m = get_float(row, idx_bw_m)
             bw_f = get_float(row, idx_bw_f)
@@ -5666,7 +5673,12 @@ def update_log_from_request(log, req):
     log.light_off_time = req.form.get('light_off_time')
     log.feed_cleanup_start = req.form.get('feed_cleanup_start')
     log.feed_cleanup_end = req.form.get('feed_cleanup_end')
-    log.clinical_notes = req.form.get('clinical_notes')
+
+    clin_notes = req.form.get('clinical_notes')
+    if clin_notes and clin_notes.strip() and clin_notes.strip().lower() not in ('none', 'nan'):
+        log.clinical_notes = clin_notes.strip()
+    else:
+        log.clinical_notes = None
 
     if 'photo' in req.files:
         files = req.files.getlist('photo')
