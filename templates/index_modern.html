@@ -529,8 +529,8 @@
                             maintainAspectRatio: false,
                             animation: false,
                             scales: {
-                                yLeft: { type: 'linear', position: 'left', min: 0, max: 100 },
-                                yRight: { type: 'linear', position: 'right', min: 0, max: 0.5, grid: { drawOnChartArea: false } }
+                                yLeft: { type: 'linear', position: 'left', min: 0, max: 100, ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } } },
+                                yRight: { type: 'linear', position: 'right', min: 0, max: 0.5, grid: { drawOnChartArea: false }, ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } } }
                             }
                         }
                     });
@@ -616,8 +616,8 @@
                             maintainAspectRatio: false,
                             animation: false,
                             scales: {
-                                yLeft: { type: 'linear', position: 'left', min: 0 },
-                                yRight: { type: 'linear', position: 'right', min: 0, max: 110, grid: { drawOnChartArea: false } }
+                                yLeft: { type: 'linear', position: 'left', min: 0, ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } } },
+                                yRight: { type: 'linear', position: 'right', min: 0, max: 110, grid: { drawOnChartArea: false }, ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } } }
                             }
                         }
                     });
@@ -666,28 +666,30 @@
                     await new Promise(r => setTimeout(r, 50));
 
                     // Chart 3: Water Consumption & Ratio (7 days)
-                    const flushFlags = trend.map(t => t.flushing);
+                    const waterTrend = data.water_trend;
+                    const waterLabels = waterTrend.map(t => t.date.split('-').reverse().slice(0, 2).join('-')); // DD-MM
+                    const flushFlags = waterTrend.map(t => t.flushing);
                     const waterCtx = document.getElementById('chart3').getContext('2d');
                     new Chart(waterCtx, {
                         type: 'line',
                         plugins: [ChartDataLabels, window['chartjs-plugin-annotation']],
                         data: {
-                            labels: labels,
+                            labels: waterLabels,
                             datasets: [
                                 {
                                     label: 'Water (ml/bird)',
-                                    data: trend.map(t => Math.round(t.water_per_bird)),
+                                    data: waterTrend.map(t => Math.round(t.water_per_bird)),
                                     borderColor: 'blue',
                                     backgroundColor: 'blue',
                                     yAxisID: 'yLeft',
-                                    pointStyle: trend.map((t, i) => flushFlags[i] ? 'triangle' : 'circle'),
-                                    pointRadius: trend.map((t, i) => flushFlags[i] ? 8 : 4),
-                                    pointBackgroundColor: trend.map((t, i) => flushFlags[i] ? 'cyan' : 'blue'),
+                                    pointStyle: waterTrend.map((t, i) => flushFlags[i] ? 'triangle' : 'circle'),
+                                    pointRadius: waterTrend.map((t, i) => flushFlags[i] ? 8 : 4),
+                                    pointBackgroundColor: waterTrend.map((t, i) => flushFlags[i] ? 'cyan' : 'blue'),
                                     datalabels: { align: 'top', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', font: {weight: 'bold'}, formatter: (v, ctx) => flushFlags[ctx.dataIndex] ? '💧 ' + v : v }
                                 },
                                 {
                                     label: 'Water:Feed Ratio',
-                                    data: trend.map(t => t.water_feed_ratio),
+                                    data: waterTrend.map(t => t.water_feed_ratio),
                                     borderColor: 'green',
                                     backgroundColor: 'green',
                                     yAxisID: 'yRight',
@@ -704,7 +706,7 @@
                                     position: 'left',
                                     title: {display: true, text: 'ml/bird'},
                                     min: (() => {
-                                        const vals = trend.map(t => t.water_per_bird || 0).filter(v => v > 0);
+                                        const vals = waterTrend.map(t => t.water_per_bird || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 100;
                                         const minV = vals.length > 0 ? Math.min(...vals) : 0;
                                         let range = (maxV - minV) / 0.30;
@@ -712,14 +714,14 @@
                                         return maxV - 0.90 * range;
                                     })(),
                                     max: (() => {
-                                        const vals = trend.map(t => t.water_per_bird || 0).filter(v => v > 0);
+                                        const vals = waterTrend.map(t => t.water_per_bird || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 100;
                                         const minV = vals.length > 0 ? Math.min(...vals) : 0;
                                         let range = (maxV - minV) / 0.30;
                                         if (range < 10) range = Math.max(10, maxV * 0.2);
                                         return (maxV - 0.90 * range) + range;
                                     })(),
-                                    ticks: { callback: v => v < 0 ? '' : v }
+                                    ticks: { callback: v => (v >= 0 && Number.isInteger(v)) ? v : '' }
                                 },
                                 yRight: {
                                     type: 'linear',
@@ -727,7 +729,7 @@
                                     grid: { drawOnChartArea: false },
                                     title: {display: true, text: 'Ratio'},
                                     min: (() => {
-                                        const vals = trend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
+                                        const vals = waterTrend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 1;
                                         const minV = vals.length > 0 ? Math.min(...vals) : 0;
                                         let range = (maxV - minV) / 0.35;
@@ -736,7 +738,7 @@
                                         return m < 0 ? 0 : m;
                                     })(),
                                     max: (() => {
-                                        const vals = trend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
+                                        const vals = waterTrend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 1;
                                         const minV = vals.length > 0 ? Math.min(...vals) : 0;
                                         let range = (maxV - minV) / 0.35;
@@ -864,8 +866,8 @@
                             options: {
                                 responsive: true, maintainAspectRatio: false, animation: false,
                                 scales: {
-                                    yLeft: { type: 'linear', position: 'left', max: yLeftMax, min: yLeftMin, title: {display: true, text: 'Bodyweight (g)'}, ticks: { callback: v => v < 0 ? '' : v } },
-                                    yRight: { type: 'linear', position: 'right', min: yRightMin, max: yRightMax, grid: { drawOnChartArea: false }, title: {display: true, text: 'Uniformity (%)'}, ticks: { callback: v => v > 100 || v < 0 ? '' : v } }
+                                    yLeft: { type: 'linear', position: 'left', max: yLeftMax, min: yLeftMin, title: {display: true, text: 'Bodyweight (g)'}, ticks: { callback: v => (v >= 0 && Number.isInteger(v)) ? v : '' } },
+                                    yRight: { type: 'linear', position: 'right', min: yRightMin, max: yRightMax, grid: { drawOnChartArea: false }, title: {display: true, text: 'Uniformity (%)'}, ticks: { callback: v => (v >= 0 && v <= 100 && Number.isInteger(v)) ? v : '' } }
                                 },
                                 plugins: {
                                     annotation: { annotations: [...customAnnotations, ...selectionAnnos] }

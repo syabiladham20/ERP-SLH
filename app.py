@@ -8331,6 +8331,7 @@ def api_daily_log_trend():
         d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
     trend_data = []
+    water_trend_data = []
     end_day_log = None
 
     # Track weekly stats
@@ -8339,26 +8340,32 @@ def api_daily_log_trend():
 
     for entry in enriched:
         log = entry['log']
-        if (end_date - log.date).days <= 7: # Only keep last 7 days for the main trend list
-            item = {
-                'date': log.date.strftime('%Y-%m-%d'),
-                'mort_m_pct': entry.get('mortality_male_pct', 0.0),
-                'mort_f_pct': entry.get('mortality_female_pct', 0.0),
-                'egg_prod_pct': entry.get('egg_prod_pct', 0.0),
-                'std_egg_prod': entry.get('std_egg_prod', 0.0),
-                'hatching_eggs': entry.get('hatch_eggs', 0),
-                'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
-                'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
-                'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
-                'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
-                'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
-                'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
-                'water_per_bird': entry.get('water_per_bird', 0.0),
-                'water_feed_ratio': entry.get('water_feed_ratio', 0.0),
-                'flushing': log.flushing,
-                'is_target_day': log.date == end_date
-            }
+        item = {
+            'date': log.date.strftime('%Y-%m-%d'),
+            'mort_m_pct': entry.get('mortality_male_pct', 0.0),
+            'mort_f_pct': entry.get('mortality_female_pct', 0.0),
+            'egg_prod_pct': entry.get('egg_prod_pct', 0.0),
+            'std_egg_prod': entry.get('std_egg_prod', 0.0),
+            'hatching_eggs': entry.get('hatch_eggs', 0),
+            'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
+            'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
+            'cull_jumbo_pct': entry.get('cull_eggs_jumbo_pct', 0.0),
+            'cull_small_pct': entry.get('cull_eggs_small_pct', 0.0),
+            'cull_abnormal_pct': entry.get('cull_eggs_abnormal_pct', 0.0),
+            'cull_crack_pct': entry.get('cull_eggs_crack_pct', 0.0),
+            'water_per_bird': entry.get('water_per_bird', 0.0),
+            'water_feed_ratio': entry.get('water_feed_ratio', 0.0),
+            'flushing': log.flushing,
+            'is_target_day': log.date == end_date
+        }
+
+        days_diff = (end_date - log.date).days
+        if days_diff <= 7 and days_diff >= 0: # Last 7 days including today
             trend_data.append(item)
+
+        if days_diff <= 8 and days_diff >= 1: # Last 7 days ending yesterday
+            water_trend_data.append(item)
+
         if log.date == end_date:
             end_day_log = entry
 
@@ -8456,6 +8463,7 @@ def api_daily_log_trend():
         'vaccination': vaccines_str,
         'notes': notes_str,
         'trend': trend_data,
+        'water_trend': water_trend_data,
         'weekly_trend': weekly_trend
     }
 
