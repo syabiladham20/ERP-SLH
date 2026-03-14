@@ -828,9 +828,11 @@ def init_ui_elements(commit=True):
         {'key': 'detail_health', 'label': 'Health Log', 'section': 'flock_detail', 'order': 5},
     ]
 
+    # Bulk fetch existing keys to avoid N+1 queries
+    existing_keys = {e.key for e in db.session.query(UIElement.key).all()}
+
     for elem in default_elements:
-        existing = UIElement.query.filter_by(key=elem['key']).first()
-        if not existing:
+        if elem['key'] not in existing_keys:
             new_elem = UIElement(
                 key=elem['key'],
                 label=elem['label'],
