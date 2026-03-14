@@ -29,7 +29,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
                         <strong>{{ flock.house.name }}{% if flock.farm %} ({{ flock.farm.name }}){% endif %}</strong>
-                        <span class="badge bg-{{ 'primary' if flock.phase == 'Rearing' else 'warning' }}">{{ flock.phase }}</span>
+                        <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %}">{{ flock.calculated_phase }}</span>
                         {% if flock.has_log_today %}
                             <span class="badge bg-success ms-1" title="Daily Entry Submitted">✅ Today</span>
                         {% else %}
@@ -47,7 +47,7 @@
                     </div>
                     <hr>
                     <div class="row text-center">
-                        {% if flock.phase == 'Rearing' %}
+                        {% if flock.calculated_phase in ['Brooding', 'Growing'] %}
                         <div class="col-6 border-end">
                             <small class="text-muted">Rearing Mort %</small><br>
                             <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
@@ -118,7 +118,7 @@
                         {% for item in get_ui_elements('flock_card') %}
                             {% if item.key == 'card_details' %}
                                 <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info me-1">{{ item.label }}</a>
-                            {% elif item.key == 'card_start_prod' and flock.phase == 'Rearing' %}
+                            {% elif item.key == 'card_start_prod' and flock.calculated_phase in ['Brooding', 'Growing'] %}
                                 <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#startProdModal{{ flock.id }}">
                                     {{ item.label }}
                                 </button>
@@ -174,7 +174,7 @@
                         {% endfor %}
 
                         <!-- Admin Actions (Hardcoded/Protected) -->
-                        {% if flock.phase != 'Rearing' %}
+                        {% if flock.calculated_phase in ['Pre-lay', 'Production'] %}
                              {% if is_admin %}
                              <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Rearing? Production Start Date will be cleared.');">
                                <button type="submit" class="btn btn-sm btn-outline-warning">

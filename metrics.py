@@ -140,8 +140,16 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
     # Ensure logs are sorted
     sorted_logs = sorted(logs, key=lambda x: x.date)
 
+    current_phase = 'Brooding'
+
     for log in sorted_logs:
         # --- A. Phase Switch Logic ---
+        if current_phase == 'Brooding' and log.feed_program == 'Skip-a-day':
+            current_phase = 'Growing'
+
+        if current_phase in ['Brooding', 'Growing'] and flock.production_start_date and log.date >= flock.production_start_date:
+            current_phase = 'Pre-lay'
+
         # If we hit the production start date, we reset the baseline.
         if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
              in_prod = True
@@ -322,6 +330,12 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         if curr_m_hosp < 0: curr_m_hosp = 0
         if curr_f_hosp < 0: curr_f_hosp = 0
 
+        # Check egg production % for Production phase switch
+        if current_phase in ['Brooding', 'Growing', 'Pre-lay'] and d.get('egg_prod_pct', 0) >= 5.0:
+            current_phase = 'Production'
+
+        d['calculated_phase'] = current_phase
+
         d.update({
             'stock_male_prod_end': curr_m_prod,
             'stock_female_prod_end': curr_f_prod,
@@ -330,6 +344,16 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         })
 
         daily_stats.append(d)
+
+    if daily_stats:
+        # Attach the latest phase directly to the flock object dynamically for easy template access
+        flock.calculated_phase = daily_stats[-1]['calculated_phase']
+    else:
+        from datetime import date
+        if flock.production_start_date and flock.production_start_date <= date.today():
+            flock.calculated_phase = 'Pre-lay'
+        else:
+            flock.calculated_phase = 'Brooding'
 
     return daily_stats
 

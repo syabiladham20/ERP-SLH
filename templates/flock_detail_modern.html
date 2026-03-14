@@ -89,7 +89,7 @@
       </div>
       <div class="col-md-3 border-end">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Phase</span><br>
-          <span class="badge bg-{{ 'success' if flock.phase == 'Production' else 'primary' }} mt-1">{{ flock.phase }}</span>
+          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} mt-1">{{ flock.calculated_phase }}</span>
       </div>
       <div class="col-md-3">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Intake Date</span><br>
@@ -837,7 +837,7 @@
   const intakeDateStr = "{{ flock.intake_date }}";
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
-  const flockPhase = "{{ flock.phase }}";
+  const flockPhase = "{{ flock.calculated_phase }}";
   const flockHouseName = "{{ flock.house.name }}";
 
   let maleChart, femaleChart, generalChart, hatchingEggChart, waterChart, feedChart;

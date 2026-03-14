@@ -81,7 +81,7 @@
     <div class="row">
       <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
       <div class="col-md-3"><strong>Status:</strong> {{ flock.status }}</div>
-      <div class="col-md-3"><strong>Phase:</strong> {{ flock.phase }}</div>
+      <div class="col-md-3"><strong>Phase:</strong> {{ flock.calculated_phase }}</div>
       <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date | date_fmt }}</div>
     </div>
     <div class="row mt-2">
@@ -791,7 +791,7 @@
   const intakeDateStr = "{{ flock.intake_date }}";
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
-  const flockPhase = "{{ flock.phase }}";
+  const flockPhase = "{{ flock.calculated_phase }}";
 
   let maleChart, femaleChart, generalChart, hatchChart, hatchingEggChart, waterChart, feedChart;
 
