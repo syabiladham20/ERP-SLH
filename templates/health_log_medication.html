@@ -51,6 +51,9 @@
                             <th>Start Date</th>
                             <th>End Date</th>
                             <th>Remarks</th>
+                            {% if is_editing %}
+                            <th>Action</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -98,6 +101,11 @@
                                     {{ m.remarks or '-' }}
                                 {% endif %}
                             </td>
+                            {% if is_editing %}
+                            <td>
+                                <button type="submit" name="delete_medication_id" value="{{ m.id }}" class="btn btn-xs btn-outline-danger border-0" onclick="return confirm('Delete medication record?');">&times;</button>
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
