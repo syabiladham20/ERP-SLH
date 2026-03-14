@@ -1515,7 +1515,7 @@
       ], true);
 
       // --- Dynamic Chart Config Based on Phase ---
-      const isRearing = (flockPhase === 'Rearing');
+      const isRearing = (flockPhase === 'Brooding' || flockPhase === 'Growing' || flockPhase === 'Pre-lay');
 
       // 1. Update Title
       const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';

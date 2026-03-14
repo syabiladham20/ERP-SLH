@@ -47,7 +47,7 @@
                     </div>
                     <hr>
                     <div class="row text-center">
-                        {% if flock.calculated_phase in ['Brooding', 'Growing'] %}
+                        {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
                         <div class="col-6 border-end">
                             <small class="text-muted">Rearing Mort %</small><br>
                             <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
@@ -118,7 +118,7 @@
                         {% for item in get_ui_elements('flock_card') %}
                             {% if item.key == 'card_details' %}
                                 <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-sm btn-info me-1">{{ item.label }}</a>
-                            {% elif item.key == 'card_start_prod' and flock.calculated_phase in ['Brooding', 'Growing'] %}
+                            {% elif item.key == 'card_start_prod' and flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
                                 <button type="button" class="btn btn-sm btn-outline-secondary me-1" data-bs-toggle="modal" data-bs-target="#startProdModal{{ flock.id }}">
                                     {{ item.label }}
                                 </button>
@@ -174,11 +174,11 @@
                         {% endfor %}
 
                         <!-- Admin Actions (Hardcoded/Protected) -->
-                        {% if flock.calculated_phase in ['Pre-lay', 'Production'] %}
+                        {% if flock.calculated_phase == 'Production' %}
                              {% if is_admin %}
-                             <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Rearing? Production Start Date will be cleared.');">
+                             <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Brooding? Production Start Date will be cleared.');">
                                <button type="submit" class="btn btn-sm btn-outline-warning">
-                                 Revert Rearing
+                                 Revert Brooding
                                </button>
                             </form>
                             {% endif %}

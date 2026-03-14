@@ -1486,7 +1486,7 @@
 
       if (generalChart) generalChart.destroy();
 
-      const isRearing = (flockPhase === 'Rearing');
+      const isRearing = (flockPhase === 'Brooding' || flockPhase === 'Growing' || flockPhase === 'Pre-lay');
       const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
       updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
 
