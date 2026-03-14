@@ -2895,6 +2895,29 @@ def flock_spreadsheet_save(flock_id):
                     val = val.lower() == 'true'
                 setattr(log, field, bool(val))
 
+            # Calculate feed totals based on g/bird and current stock
+            # We must use start-of-day stock.
+            # In recalculate_flock_inventory, we'll recompute the stock properly.
+            # However, for now, we can rely on log.males_at_start if it exists or use fallback.
+            start_m = log.males_at_start or 0
+            start_f = log.females_at_start or 0
+
+            multiplier = 1.0
+            if log.feed_program == 'Skip-a-day':
+                multiplier = 2.0
+            elif log.feed_program == '2/1':
+                multiplier = 1.5
+
+            if start_m > 0:
+                log.feed_male = ((log.feed_male_gp_bird or 0.0) * multiplier * start_m) / 1000.0
+            else:
+                log.feed_male = 0.0
+
+            if start_f > 0:
+                log.feed_female = ((log.feed_female_gp_bird or 0.0) * multiplier * start_f) / 1000.0
+            else:
+                log.feed_female = 0.0
+
             # Feed Codes
             if not is_new:
                 old_data['feed_code_male'] = log.feed_code_male.code if log.feed_code_male else ''
@@ -5307,11 +5330,23 @@ def recalculate_flock_inventory(flock_id):
 
     curr_males = flock.intake_male or 0
     curr_females = flock.intake_female or 0
+    prev_log = None
 
     for log in logs:
         # Update start of day columns
         log.males_at_start = curr_males
         log.females_at_start = curr_females
+
+        # Recalculate water intake
+        if prev_log and (log.date - prev_log.date).days == 1 and log.water_reading_1 is not None and prev_log.water_reading_1 is not None:
+            r1_today = log.water_reading_1 / 100.0
+            r1_prev = prev_log.water_reading_1 / 100.0
+            log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
+        else:
+            if not log.water_intake_calculated:
+                log.water_intake_calculated = 0.0
+
+        prev_log = log
 
         # Feed Multiplier Logic
         multiplier = 1.0
