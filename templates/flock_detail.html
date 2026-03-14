@@ -209,8 +209,8 @@
                 <small class="text-muted fw-normal d-block" style="font-size: 0.7rem;">({{ item.feed_cleanup_hours }}h)</small>
                 {% endif %}
             </td>
-            <td>{{ item.log.feed_male_gp_bird }}g</td>
-            <td>{{ item.log.feed_female_gp_bird }}g</td>
+            <td>{{ "%.1f"|format(item.log.feed_male_gp_bird) if item.log.feed_male_gp_bird is not none else '0.0' }}g</td>
+            <td>{{ "%.1f"|format(item.log.feed_female_gp_bird) if item.log.feed_female_gp_bird is not none else '0.0' }}g</td>
 
             {% set total_birds = item.stock_male + item.stock_female %}
             {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
