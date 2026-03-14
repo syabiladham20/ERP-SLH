@@ -102,7 +102,7 @@
                         <div class="row text-center">
                             {% if flock.calculated_phase in ['Brooding', 'Growing'] %}
                             <div class="col-6 border-end text-center bg-light rounded-start p-2">
-                                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Rearing Mort %</small><br>
+                                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Brooding/Growing Mort %</small><br>
                                 <div class="mt-1">
                                     <span class="text-dark">M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</span><br>
                                     <span class="text-dark">F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</span>
