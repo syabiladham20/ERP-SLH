@@ -2898,6 +2898,29 @@ def flock_spreadsheet_save(flock_id):
                     val = val.lower() == 'true'
                 setattr(log, field, bool(val))
 
+            # Calculate feed totals based on g/bird and current stock
+            # We must use start-of-day stock.
+            # In recalculate_flock_inventory, we'll recompute the stock properly.
+            # However, for now, we can rely on log.males_at_start if it exists or use fallback.
+            start_m = log.males_at_start or 0
+            start_f = log.females_at_start or 0
+
+            multiplier = 1.0
+            if log.feed_program == 'Skip-a-day':
+                multiplier = 2.0
+            elif log.feed_program == '2/1':
+                multiplier = 1.5
+
+            if start_m > 0:
+                log.feed_male = ((log.feed_male_gp_bird or 0.0) * multiplier * start_m) / 1000.0
+            else:
+                log.feed_male = 0.0
+
+            if start_f > 0:
+                log.feed_female = ((log.feed_female_gp_bird or 0.0) * multiplier * start_f) / 1000.0
+            else:
+                log.feed_female = 0.0
+
             # Feed Codes
             if not is_new:
                 old_data['feed_code_male'] = log.feed_code_male.code if log.feed_code_male else ''
@@ -5276,7 +5299,12 @@ def process_import(file, commit=True, preview=False):
                 if prev_log.water_reading_1 and log.water_reading_1:
                     r1_today = log.water_reading_1 / 100.0
                     r1_prev = prev_log.water_reading_1 / 100.0
-                    log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
+                    # The intake belongs to the previous day
+                    prev_log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
+                    db.session.add(prev_log)
+
+                    # Ensure current log resets if not evaluated by the next day yet
+                    log.water_intake_calculated = 0.0
                     db.session.add(log)
 
         if commit:
@@ -5311,11 +5339,27 @@ def recalculate_flock_inventory(flock_id):
 
     curr_males = flock.intake_male or 0
     curr_females = flock.intake_female or 0
+    prev_log = None
 
     for log in logs:
         # Update start of day columns
         log.males_at_start = curr_males
         log.females_at_start = curr_females
+
+        # Recalculate water intake
+        if prev_log and (log.date - prev_log.date).days == 1 and log.water_reading_1 is not None and prev_log.water_reading_1 is not None:
+            r1_today = log.water_reading_1 / 100.0
+            r1_prev = prev_log.water_reading_1 / 100.0
+            # Save the calculated intake on the previous day since the 24h consumption belongs to it
+            prev_log.water_intake_calculated = (r1_today - r1_prev) * 1000.0
+
+            # Reset current day's intake until tomorrow's reading is available
+            log.water_intake_calculated = 0.0
+        else:
+            if not log.water_intake_calculated:
+                log.water_intake_calculated = 0.0
+
+        prev_log = log
 
         # Feed Multiplier Logic
         multiplier = 1.0
@@ -5615,15 +5659,14 @@ def update_log_from_request(log, req):
     yesterday = log.date - timedelta(days=1)
     yesterday_log = DailyLog.query.filter_by(flock_id=log.flock_id, date=yesterday).first()
 
-    # Note: user clarified: "water consumption is from daily water consumption ml per bird... tomorrow's first reading minus today's first reading"
-    # Or usually water calculated is reading 1 today - reading 1 yesterday (which represents yesterday's consumption).
-    # Since the request doesn't ask me to change how it is calculated initially but rather add the chart, I'll keep the existing calculation logic untouched and just use the calculated field.
+    # Update previous day's water consumption since the 24h period finishes today
     if yesterday_log:
         r1_today_real = log.water_reading_1 / 100.0
         r1_yesterday_real = yesterday_log.water_reading_1 / 100.0
-        log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
-    else:
-        log.water_intake_calculated = 0.0
+        yesterday_log.water_intake_calculated = (r1_today_real - r1_yesterday_real) * 1000.0
+
+    # Today's consumption is 0 until tomorrow's reading
+    log.water_intake_calculated = 0.0
 
     update_clinical_notes(log, req)
 
