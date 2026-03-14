@@ -1515,6 +1515,18 @@ def delete_flock(id):
 def help():
     return render_template('help.html')
 
+@app.route('/flock_select')
+@dept_required('Farm')
+def flock_select():
+    active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+
+    if not active_flocks:
+        flash("No active flocks found.", "warning")
+        return redirect(url_for('index'))
+
+    return render_template('flock_select.html', active_flocks=active_flocks)
+
 @app.route('/flocks', methods=['GET', 'POST'])
 @dept_required('Farm')
 def manage_flocks():
