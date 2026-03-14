@@ -1990,7 +1990,7 @@ def calculate_flock_summary(flock, daily_stats):
 
     # Standards Map
     all_standards = Standard.query.all()
-    std_map = {s.production_week: s for s in all_standards if s.production_week}
+    std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
 
     cum_eggs = 0
     cum_hatch_eggs = 0
@@ -2168,8 +2168,8 @@ def view_flock(id):
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_map = {s.week: s for s in all_standards} # Biological Age Map
-    prod_std_map = {s.production_week: s for s in all_standards if s.production_week} # Production Week Map
+    std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')} # Biological Age Map
+    prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')} # Production Week Map
 
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
@@ -2671,7 +2671,7 @@ def flock_spreadsheet(id):
 
     # Enrich with standards (for benchmarks)
     standards_list = Standard.query.all()
-    standards_by_week = {s.week: s for s in standards_list}
+    standards_by_week = {getattr(s, 'week'): s for s in standards_list if hasattr(s, 'week')}
     standards_by_prod_week = {s.production_week: s for s in standards_list}
 
     # Fetch Global Standard for hatching egg %
@@ -3363,7 +3363,7 @@ def hatchery_charts(flock_id):
 
     # Fetch Standards for Hatchability
     all_standards = Standard.query.all()
-    std_map = {s.week: (s.std_hatchability or 0.0) for s in all_standards}
+    std_map = {getattr(s, 'week'): (getattr(s, 'std_hatchability', 0.0) or 0.0) for s in all_standards if hasattr(s, 'week')}
 
     data = {
         'weeks': [],
@@ -3595,8 +3595,8 @@ def flock_dashboard(id):
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_map = {s.week: s for s in all_standards}
-    prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+    std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')}
+    prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
 
     standard = std_map.get(age_week) # Biological Standard
 
@@ -6778,8 +6778,8 @@ def get_weekly_data_aggregated(flocks):
 
     # 3. Fetch Standards
     standards = Standard.query.all()
-    std_map = {s.week: s for s in standards}
-    prod_std_map = {s.production_week: s for s in standards if s.production_week}
+    std_map = {getattr(s, 'week'): s for s in standards if hasattr(s, 'week')}
+    prod_std_map = {getattr(s, 'production_week'): s for s in standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
 
     weekly_agg = {}
 
@@ -7544,7 +7544,7 @@ def get_hatchery_analytics():
 
         # Calculate Forecast
         all_standards = Standard.query.all()
-        std_map = {s.week: s.std_hatchability for s in all_standards}
+        std_map = {getattr(s, 'week'): getattr(s, 'std_hatchability', 0.0) for s in all_standards if hasattr(s, 'week')}
 
         total_forecast = 0
         for r in next_records:
@@ -7771,10 +7771,10 @@ def executive_flock_detail(id):
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
-    std_map = {s.week: s for s in all_standards} # Bio Map
-    prod_std_map = {s.production_week: s for s in all_standards if s.production_week} # Prod Map
+    std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')} # Bio Map
+    prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')} # Prod Map
 
-    std_hatch_map = {s.week: (s.std_hatchability or 0.0) for s in all_standards}
+    std_hatch_map = {getattr(s, 'week'): (getattr(s, 'std_hatchability', 0.0) or 0.0) for s in all_standards if hasattr(s, 'week')}
 
     # --- Fetch Hatch Data ---
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
