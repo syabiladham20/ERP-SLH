@@ -8269,7 +8269,7 @@ def api_daily_log_trend():
 
     # Fetch Standards
     all_standards = GlobalStandard.query.all()
-    prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+    prod_std_map = {getattr(s, "age_weeks", getattr(s, "production_week", None)): s for s in all_standards if getattr(s, "age_weeks", getattr(s, "production_week", None)) is not None}
 
     # Attach Standards
     for d in enriched:
