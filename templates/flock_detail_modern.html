@@ -116,25 +116,10 @@
       </div>
     </div>
   </div>
-  <div class="card-footer bg-transparent border-0 pt-0 text-center">
-    {% for item in get_ui_elements('flock_detail') %}
-        {% if item.key == 'detail_kpi' %}
-            <a href="{{ url_for('flock_dashboard', id=flock.id) }}" class="btn btn-sm btn-success me-2">{{ item.label }}</a>
-        {% elif item.key == 'detail_custom' %}
-            <a href="{{ url_for('flock_custom_dashboard', id=flock.id) }}" class="btn btn-sm btn-warning me-2">{{ item.label }}</a>
-        {% elif item.key == 'detail_charts' %}
-            <a href="{{ url_for('flock_charts', id=flock.id) }}" class="btn btn-sm btn-primary me-2">{{ item.label }}</a>
-        {% elif item.key == 'detail_hatch' %}
-            <a href="{{ url_for('flock_hatchability', id=flock.id) }}" class="btn btn-sm btn-info text-white me-2">{{ item.label }}</a>
-        {% elif item.key == 'detail_health' %}
-            <a href="{{ url_for('health_log', flock_id=flock.id) }}" class="btn btn-sm btn-danger">{{ item.label }}</a>
-        {% endif %}
-    {% endfor %}
-  </div>
 </div>
 
 <!-- Navigation Tabs -->
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 mt-3">
     <h4>Flock Details</h4>
     <div>
         {% if session.get('user_role') == 'Admin' %}
@@ -145,21 +130,21 @@
     </div>
 </div>
 
-<ul class="nav nav-tabs mb-3" id="flockTabs" role="tablist">
-  <li class="nav-item">
-    <button class="nav-link mb-0 px-0 py-1 active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
+<ul class="nav nav-tabs mb-4 gap-2 border-bottom-0" id="flockTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active px-4 py-2 border rounded shadow-sm" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link mb-0 px-0 py-1" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly</button>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link mb-0 px-0 py-1" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Charts</button>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link mb-0 px-0 py-1" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Summary</button>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Production Summary</button>
   </li>
-  <li class="nav-item">
-    <button class="nav-link mb-0 px-0 py-1" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health</button>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health Analytics</button>
   </li>
 </ul>
 

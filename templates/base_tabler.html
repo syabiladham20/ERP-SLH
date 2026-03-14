@@ -266,6 +266,8 @@
                                 {% endif %}
                             {% endfor %}
                             <a class="dropdown-item" href="{{ url_for('history') }}">History</a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item" href="{{ url_for('flock_select') }}">Flock Detail</a>
                         </div>
                     </li>
                     <li class="nav-item dropdown">
@@ -308,6 +310,7 @@
                         {% endif %}
                     {% endfor %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}"><span class="nav-link-title">History</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('flock_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
 
                 {% elif user_dept == 'Hatchery' %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
