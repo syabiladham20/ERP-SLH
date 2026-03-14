@@ -1244,6 +1244,7 @@ def index():
     # Inventory Check for Dashboard
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
     low_stock_count = len(low_stock_items)
+    normal_stock_items = InventoryItem.query.filter(InventoryItem.current_stock >= InventoryItem.min_stock_level).all()
 
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
@@ -1376,6 +1377,7 @@ def index():
                            today=today,
                            low_stock_items=low_stock_items,
                            low_stock_count=low_stock_count,
+                           normal_stock_items=normal_stock_items,
                            this_week_vaccines=this_week_vaccines,
                            next_week_vaccines=next_week_vaccines)
 
@@ -6151,6 +6153,19 @@ def health_log_medication():
     if request.method == 'POST':
         flock_id_param = request.form.get('flock_id') or selected_flock_id
 
+        if 'delete_medication_id' in request.form:
+            try:
+                m_id = int(request.form.get('delete_medication_id'))
+                m = Medication.query.get(m_id)
+                if m:
+                    db.session.delete(m)
+                    db.session.commit()
+                    flash('Medication record deleted.', 'info')
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Error deleting medication: {str(e)}', 'danger')
+            return redirect(url_for('health_log_medication', flock_id=flock_id_param, edit_flock_id=edit_flock_id))
+
         if 'add_medication' in request.form:
              if flock_id_param:
                  try:
@@ -7672,6 +7687,7 @@ def executive_dashboard():
     # Inventory Check
     low_stock_items = InventoryItem.query.filter(InventoryItem.current_stock < InventoryItem.min_stock_level).all()
     low_stock_count = len(low_stock_items)
+    normal_stock_items = InventoryItem.query.filter(InventoryItem.current_stock >= InventoryItem.min_stock_level).all()
 
     # Pre-fetch Hatchability Data (Optimization: Bulk Fetch)
     flock_ids = [f.id for f in active_flocks]
@@ -7821,7 +7837,9 @@ def executive_dashboard():
                            next_hatch=next_hatch,
                            current_month=today.strftime('%B %Y'),
                            today=today,
+                           low_stock_items=low_stock_items,
                            low_stock_count=low_stock_count,
+                           normal_stock_items=normal_stock_items,
                            iso_data=iso_data,
                            available_years=available_years,
                            selected_year=selected_year,
