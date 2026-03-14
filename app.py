@@ -361,11 +361,14 @@ class DailyLog(db.Model):
     @property
     def age_week_day(self):
         delta = (self.date - self.flock.intake_date).days
-        if delta < 1:
+        if delta == 0:
             return "0.0"
-        weeks = (delta - 1) // 7
-        days = (delta - 1) % 7 + 1
-        return f"{weeks}.{days}"
+        elif delta > 0:
+            weeks = ((delta - 1) // 7) + 1
+            days = ((delta - 1) % 7) + 1
+            return f"{weeks}.{days}"
+        else:
+            return "0.0"
 
 class FloatingNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1217,7 +1220,7 @@ def hatchery_dashboard():
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = (days // 7) if days >= 0 else 0
+        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
 
     # Analytics: Current Month Hatchability (based on Hatch Date)
     start_month = date(today.year, today.month, 1)
@@ -1259,9 +1262,9 @@ def index():
 
         # Age
         days_age = (today - f.intake_date).days
-        f.age_weeks = days_age // 7
-        f.age_days = days_age % 7
-        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
+        f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
+        f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
 
         # Stats
         if daily_stats:
@@ -3397,7 +3400,7 @@ def hatchery_charts(flock_id):
 
     for r in records:
         age_days = (r.setting_date - flock.intake_date).days
-        week = (age_days // 7) + 1
+        week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
 
         if week not in weekly_agg:
             weekly_agg[week] = {
@@ -3607,7 +3610,7 @@ def flock_dashboard(id):
     prev_stat = stats_map.get(prev_date) or {}
 
     age_days = (target_date - flock.intake_date).days
-    age_week = (age_days // 7) + 1
+    age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
@@ -3618,7 +3621,8 @@ def flock_dashboard(id):
 
     prod_standard = None
     if flock.start_of_lay_date:
-        start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+        start_days = (flock.start_of_lay_date - flock.intake_date).days
+        start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
         if age_week >= start_bio_week:
             current_prod_week = age_week - start_bio_week + 1
             prod_standard = prod_std_map.get(current_prod_week)
@@ -5170,7 +5174,7 @@ def process_import(file, commit=True, preview=False):
             if has_bw:
                 log.is_weighing_day = True
                 days_diff = (log.date - intake_date).days
-                week_num = (days_diff // 7) + 1
+                week_num = 0 if days_diff == 0 else ((days_diff - 1) // 7) + 1 if days_diff > 0 else (days_diff // 7)
                 if week_num in standard_bw_map:
                     log.standard_bw_male = round_to_whole(standard_bw_map[week_num][0])
                     log.standard_bw_female = round_to_whole(standard_bw_map[week_num][1])
@@ -5712,7 +5716,7 @@ def verify_import_data(flock, logs=None):
     agg = {}
     for log in logs:
         delta = (log.date - flock.intake_date).days
-        week = (delta // 7) + 1
+        week = 0 if delta == 0 else ((delta - 1) // 7) + 1 if delta > 0 else (delta // 7)
         if week not in agg:
             agg[week] = {'mort_f': 0, 'eggs': 0}
 
@@ -5837,7 +5841,7 @@ def health_log_vaccines():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = (days // 7) + 1 if days >= 0 else 0
+        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
     flock_ids = [f.id for f in active_flocks]
 
     vaccine_events_by_date = {}
@@ -5846,7 +5850,7 @@ def health_log_vaccines():
         d = v.est_date
         if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
         age_days = (d - v.flock.intake_date).days
-        age_week = (age_days // 7) + 1
+        age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
         vaccine_events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock, 'age': age_week})
 
     flock_tasks = {}
@@ -5965,7 +5969,7 @@ def health_log_sampling():
             elif date_changed:
                 s.scheduled_date = new_date
                 diff = (new_date - s.flock.intake_date).days
-                s.age_week = (diff // 7) + 1
+                s.age_week = 0 if diff == 0 else ((diff - 1) // 7) + 1 if diff > 0 else (diff // 7)
                 updated_count += 1
 
             actual_str = request.form.get(f's_actual_date_{sid}')
@@ -6012,7 +6016,7 @@ def health_log_sampling():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = (days // 7) + 1 if days >= 0 else 0
+        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
     flock_ids = [f.id for f in active_flocks]
 
     sampling_events_by_date = {}
@@ -6179,7 +6183,7 @@ def health_log_medication():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = (days // 7) + 1 if days >= 0 else 0
+        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
 
     flock_tasks = {}
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
@@ -6922,7 +6926,7 @@ def get_weekly_data_aggregated(flocks):
 
             # Age Calculation (at end of week)
             age_days = (w_data['end_date'] - flock.intake_date).days
-            age_week = (age_days // 7) + 1
+            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
             if age_week < 1: age_week = 1
 
             # Standards
@@ -6931,7 +6935,8 @@ def get_weekly_data_aggregated(flocks):
             # Production Standard Lookup
             std_prod = None
             if flock.start_of_lay_date:
-                start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+                start_days = (flock.start_of_lay_date - flock.intake_date).days
+                start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
                 if age_week >= start_bio_week:
                     current_prod_week = age_week - start_bio_week + 1
                     std_prod = prod_std_map.get(current_prod_week)
@@ -7565,7 +7570,7 @@ def get_hatchery_analytics():
         total_forecast = 0
         for r in next_records:
             age_days = (next_hatch_date_query - r.flock.intake_date).days
-            age_week = (age_days // 7) + 1
+            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
             std_hatch = std_map.get(age_week)
             if std_hatch is None: std_hatch = 0.0
             forecast = r.egg_set * (std_hatch / 100.0)
@@ -7643,9 +7648,9 @@ def executive_dashboard():
 
         # Age
         days_age = (today - f.intake_date).days
-        f.age_weeks = days_age // 7
-        f.age_days = days_age % 7
-        f.current_week = (days_age // 7) + 1 if days_age >= 0 else 0
+        f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
+        f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
 
         # Stats
         if daily_stats:

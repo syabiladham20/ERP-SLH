@@ -200,10 +200,12 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         cum_mort_f += mort_f
 
         # Production Week Calculation
-        bio_week = (log.date - flock.intake_date).days // 7 + 1
+        bio_days = (log.date - flock.intake_date).days
+        bio_week = 0 if bio_days == 0 else ((bio_days - 1) // 7) + 1 if bio_days > 0 else (bio_days // 7)
         prod_week = None
         if flock.start_of_lay_date:
-            start_bio_week = (flock.start_of_lay_date - flock.intake_date).days // 7 + 1
+            start_days = (flock.start_of_lay_date - flock.intake_date).days
+            start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
             if bio_week >= start_bio_week:
                 prod_week = bio_week - start_bio_week + 1
 
