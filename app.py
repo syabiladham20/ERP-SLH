@@ -8512,7 +8512,7 @@ def api_daily_log_trend():
         'empty': False,
         'house_name': flock.house.name,
         'age_week': end_day_log.get('week', 0),
-        'phase': flock.phase,
+        'phase': getattr(flock, 'calculated_phase', flock.phase),
         'date': end_date.strftime('%d-%m-%Y'),
         'lighting_hours': lighting_hours,
         'feed_cleanup_hours': feed_cleanup_hours,
