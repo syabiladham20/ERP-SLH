@@ -352,11 +352,19 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
 
         daily_stats.append(d)
 
+    from datetime import date
+
     if daily_stats:
         # Attach the latest phase directly to the flock object dynamically for easy template access
-        flock.calculated_phase = daily_stats[-1]['calculated_phase']
+        last_phase = daily_stats[-1]['calculated_phase']
+
+        # If the latest log is still in Rearing but the production start date has arrived/passed today,
+        # the dashboard should reflect the *current* state ('Pre-lay') rather than the past log's state.
+        if last_phase in ['Brooding', 'Growing'] and flock.production_start_date and date.today() >= flock.production_start_date:
+            flock.calculated_phase = 'Pre-lay'
+        else:
+            flock.calculated_phase = last_phase
     else:
-        from datetime import date
         if flock.production_start_date and flock.production_start_date <= date.today():
             flock.calculated_phase = 'Pre-lay'
         else:
