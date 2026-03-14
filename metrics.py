@@ -150,8 +150,16 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         if current_phase in ['Brooding', 'Growing'] and flock.production_start_date and log.date >= flock.production_start_date:
             current_phase = 'Pre-lay'
 
-        # If we hit the production start date, we reset the baseline.
-        if not in_prod and flock.production_start_date and log.date >= flock.production_start_date:
+        # --- B. Snapshot Stock (Start of Day) ---
+        # Used for today's mortality % calculation
+        stock_m_start = curr_m_prod + curr_m_hosp
+        stock_f_start = curr_f_prod + curr_f_hosp
+
+        # If we hit 5% egg production, we reset the baseline for cumulative mortality.
+        eggs = log.eggs_collected or 0
+        egg_prod_pct = (eggs / stock_f_start * 100) if stock_f_start > 0 else 0
+
+        if not in_prod and egg_prod_pct >= 5.0:
              in_prod = True
 
              # If manual counts are provided, use them to overwrite current running stock
@@ -163,19 +171,18 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
                  curr_f_prod = flock.prod_start_female
                  curr_f_hosp = flock.prod_start_female_hosp or 0
 
+             # Re-calculate Snapshot Stock after applying potential manual counts
+             stock_m_start = curr_m_prod + curr_m_hosp
+             stock_f_start = curr_f_prod + curr_f_hosp
+
              # Reset Baseline for Cumulative Calcs (Production Phase Baseline)
              # If no manual count, this uses the running stock (Intake - Rearing Loss) as the new baseline.
-             start_m = curr_m_prod + curr_m_hosp
-             start_f = curr_f_prod + curr_f_hosp
+             start_m = stock_m_start
+             start_f = stock_f_start
 
              # Reset Cumulative Loss Counters for the new phase
              cum_mort_m = 0
              cum_mort_f = 0
-
-        # --- B. Snapshot Stock (Start of Day) ---
-        # Used for today's mortality % calculation
-        stock_m_start = curr_m_prod + curr_m_hosp
-        stock_f_start = curr_f_prod + curr_f_hosp
 
         # --- C. Calculate Daily Metrics ---
 
@@ -185,7 +192,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         cull_m = (log.culls_male or 0) + (log.culls_male_hosp or 0)
         cull_f = (log.culls_female or 0) + (log.culls_female_hosp or 0)
 
-        eggs = log.eggs_collected or 0
+        # eggs already defined above for 5% prod calculation
 
         # Feed Multiplier
         feed_mult = 1.0

@@ -1617,6 +1617,36 @@ def manage_flocks():
     farms = Farm.query.all()
     houses = House.query.all()
     flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
+
+    # Bulk fetch cumulative mortality for all flocks to prevent N+1 queries
+    # Using coalesce to handle NULL values correctly in SQL addition
+    mortality_data = db.session.query(
+        DailyLog.flock_id,
+        db.func.sum(
+            db.func.coalesce(DailyLog.mortality_male, 0) +
+            db.func.coalesce(DailyLog.mortality_female, 0) +
+            db.func.coalesce(DailyLog.culls_male, 0) +
+            db.func.coalesce(DailyLog.culls_female, 0) +
+            db.func.coalesce(DailyLog.mortality_male_hosp, 0) +
+            db.func.coalesce(DailyLog.mortality_female_hosp, 0) +
+            db.func.coalesce(DailyLog.culls_male_hosp, 0) +
+            db.func.coalesce(DailyLog.culls_female_hosp, 0)
+        )
+    ).group_by(DailyLog.flock_id).all()
+
+    mortality_map = {row[0]: row[1] for row in mortality_data}
+
+    for flock in flocks:
+        intake_m = flock.intake_male or 0
+        intake_f = flock.intake_female or 0
+        total_intake = intake_m + intake_f
+
+        if total_intake > 0:
+            cum_mort = mortality_map.get(flock.id, 0)
+            flock.lifetime_cum_mort_pct = round((cum_mort / total_intake) * 100, 2)
+        else:
+            flock.lifetime_cum_mort_pct = 0.0
+
     return render_template('flock_form.html', farms=farms, houses=houses, flocks=flocks)
 
 @app.route('/flock/<int:id>/close', methods=['POST'])
@@ -8308,14 +8338,12 @@ def api_daily_log_trend():
     gs = GlobalStandard.query.first()
     enriched = enrich_flock_data(flock, logs)
 
-    cum_mort_m = db.session.query(db.func.sum(DailyLog.mortality_male)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-    cum_mort_f = db.session.query(db.func.sum(DailyLog.mortality_female)).filter(DailyLog.flock_id == flock_id, DailyLog.date <= end_date).scalar() or 0
-
-    intake_m = flock.intake_male or 0
-    intake_f = flock.intake_female or 0
-
-    cum_mort_m_pct = (cum_mort_m / intake_m * 100) if intake_m > 0 else 0
-    cum_mort_f_pct = (cum_mort_f / intake_f * 100) if intake_f > 0 else 0
+    cum_mort_m_pct = 0
+    cum_mort_f_pct = 0
+    if enriched:
+        # Get phase-aware cumulative mortality from the last calculated day
+        cum_mort_m_pct = enriched[-1].get('mortality_cum_male_pct', 0)
+        cum_mort_f_pct = enriched[-1].get('mortality_cum_female_pct', 0)
 
     # Fetch Standards
     all_standards = GlobalStandard.query.all()
