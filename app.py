@@ -1273,7 +1273,7 @@ def index():
                 f.has_log_today = True
 
             # Cumulative Pct (Phase specific)
-            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing']:
+            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing', 'Pre-lay']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
@@ -7701,7 +7701,7 @@ def executive_dashboard():
             if last['date'] == today:
                 f.has_log_today = True
 
-            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing']:
+            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing', 'Pre-lay']:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:

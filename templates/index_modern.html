@@ -210,7 +210,7 @@
             <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-primary btn-sm mb-0">See Details <i class="fas fa-arrow-right ms-1"></i></a>
             <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" style="display: inline;">
                 <button type="submit" class="btn btn-link text-warning text-sm mb-0 px-0 ms-2" onclick="return confirm('Change phase for {{ flock.flock_id }}?');">
-                    Switch to {% if flock.calculated_phase in ['Brooding', 'Growing'] %}Production{% else %}Brooding{% endif %}
+                    Switch to {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}Production{% else %}Brooding{% endif %}
                 </button>
             </form>
           </div>
