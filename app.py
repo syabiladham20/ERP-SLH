@@ -1893,58 +1893,59 @@ def get_chart_data(flock_id):
 
             log = d['log']
 
-            # Construct Note content
-            note_parts = []
-            if log.flushing: note_parts.append("[FLUSHING]")
-            if log.clinical_notes: note_parts.append(log.clinical_notes)
-
-            # Active Meds
-            active_meds = [m.drug_name for m in meds if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
-            if active_meds:
-                note_parts.append("Meds: " + ", ".join(active_meds))
-
-            # Completed Vaccines
-            done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
-            if done_vacs:
-                note_parts.append("Vac: " + ", ".join(done_vacs))
-
-            # Main Photos
-            main_photos = [p for p in log.photos if p.note_id is None]
-
-            # Extra Notes
-            extra_notes = []
-            if log.clinical_notes_list:
-                for n in log.clinical_notes_list:
-                    n_photos = []
-                    for p in n.photos:
-                        n_photos.append({
-                            'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
-                            'name': p.original_filename or 'Photo'
-                        })
-                    extra_notes.append({
-                        'caption': n.caption,
-                        'photos': n_photos
-                    })
-
-            has_data = (note_parts or main_photos or extra_notes)
-
-            if has_data:
-                main_photo_list = []
-                for p in main_photos:
-                    main_photo_list.append({
-                        'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
-                        'name': p.original_filename or 'Photo'
-                    })
-
-                data['events'].append({
-                    'date': log.date.isoformat(),
-                    'note': " | ".join(note_parts),
-                    'main_note': " | ".join(note_parts),
-                    'photos': main_photo_list,
-                    'main_photos': main_photo_list,
-                    'extra_notes': extra_notes,
-                    'type': 'note'
-                })
+            # Temporarily disabled to prevent OSError: write error on massive payload sizes
+            # # Construct Note content
+            # note_parts = []
+            # if log.flushing: note_parts.append("[FLUSHING]")
+            # if log.clinical_notes: note_parts.append(log.clinical_notes)
+            #
+            # # Active Meds
+            # active_meds = [m.drug_name for m in meds if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+            # if active_meds:
+            #     note_parts.append("Meds: " + ", ".join(active_meds))
+            #
+            # # Completed Vaccines
+            # done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+            # if done_vacs:
+            #     note_parts.append("Vac: " + ", ".join(done_vacs))
+            #
+            # # Main Photos
+            # main_photos = [p for p in log.photos if p.note_id is None]
+            #
+            # # Extra Notes
+            # extra_notes = []
+            # if log.clinical_notes_list:
+            #     for n in log.clinical_notes_list:
+            #         n_photos = []
+            #         for p in n.photos:
+            #             n_photos.append({
+            #                 'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+            #                 'name': p.original_filename or 'Photo'
+            #             })
+            #         extra_notes.append({
+            #             'caption': n.caption,
+            #             'photos': n_photos
+            #         })
+            #
+            # has_data = (note_parts or main_photos or extra_notes)
+            #
+            # if has_data:
+            #     main_photo_list = []
+            #     for p in main_photos:
+            #         main_photo_list.append({
+            #             'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+            #             'name': p.original_filename or 'Photo'
+            #         })
+            #
+            #     data['events'].append({
+            #         'date': log.date.isoformat(),
+            #         'note': " | ".join(note_parts),
+            #         'main_note': " | ".join(note_parts),
+            #         'photos': main_photo_list,
+            #         'main_photos': main_photo_list,
+            #         'extra_notes': extra_notes,
+            #         'type': 'note'
+            #     })
 
     else:
         # Aggregated
