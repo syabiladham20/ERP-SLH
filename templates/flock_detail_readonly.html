@@ -777,17 +777,6 @@
   if (Chart.defaults.datasets.bar) {
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
-  Chart.defaults.set('plugins.datalabels', {
-    display: true,
-    font: { size: 10 },
-    formatter: Math.round
-  });
-  if (Chart.defaults.datasets.line) {
-      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
-  }
-  if (Chart.defaults.datasets.bar) {
-      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
-  }
   // Fix for zoom clipping
   if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
   if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;

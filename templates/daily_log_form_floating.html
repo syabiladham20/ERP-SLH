@@ -8,7 +8,8 @@
     No active flocks found. Please <a href="{{ url_for('manage_flocks') }}">create a flock</a> first.
   </div>
 {% else %}
-  <form method="POST" enctype="multipart/form-data">
+  <form method="POST" enctype="multipart/form-data" id="dailyLogForm">
+    <input type="hidden" id="override_validation" name="override_validation" value="false">
     <div class="card mb-3">
       <div class="card-header sticky-header bg-primary text-white">General Info</div>
       <div class="card-body">
@@ -28,6 +29,7 @@
           {% if log %}
              <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% endif %}
+          <div id="inventory-status" class="badge bg-info mt-2" style="font-size: 0.9em;">Select House to see Stock</div>
         </div>
         <div class="mb-3">
           <label for="date" class="form-label">Date</label>
@@ -122,6 +124,14 @@
                             <label class="form-label small">Males -> To Production</label>
                             <input type="number" class="form-control form-control-sm" name="males_moved_to_prod" value="{{ log.males_moved_to_prod if log else 0 }}">
                         </div>
+                        <div class="col-12 col-md-12 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="spiking" id="spiking" {{ 'checked' if log and log.spiking else '' }}>
+                                <label class="form-check-label text-muted small" for="spiking">
+                                    Spiking (Male Movement)
+                                </label>
+                            </div>
+                        </div>
                         <div class="col-12 col-md-6 mb-2">
                             <label class="form-label small">Females -> To Production</label>
                             <input type="number" class="form-control form-control-sm" name="females_moved_to_prod" value="{{ log.females_moved_to_prod if log else 0 }}">
@@ -171,12 +181,14 @@
               <input type="number" step="0.01" class="form-control form-control-lg" name="feed_male_gp_bird" id="feed_male_gp_bird" placeholder="Male Feed (g/bird)" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
               <label for="feed_male_gp_bird">Male Feed (g/bird)</label>
             </div>
+            <div id="live_feed_male_calc" class="small text-primary fw-bold ms-1 mt-1">Auto Calc: -- kg</div>
           </div>
           <div class="col-12 col-md-6 mb-2">
             <div class="form-floating">
               <input type="number" step="0.01" class="form-control form-control-lg" name="feed_female_gp_bird" id="feed_female_gp_bird" placeholder="Female Feed (g/bird)" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
               <label for="feed_female_gp_bird">Female Feed (g/bird)</label>
             </div>
+            <div id="live_feed_female_calc" class="small text-primary fw-bold ms-1 mt-1">Auto Calc: -- kg</div>
           </div>
         </div>
         <div class="row">
@@ -257,6 +269,12 @@
         </div>
       </div>
       <div class="card-body">
+        <div class="mb-3 form-check">
+            <input class="form-check-input" type="checkbox" name="selection_done" id="selection_done" {{ 'checked' if log and log.selection_done else '' }}>
+            <label class="form-check-label text-muted small" for="selection_done">
+                Selection Done
+            </label>
+        </div>
         <!-- Standard BW -->
         <div class="row mb-3" id="standard_bw_section">
            <div class="col-12 col-md-6">
@@ -578,13 +596,23 @@
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
 
+    let currentStockM = 0;
+    let currentStockF = 0;
+    let yesterdayFeedM = 0;
+    let yesterdayFeedF = 0;
+    let dayMinus2FeedM = 0;
+    let dayMinus2FeedF = 0;
+
     function prefillPreviousData() {
         let houseId = document.getElementById('house_id').value;
         let dateVal = document.getElementById('date').value;
 
-        if (!houseId || !dateVal) return;
+        if (!houseId || !dateVal) {
+            document.getElementById('inventory-status').innerText = 'Select House to see Stock';
+            return;
+        }
 
-        fetch(`{{ url_for('get_previous_daily_log_data') }}?house_id=${houseId}&date=${dateVal}`)
+        fetch(`/api/daily_log/previous?house_id=${houseId}&date=${dateVal}`)
             .then(response => {
                 if (response.ok) {
                     return response.json();
@@ -592,6 +620,22 @@
                 throw new Error('No previous data found or error fetching.');
             })
             .then(data => {
+                // Stock Data for HUD and Calculator
+                currentStockM = data.current_stock_m || 0;
+                currentStockF = data.current_stock_f || 0;
+                yesterdayFeedM = data.yesterday_feed_m || 0;
+                yesterdayFeedF = data.yesterday_feed_f || 0;
+                dayMinus2FeedM = data.day_minus_2_feed_m || 0;
+                dayMinus2FeedF = data.day_minus_2_feed_f || 0;
+
+                // Update HUD
+                let hudEl = document.getElementById('inventory-status');
+                if (hudEl) {
+                    hudEl.innerText = `Stock: M ${currentStockM} | F ${currentStockF}`;
+                }
+
+                calculateLiveFeed();
+
                 if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
                 if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
                 if (data.feed_code_female_id) document.querySelector('[name="feed_code_female_id"]').value = data.feed_code_female_id;
@@ -614,8 +658,65 @@
                 let lightOffInput = document.querySelector('[name="light_off_time"]');
                 if (data.light_off_time && lightOffInput.value === '') lightOffInput.value = data.light_off_time;
             })
-            .catch(error => console.log(error));
+            .catch(error => {
+                console.log(error);
+                document.getElementById('inventory-status').innerText = 'Stock unavailable';
+            });
     }
+
+    function getMultiplier(program) {
+        if (program === 'Skip-a-day') return 2.0;
+        if (program === '2/1') return 1.5;
+        return 1.0;
+    }
+
+    function calculateLiveFeed() {
+        let mVal = parseFloat(document.getElementById('feed_male_gp_bird').value) || 0;
+        let fVal = parseFloat(document.getElementById('feed_female_gp_bird').value) || 0;
+        let program = document.querySelector('[name="feed_program"]').value;
+        let mult = getMultiplier(program);
+
+        let mKg = (mVal * currentStockM * mult) / 1000;
+        let fKg = (fVal * currentStockF * mult) / 1000;
+
+        let liveMaleEl = document.getElementById('live_feed_male_calc');
+        if (liveMaleEl) liveMaleEl.innerText = mKg > 0 ? `Auto Calc: ${mKg.toFixed(2)} kg` : 'Auto Calc: -- kg';
+
+        let liveFemaleEl = document.getElementById('live_feed_female_calc');
+        if (liveFemaleEl) liveFemaleEl.innerText = fKg > 0 ? `Auto Calc: ${fKg.toFixed(2)} kg` : 'Auto Calc: -- kg';
+    }
+
+    // Attach listeners for live calculation
+    document.getElementById('feed_male_gp_bird').addEventListener('input', calculateLiveFeed);
+    document.getElementById('feed_female_gp_bird').addEventListener('input', calculateLiveFeed);
+    document.querySelector('[name="feed_program"]').addEventListener('change', calculateLiveFeed);
+
+    // Feed Guardian Validation Intercept
+    document.getElementById('dailyLogForm').addEventListener('submit', function(e) {
+        let program = document.querySelector('[name="feed_program"]').value;
+        let isFastingDay = false;
+
+        if (program === 'Skip-a-day') {
+            if (yesterdayFeedM > 0 || yesterdayFeedF > 0) {
+                isFastingDay = true;
+            }
+        } else if (program === '2/1') {
+            if ((yesterdayFeedM > 0 || yesterdayFeedF > 0) && (dayMinus2FeedM > 0 || dayMinus2FeedF > 0)) {
+                isFastingDay = true;
+            }
+        }
+
+        if (isFastingDay) {
+            e.preventDefault();
+            let msg = `⚠️ Alert: Today is a scheduled Fasting Day for this House based on the '${program}' program. Are you sure you want to log this feed? This will affect flock uniformity.`;
+            if (confirm(msg)) {
+                document.getElementById('override_validation').value = 'true';
+                this.submit();
+            } else {
+                document.getElementById('override_validation').value = 'false';
+            }
+        }
+    });
 
     function onSelectionChange() {
         {% if request.endpoint == 'daily_log' %}
