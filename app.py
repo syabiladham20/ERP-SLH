@@ -6285,6 +6285,1233 @@ def get_custom_data(flock_id):
 
     return json.dumps(result)
 
+
+def get_gemini_lite_response(user_prompt):
+    api_key = os.getenv('GEMINI_API_KEY')
+    # Use the 1.5-flash-latest model for the lite version
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+
+    # System context for the Poultry AI
+    context = (
+        "You are a Poultry Expert at Sin Long Heng Breeding Farm. "
+        "Provide concise advice for Arbor Acres Plus S broiler breeders."
+    )
+
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"{context}\n\nUser Question: {user_prompt}"}]
+        }]
+    }
+
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status() # Check for errors
+        data = response.json()
+        # Navigate the JSON structure to get the text
+        return data['candidates'][0]['content']['parts'][0]['text']
+    except Exception as e:
+        return f"AI Connection Error: {str(e)}"
+
+def get_openai_lite_response(user_prompt):
+    api_key = os.getenv('OPENAI_API_KEY')
+    url = "https://api.openai.com/v1/chat/completions"
+
+    # System context for the Poultry AI
+    context = (
+        "You are a Poultry Expert at Sin Long Heng Breeding Farm. "
+        "Provide concise advice for Arbor Acres Plus S broiler breeders."
+    )
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": context},
+            {"role": "user", "content": user_prompt}
+        ],
+        "max_tokens": 500
+    }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        response.raise_for_status() # Check for errors
+        data = response.json()
+        # Navigate the JSON structure to get the text
+        return data['choices'][0]['message']['content']
+    except Exception as e:
+        return f"AI Connection Error: {str(e)}"
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def chat():
+    user_input = request.json.get('message')
+
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+
+    if openai_api_key:
+        ai_reply = get_openai_lite_response(user_input)
+    elif gemini_api_key:
+        ai_reply = get_gemini_lite_response(user_input)
+    else:
+        return jsonify({"response": "The AI assistant is in maintenance mode. Please contact the Technical Director."})
+
+    return jsonify({"response": ai_reply})
+
+# --- Inventory Routes ---
+
+@app.route('/inventory')
+@dept_required('Farm')
+def inventory():
+    items = InventoryItem.query.order_by(InventoryItem.name).all()
+    transactions = InventoryTransaction.query.order_by(InventoryTransaction.transaction_date.desc(), InventoryTransaction.id.desc()).limit(50).all()
+
+    # Monthly Summary
+    today = date.today()
+    start_of_month = date(today.year, today.month, 1)
+
+    month_txs = InventoryTransaction.query.filter(InventoryTransaction.transaction_date >= start_of_month).all()
+
+    summary_map = {}
+    for t in month_txs:
+        if t.inventory_item_id not in summary_map:
+            summary_map[t.inventory_item_id] = {'purchase': 0, 'usage': 0, 'waste': 0}
+
+        type_key = t.transaction_type.lower()
+        if type_key in summary_map[t.inventory_item_id]:
+            summary_map[t.inventory_item_id][type_key] += t.quantity
+
+    summary_list = []
+    for item in items:
+        s = summary_map.get(item.id, {'purchase': 0, 'usage': 0, 'waste': 0})
+        summary_list.append({
+            'name': item.name,
+            'purchase': round(s['purchase'], 2),
+            'usage': round(s['usage'], 2),
+            'waste': round(s['waste'], 2)
+        })
+
+    return render_template('inventory.html', items=items, transactions=transactions, summary=summary_list, current_month=today.strftime('%B %Y'), today=today)
+
+@app.route('/inventory/add', methods=['POST'])
+@dept_required('Farm')
+def add_inventory_item():
+    name = request.form.get('name')
+    type_ = request.form.get('type')
+    unit = request.form.get('unit')
+    stock = float(request.form.get('current_stock') or 0)
+    min_stock = float(request.form.get('min_stock_level') or 0)
+    doses = int(request.form.get('doses_per_unit') or 0) if type_ == 'Vaccine' else None
+    batch = request.form.get('batch_number')
+    exp_str = request.form.get('expiry_date')
+    exp_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
+
+    item = InventoryItem(
+        name=name, type=type_, unit=unit, current_stock=stock,
+        min_stock_level=min_stock, doses_per_unit=doses,
+        batch_number=batch, expiry_date=exp_date
+    )
+    db.session.add(item)
+    db.session.flush()
+
+    log_user_activity(session.get('user_id'), 'Add', 'InventoryItem', item.id, details={'name': name, 'type': type_, 'initial_stock': stock})
+
+    db.session.commit()
+
+    if stock > 0:
+        t = InventoryTransaction(
+            inventory_item_id=item.id,
+            transaction_type='Purchase',
+            quantity=stock,
+            transaction_date=date.today(),
+            notes='Initial Stock'
+        )
+        db.session.add(t)
+        db.session.commit()
+
+    flash(f'Added {name} to inventory.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction', methods=['POST'])
+@dept_required('Farm')
+def inventory_transaction():
+    item_id = int(request.form.get('inventory_item_id'))
+    type_ = request.form.get('transaction_type')
+    qty = float(request.form.get('quantity') or 0)
+    date_str = request.form.get('transaction_date')
+    date_val = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date.today()
+    notes = request.form.get('notes')
+
+    if qty <= 0:
+        flash('Quantity must be positive.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item = InventoryItem.query.get_or_404(item_id)
+
+    if type_ in ['Usage', 'Waste']:
+        item.current_stock -= qty
+    else: # Purchase, Adjustment
+        item.current_stock += qty
+
+    if item.current_stock < 0:
+        flash(f'Warning: Stock for {item.name} went negative.', 'warning')
+
+    t = InventoryTransaction(
+        inventory_item_id=item.id,
+        transaction_type=type_,
+        quantity=qty,
+        transaction_date=date_val,
+        notes=notes
+    )
+    db.session.add(t)
+    try:
+        db.session.flush()
+        log_user_activity(session.get('user_id'), 'Add', 'InventoryTransaction', t.id, details={'item_name': item.name, 'type': type_, 'quantity': qty})
+        db.session.commit()
+        flash('Transaction recorded.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error recording transaction: {str(e)}', 'danger')
+
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/edit/<int:id>', methods=['POST'])
+@dept_required('Farm')
+def edit_inventory_item(id):
+    item = InventoryItem.query.get_or_404(id)
+
+    if request.form.get('delete') == '1':
+        item_name = item.name
+        log_user_activity(session.get('user_id'), 'Delete', 'InventoryItem', id, details={'name': item_name})
+        db.session.delete(item)
+        db.session.commit()
+        flash('Item deleted.', 'info')
+        return redirect(url_for('inventory'))
+
+    old_data = {
+        'name': item.name,
+        'type': item.type,
+        'unit': item.unit,
+        'min_stock_level': item.min_stock_level,
+        'doses_per_unit': item.doses_per_unit,
+        'batch_number': item.batch_number,
+        'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+    }
+
+    item.name = request.form.get('name')
+    item.type = request.form.get('type')
+    item.unit = request.form.get('unit')
+    item.min_stock_level = float(request.form.get('min_stock_level') or 0)
+
+    doses = request.form.get('doses_per_unit')
+    item.doses_per_unit = int(doses) if doses else None
+
+    item.batch_number = request.form.get('batch_number')
+
+    exp = request.form.get('expiry_date')
+    if exp:
+        item.expiry_date = datetime.strptime(exp, '%Y-%m-%d').date()
+    else:
+        item.expiry_date = None
+
+    new_data = {
+        'name': item.name,
+        'type': item.type,
+        'unit': item.unit,
+        'min_stock_level': item.min_stock_level,
+        'doses_per_unit': item.doses_per_unit,
+        'batch_number': item.batch_number,
+        'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+    }
+
+    changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+    if changes:
+        log_user_activity(session.get('user_id'), 'Edit', 'InventoryItem', item.id, details=changes)
+
+    db.session.commit()
+    flash('Item updated.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction/delete/<int:id>', methods=['POST'])
+@dept_required('Farm')
+def delete_inventory_transaction(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    t = InventoryTransaction.query.get_or_404(id)
+    item = InventoryItem.query.get(t.inventory_item_id)
+    t_type = t.transaction_type
+    t_qty = t.quantity
+    item_name = item.name if item else "Unknown"
+
+    log_user_activity(session.get('user_id'), 'Delete', 'InventoryTransaction', id, details={'item_name': item_name, 'type': t_type, 'quantity': t_qty})
+
+    # Revert Stock
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock += t.quantity
+        else: # Purchase, Adjustment
+            item.current_stock -= t.quantity
+
+    db.session.delete(t)
+    db.session.commit()
+    flash(f"Transaction deleted. Stock reverted.", "info")
+    return redirect(url_for('inventory'))
+
+@app.route('/inventory/transaction/edit/<int:id>', methods=['POST'])
+@dept_required('Farm')
+def edit_inventory_transaction(id):
+    if not session.get('is_admin'): return redirect(url_for('index'))
+
+    t = InventoryTransaction.query.get_or_404(id)
+    item = InventoryItem.query.get(t.inventory_item_id)
+
+    old_data = {
+        'quantity': t.quantity,
+        'transaction_type': t.transaction_type,
+        'transaction_date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else None,
+        'notes': t.notes
+    }
+
+    new_qty = float(request.form.get('quantity') or 0)
+    new_date_str = request.form.get('transaction_date')
+    new_notes = request.form.get('notes')
+    new_type = request.form.get('transaction_type')
+
+    if new_qty <= 0:
+        flash("Quantity must be positive.", "danger")
+        return redirect(url_for('inventory'))
+
+    if new_type and new_type not in ['Purchase', 'Usage', 'Adjustment', 'Waste']:
+        flash("Invalid transaction type.", "danger")
+        return redirect(url_for('inventory'))
+
+    # Revert Old Effect
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock += t.quantity
+        else:
+            item.current_stock -= t.quantity
+
+    # Update Transaction
+    t.quantity = new_qty
+    t.notes = new_notes
+    if new_type:
+        t.transaction_type = new_type
+
+    if new_date_str:
+        try:
+            t.transaction_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+        except: pass
+
+    new_data = {
+        'quantity': t.quantity,
+        'transaction_type': t.transaction_type,
+        'transaction_date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else None,
+        'notes': t.notes
+    }
+
+    changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
+    if changes:
+        log_user_activity(session.get('user_id'), 'Edit', 'InventoryTransaction', t.id, details=changes)
+
+    # Apply New Effect
+    if item:
+        if t.transaction_type in ['Usage', 'Waste']:
+            item.current_stock -= new_qty
+        else:
+            item.current_stock += new_qty
+
+    db.session.commit()
+    flash("Transaction updated.", "success")
+    return redirect(url_for('inventory'))
+
+
+def get_projected_start_of_lay(flock):
+    """
+    Calculates the projected date when the flock will reach 5% egg production.
+    """
+    if not flock or not flock.intake_date:
+        return None, 0
+
+    # Find standard week where egg prod >= 5%
+    target_std = Standard.query.filter(Standard.std_egg_prod >= 5).order_by(Standard.week.asc()).first()
+
+    if not target_std:
+        # Default fallback if standard not found (e.g. 24 weeks)
+        target_week = 24
+    else:
+        target_week = target_std.week
+
+    days_to_add = (target_week * 7)
+    projected_date = flock.intake_date + timedelta(days=days_to_add)
+
+    days_remaining = (projected_date - date.today()).days
+
+    return projected_date, days_remaining
+
+
+
+
+def get_flock_stock_history_bulk(flocks):
+    """
+    Returns a dictionary mapping flock_id -> {date -> live_stock (start of day)}.
+    Optimized for bulk processing.
+    """
+    if not flocks: return {}
+
+    flock_ids = [f.id for f in flocks]
+
+    # Fetch all logs in one query
+    logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids)).order_by(DailyLog.flock_id, DailyLog.date.asc()).all()
+
+    # Group logs by flock
+    logs_by_flock = {}
+    for log in logs:
+        if log.flock_id not in logs_by_flock:
+            logs_by_flock[log.flock_id] = []
+        logs_by_flock[log.flock_id].append(log)
+
+    result_map = {}
+
+    for f in flocks:
+        f_id = f.id
+        stock_map = {}
+        cum_loss = 0
+
+        # Get logs for this flock
+        f_logs = logs_by_flock.get(f_id, [])
+
+        # Calculate stock history
+        for log in f_logs:
+            stock_map[log.date] = max(0, (f.intake_male + f.intake_female) - cum_loss)
+            cum_loss += (log.mortality_male + log.mortality_female + log.culls_male + log.culls_female)
+
+        # Add "latest" entry
+        stock_map['latest'] = max(0, (f.intake_male + f.intake_female) - cum_loss)
+        result_map[f_id] = stock_map
+
+    return result_map
+
+
+def get_weekly_data_aggregated(flocks):
+    """
+    Aggregates data for the given flocks by ISO Week.
+    Returns a dictionary structure:
+    {
+        '2025-W40': {
+            'week_str': '2025-W40',
+            'start_date': date_obj,
+            'end_date': date_obj,
+            'flock_data': {
+                flock_id: { ... metrics ... }
+            }
+        }
+    }
+    """
+    if not flocks:
+        return {}
+
+    flock_ids = [f.id for f in flocks]
+
+    # 1. Fetch all Daily Logs
+    logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids))\
+        .order_by(DailyLog.date.desc()).all()
+
+    # 2. Fetch all Hatchability Data
+    hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids))\
+        .order_by(Hatchability.setting_date.desc()).all()
+
+    # 3. Fetch Standards
+    standards = Standard.query.all()
+    std_map = {getattr(s, 'week'): s for s in standards if hasattr(s, 'week')}
+    prod_std_map = {getattr(s, 'production_week'): s for s in standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+
+    weekly_agg = {}
+
+    # Helper to init week entry
+    def init_week(key, start_d, end_d):
+        if key not in weekly_agg:
+            weekly_agg[key] = {
+                'week_str': key,
+                'start_date': start_d,
+                'end_date': end_d,
+                'flock_data': {}
+            }
+        return weekly_agg[key]
+
+    # Process Logs
+    for log in logs:
+        # Determine ISO Week
+        isocal = log.date.isocalendar() # (Year, Week, Weekday)
+        year, week, _ = isocal
+        week_key = f"{year}-W{week:02d}"
+
+        # Start/End of that week
+        # ISO week starts on Monday
+        # Python's isocalendar usage
+        monday = log.date - timedelta(days=log.date.weekday())
+        sunday = monday + timedelta(days=6)
+
+        entry = init_week(week_key, monday, sunday)
+
+        f_id = log.flock_id
+        if f_id not in entry['flock_data']:
+            entry['flock_data'][f_id] = {
+                'mort_m': 0, 'mort_f': 0,
+                'cull_m': 0, 'cull_f': 0,
+                'eggs': 0,
+                'feed_total_kg': 0,
+                'feed_g_bird_sum_f': 0, 'feed_g_bird_count': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0,
+                'unif_f_sum': 0, 'unif_f_count': 0,
+                'stock_f_start': 0, # Need to estimate
+                'log_count': 0,
+                'logs': [] # Keep references for sparklines if needed
+            }
+
+        fd = entry['flock_data'][f_id]
+        fd['mort_m'] += (log.mortality_male or 0)
+        fd['mort_f'] += (log.mortality_female or 0)
+        fd['cull_m'] += (log.culls_male or 0)
+        fd['cull_f'] += (log.culls_female or 0)
+        fd['eggs'] += (log.eggs_collected or 0)
+        fd['feed_total_kg'] += ((log.feed_male or 0) + (log.feed_female or 0))
+
+        if log.feed_female_gp_bird > 0:
+            fd['feed_g_bird_sum_f'] += log.feed_female_gp_bird
+            fd['feed_g_bird_count'] += 1
+
+        if log.body_weight_female > 0:
+            fd['bw_f_sum'] += log.body_weight_female
+            fd['bw_f_count'] += 1
+
+        if log.uniformity_female > 0:
+            fd['unif_f_sum'] += log.uniformity_female
+            fd['unif_f_count'] += 1
+
+        fd['log_count'] += 1
+        fd['logs'].append(log)
+
+    # Process Hatch Data
+    # Link Hatch Data to Week of SETTING or HATCHING?
+    # Usually Hatchability is reported on Hatch Date week.
+    for h in hatch_records:
+        isocal = h.hatching_date.isocalendar()
+        year, week, _ = isocal
+        week_key = f"{year}-W{week:02d}"
+
+        monday = h.hatching_date - timedelta(days=h.hatching_date.weekday())
+        sunday = monday + timedelta(days=6)
+
+        entry = init_week(week_key, monday, sunday)
+        f_id = h.flock_id
+
+        if f_id not in entry['flock_data']:
+            entry['flock_data'][f_id] = {
+                # Init zeros for farm metrics if no logs exist this week
+                'mort_m': 0, 'mort_f': 0, 'cull_m': 0, 'cull_f': 0, 'eggs': 0,
+                'feed_total_kg': 0, 'feed_g_bird_sum_f': 0, 'feed_g_bird_count': 0,
+                'bw_f_sum': 0, 'bw_f_count': 0, 'unif_f_sum': 0, 'unif_f_count': 0,
+                'log_count': 0, 'logs': [],
+                # Hatch Metrics
+                'hatched': 0, 'set': 0
+            }
+
+        fd = entry['flock_data'][f_id]
+        if 'hatched' not in fd:
+            fd['hatched'] = 0
+            fd['set'] = 0
+
+        fd['hatched'] += (h.hatched_chicks or 0)
+        fd['set'] += (h.egg_set or 0)
+
+    # Calculate Rates and Standard Deviations
+    # Need Stock history for Mortality %
+    stock_history_bulk = get_flock_stock_history_bulk(flocks)
+
+    flock_objs = {f.id: f for f in flocks}
+
+    # Sort weeks descending
+    sorted_weeks = sorted(weekly_agg.keys(), reverse=True)
+
+    final_data = []
+
+    for w_key in sorted_weeks:
+        w_data = weekly_agg[w_key]
+        row = {
+            'week': w_key,
+            'start_date': w_data['start_date'],
+            'end_date': w_data['end_date'],
+            'flocks': []
+        }
+
+        for f_id, data in w_data['flock_data'].items():
+            flock = flock_objs.get(f_id)
+            if not flock: continue
+
+            # Age Calculation (at end of week)
+            age_days = (w_data['end_date'] - flock.intake_date).days
+            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            if age_week < 0: age_week = 0
+
+            # Standards
+            std_bio = std_map.get(age_week) # Biological Standard (BW)
+
+            # Production Standard Lookup
+            std_prod = None
+            if flock.start_of_lay_date:
+                start_days = (flock.start_of_lay_date - flock.intake_date).days
+                start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
+                if age_week >= start_bio_week:
+                    current_prod_week = age_week - start_bio_week + 1
+                    std_prod = prod_std_map.get(current_prod_week)
+
+            # Stock Calculation
+            # Use stock at start of week
+            stock_hist = stock_history_bulk.get(f_id, {})
+            # Find closest date <= start_date
+            start_stock_f = flock.intake_female # Default
+
+            # We can use the stock_history keys.
+            # stock_history map has date -> stock at start of that day.
+            # So start_stock_f should be stock at w_data['start_date']
+
+            # Use linear search on sorted keys as optimization
+            hist_dates = sorted([d for d in stock_hist.keys() if isinstance(d, date)])
+            best_date = None
+            for d in hist_dates:
+                if d <= w_data['start_date']:
+                    best_date = d
+                else:
+                    break
+
+            if best_date:
+                start_stock_f = stock_hist[best_date]
+
+            # Calculations
+            mort_f_pct = (data['mort_f'] / start_stock_f * 100) if start_stock_f > 0 else 0
+
+            hen_days = start_stock_f * 7 # Approximate
+            # Precise hen days = sum daily stock?
+            # If we have logs, we can sum daily stock.
+            # But we aggregated logs manually.
+            # Let's use simple approximation for Executive view speed.
+
+            egg_prod_pct = (data['eggs'] / hen_days * 100) if hen_days > 0 else 0
+
+            hatch_pct = (data.get('hatched', 0) / data.get('set', 0) * 100) if data.get('set', 0) > 0 else 0
+
+            avg_bw_f = (data['bw_f_sum'] / data['bw_f_count']) if data['bw_f_count'] > 0 else 0
+            avg_unif_f = (data['unif_f_sum'] / data['unif_f_count']) if data['unif_f_count'] > 0 else 0
+            avg_feed_f = (data['feed_g_bird_sum_f'] / data['feed_g_bird_count']) if data['feed_g_bird_count'] > 0 else 0
+
+            # Generate Sparkline Data (Daily within this week)
+            # data['logs'] contains daily logs.
+            # We need to sort them.
+            daily_logs = sorted(data['logs'], key=lambda x: x.date)
+            spark_bw = [l.body_weight_female for l in daily_logs if l.body_weight_female > 0]
+            spark_eggs = [((l.eggs_collected or 0)/(start_stock_f or 1)*100) for l in daily_logs] # Approx %
+
+            # Feed Code (Take last used)
+            feed_code = "N/A"
+            if daily_logs:
+                last_log = daily_logs[-1]
+                if last_log.feed_code_female:
+                    feed_code = last_log.feed_code_female.code
+                elif last_log.feed_code_male:
+                    feed_code = last_log.feed_code_male.code
+
+            flock_metrics = {
+                'flock_obj': flock,
+                'age_week': age_week,
+                'total_eggs': data['eggs'],
+                'mort_f_pct': round(mort_f_pct, 2),
+                'egg_prod_pct': round(egg_prod_pct, 2),
+                'hatch_pct': round(hatch_pct, 2),
+                'avg_bw_f': int(avg_bw_f),
+                'avg_unif_f': round(avg_unif_f, 1),
+                'avg_feed_f': int(avg_feed_f),
+                'feed_code': feed_code,
+                'std_bw_f': std_bio.std_bw_female if std_bio else None,
+                'std_egg_prod': std_prod.std_egg_prod if std_prod else None,
+                'spark_bw': spark_bw,
+                'spark_eggs': spark_eggs
+            }
+
+            row['flocks'].append(flock_metrics)
+
+        final_data.append(row)
+
+    return final_data
+
+
+
+@app.route('/additional_report')
+def additional_report():
+    # Role Check: Admin or Management
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        flash("Access Denied: Executive View Only.", "danger")
+        return redirect(url_for('index'))
+
+    # Active Flocks
+    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+
+    prod_flocks = [f for f in active_flocks if f.phase == 'Production']
+    rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
+
+    # Get Aggregated Data
+    # We fetch ALL data in one go or per group? One go is fine, then filter in template or here.
+    # Actually, the table structure differs.
+
+    prod_data_weekly = get_weekly_data_aggregated(prod_flocks)
+    rearing_data_weekly = get_weekly_data_aggregated(rearing_flocks)
+
+    # Countdown Logic for Rearing Flocks
+    countdowns = []
+    for f in rearing_flocks:
+        p_date, d_rem = get_projected_start_of_lay(f)
+        countdowns.append({
+            'flock': f,
+            'projected_date': p_date,
+            'days_remaining': d_rem
+        })
+
+    # Leaderboard (Active Flocks)
+    # Top House (Best Egg Prod % - Current Week?)
+    # Let's use the most recent week in prod_data_weekly
+    top_house = None
+    best_prod = -1
+
+    top_hatch_batch = None
+    best_hatch = -1
+
+    # Iterate latest week of production data
+    if prod_data_weekly:
+        latest_week = prod_data_weekly[0] # Sorted descending
+        for f_metric in latest_week['flocks']:
+            # Egg Prod
+            if f_metric['egg_prod_pct'] > best_prod:
+                best_prod = f_metric['egg_prod_pct']
+                top_house = f_metric['flock_obj'].house.name
+
+            # Hatch
+            if f_metric['hatch_pct'] > best_hatch:
+                best_hatch = f_metric['hatch_pct']
+                top_hatch_batch = f_metric['flock_obj'].flock_id
+
+    leaderboard = {
+        'top_house': top_house,
+        'best_prod': best_prod,
+        'top_hatch_batch': top_hatch_batch,
+        'best_hatch': best_hatch
+    }
+
+    # Inventory Usage (Monthly) - Same as before
+    usage_txs = InventoryTransaction.query.options(joinedload(InventoryTransaction.item)).filter(
+        InventoryTransaction.transaction_type == 'Usage'
+    ).order_by(InventoryTransaction.transaction_date.desc()).all()
+
+    inventory_usage = {}
+    for tx in usage_txs:
+        month_str = tx.transaction_date.strftime('%Y-%m')
+        key = (month_str, tx.item.name, tx.item.unit)
+        if key not in inventory_usage: inventory_usage[key] = 0.0
+        inventory_usage[key] += tx.quantity
+
+    usage_list = []
+    for (month, name, unit), qty in inventory_usage.items():
+        usage_list.append({'month': month, 'name': name, 'unit': unit, 'qty': qty})
+
+    usage_list.sort(key=lambda x: x['month'], reverse=True)
+
+    # Date Header
+    today = date.today()
+    current_month_name = today.strftime('%B %Y')
+    isocal = today.isocalendar()
+    current_iso_week = f"{isocal[0]}-W{isocal[1]:02d}"
+
+    return render_template('additional_report.html',
+                           prod_data=prod_data_weekly,
+                           rearing_data=rearing_data_weekly,
+                           countdowns=countdowns,
+                           leaderboard=leaderboard,
+                           inventory_usage=usage_list,
+                           current_month=current_month_name,
+                           current_iso_week=current_iso_week)
+
+def get_iso_aggregated_data_sql(flock_ids, target_year):
+    """
+    Aggregates data by ISO week using raw SQL for performance.
+    Handles stock calculation (Intake - Cumulative Loss) dynamically.
+    Returns:
+    {
+        'weekly': [...],
+        'monthly': [...],
+        'yearly': [...]
+    }
+    """
+    if not flock_ids:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
+
+    ids_tuple = tuple(flock_ids)
+    if len(ids_tuple) == 1:
+        ids_tuple = f"({ids_tuple[0]})"
+    else:
+        ids_tuple = str(ids_tuple)
+
+    # Common CTE for calculating daily metrics
+    # Determine the database dialect
+    dialect = db.engine.name
+
+    if dialect == 'sqlite':
+        week_fmt = "strftime('%Y-%W', l.date)"
+        month_fmt = "strftime('%Y-%m', l.date)"
+        year_fmt = "strftime('%Y', l.date)"
+    else:  # postgresql
+        week_fmt = "to_char(l.date, 'IYYY-IW')"
+        month_fmt = "to_char(l.date, 'YYYY-MM')"
+        year_fmt = "to_char(l.date, 'YYYY')"
+
+    cte_sql = f"""
+    WITH DailyStock AS (
+        SELECT
+            l.date,
+            l.flock_id,
+            {week_fmt} as iso_week,
+            {month_fmt} as iso_month,
+            {year_fmt} as iso_year,
+            l.mortality_male + l.mortality_female + l.culls_male + l.culls_female as daily_loss,
+            l.mortality_female as mort_f,
+            l.eggs_collected,
+            (l.feed_male + l.feed_female) as total_feed,
+            f.intake_female + f.intake_male as intake_total,
+            f.intake_female,
+            f.start_of_lay_date,
+            SUM(l.mortality_male + l.mortality_female + l.culls_male + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss,
+            SUM(l.mortality_female + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss_f
+        FROM daily_log l
+        JOIN flock f ON l.flock_id = f.id
+        WHERE l.flock_id IN {ids_tuple}
+    ),
+    EnrichedDaily AS (
+        SELECT
+            *,
+            (intake_female - cum_loss_f) as stock_f_end,
+            -- Stock Start of Day is End of Prev Day (approx by adding back daily loss? No, simpler: Intake - (Cum - Daily))
+            (intake_female - (cum_loss_f - (mort_f + 0))) as stock_f_start
+        FROM DailyStock
+    )
+    """
+
+    results = {}
+
+    # Define aggregation queries with UNION ALL to reduce db calls from 6 to 2
+    # Filter by Year AND Start of Lay in the Final Step to allow cum_loss to be accurate
+    combined_cte_sql = f"""
+        {cte_sql},
+        WeeklyLogs AS (
+            SELECT
+                'weekly' as type,
+                iso_week as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_week
+        ),
+        MonthlyLogs AS (
+            SELECT
+                'monthly' as type,
+                iso_month as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_month
+        ),
+        YearlyLogs AS (
+            SELECT
+                'yearly' as type,
+                iso_year as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_year
+        )
+        SELECT * FROM WeeklyLogs
+        UNION ALL
+        SELECT * FROM MonthlyLogs
+        UNION ALL
+        SELECT * FROM YearlyLogs
+    """
+
+    # Define Hatchery Queries based on dialect
+    if dialect == 'sqlite':
+        hatch_week_fmt = "strftime('%Y-%W', hatching_date)"
+        hatch_month_fmt = "strftime('%Y-%m', hatching_date)"
+        hatch_year_fmt = "strftime('%Y', hatching_date)"
+    else: # postgresql
+        hatch_week_fmt = "to_char(hatching_date, 'IYYY-IW')"
+        hatch_month_fmt = "to_char(hatching_date, 'YYYY-MM')"
+        hatch_year_fmt = "to_char(hatching_date, 'YYYY')"
+
+    combined_hatch_sql = f"""
+        WITH WeeklyHatch AS (
+            SELECT
+                'weekly' as type,
+                {hatch_week_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        ),
+        MonthlyHatch AS (
+            SELECT
+                'monthly' as type,
+                {hatch_month_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        ),
+        YearlyHatch AS (
+            SELECT
+                'yearly' as type,
+                {hatch_year_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        )
+        SELECT * FROM WeeklyHatch
+        UNION ALL
+        SELECT * FROM MonthlyHatch
+        UNION ALL
+        SELECT * FROM YearlyHatch
+    """
+
+    # Fetch all data at once to avoid multiple db calls
+    all_logs = db.session.execute(text(combined_cte_sql), {'year': str(target_year)}).fetchall()
+    all_hatch = db.session.execute(text(combined_hatch_sql), {'year': str(target_year)}).fetchall()
+
+    # Process results into typed dictionaries
+    hatch_map = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    for row in all_hatch:
+        # Expected tuple: (type, period, hatched, egg_set)
+        type_key = row[0]
+        period = row[1]
+        hatched = row[2]
+        egg_set = row[3]
+        if period:
+            hatch_map[type_key][period] = (hatched, egg_set)
+
+    logs_by_type = {'weekly': [], 'monthly': [], 'yearly': []}
+    for row in all_logs:
+        # Expected tuple: (type, period, total_eggs, total_mort_f, total_hen_days, days_in_period)
+        type_key = row[0]
+        period = row[1]
+        if period:
+            logs_by_type[type_key].append({
+                'period': period,
+                'total_eggs': row[2] or 0,
+                'total_mort_f': row[3] or 0,
+                'total_hen_days': row[4] or 0,
+                'days_in_period': row[5] or 0
+            })
+
+    for key in ['weekly', 'monthly', 'yearly']:
+        # The frontend expects periods to be descending ordered, which is not guaranteed by UNION ALL
+        sorted_logs = sorted(logs_by_type[key], key=lambda x: x['period'], reverse=True)
+
+        processed_list = []
+        for log in sorted_logs:
+            period = log['period']
+            total_eggs = log['total_eggs']
+            total_mort = log['total_mort_f']
+            total_hen_days = log['total_hen_days']
+            days_in_period = log['days_in_period']
+
+            # Hatchery
+            h_data = hatch_map[key].get(period)
+            hatched = h_data[0] if h_data else 0
+            set_cnt = h_data[1] if h_data else 0
+
+            # Avg Prod Females = Total Hen Days / Days in Period
+            # This represents the average number of birds present on any given day in the period
+            avg_stock = (total_hen_days / days_in_period) if days_in_period > 0 else 0
+
+            # Metrics
+            mort_pct = (total_mort / avg_stock * 100) if avg_stock > 0 else 0
+
+            # Egg Prod % = Total Eggs / Total Hen Days * 100
+            egg_prod_pct = (total_eggs / total_hen_days * 100) if total_hen_days > 0 else 0
+
+            hatch_pct = (hatched / set_cnt * 100) if set_cnt > 0 else 0
+
+            processed_list.append({
+                'period': period,
+                'avg_prod_females': int(avg_stock), # Renamed for clarity in template usage, but legacy template uses avg_female_stock
+                'avg_female_stock': int(avg_stock), # Legacy support
+                'total_eggs': total_eggs,
+                'total_chicks': hatched,
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'overall_egg_prod_pct': round(egg_prod_pct, 2), # Explicit Key
+                'egg_production_pct': round(egg_prod_pct, 2) # Legacy Key
+            })
+
+        results[key] = processed_list
+
+    return results
+
+def get_iso_aggregated_data(flocks, target_year=None):
+    """
+    Aggregates data across all given flocks into Weekly, Monthly, and Yearly ISO buckets.
+    Returns:
+    {
+        'weekly': [{period, avg_female_stock, total_eggs, total_chicks, mortality_pct, hatchability_pct, egg_prod_pct}, ...],
+        'monthly': [...],
+        'yearly': [...]
+    }
+    """
+    if not flocks:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
+
+    global_daily = {}
+
+    # Default to current year if None, or handle differently?
+    # Requirement: Filter by year.
+    filter_year = target_year if target_year else date.today().year
+
+    # Optimization: Bulk fetch Logs and Hatchability to avoid N+1 queries
+    flock_ids = [f.id for f in flocks]
+
+    # 1. Bulk Fetch Hatchability
+    all_hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids)).all()
+    hatch_by_flock = {}
+    for h in all_hatch_records:
+        if h.flock_id not in hatch_by_flock:
+            hatch_by_flock[h.flock_id] = []
+        hatch_by_flock[h.flock_id].append(h)
+
+    # 2. Bulk Fetch Logs (Optimized to use existing relationships if available)
+    logs_by_flock = {}
+
+    # Check if flocks already have logs loaded (e.g. from joinedload)
+    # If the first flock has logs loaded, assume all do to avoid N+1 checks or partial loads
+    has_eager_logs = len(flocks) > 0 and 'logs' in db.inspect(flocks[0]).attrs and db.inspect(flocks[0]).attrs.logs.history.has_changes() is False
+
+    # Actually, we can just check if f.logs is populated without triggering lazy load?
+    # But accessing f.logs triggers it if not loaded.
+    # We can rely on the caller ensuring efficient loading.
+
+    # Logic: If we rely on passed flocks having logs, we skip the query.
+    # But get_iso_aggregated_data is a utility.
+    # Let's check if we should query.
+
+    # For now, let's optimize specifically for when we know we have logs (from executive_dashboard)
+    # We can iterate and see.
+
+    # Safe approach: Collect logs from flocks. If empty, query DB?
+    # But querying DB is what we want to avoid if they ARE loaded.
+
+    # Let's assume for this specific performance task that we want to avoid the redundant query.
+    # We will build logs_by_flock from flock.logs.
+
+    for f in flocks:
+        # We access f.logs. If it was eager loaded, good. If not, it triggers a query (N+1).
+        # But since we optimized executive_dashboard to use joinedload, this is fast.
+        logs_by_flock[f.id] = f.logs
+
+    for flock in flocks:
+        logs = logs_by_flock.get(flock.id, [])
+        hatch_records = hatch_by_flock.get(flock.id, [])
+
+        daily_stats = enrich_flock_data(flock, logs, hatch_records)
+
+        for d in daily_stats:
+            d_date = d['date']
+            # Strict Year Filter
+            if d_date.year != filter_year:
+                continue
+
+            if d_date not in global_daily:
+                global_daily[d_date] = {
+                    'stock_f': 0, 'eggs': 0, 'mort_f': 0,
+                    'chicks': 0, 'egg_set': 0,
+                    'active_flocks': 0
+                }
+
+            # Check for Production Phase Logic
+            is_prod = False
+            if flock.production_start_date and d_date >= flock.production_start_date:
+                is_prod = True
+            elif flock.phase == 'Production':
+                # Fallback: if no date set, assume phase is valid for all fetched logs?
+                # No, historical logs might be rearing.
+                # If eggs collected > 0, assume prod.
+                if d['eggs_collected'] > 0: is_prod = True
+
+            # Stock summation (Only if in production)
+            if is_prod:
+                global_daily[d_date]['stock_f'] += d['stock_female_start']
+                global_daily[d_date]['mort_f'] += d['mortality_female']
+
+            global_daily[d_date]['eggs'] += d['eggs_collected']
+
+            if d.get('hatched_chicks'):
+                global_daily[d_date]['chicks'] += d['hatched_chicks']
+            if d.get('egg_set'):
+                global_daily[d_date]['egg_set'] += d['egg_set']
+
+            global_daily[d_date]['active_flocks'] += 1
+
+    buckets = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    sorted_dates = sorted(global_daily.keys())
+
+    for d_date in sorted_dates:
+        day_data = global_daily[d_date]
+
+        isocal = d_date.isocalendar()
+        week_key = f"{isocal[0]}-W{isocal[1]:02d}"
+        month_key = d_date.strftime('%Y-%m')
+        year_key = str(d_date.year)
+
+        for p_type, p_key in [('weekly', week_key), ('monthly', month_key), ('yearly', year_key)]:
+            if p_key not in buckets[p_type]:
+                buckets[p_type][p_key] = {
+                    'period': p_key,
+                    'sum_stock_f': 0, 'days_with_stock': 0,
+                    'total_eggs': 0, 'total_mort_f': 0,
+                    'total_chicks': 0, 'total_set': 0,
+                    'data_days': 0
+                }
+
+            b = buckets[p_type][p_key]
+            b['total_eggs'] += day_data['eggs']
+            b['total_mort_f'] += day_data['mort_f']
+            b['total_chicks'] += day_data['chicks']
+            b['total_set'] += day_data['egg_set']
+            b['data_days'] += 1
+            b['sum_stock_f'] += day_data['stock_f']
+
+    results = {'weekly': [], 'monthly': [], 'yearly': []}
+
+    for p_type in ['weekly', 'monthly', 'yearly']:
+        sorted_keys = sorted(buckets[p_type].keys(), reverse=True)
+
+        for k in sorted_keys:
+            b = buckets[p_type][k]
+
+            avg_stock = b['sum_stock_f'] / b['data_days'] if b['data_days'] > 0 else 0
+            egg_prod_pct = (b['total_eggs'] / b['sum_stock_f'] * 100) if b['sum_stock_f'] > 0 else 0
+            mort_pct = (b['total_mort_f'] / avg_stock * 100) if avg_stock > 0 else 0
+            hatch_pct = (b['total_chicks'] / b['total_set'] * 100) if b['total_set'] > 0 else 0
+
+            results[p_type].append({
+                'period': b['period'],
+                'avg_female_stock': int(avg_stock),
+                'total_eggs': b['total_eggs'],
+                'total_chicks': b['total_chicks'],
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'egg_production_pct': round(egg_prod_pct, 2)
+            })
+
+    return results
+
+def get_hatchery_analytics():
+    today = date.today()
+
+    # Common filter for Active Production Flocks
+    flock_filter = and_(Flock.status == 'Active', Flock.phase == 'Production')
+
+    # Previous Hatch
+    # Max date <= today with hatched_chicks > 0
+    last_hatch_date_query = db.session.query(func.max(Hatchability.hatching_date)).join(Flock).filter(
+        Hatchability.hatching_date <= today,
+        Hatchability.hatched_chicks > 0,
+        flock_filter
+    ).scalar()
+
+    last_hatch = None
+    if last_hatch_date_query:
+        last_records = Hatchability.query.join(Flock).filter(
+            Hatchability.hatching_date == last_hatch_date_query,
+            flock_filter
+        ).all()
+
+        total_h = sum(r.hatched_chicks for r in last_records)
+        total_s = sum(r.egg_set for r in last_records)
+        h_pct = (total_h / total_s * 100) if total_s > 0 else 0.0
+        last_hatch = {
+            'date': last_hatch_date_query,
+            'total_hatched': total_h,
+            'hatch_pct': h_pct
+        }
+
+    # Next Hatch
+    # Min date >= today (or > last_hatch_date if today was processed as Previous)
+    next_filter_condition = Hatchability.hatching_date >= today
+    if last_hatch and last_hatch['date'] == today:
+        next_filter_condition = Hatchability.hatching_date > today
+
+    next_hatch_date_query = db.session.query(func.min(Hatchability.hatching_date)).join(Flock).filter(
+        next_filter_condition,
+        Hatchability.egg_set > 0,
+        flock_filter
+    ).scalar()
+
+    next_hatch = None
+    if next_hatch_date_query:
+        next_records = Hatchability.query.join(Flock).filter(
+            Hatchability.hatching_date == next_hatch_date_query,
+            flock_filter
+        ).all()
+
+        # Calculate Forecast
+        all_standards = Standard.query.all()
+        std_map = {getattr(s, 'week'): getattr(s, 'std_hatchability', 0.0) for s in all_standards if hasattr(s, 'week')}
+
+        total_forecast = 0
+        for r in next_records:
+            age_days = (next_hatch_date_query - r.flock.intake_date).days
+            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            std_hatch = std_map.get(age_week)
+            if std_hatch is None: std_hatch = 0.0
+            forecast = r.egg_set * (std_hatch / 100.0)
+            total_forecast += forecast
+
+        next_hatch = {
+            'date': next_hatch_date_query,
+            'forecast': int(total_forecast)
+        }
+
+    return last_hatch, next_hatch
+
 @app.route('/executive_dashboard')
 def executive_dashboard():
     # Role Check: Admin or Management
@@ -7207,6 +8434,7 @@ def backup_report_image():
         pass
 
     return jsonify({'success': True, 'path': f'/static/reports/{filename}'})
+
 
 # Ensure tables are created on startup if they don't exist
 with app.app_context():
