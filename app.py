@@ -7852,15 +7852,48 @@ def executive_dashboard():
     flock_ids = [f.id for f in active_flocks]
     iso_data = get_iso_aggregated_data_sql(flock_ids, selected_year)
 
+    # Monthly Inventory Usage Calculation
+    current_month_start = today.replace(day=1)
+    if current_month_start.month == 1:
+        last_month_start = current_month_start.replace(year=current_month_start.year - 1, month=12)
+    else:
+        last_month_start = current_month_start.replace(month=current_month_start.month - 1)
+
+    inventory_items = InventoryItem.query.all()
+    inventory_usage = []
+
+    # We will get logs for current and last month
+    logs_this_month = InventoryTransaction.query.filter(
+        InventoryTransaction.transaction_date >= current_month_start,
+        InventoryTransaction.transaction_type.in_(['Usage', 'Waste'])
+    ).all()
+
+    logs_last_month = InventoryTransaction.query.filter(
+        InventoryTransaction.transaction_date >= last_month_start,
+        InventoryTransaction.transaction_date < current_month_start,
+        InventoryTransaction.transaction_type.in_(['Usage', 'Waste'])
+    ).all()
+
+    for item in inventory_items:
+        used_this = sum(log.quantity for log in logs_this_month if log.inventory_item_id == item.id)
+        used_last = sum(log.quantity for log in logs_last_month if log.inventory_item_id == item.id)
+
+        inventory_usage.append({
+            'name': item.name,
+            'type': item.type,
+            'current_stock': item.current_stock,
+            'unit': item.unit,
+            'used_this_month': round(used_this, 2),
+            'used_last_month': round(used_last, 2)
+        })
+
     return render_template('executive_dashboard.html',
                            active_flocks=active_flocks,
                            last_hatch=last_hatch,
                            next_hatch=next_hatch,
                            current_month=today.strftime('%B %Y'),
                            today=today,
-                           low_stock_items=low_stock_items,
-                           low_stock_count=low_stock_count,
-                           normal_stock_items=normal_stock_items,
+                           inventory_usage=inventory_usage,
                            iso_data=iso_data,
                            available_years=available_years,
                            selected_year=selected_year,
