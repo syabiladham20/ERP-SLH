@@ -159,7 +159,7 @@
 
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="m-0 font-weight-bold">{{ flock.house.name }} - Week {{ flock.current_week }}</h3>
-          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary-lt{% elif flock.calculated_phase == 'Growing' %}bg-info-lt{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning-lt{% else %}bg-success-lt{% endif %}">
+          <span class="badge text-white {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %}">
             {{ flock.calculated_phase }}
           </span>
         </div>
