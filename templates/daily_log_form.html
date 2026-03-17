@@ -582,12 +582,94 @@
     </div>
 
     <div class="d-flex gap-2 mb-5">
-        <button type="submit" class="btn btn-primary flex-grow-1">{{ 'Update Log' if log else 'Submit Log' }}</button>
+        <button type="button" class="btn btn-primary flex-grow-1" onclick="triggerUpdateModal()">{{ 'Update Log' if log else 'Submit Log' }}</button>
         {% if log and is_admin %}
-        <button type="submit" formaction="{{ url_for('delete_daily_log', id=log.id) }}" class="btn btn-danger" onclick="return confirm('Delete this log permanently?');">Delete Log</button>
+        <button type="button" class="btn btn-danger" onclick="triggerDeleteModal()">Delete Log</button>
         {% endif %}
     </div>
   </form>
+
+  <!-- Update/Submit Confirmation Modal -->
+  <div class="modal modal-blur fade" id="updateConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h5 class="modal-title">{{ 'Update Confirmation' if log else 'Submit Confirmation' }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-warning icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted" id="updateModalMessage">
+                      {{ 'Update' if log else 'Submit' }} <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalHouseName"></span></mark> logs for <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalDate"></span></mark>?
+                  </div>
+                  <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
+                      ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
+                  </div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col"><button type="button" class="btn btn-primary w-100" onclick="confirmUpdateSubmit()">Yes, {{ 'Update' if log else 'Submit' }}</button></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Generic Confirm Modal for Notes & Photos -->
+  <div class="modal modal-blur fade" id="genericConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-centered">
+          <div class="modal-content">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="modal-status bg-danger"></div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted" id="genericConfirmMessage"></div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col"><button type="button" class="btn btn-danger w-100" id="genericConfirmBtn" data-bs-dismiss="modal">Yes, delete</button></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Delete Log Modal -->
+  <div class="modal modal-blur fade" id="deleteLogModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-centered">
+          <div class="modal-content">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="modal-status bg-danger"></div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted">Do you really want to permanently delete this log? This action cannot be undone.</div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col">
+                              {% if log %}
+                              <form action="{{ url_for('delete_daily_log', id=log.id) }}" method="POST">
+                                  <button type="submit" class="btn btn-danger w-100">Delete Log</button>
+                              </form>
+                              {% endif %}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
   
   <script>
     {% if not log and not selected_date %}
@@ -843,18 +925,9 @@
     }
 
     function deleteExistingNote(noteId, btn) {
-        if(confirm("Delete this entire note group and its photos?")) {
-            // We can handle this via backend (if missing from form) or explicit fetch.
-            // Since this form might not be submitted yet, fetch is safer to delete immediately,
-            // OR add a hidden field "delete_note_ids[]" and process on submit.
-            // Let's use hidden field approach to avoid accidental deletion without submit?
-            // But 'deletePhoto' uses fetch. Consistency?
-            // User requirement: "add or delete new field".
-            // For existing DB records, "Delete" usually implies immediate action or "Mark for deletion".
-            // Let's use fetch to be consistent with deletePhoto. But I need a route.
-            // I haven't created a route for deleting ClinicalNote yet.
-            // I'll hide the row and add to a hidden input "deleted_notes[]".
-
+        document.getElementById('genericConfirmMessage').textContent = "Delete this entire note group and its photos?";
+        let btnConfirm = document.getElementById('genericConfirmBtn');
+        btnConfirm.onclick = function() {
             let row = btn.closest('.note-row');
             row.style.display = 'none';
 
@@ -869,7 +942,9 @@
             input.name = 'delete_note_ids[]';
             input.value = noteId;
             form.appendChild(input);
-        }
+        };
+        let modal = new bootstrap.Modal(document.getElementById('genericConfirmModal'));
+        modal.show();
     }
 
     // Medication Row Management
@@ -929,7 +1004,9 @@
     };
 
     function deletePhoto(id, name) {
-        if(confirm("Are you sure you want to delete photo '" + name + "'?")) {
+        document.getElementById('genericConfirmMessage').textContent = "Are you sure you want to delete photo '" + name + "'?";
+        let btnConfirm = document.getElementById('genericConfirmBtn');
+        btnConfirm.onclick = function() {
             fetch("{{ url_for('index') }}daily_log/photo/" + id + "/delete", {
                 method: "DELETE"
             }).then(response => {
@@ -942,7 +1019,9 @@
             }).catch(err => {
                 alert("Error deleting photo: " + err);
             });
-        }
+        };
+        let modal = new bootstrap.Modal(document.getElementById('genericConfirmModal'));
+        modal.show();
     }
 
     let currentStockM = 0;
@@ -975,13 +1054,13 @@
     document.getElementById('feed_female_gp_bird').addEventListener('input', calculateLiveFeed);
     document.querySelector('[name="feed_program"]').addEventListener('change', calculateLiveFeed);
 
-    document.getElementById('dailyLogForm').addEventListener('submit', function(e) {
+    function checkFastingDay() {
         let program = document.querySelector('[name="feed_program"]').value;
         let maleGpBird = parseFloat(document.getElementById('feed_male_gp_bird').value) || 0;
         let femaleGpBird = parseFloat(document.getElementById('feed_female_gp_bird').value) || 0;
         let isFeedingAttempt = (maleGpBird > 0 || femaleGpBird > 0);
 
-        if (!isFeedingAttempt) return; // Allow normal submission if not feeding
+        if (!isFeedingAttempt) return false;
 
         let isFastingDay = false;
 
@@ -995,17 +1074,59 @@
             }
         }
 
-        if (isFastingDay) {
-            e.preventDefault();
-            let msg = `⚠️ Alert: Today is a scheduled Fasting Day for this House based on the '${program}' program. Are you sure you want to log this feed? This will affect flock uniformity.`;
-            if (confirm(msg)) {
-                document.getElementById('override_validation').value = 'true';
-                this.submit();
-            } else {
-                document.getElementById('override_validation').value = 'false';
-            }
+        return isFastingDay;
+    }
+
+    function triggerUpdateModal() {
+        // Trigger default HTML5 validation first
+        if (!document.getElementById('dailyLogForm').checkValidity()) {
+            document.getElementById('dailyLogForm').reportValidity();
+            return;
         }
-    });
+
+        // Populate house name and date
+        let houseSelect = document.getElementById('house_id');
+        let selectedHouseName = houseSelect.options[houseSelect.selectedIndex].text.trim();
+        let selectedDate = document.getElementById('date').value;
+
+        // format date if needed from yyyy-mm-dd to dd/mm/yyyy
+        let dateParts = selectedDate.split('-');
+        let formattedDate = selectedDate;
+        if (dateParts.length === 3) {
+            formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+        }
+
+        document.getElementById('modalHouseName').textContent = selectedHouseName;
+        document.getElementById('modalDate').textContent = formattedDate;
+
+        // Check for fasting day warning
+        let isFastingDay = checkFastingDay();
+        let fastingWarningDiv = document.getElementById('fastingWarningDiv');
+
+        if (isFastingDay) {
+            fastingWarningDiv.classList.remove('d-none');
+            document.getElementById('override_validation').value = 'true';
+        } else {
+            fastingWarningDiv.classList.add('d-none');
+            document.getElementById('override_validation').value = 'false';
+        }
+
+        let myModal = new bootstrap.Modal(document.getElementById('updateConfirmModal'));
+        myModal.show();
+    }
+
+    function confirmUpdateSubmit() {
+        // Disable button to prevent double submit
+        let modalBtn = document.querySelector('#updateConfirmModal .btn-primary');
+        if (modalBtn) modalBtn.disabled = true;
+
+        document.getElementById('dailyLogForm').submit();
+    }
+
+    function triggerDeleteModal() {
+        let deleteModal = new bootstrap.Modal(document.getElementById('deleteLogModal'));
+        deleteModal.show();
+    }
 
 </script>
 {% endif %}
