@@ -5345,19 +5345,14 @@ def check_daily_log_completion(farm_id, selected_date):
     Checks the DailyLog table for the current farm_id and selected_date.
     Returns a list of dictionaries with house info and completion status.
     """
-    if not selected_date:
+    if not farm_id or not selected_date:
         return []
 
     # Get all active flocks for the given farm
-    # Handle flocks where farm_id might be None (legacy)
-    query = Flock.query.join(House).filter(Flock.status == 'Active')
-    if farm_id:
-        query = query.filter((Flock.farm_id == farm_id) | (Flock.farm_id == None))
-
-    active_flocks = query.order_by(House.name).all()
-
-    if not active_flocks:
-        return []
+    active_flocks = Flock.query.join(House).filter(
+        Flock.farm_id == farm_id,
+        Flock.status == 'Active'
+    ).order_by(House.name).all()
 
     # Pre-fetch daily logs for these flocks on the selected date
     flock_ids = [f.id for f in active_flocks]
