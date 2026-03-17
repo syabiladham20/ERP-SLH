@@ -3794,10 +3794,18 @@ def daily_log():
         
         flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
         if not flock:
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': 'No active flock found for this house.'}), 400
             flash('Error: No active flock found for this house.', 'danger')
             return redirect(url_for('daily_log'))
         
-        log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': 'Invalid date format.'}), 400
+            flash('Error: Invalid date format.', 'danger')
+            return redirect(url_for('daily_log'))
         
         existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
         
@@ -3816,6 +3824,8 @@ def daily_log():
             update_log_from_request(log, request)
         except ValueError as e:
             db.session.rollback()
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': str(e)}), 400
             flash(str(e), 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
 
@@ -3929,10 +3939,20 @@ def daily_log():
         try:
             db.session.commit()
             recalculate_flock_inventory(flock.id)
+            if request.headers.get('Accept') == 'application/json':
+                house_status = check_daily_log_completion(flock.farm_id, log_date)
+                return jsonify({
+                    'success': True,
+                    'message': flash_msg,
+                    'houses': house_status,
+                    'date': date_str
+                })
             flash(flash_msg, 'success')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
             db.session.rollback()
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         
@@ -4424,6 +4444,8 @@ def edit_daily_log(id):
             update_log_from_request(log, request)
         except ValueError as e:
             db.session.rollback()
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': str(e)}), 400
             flash(str(e), 'danger')
             return redirect(url_for('edit_daily_log', id=id))
 
@@ -4435,10 +4457,20 @@ def edit_daily_log(id):
         try:
             db.session.commit()
             recalculate_flock_inventory(log.flock_id)
+            if request.headers.get('Accept') == 'application/json':
+                house_status = check_daily_log_completion(log.flock.farm_id, log.date)
+                return jsonify({
+                    'success': True,
+                    'message': 'Log updated successfully.',
+                    'houses': house_status,
+                    'date': log.date.strftime('%Y-%m-%d')
+                })
             flash('Log updated successfully.', 'success')
             return redirect(url_for('edit_daily_log', id=id))
         except Exception as e:
             db.session.rollback()
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('edit_daily_log', id=id))
     
@@ -5464,6 +5496,39 @@ def recalculate_flock_inventory(flock_id):
 
     db.session.commit()
 
+
+def check_daily_log_completion(farm_id, selected_date):
+    """
+    Checks the DailyLog table for the current farm_id and selected_date.
+    Returns a list of dictionaries with house info and completion status.
+    """
+    if not farm_id or not selected_date:
+        return []
+
+    # Get all active flocks for the given farm
+    active_flocks = Flock.query.join(House).filter(
+        Flock.farm_id == farm_id,
+        Flock.status == 'Active'
+    ).order_by(House.name).all()
+
+    # Pre-fetch daily logs for these flocks on the selected date
+    flock_ids = [f.id for f in active_flocks]
+    logs_today = DailyLog.query.filter(
+        DailyLog.flock_id.in_(flock_ids),
+        DailyLog.date == selected_date
+    ).all()
+    logs_map = {l.flock_id: l for l in logs_today}
+
+    status_list = []
+    for f in active_flocks:
+        is_done = f.id in logs_map
+        status_list.append({
+            'id': f.house_id,
+            'name': f.house.name,
+            'is_done': is_done
+        })
+
+    return status_list
 
 def update_log_from_request(log, req):
     old_data = {
