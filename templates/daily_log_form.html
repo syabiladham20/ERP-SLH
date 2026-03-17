@@ -642,6 +642,30 @@
       </div>
   </div>
 
+  <!-- Transition Modal -->
+  <div class="modal modal-blur fade" id="transitionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                  <h5 class="modal-title">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                      Log Saved Successfully!
+                  </h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="window.location.reload()"></button>
+              </div>
+              <div class="modal-body">
+                  <p class="text-muted mb-3">Select the next house to enter data for:</p>
+                  <div class="list-group list-group-flush" id="transitionHouseList">
+                      <!-- Filled by AJAX -->
+                  </div>
+              </div>
+              <div class="modal-footer">
+                  <button type="button" class="btn w-100" data-bs-dismiss="modal" onclick="window.location.reload()">Close</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
   <!-- Delete Log Modal -->
   <div class="modal modal-blur fade" id="deleteLogModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -1118,9 +1142,79 @@
     function confirmUpdateSubmit() {
         // Disable button to prevent double submit
         let modalBtn = document.querySelector('#updateConfirmModal .btn-primary');
-        if (modalBtn) modalBtn.disabled = true;
+        if (modalBtn) {
+            modalBtn.disabled = true;
+            modalBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+        }
 
-        document.getElementById('dailyLogForm').submit();
+        let form = document.getElementById('dailyLogForm');
+        let formData = new FormData(form);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Hide the confirmation modal
+            let updateModal = bootstrap.Modal.getInstance(document.getElementById('updateConfirmModal'));
+            if (updateModal) updateModal.hide();
+
+            if (data.success) {
+                // Populate Transition Modal
+                let houseListHtml = '';
+                if (data.houses && data.houses.length > 0) {
+                    data.houses.forEach(house => {
+                        if (house.is_done) {
+                            houseListHtml += `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">${house.name}</span>
+                                    <span class="text-success d-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg> Done</span>
+                                </div>
+                            `;
+                        } else {
+                            houseListHtml += `
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold">${house.name}</span>
+                                    <a href="/daily_log?house_id=${house.id}&date=${data.date}" class="btn btn-primary btn-sm d-flex align-items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-pencil me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" /><path d="M13.5 6.5l4 4" /></svg> Enter Data
+                                    </a>
+                                </div>
+                            `;
+                        }
+                    });
+                } else {
+                    houseListHtml = '<div class="alert alert-info">No other active houses found for this date.</div>';
+                }
+
+                document.getElementById('transitionHouseList').innerHTML = houseListHtml;
+
+                // Show Transition Modal
+                let transitionModal = new bootstrap.Modal(document.getElementById('transitionModal'));
+                transitionModal.show();
+            } else {
+                alert(data.error || 'An error occurred while saving.');
+            }
+        })
+        .catch(error => {
+            alert(error.error || error.message || 'An error occurred while submitting.');
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            // Re-enable the button
+            if (modalBtn) {
+                modalBtn.disabled = false;
+                modalBtn.innerHTML = "Yes, {{ 'Update' if log else 'Submit' }}";
+            }
+        });
     }
 
     function triggerDeleteModal() {

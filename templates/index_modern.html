@@ -154,61 +154,109 @@
 <div class="row">
   {% for flock in active_flocks %}
   <div class="col-sm-6 col-lg-4 mb-4">
-    <div class="card shadow-sm h-100 border-top border-3 {% if flock.calculated_phase == 'Brooding' %}border-primary{% elif flock.calculated_phase == 'Growing' %}border-info{% elif flock.calculated_phase == 'Pre-lay' %}border-warning{% else %}border-success{% endif %}">
+    <div class="card shadow-sm h-100 border {% if flock.calculated_phase == 'Brooding' %}border-primary{% elif flock.calculated_phase == 'Growing' %}border-info{% elif flock.calculated_phase == 'Pre-lay' %}border-warning{% else %}border-success{% endif %}" style="border-width: 2px !important; border-radius: 8px;">
       <div class="card-body">
 
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h3 class="m-0 font-weight-bold">{{ flock.house.name }} - Week {{ flock.current_week }}</h3>
-          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary-lt{% elif flock.calculated_phase == 'Growing' %}bg-info-lt{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning-lt{% else %}bg-success-lt{% endif %}">
+          <span class="badge text-white {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} rounded-pill px-3 py-2" style="font-size: 0.85rem;">
             {{ flock.calculated_phase }}
           </span>
         </div>
 
-        <div class="text-muted mb-3 d-flex align-items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-inline me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0" /><line x1="3" y1="6" x2="3" y2="19" /><line x1="12" y1="6" x2="12" y2="19" /><line x1="21" y1="6" x2="21" y2="19" /></svg>
-          Flock: {{ flock.flock_id }}
-        </div>
-
-        {% if flock.daily_stats.show_data %}
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <div class="bg-gray-100 p-2 rounded text-center border">
-              <div class="text-uppercase text-secondary font-weight-bold mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Egg Prod</div>
-              <div class="h4 m-0 text-dark">
-                {{ "%.1f"|format(flock.daily_stats.egg_pct) }}%
-                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success ms-1"><i class="fas fa-arrow-up"></i></span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger ms-1"><i class="fas fa-arrow-down"></i></span>{% endif %}
-              </div>
+        <div class="row mb-2">
+            <div class="col-6">
+                Intake: {{ flock.intake_date | date_fmt }}<br>
+                <small class="text-muted">Age: {{ flock.age_weeks }}W {{ flock.age_days }}D</small>
             </div>
-          </div>
-          <div class="col-6">
-            <div class="bg-gray-100 p-2 rounded text-center border">
-              <div class="text-uppercase text-secondary font-weight-bold mb-1" style="font-size: 0.65rem; letter-spacing: .04em;">Mortality (F)</div>
-              <div class="h4 m-0 text-dark">
-                {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%
-                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger ms-1"><i class="fas fa-arrow-up"></i></span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success ms-1"><i class="fas fa-arrow-down"></i></span>{% endif %}
-              </div>
+            <div class="col-6 text-end">Start: {{ flock.intake_male }}M / {{ flock.intake_female }}F</div>
+        </div>
+        <hr>
+        <div class="row text-center">
+            {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
+            <div class="col-6 border-end text-center bg-light rounded-start p-2">
+                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Rearing Mort %</small><br>
+                <div class="mt-1">
+                    <span class="text-dark">M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</span><br>
+                    <span class="text-dark">F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</span>
+                </div>
             </div>
-          </div>
+            <div class="col-6 text-center bg-light rounded-end p-2">
+                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Daily Mort %</small>
+                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                <br><small class="text-warning fw-bold" style="font-size: 0.6rem;">(Last: {{ flock.daily_stats.data_date.strftime('%d %b') }})</small>
+                {% endif %}
+                <br>
+                {% if flock.daily_stats.show_data %}
+                    <span class="text-dark">M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%</span>
+                    {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold ms-1" style="font-size: 0.7rem;">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold ms-1" style="font-size: 0.7rem;">↓</span>{% endif %}
+                    <br>
+                    <span class="text-dark">F: {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%</span>
+                    {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold ms-1" style="font-size: 0.7rem;">↑</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold ms-1" style="font-size: 0.7rem;">↓</span>{% endif %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+                <br>
+                <small class="text-muted mt-2 d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Male Ratio</small>
+                <span class="text-dark">{{ "%.2f"|format(flock.male_ratio_pct) }}%</span>
+            </div>
+            {% else %}
+            <div class="col-4 border-end text-center bg-light rounded-start p-2">
+                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Prod Mort %</small><br>
+                <div class="mt-1">
+                    <span class="text-dark">M: {{ "%.2f"|format(flock.prod_mort_m_pct) }}%</span><br>
+                    <span class="text-dark">F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</span>
+                </div>
+            </div>
+            <div class="col-4 border-end text-center bg-light p-2">
+                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Daily Mort %</small>
+                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                <br><small class="text-warning fw-bold" style="font-size: 0.6rem;">(Last: {{ flock.daily_stats.data_date.strftime('%d %b') }})</small>
+                {% endif %}
+                <br>
+                {% if flock.daily_stats.show_data %}
+                    <span class="text-dark">M: {{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%</span>
+                    {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold ms-1" style="font-size: 0.7rem;">↑</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold ms-1" style="font-size: 0.7rem;">↓</span>{% endif %}
+                    <br>
+                    <span class="text-dark">F: {{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%</span>
+                    {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold ms-1" style="font-size: 0.7rem;">↑</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold ms-1" style="font-size: 0.7rem;">↓</span>{% endif %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+                <br>
+                <small class="text-muted mt-2 d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Male Ratio</small>
+                <span class="text-dark">{{ "%.2f"|format(flock.male_ratio_pct) }}%</span>
+            </div>
+            <div class="col-4 text-center bg-light rounded-end p-2">
+                <small class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">Egg Prod %</small>
+                {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
+                <br><small class="text-warning fw-bold" style="font-size: 0.6rem;">(Last: {{ flock.daily_stats.data_date.strftime('%d %b') }})</small>
+                {% endif %}
+                <br>
+                {% if flock.daily_stats.show_data %}
+                    <div class="h3 m-0 text-dark font-weight-bold mt-1">
+                        {{ "%.1f"|format(flock.daily_stats.egg_pct) }}%
+                    </div>
+                    <div class="mt-1">
+                    {% if flock.daily_stats.egg_trend == 'up' %}
+                        <span class="text-success fw-bold" style="font-size: 0.8rem;">↑ ({{ "+%.1f"|format(flock.daily_stats.egg_diff) }}%)</span>
+                    {% elif flock.daily_stats.egg_trend == 'down' %}
+                        <span class="text-danger fw-bold" style="font-size: 0.8rem;">↓ ({{ "%.1f"|format(flock.daily_stats.egg_diff) }}%)</span>
+                    {% else %}
+                        <span class="text-muted" style="font-size: 0.8rem;">-</span>
+                    {% endif %}
+                    </div>
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
-        <div class="text-secondary small text-center mb-3">
-          Latest Data: {{ flock.daily_stats.data_date.strftime('%d %b') if flock.daily_stats.data_date else 'N/A' }}
-          {% if not flock.has_log_today %}
-          <span class="text-danger ms-1 font-weight-bold">(Missing Today)</span>
-          {% else %}
-          <span class="text-success ms-1 font-weight-bold">(Up to date)</span>
-          {% endif %}
-        </div>
-        {% else %}
-        <div class="alert alert-secondary p-2 text-center text-muted mb-3">
-          No logs entered yet.
-        </div>
-        {% endif %}
-
       </div>
       <div class="card-footer bg-transparent border-0 pt-0">
           <div class="d-flex justify-content-between align-items-center">
             <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-primary btn-sm mb-0">See Details <i class="fas fa-arrow-right ms-1"></i></a>
-            {% if not flock.production_start_date %}
+            {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
             <button type="button" class="btn btn-link text-warning text-sm mb-0 px-0 ms-2" data-bs-toggle="modal" data-bs-target="#mixMaleModal{{ flock.id }}">
                 Mix Male
             </button>
@@ -411,11 +459,14 @@
 
 <div id="reportGenerationOverlay" class="loader-overlay" style="display:none;">
     <div class="chicken-loader">
-        <svg width="80" height="80" viewBox="0 0 100 100" class="chicken-svg">
-            <path d="M50,20 C35,20 25,35 25,50 C25,65 35,80 50,80 C65,80 75,65 75,50 C75,40 70,30 60,25 L65,15 L55,22 Z"
-                  fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="2"
-                    fill="none" stroke-dasharray="283" stroke-dashoffset="283" class="outline-circle"/>
+        <svg width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg">
+            <path d="M40,30 Q42,15 45,22 Q48,10 52,20 Q56,10 60,22 Q65,15 68,28"
+                  fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="comb-path"/>
+            <path d="M35,75 C35,50 45,35 65,30 C75,28 85,35 90,45 L78,50 C75,48 70,50 72,58 Q60,55 50,65 Q40,75 35,75"
+                  fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="profile-path"/>
+            <path d="M72,58 Q75,70 68,72 Q65,65 68,58"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="wattle-path"/>
+            <circle cx="62" cy="45" r="2.5" fill="currentColor" />
         </svg>
         <p class="loader-text" id="reportGenerationStatus">Initializing...</p>
     </div>
@@ -516,11 +567,11 @@
                             <div style="display: flex; justify-content: space-between; gap: 20px; height: 110mm;">
                                 <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
                                     <div style="flex-grow: 1; position: relative;"><canvas id="chart1"></canvas></div>
-                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Depletion and Egg Production %</div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">${data.house_name} - Depletion and Egg Production %</div>
                                 </div>
                                 <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
                                     <div style="flex-grow: 1; position: relative;"><canvas id="chart2"></canvas></div>
-                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Cull and Hatching Egg %</div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">${data.house_name} - Cull and Hatching Egg %</div>
                                 </div>
                             </div>
 
@@ -732,16 +783,16 @@
 
                             <div style="height: 50mm; margin-bottom: 5mm; display: flex; flex-direction: column;">
                                 <div style="flex-grow: 1; position: relative;"><canvas id="chart3"></canvas></div>
-                                <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">ml per bird and water:feed ratio</div>
+                                <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">${data.house_name} - ml per bird and water:feed ratio</div>
                             </div>
                             <div style="display: flex; justify-content: space-between; gap: 20px; height: 110mm;">
                                 <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
                                     <div style="flex-grow: 1; position: relative;"><canvas id="chart4"></canvas></div>
-                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Male Bodyweight and Uniformity</div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">${data.house_name} - Male Bodyweight and Uniformity</div>
                                 </div>
                                 <div style="width: 48%; height: 100%; display: flex; flex-direction: column;">
                                     <div style="flex-grow: 1; position: relative;"><canvas id="chart5"></canvas></div>
-                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">Female Bodyweight and Uniformity</div>
+                                    <div style="text-align: center; font-weight: bold; margin-top: 5px; font-size: 14px;">${data.house_name} - Female Bodyweight and Uniformity</div>
                                 </div>
                             </div>
                         </div>

@@ -183,7 +183,22 @@ class House(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     flocks = db.relationship('Flock', backref='house', lazy=True)
 
+    # Dashboard Configs (From Feature Branch)
+    charts = db.relationship('ChartConfiguration', backref='house', lazy=True, cascade="all, delete-orphan")
+    overview_config = db.relationship('OverviewConfiguration', backref='house', uselist=False, cascade="all, delete-orphan")
 
+class ChartConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    chart_type = db.Column(db.String(20), default='line') # 'line', 'bar'
+    config_json = db.Column(db.Text, nullable=False) # JSON: metrics, axis settings, colors
+    is_template = db.Column(db.Boolean, default=False)
+
+class OverviewConfiguration(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, unique=True)
+    visible_metrics_json = db.Column(db.Text, nullable=False) # JSON list of keys
 
 class InventoryItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -215,15 +230,15 @@ class Flock(db.Model):
     farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=True, index=True)
     flock_id = db.Column(db.String(100), unique=True, nullable=False)
     intake_date = db.Column(db.Date, nullable=False, default=date.today)
-    
+
     # Intake Counts
     intake_male = db.Column(db.Integer, default=0)
     intake_female = db.Column(db.Integer, default=0)
-    
+
     # DOA
     doa_male = db.Column(db.Integer, default=0)
     doa_female = db.Column(db.Integer, default=0)
-    
+
     status = db.Column(db.String(20), default='Active', nullable=False, index=True) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
     production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
@@ -236,7 +251,7 @@ class Flock(db.Model):
     prod_start_female_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
     end_date = db.Column(db.Date, nullable=True)
-    
+
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
     weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
@@ -244,13 +259,13 @@ class DailyLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, default=date.today, index=True)
-    
+
     # Metrics
     males_at_start = db.Column(db.Integer, nullable=True)
     females_at_start = db.Column(db.Integer, nullable=True)
     mortality_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Mortality
     mortality_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     mortality_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Mortality
     culls_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Culls
 
@@ -259,7 +274,7 @@ class DailyLog(db.Model):
 
     culls_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Culls
     culls_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     # Transfers
     males_moved_to_prod = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     males_moved_to_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
@@ -271,20 +286,20 @@ class DailyLog(db.Model):
     # Feed (Grams per Bird)
     feed_male_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
     feed_female_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
-    
+
     # Calculated Total Feed (Kg)
     feed_male = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
     feed_female = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
 
     eggs_collected = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     cull_eggs_jumbo = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_small = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_abnormal = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_crack = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     egg_weight = db.Column(db.Float, default=0.0)
-    
+
     # Body Weight (Split by Sex)
     body_weight_male = db.Column(db.Integer, default=0)
     body_weight_female = db.Column(db.Integer, default=0)
@@ -310,21 +325,21 @@ class DailyLog(db.Model):
 
     standard_bw_male = db.Column(db.Integer, default=0)
     standard_bw_female = db.Column(db.Integer, default=0)
-    
+
     # Water (Readings 1, 2, 3)
     water_reading_1 = db.Column(db.Integer, default=0)
     water_reading_2 = db.Column(db.Integer, default=0)
     water_reading_3 = db.Column(db.Integer, default=0)
     water_intake_calculated = db.Column(db.Float, default=0.0) # Calculated 24h intake
-    
+
     # Lighting (Start/End Times)
     light_on_time = db.Column(db.String(10), nullable=True) # HH:MM
     light_off_time = db.Column(db.String(10), nullable=True) # HH:MM
-    
+
     # Feed Cleanup (Start/End Times)
     feed_cleanup_start = db.Column(db.String(10), nullable=True) # HH:MM
     feed_cleanup_end = db.Column(db.String(10), nullable=True) # HH:MM
-    
+
     clinical_notes = db.Column(db.Text)
     # photo_path removed, use relation 'photos'
     flushing = db.Column(db.Boolean, default=False)
@@ -1535,7 +1550,7 @@ def manage_flocks():
         intake_female = int(request.form.get('intake_female') or 0)
         doa_male = int(request.form.get('doa_male') or 0)
         doa_female = int(request.form.get('doa_female') or 0)
-        
+
         # Find or Create Farm
         farm_name = request.form.get('farm_name', '').strip()
         farm_id = None
@@ -1555,23 +1570,23 @@ def manage_flocks():
             db.session.add(house)
             db.session.commit()
             flash(f'Created new House: {house_name}', 'info')
-        
+
         # Validation: Check if House has active flock
         existing_active = Flock.query.filter_by(house_id=house.id, status='Active').first()
         if existing_active:
             flash(f'Error: House {house.name} already has an active flock (Batch: {existing_active.flock_id})', 'danger')
             return redirect(url_for('manage_flocks'))
-        
+
         # Generate Flock ID
         intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
         date_str = intake_date.strftime('%y%m%d')
-        
+
         # Calculate N (Total flocks for this house + 1)
         house_flock_count = Flock.query.filter_by(house_id=house.id).count()
         n = house_flock_count + 1
-        
+
         flock_id = f"{house.name}_{date_str}_Batch{n}"
-        
+
         new_flock = Flock(
             house_id=house.id,
             farm_id=farm_id,
@@ -1583,7 +1598,7 @@ def manage_flocks():
             doa_female=doa_female,
             production_start_date=prod_start_date
         )
-        
+
         db.session.add(new_flock)
         db.session.flush()
 
@@ -1600,7 +1615,7 @@ def manage_flocks():
 
         flash(f'Flock created successfully! Flock ID: {flock_id}', 'success')
         return redirect(url_for('index'))
-    
+
     farms = Farm.query.all()
     houses = House.query.all()
     flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
@@ -2251,7 +2266,7 @@ def view_flock(id):
 
     for d in daily_stats:
         log = d['log']
-        
+
         # View Specific: Lighting
         lighting_hours = 0
         if log.light_on_time and log.light_off_time:
@@ -2396,7 +2411,7 @@ def view_flock(id):
         'medication_active': [],
         'medication_names': []
     }
-    
+
     # Fill dynamic partitions and notes
     for i in range(1, 9):
         chart_data[f'bw_M{i}'] = []
@@ -3334,6 +3349,11 @@ def upload_sampling_result(id, event_id):
 
     return redirect(url_for('flock_sampling', id=id))
 
+@app.route('/flock/<int:id>/custom_dashboard')
+@dept_required('Farm')
+def flock_custom_dashboard(id):
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
+    return render_template('flock_dashboard_custom.html', flock=flock)
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
 def flock_hatchability(id):
@@ -3633,6 +3653,137 @@ def hatchability_diagnosis(id, date_str):
                            },
                            readonly=is_readonly)
 
+@app.route('/flock/<int:id>/dashboard')
+@dept_required('Farm')
+def flock_dashboard(id):
+    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
+
+    date_str = request.args.get('date')
+    if date_str:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    else:
+        target_date = date.today()
+
+    all_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.asc()).all()
+
+    daily_stats = enrich_flock_data(flock, all_logs)
+    stats_map = { d['date']: d for d in daily_stats }
+
+    today_stat = stats_map.get(target_date) or {}
+    prev_date = target_date - timedelta(days=1)
+    prev_stat = stats_map.get(prev_date) or {}
+
+    age_days = (target_date - flock.intake_date).days
+    age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+
+    # --- Standards Setup ---
+    all_standards = Standard.query.all()
+    std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')}
+    prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+
+    standard = std_map.get(age_week) # Biological Standard
+
+    prod_standard = None
+    if flock.start_of_lay_date:
+        start_days = (flock.start_of_lay_date - flock.intake_date).days
+        start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
+        if age_week >= start_bio_week:
+            current_prod_week = age_week - start_bio_week + 1
+            prod_standard = prod_std_map.get(current_prod_week)
+
+    kpis = []
+
+    std_mort_f = standard.std_mortality_female if standard else None
+
+    kpis.append({
+        'label': 'Female Mortality %',
+        'value': today_stat.get('mortality_female_pct', 0),
+        'prev': prev_stat.get('mortality_female_pct', 0),
+        'unit': '%',
+        'std': std_mort_f,
+        'reverse_bad': True
+    })
+
+    kpis.append({
+        'label': 'Female Cull %',
+        'value': today_stat.get('culls_female_pct', 0),
+        'prev': prev_stat.get('culls_female_pct', 0),
+        'unit': '%',
+        'std': None,
+        'reverse_bad': True
+    })
+
+    kpis.append({
+        'label': 'Female Cum. Mort %',
+        'value': today_stat.get('mortality_cum_female_pct', 0),
+        'prev': prev_stat.get('mortality_cum_female_pct', 0),
+        'unit': '%',
+        'std': None,
+        'reverse_bad': True
+    })
+
+    std_egg = prod_standard.std_egg_prod if prod_standard else None
+    kpis.append({
+        'label': 'Egg Production %',
+        'value': today_stat.get('egg_prod_pct', 0),
+        'prev': prev_stat.get('egg_prod_pct', 0),
+        'unit': '%',
+        'std': std_egg,
+        'reverse_bad': False
+    })
+
+    std_bw_f = standard.std_bw_female if standard else None
+    kpis.append({
+        'label': 'Female BW',
+        'value': today_stat.get('body_weight_female', 0) or 0,
+        'prev': prev_stat.get('body_weight_female', 0) or 0,
+        'unit': 'g',
+        'std': std_bw_f,
+        'reverse_bad': False
+    })
+
+    diagnostic_hints = []
+
+    for k in kpis:
+        k['diff'] = k['value'] - k['prev']
+        k['status'] = 'neutral'
+
+        std_val = k.get('std')
+        if std_val is not None and k['value'] > 0:
+            if k['reverse_bad']:
+                if k['value'] > std_val * 1.1:
+                    k['status'] = 'danger'
+                    diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
+                elif k['value'] > std_val:
+                    k['status'] = 'warning'
+            else:
+                if k['value'] < std_val * 0.9:
+                    k['status'] = 'danger'
+                    diagnostic_hints.append(f"Abnormal {k['label']}: Deviation > 10% from Standard.")
+                elif k['value'] < std_val:
+                    k['status'] = 'warning'
+
+    last_3_logs = DailyLog.query.filter_by(flock_id=id).filter(DailyLog.date <= target_date).order_by(DailyLog.date.desc()).limit(3).all()
+
+    if len(last_3_logs) == 3:
+        spike_count = 0
+        temp_stock_f = curr_stock_f
+
+        m_pct = ((last_3_logs[0].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        temp_stock_f += ((last_3_logs[0].mortality_female or 0) + (last_3_logs[0].culls_female or 0))
+        m_pct = ((last_3_logs[1].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        temp_stock_f += ((last_3_logs[1].mortality_female or 0) + (last_3_logs[1].culls_female or 0))
+        m_pct = ((last_3_logs[2].mortality_female or 0) / temp_stock_f * 100) if temp_stock_f > 0 else 0
+        if m_pct > 0.1: spike_count += 1
+
+        if spike_count == 3:
+             diagnostic_hints.insert(0, "Warning: Continuous mortality spike—review post-mortem photos.")
+
+    return render_template('flock_kpi.html', flock=flock, kpis=kpis, target_date=target_date, age_week=age_week, age_days=age_days, diagnostic_hints=diagnostic_hints)
 
 @app.route('/daily_log', methods=['GET', 'POST'])
 @dept_required('Farm')
@@ -3640,14 +3791,14 @@ def daily_log():
     if request.method == 'POST':
         house_id = request.form.get('house_id')
         date_str = request.form.get('date')
-        
+
         flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
         if not flock:
             if request.headers.get('Accept') == 'application/json':
                 return jsonify({'success': False, 'error': 'No active flock found for this house.'}), 400
             flash('Error: No active flock found for this house.', 'danger')
             return redirect(url_for('daily_log'))
-        
+
         try:
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
@@ -3655,9 +3806,9 @@ def daily_log():
                 return jsonify({'success': False, 'error': 'Invalid date format.'}), 400
             flash('Error: Invalid date format.', 'danger')
             return redirect(url_for('daily_log'))
-        
+
         existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
-        
+
         if existing_log:
             log = existing_log
             flash_msg = 'Daily Log updated successfully!'
@@ -3804,7 +3955,7 @@ def daily_log():
                 return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
-        
+
     active_flocks = Flock.query.filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
 
@@ -4173,6 +4324,12 @@ def admin_house_delete(id):
     if Flock.query.filter_by(house_id=id).count() > 0:
         flash(f"Cannot delete House '{house.name}' because it has flocks associated with it.", "danger")
     else:
+        # Also delete associated configs?
+        # OverviewConfig and ChartConfiguration have cascades?
+        # Models:
+        # charts = db.relationship(..., cascade="all, delete-orphan")
+        # overview_config = db.relationship(..., cascade="all, delete-orphan")
+        # So yes, they will be deleted.
         db.session.delete(house)
         db.session.commit()
         flash(f"House '{house.name}' deleted.", "info")
@@ -4183,7 +4340,7 @@ def admin_house_delete(id):
 @dept_required('Farm')
 def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
-    
+
     if request.method == 'POST':
         # Handle Vaccines
         vaccine_present_ids = request.form.getlist('vaccine_present_ids')
@@ -4316,7 +4473,7 @@ def edit_daily_log(id):
                 return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('edit_daily_log', id=id))
-    
+
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
     vaccines_due = []
@@ -4379,7 +4536,7 @@ def import_data():
         if 'files' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
-        
+
         files = request.files.getlist('files')
         if not files or files[0].filename == '':
             flash('No selected files', 'danger')
@@ -4427,7 +4584,7 @@ def import_data():
 
         flash("No valid data found to import.", "warning")
         return redirect(url_for('index'))
-            
+
     return render_template('import.html')
 
 @app.route('/import_hatchability', methods=['POST'])
@@ -4800,7 +4957,7 @@ def process_hatchability_import(file):
 def process_import(file, commit=True, preview=False):
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
-    
+
     ignore_sheets = ['DASHBOARD', 'CHART', 'SUMMARY', 'TEMPLATE']
 
     all_houses_map = {h.name: h.id for h in House.query.all()}
@@ -4813,20 +4970,20 @@ def process_import(file, commit=True, preview=False):
         if f_intake_date:
              all_flocks_map[(f_house_id, f_intake_date)] = f_id
         flock_counts[f_house_id] = flock_counts.get(f_house_id, 0) + 1
-    
+
     changes = []
     all_warnings = []
 
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
             continue
-            
+
         # Optimization: Read the full sheet once
         df_full = pd.read_excel(xls, sheet_name=sheet_name, header=None)
 
         # 1. Metadata (First 10 rows)
         df_meta = df_full.iloc[:10].copy() if df_full.shape[0] > 0 else pd.DataFrame()
-        
+
         def get_val(r, c):
             try:
                 val = df_meta.iloc[r, c]
@@ -4850,7 +5007,7 @@ def process_import(file, commit=True, preview=False):
 
         house_name_cell = str(get_val(1, 1)).strip()
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
-        
+
         def safe_int(val):
             try: return int(float(val)) if val is not None else 0
             except: return 0
@@ -4858,11 +5015,11 @@ def process_import(file, commit=True, preview=False):
         intake_female = safe_int(get_val(2, 1))
         intake_male = safe_int(get_val(3, 1))
         intake_date_val = get_val(4, 1)
-        
+
         if not intake_date_val:
             print(f"Skipping sheet {sheet_name}: No Intake Date found.")
             continue
-            
+
         house_id = all_houses_map.get(house_name)
         if not house_id:
             house = House(name=house_name)
@@ -4872,20 +5029,20 @@ def process_import(file, commit=True, preview=False):
             all_houses_map[house_name] = house_id
             if commit:
                 db.session.commit()
-        
+
         intake_date = parse_date(intake_date_val)
         if not intake_date:
             print(f"Skipping sheet {sheet_name}: Invalid Date {intake_date_val}")
             continue
-            
+
         date_str = intake_date.strftime('%y%m%d')
-        
+
         flock_id = all_flocks_map.get((house_id, intake_date))
         if not flock_id:
             current_count = flock_counts.get(house_id, 0)
             n = current_count + 1
             flock_uid_str = f"{house_name}_{date_str}_Batch{n}"
-            
+
             flock = Flock(
                 house_id=house_id,
                 flock_id=flock_uid_str,
@@ -4901,7 +5058,7 @@ def process_import(file, commit=True, preview=False):
             flock_counts[house_id] = n
             if commit:
                 db.session.commit()
-            
+
             initialize_sampling_schedule(flock_id, commit=commit)
             initialize_vaccine_schedule(flock_id, commit=commit)
 
@@ -4948,7 +5105,7 @@ def process_import(file, commit=True, preview=False):
             df_data.reset_index(drop=True, inplace=True)
         else:
             df_data = pd.DataFrame()
-        
+
         # --- Column Mapping Logic ---
         headers = [str(c).upper().strip() for c in df_data.columns]
 
@@ -5032,7 +5189,7 @@ def process_import(file, commit=True, preview=False):
             if not log_date:
                 i+=1
                 continue
-            
+
             def get_float(r, idx):
                 if idx is None or idx >= len(r): return 0.0
                 val = r.iloc[idx]
@@ -5046,7 +5203,7 @@ def process_import(file, commit=True, preview=False):
                 if pd.isna(val): return 0
                 try: return int(float(val))
                 except (ValueError, TypeError): return 0
-                
+
             def get_str(r, idx):
                 if idx is None or idx >= len(r): return None
                 val = r.iloc[idx]
@@ -5214,7 +5371,7 @@ def process_import(file, commit=True, preview=False):
             db.session.commit()
         else:
             db.session.flush()
-        
+
         all_logs = sorted(existing_logs_dict.values(), key=lambda x: x.date)
         for i, log in enumerate(all_logs):
             if i > 0:
@@ -5345,19 +5502,14 @@ def check_daily_log_completion(farm_id, selected_date):
     Checks the DailyLog table for the current farm_id and selected_date.
     Returns a list of dictionaries with house info and completion status.
     """
-    if not selected_date:
+    if not farm_id or not selected_date:
         return []
 
     # Get all active flocks for the given farm
-    # Handle flocks where farm_id might be None (legacy)
-    query = Flock.query.join(House).filter(Flock.status == 'Active')
-    if farm_id:
-        query = query.filter((Flock.farm_id == farm_id) | (Flock.farm_id == None))
-
-    active_flocks = query.order_by(House.name).all()
-
-    if not active_flocks:
-        return []
+    active_flocks = Flock.query.join(House).filter(
+        Flock.farm_id == farm_id,
+        Flock.status == 'Active'
+    ).order_by(House.name).all()
 
     # Pre-fetch daily logs for these flocks on the selected date
     flock_ids = [f.id for f in active_flocks]
@@ -6290,6 +6442,94 @@ def get_custom_data(flock_id):
 
     return json.dumps(result)
 
+@app.route('/api/house/<int:house_id>/dashboard_config')
+def get_dashboard_config(house_id):
+    house = House.query.get_or_404(house_id)
+
+    charts = []
+    for c in house.charts:
+        charts.append({
+            'id': c.id,
+            'title': c.title,
+            'chart_type': c.chart_type,
+            'config': json.loads(c.config_json),
+            'is_template': c.is_template
+        })
+
+    overview_cols = []
+    if house.overview_config:
+        overview_cols = json.loads(house.overview_config.visible_metrics_json)
+
+    return json.dumps({'charts': charts, 'overview_columns': overview_cols})
+
+@app.route('/api/house/<int:house_id>/charts', methods=['POST'])
+@dept_required('Farm')
+def save_chart(house_id):
+    data = request.get_json()
+
+    chart_id = data.get('id')
+    title = data.get('title')
+    chart_type = data.get('chart_type', 'line')
+    config = data.get('config')
+    is_template = data.get('is_template', False)
+
+    if chart_id:
+        chart = ChartConfiguration.query.get_or_404(chart_id)
+        if chart.house_id != house_id:
+            return "Unauthorized", 403
+        chart.title = title
+        chart.chart_type = chart_type
+        chart.config_json = json.dumps(config)
+        chart.is_template = is_template
+    else:
+        chart = ChartConfiguration(
+            house_id=house_id,
+            title=title,
+            chart_type=chart_type,
+            config_json=json.dumps(config),
+            is_template=is_template
+        )
+        db.session.add(chart)
+
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/charts/<int:chart_id>', methods=['DELETE'])
+@dept_required('Farm')
+def delete_chart(chart_id):
+    chart = ChartConfiguration.query.get_or_404(chart_id)
+    db.session.delete(chart)
+    db.session.commit()
+    return "Deleted", 200
+
+@app.route('/api/house/<int:house_id>/overview', methods=['POST'])
+@dept_required('Farm')
+def save_overview_config(house_id):
+    data = request.get_json()
+    cols = data.get('columns', [])
+
+    config = OverviewConfiguration.query.filter_by(house_id=house_id).first()
+    if not config:
+        config = OverviewConfiguration(house_id=house_id)
+        db.session.add(config)
+
+    config.visible_metrics_json = json.dumps(cols)
+    db.session.commit()
+    return "Saved", 200
+
+@app.route('/api/templates')
+def get_templates():
+    templates = ChartConfiguration.query.filter_by(is_template=True).all()
+    res = []
+    for t in templates:
+        res.append({
+            'id': t.id,
+            'title': t.title,
+            'chart_type': t.chart_type,
+            'config': json.loads(t.config_json),
+            'house_name': t.house.name
+        })
+    return json.dumps(res)
 
 def get_gemini_lite_response(user_prompt):
     api_key = os.getenv('GEMINI_API_KEY')

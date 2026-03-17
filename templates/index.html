@@ -25,15 +25,15 @@
     {% if active_flocks %}
         {% for flock in active_flocks %}
         <div class="col-md-6 mb-4">
-            <div class="card h-100">
+            <div class="card shadow-sm h-100 border {% if flock.calculated_phase == 'Brooding' %}border-primary{% elif flock.calculated_phase == 'Growing' %}border-info{% elif flock.calculated_phase == 'Pre-lay' %}border-warning{% else %}border-success{% endif %}" style="border-width: 2px !important; border-radius: 8px;">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
                         <strong>{{ flock.house.name }}{% if flock.farm %} ({{ flock.farm.name }}){% endif %}</strong>
-                        <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %}">{{ flock.calculated_phase }}</span>
+                        <span class="badge text-white {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} rounded-pill px-3 py-2 ms-2" style="font-size: 0.85rem;">{{ flock.calculated_phase }}</span>
                         {% if flock.has_log_today %}
-                            <span class="badge bg-success ms-1" title="Daily Entry Submitted">✅ Today</span>
+                            <span class="badge bg-success text-white ms-1 rounded-pill" title="Daily Entry Submitted">✅ Today</span>
                         {% else %}
-                            <span class="badge bg-danger ms-1" title="No Entry Today">⚠️ Missing</span>
+                            <span class="badge bg-danger text-white ms-1 rounded-pill" title="No Entry Today">⚠️ Missing</span>
                         {% endif %}
                     </div>
                 </div>
@@ -48,12 +48,8 @@
                     <hr>
                     <div class="row text-center">
                         {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
-                        <div class="col-6 border-end">
-                            <small class="text-muted">Rearing Mort %</small><br>
-                            <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
-                            <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</strong>
-                        </div>
-                        <div class="col-6">
+
+                        <div class="col-12">
                             <small class="text-muted">Daily Mort %</small>
                             {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
                             <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
@@ -73,12 +69,8 @@
                             <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
                         </div>
                         {% else %}
-                        <div class="col-4 border-end">
-                            <small class="text-muted">Prod Mort %</small><br>
-                            <strong>M: {{ "%.2f"|format(flock.prod_mort_m_pct) }}%</strong><br>
-                            <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</strong>
-                        </div>
-                        <div class="col-4 border-end">
+
+                        <div class="col-6 border-end">
                             <small class="text-muted">Daily Mort %</small>
                             {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
                             <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
@@ -97,7 +89,7 @@
                             <small class="text-muted">Male Ratio</small><br>
                             <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
                         </div>
-                        <div class="col-4">
+                        <div class="col-6">
                             <small class="text-muted">Egg Prod %</small>
                             {% if not flock.daily_stats.has_today and flock.daily_stats.data_date %}
                             <br><small class="text-muted" style="font-size: 0.7rem;">(Last upd: {{ flock.daily_stats.data_date | date_fmt }})</small>
