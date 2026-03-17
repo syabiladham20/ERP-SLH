@@ -66,7 +66,7 @@
     </button>
     <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="max-height: 300px; overflow-y: auto; z-index: 1050;">
       {% for f in active_flocks %}
-      <li><a class="dropdown-item" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
+      <li><a class="dropdown-item switch-house-link" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
       {% endfor %}
     </ul>
   </div>
@@ -1951,8 +1951,30 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+      // Handle URL hash for tabs
+      if (window.location.hash) {
+          const targetTab = document.querySelector(`button[data-bs-target="${window.location.hash}"]`);
+          if (targetTab) {
+              const tab = new bootstrap.Tab(targetTab);
+              tab.show();
+          }
+      }
+
+      // Update "Switch House" links with current hash
+      document.querySelectorAll('.switch-house-link').forEach(link => {
+          link.addEventListener('click', function(e) {
+              if (window.location.hash) {
+                  e.preventDefault();
+                  window.location.href = this.href + window.location.hash;
+              }
+          });
+      });
+
       document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(el => {
           el.addEventListener('shown.bs.tab', (e) => {
+              // Update URL hash when tab changes
+              history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
+
               if (e.target.id === 'charts-tab') {
                   if(maleChart) maleChart.resize();
                   if(femaleChart) femaleChart.resize();
