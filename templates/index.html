@@ -29,11 +29,11 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
                         <strong>{{ flock.house.name }}{% if flock.farm %} ({{ flock.farm.name }}){% endif %}</strong>
-                        <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %}">{{ flock.calculated_phase }}</span>
+                        <span class="badge text-white {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %}">{{ flock.calculated_phase }}</span>
                         {% if flock.has_log_today %}
-                            <span class="badge bg-success ms-1" title="Daily Entry Submitted">✅ Today</span>
+                            <span class="badge bg-success text-white ms-1" title="Daily Entry Submitted">✅ Today</span>
                         {% else %}
-                            <span class="badge bg-danger ms-1" title="No Entry Today">⚠️ Missing</span>
+                            <span class="badge bg-danger text-white ms-1" title="No Entry Today">⚠️ Missing</span>
                         {% endif %}
                     </div>
                 </div>

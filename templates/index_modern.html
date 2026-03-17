@@ -193,9 +193,9 @@
         <div class="text-secondary small text-center mb-3">
           Latest Data: {{ flock.daily_stats.data_date.strftime('%d %b') if flock.daily_stats.data_date else 'N/A' }}
           {% if not flock.has_log_today %}
-          <span class="text-danger ms-1 font-weight-bold">(Missing Today)</span>
+          <span class="badge bg-danger text-white ms-1 font-weight-bold">(Missing Today)</span>
           {% else %}
-          <span class="text-success ms-1 font-weight-bold">(Up to date)</span>
+          <span class="badge bg-success text-white ms-1 font-weight-bold">(Up to date)</span>
           {% endif %}
         </div>
         {% else %}
