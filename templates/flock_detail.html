@@ -1218,7 +1218,7 @@
       // Dynamically calculate yMax so feed stays on bottom
       let yMax = 180;
       if (minFeed !== Infinity && minFeed > 0) {
-          yMax = Math.max(180, Math.max(...allFeed) * 2.5);
+          yMax = Math.max(180, (allFeed.length > 0 ? Math.max(...allFeed) : 0) * 2.5);
       }
       feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
           type: 'line',
@@ -1815,14 +1815,29 @@
         });
       });
 
-      // Flatpickr Init
-      const today = new Date();
-      const last30 = new Date();
-      last30.setDate(today.getDate() - 30);
+            // Flatpickr Init
+      let endDateDefault = new Date();
+      let startDateDefault = new Date();
+      startDateDefault.setDate(endDateDefault.getDate() - 30);
+
+      if (chartDataDaily && chartDataDaily.dates && chartDataDaily.dates.length > 0) {
+          const lastLogDateStr = chartDataDaily.dates[chartDataDaily.dates.length - 1];
+          const lastLogDate = new Date(lastLogDateStr + 'T00:00:00');
+          if (!isNaN(lastLogDate)) {
+              endDateDefault = lastLogDate;
+              startDateDefault = new Date(lastLogDate);
+              startDateDefault.setDate(endDateDefault.getDate() - 30);
+          }
+      }
+
+      // Ensure start date doesn't go before intake date if intakeDate is available
+      if (intakeDate && startDateDefault < intakeDate) {
+          startDateDefault = new Date(intakeDate);
+      }
 
       // 1. Initialize Global Vars
-      globalPickerStart = last30;
-      globalPickerEnd = today;
+      globalPickerStart = startDateDefault;
+      globalPickerEnd = endDateDefault;
 
       // Helper function to format Date object to YYYY-MM-DD
       function formatDate(date) {
@@ -1890,12 +1905,12 @@
 
       const fpStart = flatpickr("#startDateSlicer", {
           ...commonFlatpickrConfig,
-          defaultDate: last30
+          defaultDate: startDateDefault
       });
 
       const fpEnd = flatpickr("#endDateSlicer", {
           ...commonFlatpickrConfig,
-          defaultDate: today
+          defaultDate: endDateDefault
       });
 
       function updateGlobalDateRange() {
