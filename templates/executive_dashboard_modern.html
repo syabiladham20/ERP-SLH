@@ -184,6 +184,9 @@
                     <div class="card-footer d-flex justify-content-between">
                         <div>
                             {% if is_admin or user_role == 'Management' %}
+                            <a href="{{ url_for('export_flock_csv', flock_id=flock.id) }}" class="btn btn-sm btn-outline-success me-1">
+                                <i class="fas fa-file-csv"></i> Export CSV
+                            </a>
                             <a href="{{ url_for('executive_flock_detail', id=flock.id) }}" class="btn btn-sm btn-info me-1">See Details</a>
                             {% endif %}
                         </div>
