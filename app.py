@@ -2721,14 +2721,18 @@ def flock_spreadsheet(id):
 
     spreadsheet_data = []
 
-    # Needs metrics to figure out correct biological/prod weeks
+    spreadsheet_data = generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week)
+
+    return render_template('flock_spreadsheet_modern.html', flock=flock, spreadsheet_data=spreadsheet_data, feed_codes=feed_code_options)
+
+def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week):
+    spreadsheet_data = []
     from metrics import enrich_flock_data
     flock_logs = [l for l in logs]
     enriched = enrich_flock_data(flock, flock_logs)
 
     for item in enriched:
         log = item['log']
-        # Use item dict for calculated values, but use log object for raw DB fields
         week = item['week']
         prod_week = item['production_week']
 
@@ -2811,7 +2815,65 @@ def flock_spreadsheet(id):
 
         spreadsheet_data.append(row_data)
 
-    return render_template('flock_spreadsheet_modern.html', flock=flock, spreadsheet_data=spreadsheet_data, feed_codes=feed_code_options)
+    return spreadsheet_data
+
+@app.route('/api/flock/<int:flock_id>/export_csv')
+def export_flock_csv(flock_id):
+    # Both Farm and Executive roles can view flock details, so both should be able to export
+    if not session.get('is_admin') and session.get('user_role') not in ['Management', 'Farm']:
+        flash('Access Denied.', 'danger')
+        return redirect(url_for('index'))
+
+    flock = db.session.get(Flock, flock_id)
+    if not flock:
+        flash('Flock not found', 'danger')
+        return redirect(url_for('index'))
+
+    # Load all logs for this flock
+    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+
+    # Enrich with standards (for benchmarks)
+    standards_list = Standard.query.all()
+    standards_by_week = {getattr(s, 'week'): s for s in standards_list if hasattr(s, 'week')}
+    standards_by_prod_week = {s.production_week: s for s in standards_list}
+
+    spreadsheet_data = generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week)
+
+    headers = [
+        "ID", "Date", "Age (Days)", "Clinical Signs",
+        "Mortality (M)", "Mortality (F)", "Hosp Mort (M)", "Hosp Mort (F)",
+        "Culls (M)", "Culls (F)", "Hosp Culls (M)", "Hosp Culls (F)",
+        "Moved to Hosp (M)", "Moved to Hosp (F)", "Moved to Prod (M)", "Moved to Prod (F)",
+        "Feed Program", "Feed Code (M)", "Feed Code (F)",
+        "Feed (g/bird M)", "Feed (g/bird F)", "Feed Cleanup Start", "Feed Cleanup End",
+        "Water 1", "Water 2", "Water 3", "Flushing",
+        "Eggs Collected", "Egg Weight", "Eggs Jumbo", "Eggs Small", "Eggs Abnormal", "Eggs Crack",
+        "Weighing Day", "Avg BW (M)", "Avg BW (F)", "Avg Unif (M)", "Avg Unif (F)", "Std BW (M)", "Std BW (F)"
+    ]
+
+    for i in range(1, 9):
+        headers.extend([f"M{i} BW", f"M{i} Unif"])
+    for i in range(1, 9):
+        headers.extend([f"F{i} BW", f"F{i} Unif"])
+
+    headers.extend([
+        "Light On", "Light Off",
+        "Std Mort %", "Std Egg Prod %", "Std BW (M) Bench", "Std BW (F) Bench"
+    ])
+
+    import io
+    import csv
+    from flask import Response
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    for row in spreadsheet_data:
+        writer.writerow(row)
+
+    response = Response(output.getvalue(), mimetype='text/csv')
+    response.headers["Content-Disposition"] = f"attachment; filename=flock_{flock_id}_raw_data.csv"
+    return response
 
 @app.route('/api/flock/<int:flock_id>/spreadsheet_save', methods=['POST'])
 def flock_spreadsheet_save(flock_id):
