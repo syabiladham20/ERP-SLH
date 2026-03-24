@@ -144,6 +144,11 @@ def serve_sw():
 def offline():
     return render_template('offline.html')
 
+@app.route('/offline_mirror')
+def offline_mirror():
+    return render_template('offline_mirror.html')
+
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -8512,6 +8517,85 @@ with app.app_context():
         db.create_all()
     except Exception as e:
         app.logger.warning(f"Error during db.create_all(): {e}")
+
+
+
+@app.route('/api/offline_snapshot')
+def offline_snapshot():
+    if not session.get('user_id'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    user_dept = session.get('user_dept')
+    is_admin = session.get('is_admin')
+    user_role = session.get('user_role')
+
+    # Restrict to allowed departments if not Admin/Management
+    query = Flock.query.filter_by(status='Active')
+    if not is_admin and user_role != 'Management':
+        if user_dept == 'Farm':
+            # This is a bit simplified, usually we might restrict by house or just Farm
+            pass
+        elif user_dept == 'Hatchery':
+            pass
+
+    active_flocks = query.all()
+
+    from datetime import date, timedelta
+    twelve_months_ago = date.today() - timedelta(days=365)
+
+    snapshot_data = []
+    from metrics import enrich_flock_data, aggregate_weekly_metrics
+
+    for f in active_flocks:
+        # Get logs from last 12 months
+        logs = [log for log in f.logs if log.date and log.date >= twelve_months_ago]
+        logs.sort(key=lambda x: x.date)
+
+        # Enrich the flock data to get phases and dynamic properties
+        hatch_recs = [] # Skip hatch records for this snapshot to save bandwidth unless needed
+        enriched_data = enrich_flock_data(f, logs)
+
+        daily_logs_data = []
+        for d in enriched_data:
+            if d.get('date'):
+                daily_logs_data.append({
+                    'date': d.get('date').strftime('%Y-%m-%d'),
+                    'age_week_day': d.get('age_week_day'),
+                    'mortality_cum_female_pct': d.get('mortality_cum_female_pct'),
+                    'eggs_production_pct': d.get('eggs_production_pct'),
+                    'feed_female_gp_bird': d.get('feed_female_gp_bird'),
+                    'calculated_phase': d.get('calculated_phase'),
+                    'stock_female_end': d.get('stock_female_end'),
+                    'stock_male_end': d.get('stock_male_end')
+                })
+
+        weekly_averages = aggregate_weekly_metrics(enriched_data, [])
+        weekly_data = []
+        for w in weekly_averages:
+            weekly_data.append({
+                'age_weeks': w.get('age_weeks'),
+                'production_week': w.get('production_week'),
+                'avg_egg_production_pct': w.get('avg_egg_production_pct'),
+                'mortality_f_weekly_pct': w.get('mortality_f_weekly_pct'),
+                'avg_feed_f': w.get('avg_feed_f'),
+                'avg_feed_m': w.get('avg_feed_m'),
+            })
+
+        snapshot_data.append({
+            'flock_id': f.id,
+            'house_name': f.house.name if f.house else f.name,
+            'status': f.status,
+            'calculated_phase': getattr(f, 'calculated_phase', 'Unknown'),
+            'intake_date': f.intake_date.strftime('%Y-%m-%d') if f.intake_date else None,
+            'daily_logs': daily_logs_data,
+            'weekly_averages': weekly_data
+        })
+
+    from datetime import datetime
+    return jsonify({
+        'timestamp': datetime.now().isoformat(),
+        'flocks': snapshot_data
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -551,6 +551,14 @@
         });
       }
     </script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initOfflineSync === 'function') {
+          initOfflineSync("{{ session.get('user_id', '') }}");
+        }
+      });
+    </script>
     {% block extra_scripts %}{% endblock %}
   </body>
 </html>

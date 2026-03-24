@@ -1,0 +1,73 @@
+{% extends 'base_tabler.html' %}
+
+{% block extra_head %}
+<style>
+    /* Pulse animation for the offline badge */
+    @keyframes pulse-orange {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 159, 0, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 159, 0, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 159, 0, 0); }
+    }
+    #offline-badge {
+        animation: pulse-orange 2s infinite;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title text-primary d-flex align-items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chart-pie me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                   <path d="M10 3.2a9 9 0 1 0 10.8 10.8a1 1 0 0 0 -1 -1h-6.8a2 2 0 0 1 -2 -2v-7a.9 .9 0 0 0 -1 -.8"></path>
+                   <path d="M15 3.5a9 9 0 0 1 5.5 5.5h-4.5a1 1 0 0 1 -1 -1v-4.5"></path>
+                </svg>
+                Mirror Dashboard
+            </h2>
+            <div class="text-muted mt-1">Executive Report</div>
+        </div>
+        <div class="col-auto ms-auto d-print-none">
+            <span id="offline-badge" class="badge bg-warning text-white fs-4 p-2">
+                🟠 Offline View
+            </span>
+            <button class="btn btn-primary d-none d-sm-inline-block ms-3" onclick="window.location.href='/'">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                   <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                   <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+                   <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+                </svg>
+                Try Reconnect
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div id="offline-dashboard-container">
+        <!-- Dashboard populated by offline_sync.js -->
+        <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <span class="ms-2">Loading Mirror Data...</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/offline_sync.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const userId = "{{ session.get('user_id') }}";
+        if (userId) {
+            renderDashboard(userId);
+        } else {
+            document.getElementById('offline-dashboard-container').innerHTML = `
+                <div class="alert alert-danger">User not authenticated. Cannot access local cache.</div>
+            `;
+        }
+    });
+</script>
+{% endblock %}
