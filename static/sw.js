@@ -1,6 +1,7 @@
 const CACHE_NAME = 'slh-erp-v1';
 const ASSETS_TO_CACHE = [
   '/',
+  '/offline',
   '/static/manifest.json',
   '/static/icon-192.png',
   '/static/icon-512.png'
@@ -17,9 +18,17 @@ self.addEventListener('install', (event) => {
 
 // Fetch Event: Network-First Strategy
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return caches.match(event.request);
-    })
-  );
+  if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match('/offline');
+      })
+    );
+  } else {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match(event.request);
+      })
+    );
+  }
 });

@@ -140,6 +140,10 @@ def uploaded_file(filename):
 def serve_sw():
     return send_from_directory('static', 'sw.js', mimetype='application/javascript')
 
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 

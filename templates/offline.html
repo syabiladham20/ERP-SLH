@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Offline - SLH-OP</title>
+    <!-- Tabler Core CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#005eb8">
+    <style>
+        :root {
+            --tblr-primary: #005eb8; /* Arbor Acres Blue */
+        }
+        body {
+            background-color: #f8f9fa;
+        }
+        .empty {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .breeder-head-svg {
+            color: #005eb8;
+        }
+    </style>
+  </head>
+  <body class="border-top-wide border-primary d-flex flex-column">
+    <div class="page page-center">
+      <div class="container-tight py-4">
+        <div class="empty">
+          <div class="empty-icon mb-4">
+            <svg width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg">
+                <path d="M40,30 Q42,15 45,22 Q48,10 52,20 Q56,10 60,22 Q65,15 68,28"
+                      fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="comb-path"/>
+                <path d="M35,75 C35,50 45,35 65,30 C75,28 85,35 90,45 L78,50 C75,48 70,50 72,58 Q60,55 50,65 Q40,75 35,75"
+                      fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="profile-path"/>
+                <path d="M72,58 Q75,70 68,72 Q65,65 68,58"
+                      fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="wattle-path"/>
+                <circle cx="62" cy="45" r="2.5" fill="currentColor" />
+            </svg>
+          </div>
+          <p class="empty-title h3 mb-2">Offline Mode</p>
+          <p class="empty-subtitle text-muted mb-4 px-3" style="max-width: 400px; text-align: center;">
+            Connection lost, but your UI is ready. Please move to a high-signal area to sync VA1/VA3 logs.
+          </p>
+          <div class="empty-action">
+            <button class="btn btn-primary" onclick="window.location.reload()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+                <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
+              </svg>
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
