@@ -1,0 +1,21 @@
+{
+  "name": "SLH-OP Dashboard",
+  "short_name": "SLH-OP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#005eb8",
+  "description": "Poultry Farm Management System for SLH Breeder Houses",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

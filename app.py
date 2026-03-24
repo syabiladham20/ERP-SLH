@@ -136,6 +136,10 @@ def round_to_whole(val):
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
