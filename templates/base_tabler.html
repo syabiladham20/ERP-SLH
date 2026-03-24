@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#005eb8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SLH-OP">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
     <style>
         :root {
             --tblr-primary: #005eb8; /* Arbor Acres Blue */
@@ -535,6 +541,15 @@
                 overlay.style.display = 'none';
             });
         });
+    </script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker Registered!', reg))
+            .catch(err => console.log('Service Worker Registration Failed', err));
+        });
+      }
     </script>
     {% block extra_scripts %}{% endblock %}
   </body>
