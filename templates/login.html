@@ -3,9 +3,12 @@
 {% block content %}
 <div class="row justify-content-center mt-5">
     <div class="col-md-6 col-lg-4">
+        <div class="text-center mb-4">
+            <img src="{{ url_for('static', filename='slh-logo-head.png') }}" alt="SLH Logo" style="width: 120px; height: auto;">
+        </div>
         <div class="card shadow">
             <div class="card-header bg-primary text-white text-center">
-                <h4>SLH-OP Login</h4>
+                <h4 class="mb-0">SLH-OP Login</h4>
             </div>
             <div class="card-body p-4">
                 <form method="POST">
