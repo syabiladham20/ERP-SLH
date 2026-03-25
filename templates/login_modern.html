@@ -4,24 +4,22 @@
     <div class="page page-center">
       <div class="container py-4" style="max-width: 400px; margin-top: 5rem;">
         <div class="text-center mb-4">
-          <h1 class="text-primary display-4">SLH-OP</h1>
+          <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 100 100" class="breeder-head-svg slh-logo text-primary">
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path class="comb-path" d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
+    <path class="profile-path" d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
+    <path class="wattle-path" d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
+    <path class="wattle-path" d="M 70 82 L 72 95" />
+    <circle cx="62" cy="42" r="4" fill="currentColor" stroke="none" class="eye-path" />
+  </g>
+</svg>
+          <h1 class="text-primary display-4 mt-3">SLH-OP</h1>
         </div>
         <div class="card card-md shadow-sm border-0">
           <div class="card-body">
             <h2 class="h2 text-center mb-4">Login to your account</h2>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} alert-dismissible" role="alert">
-                    <div class="d-flex">
-                      <div>{{ message }}</div>
-                    </div>
-                    <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
+            {# Flash messages are already handled by base_tabler.html #}
 
             <form action="{{ url_for('login') }}" method="POST" autocomplete="off" novalidate>
               <div class="mb-3">
@@ -46,8 +44,10 @@
             </form>
           </div>
         </div>
-        <div class="text-center text-muted mt-3">
-          Powered by SLH-OP Farm Management
+        <div class="text-center text-muted mt-4" style="font-size: 0.75rem; opacity: 0.6;">
+          <p class="mb-1">Syarikat Sin Long Heng Breeding Farm Sdn Bhd</p>
+          <p class="mb-1"><strong>System Status:</strong> Online | <strong>Last Update:</strong> {{ build_date }}</p>
+          <p class="mt-1">Build ID: v{{ version }}</p>
         </div>
       </div>
     </div>

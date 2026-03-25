@@ -5,7 +5,8 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#005eb8",
-  "description": "Poultry Farm Management System for SLH Breeder Houses",
+
+  "description": "Syarikat Sin Long Heng Breeder House Dashboard",
   "icons": [
     {
       "src": "/static/icon-192.png",

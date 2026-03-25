@@ -60,7 +60,10 @@
 <script src="{{ url_for('static', filename='js/offline_sync.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const userId = "{{ session.get('user_id') }}";
+        let userId = "{{ session.get('user_id') }}";
+        if (!userId || userId === "None" || userId === "") {
+            userId = localStorage.getItem("slh_offline_user_id");
+        }
         if (userId) {
             renderDashboard(userId);
         } else {

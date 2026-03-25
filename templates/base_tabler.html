@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>SLH-OP Dashboard</title>
     <!-- Tabler Core CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css?v={{ version }}">
+    <link rel="manifest" href="/static/manifest.json?v={{ version }}">
     <meta name="theme-color" content="#005eb8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SLH-OP">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icon-192.png?v={{ version }}">
     <style>
         :root {
             --tblr-primary: #005eb8; /* Arbor Acres Blue */
@@ -44,24 +44,32 @@
         }
 
         .breeder-head-svg {
-            color: #1a73e8; /* Farm Executive Blue */
+            color: #005eb8; /* SLH Blue */
         }
 
-        /* Make the paths "draw" themselves in a sequence */
         .comb-path, .profile-path, .wattle-path {
-            stroke-dasharray: 150;
-            stroke-dashoffset: 150;
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
             animation: drawBreeder 2.5s infinite ease-in-out;
         }
 
-        .profile-path { animation-delay: 0s; }
-        .comb-path { animation-delay: 0.2s; }
+        .comb-path { animation-delay: 0s; }
+        .profile-path { animation-delay: 0.2s; }
         .wattle-path { animation-delay: 0.4s; }
 
+        .eye-path {
+            animation: blinkEye 2.5s infinite;
+        }
+
         @keyframes drawBreeder {
-            0% { stroke-dashoffset: 150; opacity: 0.2; }
+            0% { stroke-dashoffset: 200; opacity: 0.2; }
             50% { stroke-dashoffset: 0; opacity: 1; }
-            100% { stroke-dashoffset: -150; opacity: 0.2; }
+            100% { stroke-dashoffset: -200; opacity: 0.2; }
+        }
+
+        @keyframes blinkEye {
+            0%, 48%, 52%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         .loader-text {
@@ -152,50 +160,13 @@
   <body>
     <div id="loading-overlay" class="loader-overlay" style="display:none;">
         <div class="chicken-loader">
-            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg slh-rooster-outline">
-  <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <path class="profile-path" d="
-      M 90,85
-      C 95,65 92,50 85,35
-      C 80,25 70,18 60,15
-      C 55,14 50,15 45,18
-      M 45,18
-      C 42,10 35,5 25,8
-      C 20,9 15,12 12,18
-      M 12,18
-      C 5,25 2,35 5,45
-      C 6,50 10,55 15,58
-      M 15,58
-      C 18,65 22,70 28,73
-      C 35,76 45,75 52,70
-      M 52,70
-      C 55,75 60,80 68,82
-      C 75,83 85,85 90,85
-      Z" />
-
-    <path class="comb-path" d="
-      M 28,17
-      C 26,10 28,5 32,3
-      C 35,2 38,4 40,8
-      M 40,8
-      C 42,2 48,0 52,2
-      C 55,3 57,6 58,10
-      M 58,10
-      C 62,4 68,4 72,8
-      C 75,10 77,14 76,18
-      M 76,18
-      C 82,14 88,16 90,22
-      C 91,26 89,32 85,36" />
-
-    <path class="wattle-path" d="M 5,45 C 0,47 -2,52 2,56 L 15,58" />
-
-    <path class="wattle-path" d="M 18,59 C 15,70 18,80 28,83 C 35,85 45,82 48,73" />
-
-    <circle cx="28" cy="38" r="4" fill="currentColor" stroke="none"/>
-    <path d="M 23,32 C 25,29 31,29 33,32" stroke-width="2"/>
-
-    <path class="profile-path" d="M 65,35 C 70,45 72,55 70,65" stroke-opacity="0.5"/>
-    <path class="profile-path" d="M 75,40 C 80,50 81,60 80,70" stroke-opacity="0.5"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg slh-logo">
+  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path class="comb-path" d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
+    <path class="profile-path" d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
+    <path class="wattle-path" d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
+    <path class="wattle-path" d="M 70 82 L 72 95" />
+    <circle cx="62" cy="42" r="4" fill="currentColor" stroke="none" class="eye-path" />
   </g>
 </svg>
             <p class="loader-text">Processing...</p>
@@ -210,8 +181,17 @@
             <span class="navbar-toggler-icon"></span>
           </button>
           <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            <a href="{{ url_for('index') }}" class="text-decoration-none text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-primary me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 21a9 9 0 0 1 -9 -9c0 -4.97 4.03 -9 9 -9s9 4.03 9 9c0 4.97 -4.03 9 -9 9z" /></svg>SLH-OP <small class="text-muted ms-2 fs-5">({{ user_dept or 'Guest' }})</small>
+            <a href="{{ url_for('index') }}" class="text-decoration-none text-white d-flex align-items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="me-2 slh-logo" width="24" height="24">
+  <g fill="none" stroke="#005eb8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
+    <path d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
+    <path d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
+    <path d="M 70 82 L 72 95" />
+    <circle cx="62" cy="42" r="4" fill="#005eb8" stroke="none" />
+  </g>
+</svg>
+              SLH-OP <small class="text-muted ms-2 fs-5">({{ user_dept or 'Guest' }})</small>
             </a>
           </h1>
 
@@ -377,12 +357,6 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('flock_detail_readonly_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                 {% endif %}
-
-                <li class="nav-item ms-auto">
-                  <a class="nav-link" href="{{ url_for('help') }}">
-                    <span class="nav-link-title text-muted">Help</span>
-                  </a>
-                </li>
               </ul>
             </div>
           </div>
@@ -520,9 +494,27 @@
     </div>
     {% endif %}
 
+    <!-- Update Toast Notification -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+      <div id="updateToast" class="toast text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-primary text-white border-bottom-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+            <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+          </svg>
+          <strong class="me-auto ms-2">New Update Available</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body d-flex justify-content-between align-items-center pt-0">
+          <span>A new version is available.</span>
+          <button type="button" class="btn btn-sm btn-light text-primary fw-bold" onclick="window.location.reload(true);">Reload to Update</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabler Core JS & Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}"></script>
     <script>
         // Alias Tabler's bundled Bootstrap so existing scripts that rely on `new bootstrap.Modal()` continue to work.
         if (typeof window.bootstrap === 'undefined' && typeof window.tabler !== 'undefined') {
@@ -633,11 +625,40 @@
         });
       }
     </script>
-    <script src="{{ url_for('static', filename='js/offline_sync.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         if (typeof initOfflineSync === 'function') {
-          initOfflineSync("{{ session.get('user_id', '') }}");
+          const userId = "{{ session.get('user_id', '') }}";
+          if (userId) {
+              localStorage.setItem("slh_offline_user_id", userId);
+              initOfflineSync(userId);
+          } else {
+              const cachedUserId = localStorage.getItem("slh_offline_user_id");
+              if (cachedUserId) {
+                  initOfflineSync(cachedUserId);
+              }
+          }
+        }
+      });
+
+      // Auto-Version Check on Visibility Change
+      let currentAppVersion = "{{ version }}";
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          fetch('/api/version')
+            .then(res => res.json())
+            .then(data => {
+              if (data.version && data.version > currentAppVersion) {
+                currentAppVersion = data.version;
+                const updateToastEl = document.getElementById('updateToast');
+                if (updateToastEl) {
+                  const updateToast = new bootstrap.Toast(updateToastEl, { autohide: false });
+                  updateToast.show();
+                }
+              }
+            })
+            .catch(err => console.log('Version check failed', err));
         }
 
         // PWA Installation Logic
