@@ -39,7 +39,7 @@ def test_login_logo_and_offline_mirror():
 
             page.wait_for_load_state("networkidle")
 
-            svg_element = page.locator('svg.slh-rooster-outline.text-primary')
+            svg_element = page.locator('svg.slh-logo.text-primary')
             assert svg_element.is_visible(), "New rooster SVG logo should be visible on the login page."
 
             login_container = page.locator('.page-center .container')
