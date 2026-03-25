@@ -81,9 +81,9 @@ async function renderDashboard(userId) {
 
     if (!snapshot) {
         container.innerHTML = `
-            <div class="empty">
+            <div class="empty d-flex flex-column align-items-center justify-content-center text-center mt-5">
                 <div class="empty-icon mb-4 text-muted">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-wifi-off" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-wifi-off" width="64" height="64" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                        <path d="M12 20h.01"></path>
                        <path d="M8.5 16.429a5 5 0 0 1 7.002 -2.128"></path>
@@ -166,17 +166,17 @@ async function renderDashboard(userId) {
 }
 
 // Auto-sync wrapper function attached to window
-window.initOfflineSync = function(userId) {
+window.initOfflineSync = async function(userId) {
     if (!userId) return;
 
     // Sync initially on page load if online
     if (navigator.onLine) {
-        syncSnapshot(userId);
+        await syncSnapshot(userId);
     }
 
     // Listen for online events to resync
-    window.addEventListener('online', () => {
+    window.addEventListener('online', async () => {
         console.log("Network restored, syncing snapshot...");
-        syncSnapshot(userId);
+        await syncSnapshot(userId);
     });
 };
