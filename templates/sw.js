@@ -1,17 +1,17 @@
-const CACHE_NAME = 'slh-erp-v1';
+const CACHE_NAME = 'slh-erp-v{{ version }}';
 const ASSETS_TO_CACHE = [
   '/',
   '/offline',
   '/offline_mirror',
-  '/static/js/offline_sync.js',
-  '/static/manifest.json',
-  '/static/icon-192.png',
-  '/static/icon-512.png',
-  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css',
-  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js'
+  '/static/js/offline_sync.js?v={{ version }}',
+  '/static/manifest.json?v={{ version }}',
+  '/static/icon-192.png?v={{ version }}',
+  '/static/icon-512.png?v={{ version }}',
+  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css?v={{ version }}',
+  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css?v={{ version }}',
+  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css?v={{ version }}',
+  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css?v={{ version }}',
+  'https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}'
 ];
 
 // Install Event: Cache Core Assets

@@ -16,6 +16,11 @@ import calendar
 import re
 from functools import wraps
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
+
+# Auto-version based on current timestamp
+BUILD_TIME = datetime.now()
+APP_VERSION = BUILD_TIME.strftime("%Y%m%d%H%M")
+DISPLAY_DATE = BUILD_TIME.strftime("%B %d, %Y")
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from sqlalchemy import text
 
@@ -111,6 +116,13 @@ def basename_filter(s):
         return None
     return os.path.basename(str(s).replace('\\', '/'))
 
+@app.context_processor
+def inject_metadata():
+    return {
+        'version': APP_VERSION,
+        'build_date': DISPLAY_DATE
+    }
+
 @app.template_filter('date_fmt')
 def date_fmt_filter(value):
     if value is None:
@@ -138,7 +150,15 @@ def uploaded_file(filename):
 
 @app.route('/sw.js')
 def serve_sw():
-    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+    # Return as a Jinja template to inject the dynamic CACHE_NAME version
+    response = app.make_response(render_template('sw.js', version=APP_VERSION))
+    response.headers['Content-Type'] = 'application/javascript'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
+@app.route('/api/version')
+def get_version():
+    return jsonify({'version': APP_VERSION})
 
 @app.route('/offline')
 def offline():
