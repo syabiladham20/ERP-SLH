@@ -247,12 +247,12 @@
             <div class="container-fluid">
               <ul class="navbar-nav">
                 {% if user_dept == 'Admin' %}
-                    <li class="nav-item">
+                    <li class="nav-item role-restricted" data-allowed-roles="Admin">
                         <a class="nav-link text-warning" href="{{ url_for('admin_control_panel') }}">
                             <span class="nav-link-title">Admin Panel</span>
                         </a>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown role-restricted" data-allowed-roles="Admin">
                         <a class="nav-link dropdown-toggle text-warning" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
                             <span class="nav-link-title">Audit Logs</span>
                         </a>
@@ -261,13 +261,13 @@
                             <a class="dropdown-item" href="{{ url_for('admin_activity_log') }}">User Activity Logs</a>
                         </div>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item role-restricted" data-allowed-roles="Admin,Management">
                         <a class="nav-link text-info" href="{{ url_for('executive_dashboard') }}">
                             <span class="nav-link-title">Executive</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-info" href="{{ url_for('flock_detail_readonly_select') }}">
+                    <li class="nav-item role-restricted" data-allowed-roles="Admin,Management">
+                        <a class="nav-link text-info" href="{{ url_for('flock_detail_readonly_select' ) }}">
                             <span class="nav-link-title">Flock Detail</span>
                         </a>
                     </li>
@@ -321,14 +321,14 @@
                 {% elif user_dept == 'Farm' %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
-                            <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
-                            <li class="nav-item"><a class="nav-link" href="{{ url_for('flock_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
+                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('flock_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                         {% elif item.key == 'nav_daily_entry' %}
-                            <li class="nav-item"><a class="nav-link" href="{{ url_for('daily_log') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('daily_log') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_inventory' %}
-                            <li class="nav-item"><a class="nav-link" href="{{ url_for('inventory') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('inventory') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_health_log' %}
-                            <li class="nav-item dropdown">
+                            <li class="nav-item dropdown role-restricted" data-allowed-roles="Farm">
                                 <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
                                     <span class="nav-link-title">{{ item.label }}</span>
                                 </a>
@@ -349,13 +349,13 @@
                             </li>
                         {% endif %}
                     {% endfor %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}"><span class="nav-link-title">History</span></a></li>
+                    <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('history') }}"><span class="nav-link-title">History</span></a></li>
 
                 {% elif user_dept == 'Hatchery' %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
+                    <li class="nav-item role-restricted" data-allowed-roles="Hatchery"><a class="nav-link" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
                 {% elif user_dept == 'Management' %}
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('flock_detail_readonly_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
+                    <li class="nav-item role-restricted" data-allowed-roles="Management"><a class="nav-link" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
+                    <li class="nav-item role-restricted" data-allowed-roles="Management"><a class="nav-link" href="{{ url_for('flock_detail_readonly_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                 {% endif %}
               </ul>
             </div>
@@ -656,6 +656,17 @@
         if (deptBadge) {
             deptBadge.textContent = `(${displayDept})`;
         }
+
+        // Enforce role-restricted UI elements when loading from a cached Service Worker page
+        document.querySelectorAll('.role-restricted').forEach(el => {
+            const allowedRoles = el.getAttribute('data-allowed-roles');
+            if (allowedRoles) {
+                const rolesArray = allowedRoles.split(',').map(r => r.trim());
+                if (!rolesArray.includes(displayDept)) {
+                    el.style.display = 'none';
+                }
+            }
+        });
       });
 
       // Auto-Version Check on Visibility Change
