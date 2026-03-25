@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>SLH-OP Dashboard</title>
     <!-- Tabler Core CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css?v={{ version }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css?v={{ version }}">
+    <link rel="manifest" href="/static/manifest.json?v={{ version }}">
     <meta name="theme-color" content="#005eb8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SLH-OP">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icon-192.png?v={{ version }}">
     <style>
         :root {
             --tblr-primary: #005eb8; /* Arbor Acres Blue */
@@ -485,8 +485,27 @@
     </div>
     {% endif %}
 
+    <!-- Update Toast Notification -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+      <div id="updateToast" class="toast text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-primary text-white border-bottom-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+            <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+          </svg>
+          <strong class="me-auto ms-2">New Update Available</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body d-flex justify-content-between align-items-center pt-0">
+          <span>A new version is available.</span>
+          <button type="button" class="btn btn-sm btn-light text-primary fw-bold" onclick="window.location.reload(true);">Reload to Update</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabler Core JS & Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}"></script>
     <script>
         // Alias Tabler's bundled Bootstrap so existing scripts that rely on `new bootstrap.Modal()` continue to work.
         if (typeof window.bootstrap === 'undefined' && typeof window.tabler !== 'undefined') {
@@ -597,11 +616,31 @@
         });
       }
     </script>
-    <script src="{{ url_for('static', filename='js/offline_sync.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         if (typeof initOfflineSync === 'function') {
           initOfflineSync("{{ session.get('user_id', '') }}");
+        }
+      });
+
+      // Auto-Version Check on Visibility Change
+      let currentAppVersion = "{{ version }}";
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          fetch('/api/version')
+            .then(res => res.json())
+            .then(data => {
+              if (data.version && data.version > currentAppVersion) {
+                currentAppVersion = data.version;
+                const updateToastEl = document.getElementById('updateToast');
+                if (updateToastEl) {
+                  const updateToast = new bootstrap.Toast(updateToastEl, { autohide: false });
+                  updateToast.show();
+                }
+              }
+            })
+            .catch(err => console.log('Version check failed', err));
         }
       });
     </script>
