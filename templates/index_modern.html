@@ -459,15 +459,52 @@
 
 <div id="reportGenerationOverlay" class="loader-overlay" style="display:none;">
     <div class="chicken-loader">
-        <svg width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg">
-            <path d="M40,30 Q42,15 45,22 Q48,10 52,20 Q56,10 60,22 Q65,15 68,28"
-                  fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="comb-path"/>
-            <path d="M35,75 C35,50 45,35 65,30 C75,28 85,35 90,45 L78,50 C75,48 70,50 72,58 Q60,55 50,65 Q40,75 35,75"
-                  fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" class="profile-path"/>
-            <path d="M72,58 Q75,70 68,72 Q65,65 68,58"
-                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="wattle-path"/>
-            <circle cx="62" cy="45" r="2.5" fill="currentColor" />
-        </svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg slh-rooster-outline">
+  <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path class="profile-path" d="
+      M 90,85
+      C 95,65 92,50 85,35
+      C 80,25 70,18 60,15
+      C 55,14 50,15 45,18
+      M 45,18
+      C 42,10 35,5 25,8
+      C 20,9 15,12 12,18
+      M 12,18
+      C 5,25 2,35 5,45
+      C 6,50 10,55 15,58
+      M 15,58
+      C 18,65 22,70 28,73
+      C 35,76 45,75 52,70
+      M 52,70
+      C 55,75 60,80 68,82
+      C 75,83 85,85 90,85
+      Z" />
+
+    <path class="comb-path" d="
+      M 28,17
+      C 26,10 28,5 32,3
+      C 35,2 38,4 40,8
+      M 40,8
+      C 42,2 48,0 52,2
+      C 55,3 57,6 58,10
+      M 58,10
+      C 62,4 68,4 72,8
+      C 75,10 77,14 76,18
+      M 76,18
+      C 82,14 88,16 90,22
+      C 91,26 89,32 85,36" />
+
+    <path class="wattle-path" d="M 5,45 C 0,47 -2,52 2,56 L 15,58" />
+
+    <path class="wattle-path" d="M 18,59 C 15,70 18,80 28,83 C 35,85 45,82 48,73" />
+
+    <circle cx="28" cy="38" r="4" fill="currentColor" stroke="none"/>
+    <path d="M 23,32 C 25,29 31,29 33,32" stroke-width="2"/>
+
+    <path class="profile-path" d="M 65,35 C 70,45 72,55 70,65" stroke-opacity="0.5"/>
+    <path class="profile-path" d="M 75,40 C 80,50 81,60 80,70" stroke-opacity="0.5"/>
+  </g>
+</svg>
         <p class="loader-text" id="reportGenerationStatus">Initializing...</p>
     </div>
 </div>
