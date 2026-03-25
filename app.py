@@ -48,7 +48,12 @@ def login_required(f):
         if user_dept is None:
             if request.path == url_for('login'): # Avoid loop
                 return f(*args, **kwargs)
-            flash("Please log in to continue.", "info")
+
+            # Prevent duplicate flash messages
+            flashes = session.get('_flashes', [])
+            if not any(category == 'info' and msg == "Please log in to continue." for category, msg in flashes):
+                flash("Please log in to continue.", "info")
+
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
@@ -76,7 +81,12 @@ def dept_required(required_dept):
             if user_dept is None:
                 if request.path == url_for('login'): # Avoid loop
                     return f(*args, **kwargs)
-                flash("Please log in to continue.", "info")
+
+                # Prevent duplicate flash messages
+                flashes = session.get('_flashes', [])
+                if not any(category == 'info' and msg == "Please log in to continue." for category, msg in flashes):
+                    flash("Please log in to continue.", "info")
+
                 return redirect(url_for('login'))
 
             # If user is logged in but wrong department
@@ -1535,10 +1545,6 @@ def delete_flock(id):
     db.session.commit()
     flash(f'Flock {flock_id_str} deleted.', 'warning')
     return redirect(url_for('manage_flocks'))
-
-@app.route('/help')
-def help():
-    return render_template('help.html')
 
 @app.route('/flock_select')
 @dept_required('Farm')
