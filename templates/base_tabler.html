@@ -628,17 +628,33 @@
     <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        if (typeof initOfflineSync === 'function') {
-          const userId = "{{ session.get('user_id', '') }}";
-          if (userId) {
-              localStorage.setItem("slh_offline_user_id", userId);
-              initOfflineSync(userId);
-          } else {
-              const cachedUserId = localStorage.getItem("slh_offline_user_id");
-              if (cachedUserId) {
-                  initOfflineSync(cachedUserId);
-              }
-          }
+        const userId = "{{ session.get('user_id', '') }}";
+        const rawUserDept = "{{ session.get('user_role', session.get('user_dept', '')) }}";
+
+        let displayDept = rawUserDept || "Guest";
+
+        if (userId) {
+            // Online: Save to localStorage
+            localStorage.setItem("slh_offline_user_id", userId);
+            localStorage.setItem("slh_offline_user_dept", displayDept);
+            if (typeof initOfflineSync === 'function') initOfflineSync(userId);
+        } else {
+            // Offline/Cache Fallback
+            const cachedUserId = localStorage.getItem("slh_offline_user_id");
+            const cachedUserDept = localStorage.getItem("slh_offline_user_dept") || "Guest";
+
+            if (cachedUserId) {
+                if (typeof initOfflineSync === 'function') initOfflineSync(cachedUserId);
+            }
+
+            // Overwrite the rendered HTML with the cached role to avoid SW bleeding
+            displayDept = cachedUserDept;
+        }
+
+        // Always ensure the navbar brand reflects the true user (online or cached)
+        const deptBadge = document.querySelector('.navbar-brand small');
+        if (deptBadge) {
+            deptBadge.textContent = `(${displayDept})`;
         }
       });
 
