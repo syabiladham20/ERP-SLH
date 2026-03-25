@@ -38,7 +38,7 @@ async function syncSnapshot(userId) {
 
         // Upsert logic: Use the specific user ID to prevent cross-user data bleed on same tablet
         store.put({
-            user_id: userId,
+            user_id: String(userId),
             timestamp: data.timestamp,
             flocks: data.flocks
         });
@@ -61,7 +61,7 @@ async function getSnapshot(userId) {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
-            const request = store.get(userId);
+            const request = store.get(String(userId));
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
@@ -81,7 +81,7 @@ async function renderDashboard(userId) {
 
     if (!snapshot) {
         container.innerHTML = `
-            <div class="empty d-flex flex-column align-items-center justify-content-center text-center mt-5">
+            <div class="empty d-flex flex-column align-items-center justify-content-center text-center w-100 mx-auto py-5 mt-5">
                 <div class="empty-icon mb-4 text-muted">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-wifi-off" width="64" height="64" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
