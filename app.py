@@ -8820,7 +8820,7 @@ def offline_snapshot():
                     'stock_male_end': d.get('stock_male_end')
                 })
 
-        weekly_averages = aggregate_weekly_metrics(enriched_data, [])
+        weekly_averages = aggregate_weekly_metrics(enriched_data)
         weekly_data = []
         for w in weekly_averages:
             weekly_data.append({
