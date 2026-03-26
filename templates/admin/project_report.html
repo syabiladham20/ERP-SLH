@@ -1,0 +1,209 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-report-analytics" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2"></path>
+                        <path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z"></path>
+                        <path d="M9 17v-5"></path>
+                        <path d="M12 17v-1"></path>
+                        <path d="M15 17v-3"></path>
+                    </svg>
+                    Project Value Report: SLH-OP System
+                </h2>
+                <div class="text-muted mt-1">Management Overview & Return on Investment Analysis</div>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-14a2 2 0 0 0 -2 2v4a2 2 0 0 0 2 2h2" /><path d="M17 9v-4a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v4" /><path d="M7 13m0 2a2 2 0 0 1 2 -2h6a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2z" /></svg>
+                    Print Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row row-cards">
+        <!-- Technical Features Summary -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h3 class="card-title text-white">High-End Technical Features</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">The SLH-OP system utilizes modern web technologies and progressive architecture to deliver enterprise-level performance and security, ensuring data integrity across farm operations.</p>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3 mt-1">
+                                    <span class="avatar bg-blue-lt">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 8a3.5 3 0 0 1 3.5 -3h1a3.5 3 0 0 1 3.5 3a3 3 0 0 1 -2 3a3 4 0 0 0 -2 4" /><line x1="12" y1="19" x2="12" y2="19.01" /></svg>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 text-primary">Progressive Web App (PWA) & Offline Mirror</h4>
+                                    <div class="text-muted">
+                                        The application features a built-in Service Worker and an "Offline Mirror" dashboard. This architecture allows farm workers to continue viewing cached operational snapshots and critical data even in locations with zero network connectivity.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3 mt-1">
+                                    <span class="avatar bg-green-lt">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="5" y="11" width="14" height="10" rx="2" /><circle cx="12" cy="16" r="1" /><path d="M8 11v-4a4 4 0 0 1 8 0v4" /></svg>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 text-primary">Advanced Security (MFA Planned)</h4>
+                                    <div class="text-muted">
+                                        Current security enforces role-based access control (Admin, Management, Farm, Hatchery) and encrypted session management. The infrastructure is fully prepared for future integration of Multi-Factor Authentication (MFA) to meet high-end enterprise security standards.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3 mt-1">
+                                    <span class="avatar bg-yellow-lt">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 text-primary">Real-Time Alerts & Web Push (Planned)</h4>
+                                    <div class="text-muted">
+                                        The application logic includes integrated threshold alerts (e.g., mortality spikes > 0.5% or missing scheduled fasting days via Feed Guardian). The platform is natively designed to support future Web Push and SMS/Telegram integrations with minimal CPU overhead.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex">
+                                <div class="me-3 mt-1">
+                                    <span class="avatar bg-red-lt">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v2h-16z" /><path d="M4 8h16v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /><path d="M9 12v4" /><path d="M15 12v4" /></svg>
+                                    </span>
+                                </div>
+                                <div>
+                                    <h4 class="mb-1 text-primary">Dynamic Phase Calculation & Strict Validations</h4>
+                                    <div class="text-muted">
+                                        Unlike Excel, which relies on fragile formulas, the system calculates standard metrics dynamically directly from raw entries (the 'Single Source of Truth' model). Validations ensure that user input strictly follows biological progression without silent breakage.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Comparison Summary -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h3 class="card-title text-white">Cost vs. Value ROI Analysis</h3>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-vcenter table-bordered mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="w-25">Category</th>
+                                <th class="w-33 text-center text-danger fw-bold">Outsourced Enterprise Solution (Estimated)</th>
+                                <th class="w-33 text-center text-success fw-bold">Internal In-House Build (Current SLH-OP)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold bg-light">Initial Development / Licensing</td>
+                                <td class="text-center">RM 100,000 (Upfront)</td>
+                                <td class="text-center">RM 0 (Internal Development)</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold bg-light">Hosting & Maintenance Contract</td>
+                                <td class="text-center">RM 1,500 / month</td>
+                                <td class="text-center">
+                                    RM 50 / month ($10 USD via PythonAnywhere)<br>
+                                    <small class="text-muted">+ Standard Domain Costs</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold bg-light">Development Engineering Hours</td>
+                                <td class="text-center text-muted">Billed per feature request</td>
+                                <td class="text-center">
+                                    <strong>Reduced by ~80%</strong><br>
+                                    <small class="text-muted">Leveraging AI-Augmented Development</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold bg-light">Expansion & Scaling Costs</td>
+                                <td class="text-center text-muted">Subject to high vendor contract renegotiations</td>
+                                <td class="text-center text-success">
+                                    <strong>Highly Scalable</strong><br>
+                                    <small class="text-muted">CPU usage currently utilizes less than 10% of the $10/month allocation. Upgrading to handle 150,000+ hits/day involves a simple tier bump without redesigning the architecture.</small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- IT Admin Panel Features -->
+        <div class="col-lg-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title text-white">IT Admin Control Panel Capabilities</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">The internal IT Admin panel provides robust tools to oversee the application, ensure data integrity, and manage users without requiring command-line database access.</p>
+
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <strong>Centralized User Management:</strong> Granular control over department assignments (Admin, Farm, Hatchery, Management) and roles. Passwords can be securely reset, and users dynamically provisioned.
+                        </li>
+                        <li class="list-group-item">
+                            <strong>System Audit Trails:</strong> Every critical transaction (Add, Edit, Delete) across Flocks, Daily Logs, and Inventory is meticulously logged. The `UserActivityLog` tracks exactly <em>who</em> made <em>what</em> change, ensuring total accountability.
+                        </li>
+                        <li class="list-group-item">
+                            <strong>Data Integrity Enforcement:</strong> The admin panel acts as a safety layer. Only authorized personnel can hard-delete sensitive logs or revert inventory transactions, preventing accidental operational data loss.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    @media print {
+        .d-print-none {
+            display: none !important;
+        }
+        .container-xl {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0;
+            margin: 0;
+        }
+        .card {
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+            margin-bottom: 2rem !important;
+            page-break-inside: avoid;
+        }
+        body {
+            background-color: #fff;
+        }
+    }
+</style>
+{% endblock %}
