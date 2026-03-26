@@ -87,10 +87,39 @@
         try {
             const registration = await navigator.serviceWorker.ready;
             const subscription = await registration.pushManager.getSubscription();
+
             if (subscription) {
+                // Force Re-sync on Key Change
+                const storedVapidKey = localStorage.getItem('slh_vapid_public_key');
+                if (storedVapidKey && storedVapidKey !== vapidPublicKey && vapidPublicKey) {
+                    console.log("VAPID Key changed. Forcing re-subscription...");
+                    try {
+                        await subscription.unsubscribe();
+                        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                        const newSubscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: convertedVapidKey
+                        });
+
+                        await fetch('/api/subscribe', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ subscription: newSubscription })
+                        });
+
+                        localStorage.setItem('slh_vapid_public_key', vapidPublicKey);
+                    } catch (e) {
+                        console.error("Failed to force re-sync push subscription:", e);
+                    }
+                } else if (vapidPublicKey) {
+                    localStorage.setItem('slh_vapid_public_key', vapidPublicKey);
+                }
+
                 pushToggle.checked = true;
                 testBtn.disabled = false;
                 actionsHint.style.display = 'none';
+            } else if (vapidPublicKey) {
+                localStorage.setItem('slh_vapid_public_key', vapidPublicKey);
             }
         } catch (error) {
             console.error("Error checking push subscription status:", error);
