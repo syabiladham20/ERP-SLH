@@ -111,6 +111,22 @@
             padding: 0;
         }
 
+        /* iOS Pull-to-Refresh */
+        #ptr-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1020;
+            transform: translateY(-100%);
+            transition: transform 0.2s ease;
+            background-color: transparent;
+        }
+
         /* AI Chat Widget */
         .ai-chat-btn {
             position: fixed;
@@ -194,6 +210,16 @@
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
           </button>
+
+          <a href="javascript:history.back()" class="nav-link px-2 text-white" id="smart-back-btn" style="display: none; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; margin-right: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-left" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l14 0" />
+              <path d="M5 12l6 6" />
+              <path d="M5 12l6 -6" />
+            </svg>
+          </a>
+
           <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
             <a href="{{ url_for('index') }}" class="text-decoration-none text-white d-flex align-items-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="me-2 slh-logo" width="24" height="24">
@@ -378,7 +404,12 @@
         </div>
       </header>
 
-      <div class="page-wrapper">
+      <div class="page-wrapper" id="main-page-wrapper">
+        <div id="ptr-container">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
         <!-- System Health Widget Injection -->
         {% if system_health_logs and request.endpoint == 'index' %}
         <div class="container-fluid mt-3 mb-2">
@@ -643,6 +674,98 @@
     <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
+        // Custom Pull-to-Refresh for iOS
+        const ptrContainer = document.getElementById('ptr-container');
+        const pageWrapper = document.getElementById('main-page-wrapper');
+        let startY = 0;
+        let currentY = 0;
+        let isRefreshing = false;
+        const triggerDistance = 60; // Distance needed to trigger refresh
+
+        if (pageWrapper && ptrContainer) {
+            pageWrapper.addEventListener('touchstart', (e) => {
+                // Only allow pull to refresh if we are at the very top of the page
+                if (window.scrollY === 0 && !isRefreshing) {
+                    startY = e.touches[0].clientY;
+                    ptrContainer.style.transition = 'none';
+                    pageWrapper.style.transition = 'none';
+                }
+            }, { passive: true });
+
+            pageWrapper.addEventListener('touchmove', (e) => {
+                if (startY > 0 && window.scrollY === 0 && !isRefreshing) {
+                    currentY = e.touches[0].clientY;
+                    const diff = currentY - startY;
+
+                    if (diff > 0) {
+                        // User is pulling down
+                        // Apply resistance
+                        const pullDistance = Math.min(diff * 0.4, triggerDistance + 20);
+
+                        ptrContainer.style.transform = `translateY(${pullDistance - 60}px)`; // -60px is the initial hidden state (-100% of 60px height)
+                        pageWrapper.style.transform = `translateY(${pullDistance}px)`;
+
+                        if (e.cancelable) {
+                            e.preventDefault(); // Prevent native scroll
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            pageWrapper.addEventListener('touchend', (e) => {
+                if (startY > 0 && !isRefreshing) {
+                    const diff = currentY - startY;
+                    if (diff * 0.4 > triggerDistance) {
+                        // Trigger Refresh
+                        isRefreshing = true;
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50); // Slight haptic vibration
+                        }
+
+                        // Keep the spinner visible while refreshing
+                        ptrContainer.style.transition = 'transform 0.2s ease';
+                        pageWrapper.style.transition = 'transform 0.2s ease';
+                        ptrContainer.style.transform = `translateY(10px)`;
+                        pageWrapper.style.transform = `translateY(70px)`;
+
+                        const activeUserId = localStorage.getItem("slh_offline_user_id");
+
+                        // Trigger updateOfflineData equivalent, then reload
+                        if (activeUserId && typeof syncSnapshot === 'function') {
+                            syncSnapshot(activeUserId).then(() => {
+                                window.location.reload();
+                            }).catch(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            window.location.reload();
+                        }
+
+                    } else {
+                        // Cancel Refresh and reset
+                        ptrContainer.style.transition = 'transform 0.2s ease';
+                        pageWrapper.style.transition = 'transform 0.2s ease';
+                        ptrContainer.style.transform = 'translateY(-100%)';
+                        pageWrapper.style.transform = 'translateY(0)';
+                    }
+
+                    // Reset variables
+                    startY = 0;
+                    currentY = 0;
+                }
+            });
+        }
+
+        // Smart Back Button Logic
+        const smartBackBtn = document.getElementById('smart-back-btn');
+        if (smartBackBtn) {
+            const currentPath = window.location.pathname;
+            const hiddenPaths = ['/', '/login', '/executive_dashboard'];
+            if (!hiddenPaths.includes(currentPath)) {
+                smartBackBtn.style.display = 'flex';
+            }
+        }
+
         const userId = "{{ session.get('user_id', '') }}";
         const rawUserRole = "{{ session.get('user_role', '') }}";
         const rawUserDept = "{{ session.get('user_dept', '') }}";
