@@ -81,8 +81,8 @@ async function renderDashboard(userId) {
 
     if (!snapshot) {
         container.innerHTML = `
-            <div class="empty d-flex flex-column align-items-center justify-content-center text-center w-100 mx-auto py-5 mt-5">
-                <div class="empty-icon mb-4 text-muted">
+            <div class="empty">
+                <div class="empty-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-wifi-off" width="64" height="64" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                        <path d="M12 20h.01"></path>
