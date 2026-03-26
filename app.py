@@ -1254,6 +1254,14 @@ def admin_user_reset_password(user_id):
         flash("Password cannot be empty.", "danger")
     return redirect(url_for('admin_users'))
 
+@app.route('/admin/project_report')
+@login_required
+def admin_project_report():
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        flash("Access Denied: Admin or Management View Only.", "danger")
+        return redirect(url_for('index'))
+    return render_template('admin/project_report.html')
+
 @app.route('/hatchery')
 @dept_required('Hatchery')
 def hatchery_dashboard():
