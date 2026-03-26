@@ -23,14 +23,19 @@
         /* iOS Safe Area Adjustments */
         header {
             padding-top: env(safe-area-inset-top) !important;
-            background-color: var(--tblr-primary) !important;
             position: sticky;
             top: 0;
-            z-index: 1030;
+            z-index: 1020;
+        }
+
+        .dropdown-menu {
+            z-index: 1050 !important;
         }
 
         .page-wrapper {
             padding-bottom: env(safe-area-inset-bottom) !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
 
         #loading-overlay {

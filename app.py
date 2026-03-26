@@ -1197,7 +1197,7 @@ def send_push_alert(user_id, title, body, url=None):
 
     subscriptions = PushSubscription.query.filter_by(user_id=user_id).all()
     if not subscriptions:
-        return
+        return False
 
     from pywebpush import webpush, WebPushException
 
@@ -1207,6 +1207,7 @@ def send_push_alert(user_id, title, body, url=None):
         "url": url or '/'
     })
 
+    success_count = 0
     for sub in subscriptions:
         try:
             sub_info = json.loads(sub.subscription_json)
@@ -1216,14 +1217,21 @@ def send_push_alert(user_id, title, body, url=None):
                 vapid_private_key=vapid_private_key,
                 vapid_claims={"sub": vapid_claim_email}
             )
+            success_count += 1
         except WebPushException as ex:
-            app.logger.error(f"WebPush Error: {repr(ex)}")
             # If subscription is no longer valid, remove it
-            if ex.response and ex.response.status_code in [403, 404, 410]:
+            if hasattr(ex, 'response') and ex.response and ex.response.status_code in [403, 404, 410]:
+                app.logger.debug(f"Cleaning up invalid push subscription (Status {ex.response.status_code})")
                 db.session.delete(sub)
                 db.session.commit()
+            elif hasattr(ex, 'response') and ex.response and ex.response.status_code >= 500:
+                app.logger.error(f"WebPush Critical Error: {repr(ex)}")
+            else:
+                app.logger.error(f"WebPush Error: {repr(ex)}")
         except Exception as e:
             app.logger.error(f"Push Error: {str(e)}")
+
+    return success_count > 0
 
 @app.route('/api/test_notification', methods=['POST'])
 @login_required
@@ -1231,10 +1239,11 @@ def test_notification():
     user_id = session.get('user_id')
     # Call the push alert function
     try:
-        # Avoid circular import or dependency issues, define send_push_alert in app.py
-        # It's going to be implemented in Phase 5, but we can call it here.
-        send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=url_for('index'))
-        return jsonify({'success': True}), 200
+        success = send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=url_for('index'))
+        if success:
+            return jsonify({'success': True, 'message': 'Notification sent successfully.'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'No valid push subscriptions found or all failed. Please re-subscribe.'}), 400
     except Exception as e:
         app.logger.error(f"Failed to send test push: {e}")
         return jsonify({'error': str(e)}), 500
