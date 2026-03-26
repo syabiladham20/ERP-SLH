@@ -12,13 +12,24 @@
     <link rel="manifest" href="/static/manifest.json?v={{ version }}">
     <meta name="theme-color" content="#005eb8">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="SLH-OP">
     <link rel="apple-touch-icon" href="/static/icon-192.png?v={{ version }}">
     <style>
         :root {
             --tblr-primary: #005eb8; /* Arbor Acres Blue */
         }
+
+        /* iOS Safe Area Adjustments */
+        header, .navbar-expand-md {
+            padding-top: env(safe-area-inset-top) !important;
+            background-color: var(--tblr-primary) !important;
+        }
+
+        .page-wrapper {
+            padding-bottom: env(safe-area-inset-bottom) !important;
+        }
+
         #loading-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
