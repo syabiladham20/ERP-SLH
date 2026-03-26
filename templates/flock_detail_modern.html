@@ -352,9 +352,9 @@
     <!-- Filter Control Bar -->
     <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
         <div class="input-group" style="max-width: 450px;">
-            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> Start</span>
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> Start</span>
             <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
-            <span class="input-group-text bg-white"><i class="bi bi-calendar-event"></i> End</span>
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> End</span>
             <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
         </div>
         <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
@@ -368,9 +368,9 @@
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" onchange="switchMode('daily')">
-                    <label class="btn btn-outline-secondary" for="modeDaily" title="Daily View"><i class="bi bi-calendar-event"></i></label>
+                    <label class="btn btn-outline-secondary" for="modeDaily" title="Daily View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg></label>
 
-                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" checked onchange="switchMode('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
+                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" checked onchange="switchMode('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
@@ -378,9 +378,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
@@ -398,8 +398,8 @@
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="btn-group btn-group-sm ms-2 me-2" role="group">
                     <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" onchange="switchModeHatching('daily')">
-                    <label class="btn btn-outline-secondary" for="modeDailyHatching" title="Daily View"><i class="bi bi-calendar-event"></i></label>
-                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" checked onchange="switchModeHatching('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><i class="bi bi-calendar-range"></i></label>
+                    <label class="btn btn-outline-secondary" for="modeDailyHatching" title="Daily View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg></label>
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" checked onchange="switchModeHatching('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
@@ -407,9 +407,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
@@ -430,9 +430,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
@@ -453,9 +453,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><i class="bi bi-eye"></i></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
@@ -477,9 +477,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
@@ -501,9 +501,9 @@
                     <span class="small">-</span>
                     <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><i class="bi bi-chat-left-dots"></i></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
-                    <i class="bi bi-arrows-fullscreen"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
