@@ -1113,7 +1113,21 @@ def login():
 def logout():
     session.clear()
     flash("You have been logged out.", "info")
-    return redirect(url_for('login'))
+
+    # Render a small intermediate page to clear localStorage, then redirect to login
+    response = """
+    <html>
+        <body>
+            <script>
+                localStorage.removeItem("slh_offline_user_id");
+                localStorage.removeItem("slh_offline_user_role");
+                localStorage.removeItem("slh_offline_user_dept");
+                window.location.href = "%s";
+            </script>
+        </body>
+    </html>
+    """ % url_for('login')
+    return response
 
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():

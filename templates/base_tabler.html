@@ -246,7 +246,7 @@
           <div class="navbar navbar-dark" data-bs-theme="dark">
             <div class="container-fluid">
               <ul class="navbar-nav">
-                {% if user_dept == 'Admin' %}
+                {% if user_role == 'Admin' %}
                     <li class="nav-item role-restricted" data-allowed-roles="Admin">
                         <a class="nav-link text-warning" href="{{ url_for('admin_control_panel') }}">
                             <span class="nav-link-title">Admin Panel</span>
@@ -318,7 +318,7 @@
                         </div>
                     </li>
 
-                {% elif user_dept == 'Farm' %}
+                {% elif user_role == 'Farm' or session.get('user_dept') not in ['Admin', 'Management', 'Hatchery'] %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
                             <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
@@ -351,9 +351,9 @@
                     {% endfor %}
                     <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('history') }}"><span class="nav-link-title">History</span></a></li>
 
-                {% elif user_dept == 'Hatchery' %}
+                {% elif user_role == 'Hatchery' or user_dept == 'Hatchery' %}
                     <li class="nav-item role-restricted" data-allowed-roles="Hatchery"><a class="nav-link" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
-                {% elif user_dept == 'Management' %}
+                {% elif user_role == 'Management' or user_dept == 'Management' %}
                     <li class="nav-item role-restricted" data-allowed-roles="Management"><a class="nav-link" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
                     <li class="nav-item role-restricted" data-allowed-roles="Management"><a class="nav-link" href="{{ url_for('flock_detail_readonly_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                 {% endif %}
@@ -629,18 +629,25 @@
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const userId = "{{ session.get('user_id', '') }}";
-        const rawUserDept = "{{ session.get('user_role', session.get('user_dept', '')) }}";
+        const rawUserRole = "{{ session.get('user_role', '') }}";
+        const rawUserDept = "{{ session.get('user_dept', '') }}";
 
+        let displayRole = rawUserRole || "Guest";
         let displayDept = rawUserDept || "Guest";
+
+        // For farm users, display their dept (house) instead of just "Farm"
+        let displayLabel = displayRole === 'Admin' || displayRole === 'Management' ? displayRole : displayDept;
 
         if (userId) {
             // Online: Save to localStorage
             localStorage.setItem("slh_offline_user_id", userId);
-            localStorage.setItem("slh_offline_user_dept", displayDept);
+            localStorage.setItem("slh_offline_user_role", displayRole);
+            localStorage.setItem("slh_offline_user_dept", displayLabel);
             if (typeof initOfflineSync === 'function') initOfflineSync(userId);
         } else {
             // Offline/Cache Fallback
             const cachedUserId = localStorage.getItem("slh_offline_user_id");
+            const cachedUserRole = localStorage.getItem("slh_offline_user_role") || "Guest";
             const cachedUserDept = localStorage.getItem("slh_offline_user_dept") || "Guest";
 
             if (cachedUserId) {
