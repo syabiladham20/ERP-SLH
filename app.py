@@ -1219,7 +1219,7 @@ def send_push_alert(user_id, title, body, url=None):
         except WebPushException as ex:
             app.logger.error(f"WebPush Error: {repr(ex)}")
             # If subscription is no longer valid, remove it
-            if ex.response and ex.response.status_code in [404, 410]:
+            if ex.response and ex.response.status_code in [403, 404, 410]:
                 db.session.delete(sub)
                 db.session.commit()
         except Exception as e:
