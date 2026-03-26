@@ -1,0 +1,189 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page title -->
+  <div class="page-header d-print-none mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          User Settings
+        </h2>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="page-body">
+  <div class="container-xl">
+    <div class="card">
+      <div class="card-header border-bottom-0">
+        <h3 class="card-title">Real-Time Alerts</h3>
+      </div>
+      <div class="card-body">
+        <div class="mb-4">
+            <p class="text-secondary">Enable push notifications to receive real-time alerts when important events occur (e.g., mortality spikes or low egg production).</p>
+        </div>
+        <div class="d-flex align-items-center mb-3">
+            <label class="form-check form-switch form-switch-lg">
+                <input class="form-check-input" type="checkbox" id="push-toggle">
+                <span class="form-check-label h3 mb-0" style="margin-top: 1px;">Enable Real-Time Alerts</span>
+            </label>
+        </div>
+        <div class="mt-4" id="push-actions" style="display: none;">
+            <button class="btn btn-outline-primary" id="btn-test-notification">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-ringing" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
+                    <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
+                    <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727"></path>
+                    <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727"></path>
+                </svg>
+                Send Test Notification
+            </button>
+        </div>
+        <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const vapidPublicKey = "{{ vapid_public_key }}";
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const pushToggle = document.getElementById('push-toggle');
+        const testBtn = document.getElementById('btn-test-notification');
+        const actionsDiv = document.getElementById('push-actions');
+        const statusMsg = document.getElementById('push-status-msg');
+
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            pushToggle.disabled = true;
+            statusMsg.textContent = "Push notifications are not supported by your browser.";
+            statusMsg.classList.remove('d-none', 'text-success');
+            statusMsg.classList.add('text-danger');
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                pushToggle.checked = true;
+                actionsDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error("Error checking push subscription status:", error);
+        }
+
+        pushToggle.addEventListener('change', async (event) => {
+            const isChecked = event.target.checked;
+            statusMsg.classList.add('d-none');
+            pushToggle.disabled = true; // Prevent rapid clicking
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+
+                if (isChecked) {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        throw new Error('Permission not granted for Notification');
+                    }
+
+                    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                    const newSubscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedVapidKey
+                    });
+
+                    // Send to backend
+                    const response = await fetch('/api/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ subscription: newSubscription })
+                    });
+
+                    if (response.ok) {
+                        actionsDiv.style.display = 'block';
+                        statusMsg.textContent = "Successfully subscribed to alerts!";
+                        statusMsg.classList.remove('d-none', 'text-danger');
+                        statusMsg.classList.add('text-success');
+                    } else {
+                        throw new Error('Failed to save subscription on server');
+                    }
+                } else {
+                    const existingSubscription = await registration.pushManager.getSubscription();
+                    if (existingSubscription) {
+                        await fetch('/api/unsubscribe', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ subscription: existingSubscription })
+                        });
+                        await existingSubscription.unsubscribe();
+                    }
+                    actionsDiv.style.display = 'none';
+                    statusMsg.textContent = "Alerts disabled.";
+                    statusMsg.classList.remove('d-none', 'text-danger');
+                    statusMsg.classList.add('text-success');
+                }
+            } catch (error) {
+                console.error("Error managing push subscription:", error);
+                pushToggle.checked = !isChecked; // Revert UI
+                actionsDiv.style.display = pushToggle.checked ? 'block' : 'none';
+                statusMsg.textContent = `Error: ${error.message}`;
+                statusMsg.classList.remove('d-none', 'text-success');
+                statusMsg.classList.add('text-danger');
+                if (error.message.includes('Permission not granted')) {
+                   statusMsg.textContent = "You blocked notifications. You must reset site permissions in your browser to enable them.";
+                }
+            } finally {
+                pushToggle.disabled = false;
+            }
+        });
+
+        testBtn.addEventListener('click', async () => {
+             const originalText = testBtn.innerHTML;
+             testBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Sending...';
+             testBtn.disabled = true;
+
+             try {
+                 const response = await fetch('/api/test_notification', {
+                     method: 'POST'
+                 });
+                 if (response.ok) {
+                     statusMsg.textContent = "Test notification sent!";
+                     statusMsg.classList.remove('d-none', 'text-danger');
+                     statusMsg.classList.add('text-success');
+                 } else {
+                     throw new Error('Server returned an error');
+                 }
+             } catch (error) {
+                 statusMsg.textContent = "Failed to send test notification.";
+                 statusMsg.classList.remove('d-none', 'text-success');
+                 statusMsg.classList.add('text-danger');
+             } finally {
+                 testBtn.innerHTML = originalText;
+                 testBtn.disabled = false;
+             }
+        });
+    });
+</script>
+{% endblock %}
