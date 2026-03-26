@@ -29,8 +29,8 @@
                 <span class="form-check-label h3 mb-0" style="margin-top: 1px;">Enable Real-Time Alerts</span>
             </label>
         </div>
-        <div class="mt-4" id="push-actions" style="display: none;">
-            <button class="btn btn-outline-primary" id="btn-test-notification">
+        <div class="mt-4" id="push-actions">
+            <button class="btn btn-outline-primary" id="btn-test-notification" disabled>
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-ringing" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                     <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
@@ -40,6 +40,7 @@
                 </svg>
                 Send Test Notification
             </button>
+            <div class="text-muted small mt-2" id="push-actions-hint">Enable real-time alerts to test notifications.</div>
         </div>
         <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
       </div>
@@ -81,12 +82,15 @@
             return;
         }
 
+        const actionsHint = document.getElementById('push-actions-hint');
+
         try {
             const registration = await navigator.serviceWorker.ready;
             const subscription = await registration.pushManager.getSubscription();
             if (subscription) {
                 pushToggle.checked = true;
-                actionsDiv.style.display = 'block';
+                testBtn.disabled = false;
+                actionsHint.style.display = 'none';
             }
         } catch (error) {
             console.error("Error checking push subscription status:", error);
@@ -122,7 +126,8 @@
                     });
 
                     if (response.ok) {
-                        actionsDiv.style.display = 'block';
+                        testBtn.disabled = false;
+                        actionsHint.style.display = 'none';
                         statusMsg.textContent = "Successfully subscribed to alerts!";
                         statusMsg.classList.remove('d-none', 'text-danger');
                         statusMsg.classList.add('text-success');
@@ -139,7 +144,8 @@
                         });
                         await existingSubscription.unsubscribe();
                     }
-                    actionsDiv.style.display = 'none';
+                    testBtn.disabled = true;
+                    actionsHint.style.display = 'block';
                     statusMsg.textContent = "Alerts disabled.";
                     statusMsg.classList.remove('d-none', 'text-danger');
                     statusMsg.classList.add('text-success');
@@ -147,7 +153,8 @@
             } catch (error) {
                 console.error("Error managing push subscription:", error);
                 pushToggle.checked = !isChecked; // Revert UI
-                actionsDiv.style.display = pushToggle.checked ? 'block' : 'none';
+                testBtn.disabled = !pushToggle.checked;
+                actionsHint.style.display = pushToggle.checked ? 'none' : 'block';
                 statusMsg.textContent = `Error: ${error.message}`;
                 statusMsg.classList.remove('d-none', 'text-success');
                 statusMsg.classList.add('text-danger');
