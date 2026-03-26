@@ -30,7 +30,23 @@
                         <li class="list-group-item"><a href="{{ url_for('inventory') }}">Inventory Management</a></li>
                         <li class="list-group-item"><a href="{{ url_for('admin_performance_report') }}">Performance Report</a></li>
                         <li class="list-group-item"><a href="{{ url_for('admin_audit_logs') }}">System Audit Logs</a></li>
-                        <li class="list-group-item"><a href="{{ url_for('manage_rules') }}">Rules Manager (Alerts)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Reports -->
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">Management Reports</div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <a href="{{ url_for('admin_project_report') }}" class="fw-bold text-primary">
+                                <i class="bi bi-file-earmark-bar-graph me-2"></i> Project Value Report
+                            </a>
+                            <small class="d-block text-muted mt-1">ROI Analysis & Technical Features Overview</small>
+                        </li>
                     </ul>
                 </div>
             </div>

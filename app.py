@@ -170,41 +170,6 @@ def serve_sw():
 def get_version():
     return jsonify({'version': APP_VERSION})
 
-@app.route('/api/subscribe', methods=['POST'])
-@login_required
-def subscribe():
-    subscription_info = request.json.get('subscription')
-    if not subscription_info:
-        return jsonify({'error': 'Subscription info missing'}), 400
-
-    user_id = session.get('user_id')
-
-    # Check if subscription already exists for this user
-    sub_str = json.dumps(subscription_info)
-    existing = PushSubscription.query.filter_by(user_id=user_id, subscription_json=sub_str).first()
-
-    if not existing:
-        new_sub = PushSubscription(user_id=user_id, subscription_json=sub_str)
-        db.session.add(new_sub)
-        db.session.commit()
-
-    return jsonify({'success': True}), 201
-
-@app.route('/api/unsubscribe', methods=['POST'])
-@login_required
-def unsubscribe():
-    subscription_info = request.json.get('subscription')
-    if not subscription_info:
-        return jsonify({'error': 'Subscription info missing'}), 400
-
-    user_id = session.get('user_id')
-    sub_str = json.dumps(subscription_info)
-
-    PushSubscription.query.filter_by(user_id=user_id, subscription_json=sub_str).delete()
-    db.session.commit()
-
-    return jsonify({'success': True}), 200
-
 @app.route('/offline')
 def offline():
     return render_template('offline.html')
@@ -232,20 +197,6 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor.close()
 
 # --- Models ---
-
-class PushSubscription(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    subscription_json = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class NotificationRule(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    metric = db.Column(db.String(50), nullable=False) # e.g. 'mortality_female_pct'
-    operator = db.Column(db.String(10), nullable=False) # '>', '<', '==', '>=', '<='
-    threshold = db.Column(db.Float, nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1178,67 +1129,6 @@ def logout():
     """ % url_for('login')
     return response
 
-@app.route('/settings', methods=['GET'])
-@login_required
-def settings():
-    # Only render settings page, pass vapid public key
-    vapid_public_key = os.getenv('VAPID_PUBLIC_KEY', '')
-    if not vapid_public_key:
-        flash("VAPID Keys are missing. Push notifications cannot be enabled.", "warning")
-    return render_template('settings.html', vapid_public_key=vapid_public_key)
-
-def send_push_alert(user_id, title, body, url=None):
-    vapid_private_key = os.getenv('VAPID_PRIVATE_KEY')
-    vapid_claim_email = os.getenv('VAPID_CLAIM_EMAIL')
-
-    if not vapid_private_key or not vapid_claim_email:
-        app.logger.warning("VAPID keys not configured. Cannot send push notification.")
-        return
-
-    subscriptions = PushSubscription.query.filter_by(user_id=user_id).all()
-    if not subscriptions:
-        return
-
-    from pywebpush import webpush, WebPushException
-
-    payload = json.dumps({
-        "title": title,
-        "body": body,
-        "url": url or '/'
-    })
-
-    for sub in subscriptions:
-        try:
-            sub_info = json.loads(sub.subscription_json)
-            webpush(
-                subscription_info=sub_info,
-                data=payload,
-                vapid_private_key=vapid_private_key,
-                vapid_claims={"sub": vapid_claim_email}
-            )
-        except WebPushException as ex:
-            app.logger.error(f"WebPush Error: {repr(ex)}")
-            # If subscription is no longer valid, remove it
-            if ex.response and ex.response.status_code in [404, 410]:
-                db.session.delete(sub)
-                db.session.commit()
-        except Exception as e:
-            app.logger.error(f"Push Error: {str(e)}")
-
-@app.route('/api/test_notification', methods=['POST'])
-@login_required
-def test_notification():
-    user_id = session.get('user_id')
-    # Call the push alert function
-    try:
-        # Avoid circular import or dependency issues, define send_push_alert in app.py
-        # It's going to be implemented in Phase 5, but we can call it here.
-        send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=url_for('index'))
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        app.logger.error(f"Failed to send test push: {e}")
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():
     if not session.get('user_id'):
@@ -1295,46 +1185,6 @@ def admin_activity_log():
     resource_types = [r[0] for r in resource_types]
 
     return render_template('admin/activity_log.html', logs=logs, users=users, resource_types=resource_types)
-
-@app.route('/admin/rules', methods=['GET', 'POST'])
-def manage_rules():
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
-        flash("Access Denied.", "danger")
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        name = request.form.get('name')
-        metric = request.form.get('metric')
-        operator = request.form.get('operator')
-        threshold = float(request.form.get('threshold'))
-        is_active = True if request.form.get('is_active') else False
-
-        rule = NotificationRule(
-            name=name,
-            metric=metric,
-            operator=operator,
-            threshold=threshold,
-            is_active=is_active
-        )
-        db.session.add(rule)
-        db.session.commit()
-        flash(f"Rule '{name}' added successfully.", "success")
-        return redirect(url_for('manage_rules'))
-
-    rules = NotificationRule.query.all()
-    return render_template('admin/rules_manager.html', rules=rules)
-
-@app.route('/admin/rules/delete/<int:id>', methods=['POST'])
-def delete_notification_rule(id):
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
-        flash("Access Denied.", "danger")
-        return redirect(url_for('index'))
-
-    rule = NotificationRule.query.get_or_404(id)
-    db.session.delete(rule)
-    db.session.commit()
-    flash("Rule deleted.", "info")
-    return redirect(url_for('manage_rules'))
 
 @app.route('/admin/users')
 def admin_users():
@@ -5734,10 +5584,6 @@ def update_log_from_request(log, req):
 
     # Automated Alerts: Mortality Spike
     alert_triggered = False
-    mort_pct_m = 0.0
-    mort_pct_f = 0.0
-    egg_prod_pct = 0.0
-
     if current_stock_m > 0:
         mort_pct_m = (log.mortality_male / current_stock_m) * 100
         if mort_pct_m > 0.5:
@@ -5750,58 +5596,9 @@ def update_log_from_request(log, req):
             flash(f"ALERT: High Female Mortality Spike ({mort_pct_f:.2f}%) detected!", "danger")
             alert_triggered = True
 
-    if current_stock_f > 0 and getattr(log, 'eggs_collected', 0) > 0:
-        egg_prod_pct = (log.eggs_collected / current_stock_f) * 100
-
     if alert_triggered:
         # Simulate sending email
         app.logger.warning(f"Mortality Alert Triggered for Flock {log.flock_id}")
-
-    # Phase 5: Dynamic Push Alerts
-    active_rules = NotificationRule.query.filter_by(is_active=True).all()
-    triggered_rules = []
-
-    metric_values = {
-        'mortality_female_pct': mort_pct_f,
-        'mortality_male_pct': mort_pct_m,
-        'egg_production_pct': egg_prod_pct
-    }
-
-    for rule in active_rules:
-        val = metric_values.get(rule.metric)
-        if val is not None:
-            # Evaluate operator
-            if rule.operator == '>':
-                is_triggered = val > rule.threshold
-            elif rule.operator == '<':
-                is_triggered = val < rule.threshold
-            elif rule.operator == '>=':
-                is_triggered = val >= rule.threshold
-            elif rule.operator == '<=':
-                is_triggered = val <= rule.threshold
-            elif rule.operator == '==':
-                is_triggered = val == rule.threshold
-            else:
-                is_triggered = False
-
-            if is_triggered:
-                triggered_rules.append(rule)
-
-    if triggered_rules:
-        house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
-        for rule in triggered_rules:
-            title = f"Alert: {rule.name}"
-            body = f"{house_name}: {rule.metric} is {metric_values.get(rule.metric):.2f}% ({rule.operator} {rule.threshold}%)"
-
-            # Find all management users
-            management_users = User.query.filter_by(role='Management').all()
-            for user in management_users:
-                try:
-                    # Provide a URL to deep link to the flock detail
-                    alert_url = url_for('view_flock', id=log.flock.id) if log.flock else '/'
-                    send_push_alert(user.id, title, body, url=alert_url)
-                except Exception as e:
-                    app.logger.error(f"Failed to send push alert to {user.username}: {str(e)}")
 
     # Feed Guardian Validation
     override = req.form.get('override_validation') == 'true'
