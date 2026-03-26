@@ -8816,10 +8816,19 @@ def offline_snapshot():
         enriched_data = enrich_flock_data(f, logs)
 
         daily_logs_data = []
+        recent_detailed_logs = []
+
+        # We need the last 14 days of detailed logs
+        from datetime import date, timedelta
+        fourteen_days_ago = date.today() - timedelta(days=14)
+
         for d in enriched_data:
             if d.get('date'):
+                date_str = d.get('date').strftime('%Y-%m-%d')
+
+                # Basic summary for dashboard
                 daily_logs_data.append({
-                    'date': d.get('date').strftime('%Y-%m-%d'),
+                    'date': date_str,
                     'age_week_day': d.get('age_week_day'),
                     'mortality_cum_female_pct': d.get('mortality_cum_female_pct'),
                     'eggs_production_pct': d.get('eggs_production_pct'),
@@ -8828,6 +8837,37 @@ def offline_snapshot():
                     'stock_female_end': d.get('stock_female_end'),
                     'stock_male_end': d.get('stock_male_end')
                 })
+
+                # Full details for the last 14 days
+                if d.get('date') >= fourteen_days_ago:
+                    log_obj = d.get('log')
+                    if log_obj:
+                        recent_detailed_logs.append({
+                            'date': date_str,
+                            'age_week_day': d.get('age_week_day'),
+                            'calculated_phase': d.get('calculated_phase'),
+                            'mortality_male': log_obj.mortality_male,
+                            'mortality_female': log_obj.mortality_female,
+                            'culls_male': log_obj.culls_male,
+                            'culls_female': log_obj.culls_female,
+                            'feed_male_gp_bird': log_obj.feed_male_gp_bird,
+                            'feed_female_gp_bird': log_obj.feed_female_gp_bird,
+                            'eggs_collected': log_obj.eggs_collected,
+                            'egg_weight': log_obj.egg_weight,
+                            'water_intake_calculated': log_obj.water_intake_calculated,
+                            'body_weight_male': log_obj.body_weight_male,
+                            'body_weight_female': log_obj.body_weight_female,
+                            'uniformity_male': log_obj.uniformity_male,
+                            'uniformity_female': log_obj.uniformity_female,
+                            'mortality_male_pct': d.get('mortality_male_pct', 0),
+                            'mortality_female_pct': d.get('mortality_female_pct', 0),
+                            'mortality_cum_male_pct': d.get('mortality_cum_male_pct', 0),
+                            'mortality_cum_female_pct': d.get('mortality_cum_female_pct', 0),
+                            'egg_prod_pct': d.get('egg_prod_pct', 0),
+                            'water_per_bird': d.get('water_per_bird', 0),
+                            'stock_male_start': d.get('stock_male_start', 0),
+                            'stock_female_start': d.get('stock_female_start', 0)
+                        })
 
         weekly_averages = aggregate_weekly_metrics(enriched_data)
         weekly_data = []
@@ -8844,10 +8884,16 @@ def offline_snapshot():
         snapshot_data.append({
             'flock_id': f.id,
             'house_name': f.house.name if f.house else f.name,
+            'farm_name': f.farm.name if f.farm else 'N/A',
             'status': f.status,
             'calculated_phase': getattr(f, 'calculated_phase', 'Unknown'),
             'intake_date': f.intake_date.strftime('%Y-%m-%d') if f.intake_date else None,
+            'intake_male': f.intake_male,
+            'intake_female': f.intake_female,
+            'doa_male': f.doa_male,
+            'doa_female': f.doa_female,
             'daily_logs': daily_logs_data,
+            'recent_detailed_logs': recent_detailed_logs,
             'weekly_averages': weekly_data
         })
 
