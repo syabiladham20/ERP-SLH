@@ -40,6 +40,14 @@
                 </svg>
                 Send Test Notification
             </button>
+            <button class="btn btn-outline-danger ms-2" id="btn-reset-resync" title="Force a hard reset of your Push Subscription if alerts aren't arriving.">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+                </svg>
+                Reset & Resync
+            </button>
             <div class="text-muted small mt-2" id="push-actions-hint">Enable real-time alerts to test notifications.</div>
         </div>
         <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
@@ -75,12 +83,14 @@
             throw new Error("applicationServerKey must contain a valid P-256 public key (exactly 65 bytes). Check your .env file.");
         }
 
+        console.log("Converted VAPID Key successfully:", outputArray);
         return outputArray;
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
         const pushToggle = document.getElementById('push-toggle');
         const testBtn = document.getElementById('btn-test-notification');
+        const resetResyncBtn = document.getElementById('btn-reset-resync');
         const actionsDiv = document.getElementById('push-actions');
         const statusMsg = document.getElementById('push-status-msg');
 
@@ -202,6 +212,70 @@
                 }
             } finally {
                 pushToggle.disabled = false;
+            }
+        });
+
+        resetResyncBtn.addEventListener('click', async () => {
+            const originalText = resetResyncBtn.innerHTML;
+            resetResyncBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Resyncing...';
+            resetResyncBtn.disabled = true;
+
+            try {
+                // Clear local storage key
+                localStorage.removeItem('slh_vapid_public_key');
+
+                const registration = await navigator.serviceWorker.ready;
+                const existingSubscription = await registration.pushManager.getSubscription();
+
+                if (existingSubscription) {
+                    await fetch('/api/unsubscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ subscription: existingSubscription })
+                    });
+                    await existingSubscription.unsubscribe();
+                }
+
+                // If the toggle was on, immediately re-subscribe
+                if (pushToggle.checked) {
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        throw new Error('Permission not granted for Notification');
+                    }
+
+                    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                    const newSubscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedVapidKey
+                    });
+
+                    const response = await fetch('/api/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ subscription: newSubscription })
+                    });
+
+                    if (response.ok) {
+                        localStorage.setItem('slh_vapid_public_key', vapidPublicKey);
+                        statusMsg.textContent = "Subscription hard reset and resynced successfully!";
+                        statusMsg.classList.remove('d-none', 'text-danger');
+                        statusMsg.classList.add('text-success');
+                    } else {
+                        throw new Error('Failed to save new subscription on server');
+                    }
+                } else {
+                    statusMsg.textContent = "Subscription reset successfully. Toggle on to re-subscribe.";
+                    statusMsg.classList.remove('d-none', 'text-danger');
+                    statusMsg.classList.add('text-success');
+                }
+            } catch (error) {
+                console.error("Error during reset & resync:", error);
+                statusMsg.textContent = `Resync Failed: ${error.message}`;
+                statusMsg.classList.remove('d-none', 'text-success');
+                statusMsg.classList.add('text-danger');
+            } finally {
+                resetResyncBtn.innerHTML = originalText;
+                resetResyncBtn.disabled = false;
             }
         });
 

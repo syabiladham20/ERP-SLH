@@ -16,6 +16,7 @@ import calendar
 import re
 from functools import wraps
 from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
+from pywebpush import webpush, WebPushException
 
 # Auto-version based on current timestamp
 BUILD_TIME = datetime.now()
@@ -1198,8 +1199,6 @@ def send_push_alert(user_id, title, body, url=None):
     subscriptions = PushSubscription.query.filter_by(user_id=user_id).all()
     if not subscriptions:
         return False
-
-    from pywebpush import webpush, WebPushException
 
     payload = json.dumps({
         "title": title,
