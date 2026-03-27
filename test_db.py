@@ -1,17 +1,6 @@
-from app import app, db, User, GlobalStandard
+from app import app, db, UIElement
+
 with app.app_context():
-    u = User.query.filter_by(username='admin').first()
-    if not u:
-        u = User(username='admin', role='Admin', dept='Farm')
-        u.set_password('admin123')
-        db.session.add(u)
-    else:
-        u.set_password('admin123')
-
-    gs = GlobalStandard.query.first()
-    if not gs:
-        gs = GlobalStandard()
-        db.session.add(gs)
-
-    db.session.commit()
-    print("Created test user: admin/admin123")
+    elements = UIElement.query.filter_by(section='navbar_main').all()
+    for el in elements:
+        print(f"ID: {el.id}, Key: {el.key}, Label: {el.label}, Section: {el.section}, Visible: {el.is_visible}")

@@ -362,7 +362,7 @@
                         </div>
                     </li>
 
-                {% elif user_role == 'Farm' or session.get('user_dept') not in ['Admin', 'Management', 'Hatchery'] %}
+                {% elif user_role == 'Farm' or user_dept not in ['Admin', 'Management', 'Hatchery'] %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
                             <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
