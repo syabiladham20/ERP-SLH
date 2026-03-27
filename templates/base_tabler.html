@@ -67,9 +67,9 @@
         }
 
         .comb-path, .profile-path, .wattle-path {
-            stroke-dasharray: 350;
-            stroke-dashoffset: 350;
-            animation: drawBreeder 3.5s infinite ease-in-out;
+            stroke-dasharray: 200;
+            stroke-dashoffset: 200;
+            animation: drawBreeder 2.5s infinite ease-in-out;
         }
 
         .comb-path { animation-delay: 0s; }
@@ -77,13 +77,13 @@
         .wattle-path { animation-delay: 0.4s; }
 
         .eye-path {
-            animation: blinkEye 3.5s infinite;
+            animation: blinkEye 2.5s infinite;
         }
 
         @keyframes drawBreeder {
-            0% { stroke-dashoffset: 350; opacity: 0.2; }
+            0% { stroke-dashoffset: 200; opacity: 0.2; }
             50% { stroke-dashoffset: 0; opacity: 1; }
-            100% { stroke-dashoffset: -350; opacity: 0.2; }
+            100% { stroke-dashoffset: -200; opacity: 0.2; }
         }
 
         @keyframes blinkEye {
@@ -197,10 +197,11 @@
         <div class="chicken-loader">
             <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg slh-logo">
   <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path class="comb-path" d="M 40,36 C 31,36 29,22 39,18 C 45,15.5 48.5,17 51,21 C 56,15 67,16 71,25 C 75,30 73.5,38 68,41" />
-    <path class="profile-path" d="M 26.5,67 C 28.5,39 45,31.5 58,31.5 C 68,31.5 75,37 79,45 L 65,48.5 C 61,49.5 54,49.5 54,49.5" />
-    <path class="wattle-path" d="M 64.5,49.5 C 55,49.5 51,70 60,73 C 69,76 74,62 65,49 M 63.5,73 L 66,81" />
-    <circle class="eye-path" cx="58" cy="41.5" r="2.5" fill="currentColor" stroke="none" />
+    <path class="comb-path" d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
+    <path class="profile-path" d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
+    <path class="wattle-path" d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
+    <path class="wattle-path" d="M 70 82 L 72 95" />
+    <circle cx="62" cy="42" r="4" fill="currentColor" stroke="none" class="eye-path" />
   </g>
 </svg>
             <p class="loader-text">Processing...</p>
@@ -228,10 +229,11 @@
             <a href="{{ url_for('index') }}" class="text-decoration-none text-white d-flex align-items-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="me-2 slh-logo" width="24" height="24">
   <g fill="none" stroke="#005eb8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 40,36 C 31,36 29,22 39,18 C 45,15.5 48.5,17 51,21 C 56,15 67,16 71,25 C 75,30 73.5,38 68,41" />
-    <path d="M 26.5,67 C 28.5,39 45,31.5 58,31.5 C 68,31.5 75,37 79,45 L 65,48.5 C 61,49.5 54,49.5 54,49.5" />
-    <path d="M 64.5,49.5 C 55,49.5 51,70 60,73 C 69,76 74,62 65,49 M 63.5,73 L 66,81" />
-    <circle cx="58" cy="41.5" r="2.5" fill="#005eb8" stroke="none" />
+    <path d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
+    <path d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
+    <path d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
+    <path d="M 70 82 L 72 95" />
+    <circle cx="62" cy="42" r="4" fill="#005eb8" stroke="none" />
   </g>
 </svg>
               SLH-OP <small class="text-muted ms-2 fs-5">({{ user_dept or 'Guest' }})</small>
@@ -482,6 +484,36 @@
     </button>
 
     <!-- iOS Install Modal -->
+    <div class="modal modal-blur fade" id="ios-install-modal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-scrollable modal-fullscreen-sm-down" role="document">
+        <div class="modal-content">
+          <div class="modal-body text-center py-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-primary icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                <path d="M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14z"></path>
+                <path d="M11 4h2"></path>
+                <path d="M12 17v.01"></path>
+            </svg>
+            <h3>Install SLH-OP</h3>
+            <div class="text-muted mb-3">Install this app on your device for quick and easy offline access.</div>
+
+            <div class="card text-start bg-blue-lt">
+                <div class="card-body p-3">
+                    <p class="mb-2"><strong>1.</strong> Tap the <strong>Share</strong> icon <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-share-2 d-inline-block align-text-bottom" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: -2px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1"></path><path d="M12 14v-11"></path><path d="M9 6l3 -3l3 3"></path></svg> at the bottom of Safari.</p>
+                    <p class="mb-0"><strong>2.</strong> Scroll down and tap <strong>Add to Home Screen</strong> <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus d-inline-block align-text-bottom" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: -2px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 5l0 14"></path><path d="M5 12l14 0"></path></svg>.</p>
+                </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <div class="w-100">
+              <div class="row">
+                <div class="col"><a href="#" class="btn w-100" onclick="document.getElementById('ios-install-modal').classList.remove('show'); document.getElementById('ios-install-modal').style.display = 'none'; document.body.classList.remove('modal-open');">Got it</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="card ai-chat-box" id="ai-chat-box">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-2">
