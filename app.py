@@ -4266,7 +4266,13 @@ def utility_processor():
         query = UIElement.query.filter_by(section=section).order_by(UIElement.order_index.asc())
         if not effective_is_admin:
             query = query.filter_by(is_visible=True)
-        return query.all()
+
+        elements = query.all()
+
+        if not elements and section == 'navbar_main':
+            app.logger.warning(f"UI Warning: No visible nav elements for role [{effective_role}]")
+
+        return elements
 
     from flask import g
     class AnonymousUser:
