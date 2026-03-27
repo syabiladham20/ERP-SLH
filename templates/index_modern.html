@@ -261,8 +261,8 @@
                 Mix Male
             </button>
 
-            <div class="modal modal-blur fade" id="mixMaleModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal fade" id="mixMaleModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
                 <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -413,8 +413,8 @@
 </div> <!-- End Tab Content -->
 
 <!-- Generate Report Modal -->
-<div class="modal modal-blur fade" id="generateReportModal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable" role="document">
+<div class="modal fade" id="generateReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Generate Daily House Report</h5>
