@@ -116,7 +116,7 @@
                                 </button>
                                 <!-- Modal (kept inline for functionality) -->
                                 <div class="modal fade" id="startProdModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
-                                  <div class="modal-dialog">
+                                  <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
                                     <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
                                     <div class="modal-content">
                                       <div class="modal-header">

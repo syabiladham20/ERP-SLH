@@ -256,13 +256,13 @@
       <div class="card-footer bg-transparent border-0 pt-0">
           <div class="d-flex justify-content-between align-items-center">
             <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-primary btn-sm mb-0">See Details <i class="fas fa-arrow-right ms-1"></i></a>
-            {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] and flock.production_start_date is none %}
+            {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
             <button type="button" class="btn btn-link text-warning text-sm mb-0 px-0 ms-2" data-bs-toggle="modal" data-bs-target="#mixMaleModal{{ flock.id }}">
                 Mix Male
             </button>
 
             <div class="modal modal-blur fade" id="mixMaleModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
                 <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -414,7 +414,7 @@
 
 <!-- Generate Report Modal -->
 <div class="modal modal-blur fade" id="generateReportModal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Generate Daily House Report</h5>
