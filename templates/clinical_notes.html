@@ -71,20 +71,6 @@
                         </a>
 
                         <!-- Modal -->
-                        <div class="modal fade" id="photoModal{{ log.id }}" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">{{ log.date | date_fmt }} - {{ log.flock.house.name }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body text-center">
-                                        <img src="{{ url_for('uploaded_file', filename=log.photo_path|basename) }}" class="img-fluid">
-                                        <p class="mt-2">{{ log.clinical_notes }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
@@ -101,4 +87,21 @@
         </tbody>
     </table>
 </div>
+
+
+<!-- Moved Modals -->
+                        <div class="modal fade" id="photoModal{{ log.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ log.date | date_fmt }} - {{ log.flock.house.name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img src="{{ url_for('uploaded_file', filename=log.photo_path|basename) }}" class="img-fluid">
+                                        <p class="mt-2">{{ log.clinical_notes }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 {% endblock %}
