@@ -67,9 +67,9 @@
         }
 
         .comb-path, .profile-path, .wattle-path {
-            stroke-dasharray: 110;
-            stroke-dashoffset: 110;
-            animation: drawBreeder 2.5s infinite ease-in-out;
+            stroke-dasharray: 350;
+            stroke-dashoffset: 350;
+            animation: drawBreeder 3.5s infinite ease-in-out;
         }
 
         .comb-path { animation-delay: 0s; }
@@ -77,13 +77,13 @@
         .wattle-path { animation-delay: 0.4s; }
 
         .eye-path {
-            animation: blinkEye 2.5s infinite;
+            animation: blinkEye 3.5s infinite;
         }
 
         @keyframes drawBreeder {
-            0% { stroke-dashoffset: 110; opacity: 0.2; }
+            0% { stroke-dashoffset: 350; opacity: 0.2; }
             50% { stroke-dashoffset: 0; opacity: 1; }
-            100% { stroke-dashoffset: -110; opacity: 0.2; }
+            100% { stroke-dashoffset: -350; opacity: 0.2; }
         }
 
         @keyframes blinkEye {
