@@ -77,7 +77,7 @@
 
                                     <!-- Edit Modal -->
                                     <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+                                        <div class="modal-dialog modal-dialog-scrollable">
                                             <form action="{{ url_for('edit_inventory_item', id=item.id) }}" method="POST">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
@@ -136,7 +136,7 @@
 
                                     <!-- Adjust Stock Modal -->
                                     <div class="modal fade" id="adjustStockModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+                                        <div class="modal-dialog modal-dialog-scrollable">
                                             <form action="{{ url_for('inventory_transaction') }}" method="POST">
                                                 <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
                                                 <div class="modal-content">
@@ -276,7 +276,7 @@
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-dialog modal-dialog-scrollable">
         <form action="{{ url_for('add_inventory_item') }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
@@ -340,7 +340,7 @@
 {% if is_admin %}
 {% for t in transactions %}
 <div class="modal fade" id="editTransModal{{ t.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-dialog modal-dialog-scrollable">
         <form action="{{ url_for('edit_inventory_transaction', id=t.id) }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
