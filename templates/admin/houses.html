@@ -83,8 +83,7 @@
 <!-- Rename Modals (Outside Table) -->
 {% for house in houses %}
 <div class="modal fade" id="renameModal{{ house.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog">        <div class="modal-content">
             <form action="{{ url_for('admin_house_edit', id=house.id) }}" method="POST">
                 <div class="modal-header">
                     <h5 class="modal-title">Rename House {{ house.name }}</h5>

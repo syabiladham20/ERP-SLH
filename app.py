@@ -2396,7 +2396,6 @@ def toggle_phase(id):
             f"Flock {flock.flock_id} switched to Production."
             f"{f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.' if (diff_m != 0 or diff_f != 0) else ''}"
         )
-
         flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
     else:
         flock.phase = 'Rearing'
@@ -3665,7 +3664,6 @@ def flock_hatchability(id):
                     "Hatchability record added."
                     f"{' Note: Large collection window detected. Average Male Ratio may be affected.' if large_window else ''}"
                 )
-
                 flash(msg, 'success' if not large_window else 'warning')
             except ValueError as e:
                 flash(f'Error adding record: {e}', 'danger')
