@@ -590,12 +590,110 @@
   </form>
 
   <!-- Update/Submit Confirmation Modal -->
+  <div class="modal fade" id="updateConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h5 class="modal-title">{{ 'Update Confirmation' if log else 'Submit Confirmation' }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-warning icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted" id="updateModalMessage">
+                      {{ 'Update' if log else 'Submit' }} <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalHouseName"></span></mark> logs for <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalDate"></span></mark>?
+                  </div>
+                  <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
+                      ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
+                  </div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col"><button type="button" class="btn btn-primary w-100" onclick="confirmUpdateSubmit()">Yes, {{ 'Update' if log else 'Submit' }}</button></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
 
   <!-- Generic Confirm Modal for Notes & Photos -->
+  <div class="modal fade" id="genericConfirmModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="modal-status bg-danger"></div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted" id="genericConfirmMessage"></div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col"><button type="button" class="btn btn-danger w-100" id="genericConfirmBtn" data-bs-dismiss="modal">Yes, delete</button></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
 
   <!-- Transition Modal -->
+  <div class="modal fade" id="transitionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-md">
+          <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                  <h5 class="modal-title">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                      Log Saved Successfully!
+                  </h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="window.location.reload()"></button>
+              </div>
+              <div class="modal-body">
+                  <p class="text-muted mb-3">Select the next house to enter data for:</p>
+                  <div class="list-group list-group-flush" id="transitionHouseList">
+                      <!-- Filled by AJAX -->
+                  </div>
+              </div>
+              <div class="modal-footer">
+                  <button type="button" class="btn w-100" data-bs-dismiss="modal" onclick="window.location.reload()">Close</button>
+              </div>
+          </div>
+      </div>
+  </div>
 
   <!-- Delete Log Modal -->
+  <div class="modal fade" id="deleteLogModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="modal-status bg-danger"></div>
+              <div class="modal-body text-center py-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                  <h3>Are you sure?</h3>
+                  <div class="text-muted">Do you really want to permanently delete this log? This action cannot be undone.</div>
+              </div>
+              <div class="modal-footer">
+                  <div class="w-100">
+                      <div class="row">
+                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+                          <div class="col">
+                              {% if log %}
+                              <form action="{{ url_for('delete_daily_log', id=log.id) }}" method="POST">
+                                  <button type="submit" class="btn btn-danger w-100">Delete Log</button>
+                              </form>
+                              {% endif %}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
   
   <script>
     {% if not log and not selected_date %}
@@ -1126,108 +1224,4 @@
 
 </script>
 {% endif %}
-
-
-<!-- Moved Modals -->
-  <div class="modal modal-blur fade" id="updateConfirmModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-sm modal-dialog-scrollable modal-fullscreen-sm-down">
-          <div class="modal-content">
-              <div class="modal-header">
-                  <h5 class="modal-title">{{ 'Update Confirmation' if log else 'Submit Confirmation' }}</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body text-center py-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-warning icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
-                  <h3>Are you sure?</h3>
-                  <div class="text-muted" id="updateModalMessage">
-                      {{ 'Update' if log else 'Submit' }} <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalHouseName"></span></mark> logs for <mark class="fw-bold bg-yellow text-dark px-1"><span id="modalDate"></span></mark>?
-                  </div>
-                  <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
-                      ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
-                  </div>
-              </div>
-              <div class="modal-footer">
-                  <div class="w-100">
-                      <div class="row">
-                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
-                          <div class="col"><button type="button" class="btn btn-primary w-100" onclick="confirmUpdateSubmit()">Yes, {{ 'Update' if log else 'Submit' }}</button></div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <div class="modal modal-blur fade" id="genericConfirmModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-sm modal-dialog-scrollable modal-fullscreen-sm-down">
-          <div class="modal-content">
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              <div class="modal-status bg-danger"></div>
-              <div class="modal-body text-center py-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
-                  <h3>Are you sure?</h3>
-                  <div class="text-muted" id="genericConfirmMessage"></div>
-              </div>
-              <div class="modal-footer">
-                  <div class="w-100">
-                      <div class="row">
-                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
-                          <div class="col"><button type="button" class="btn btn-danger w-100" id="genericConfirmBtn" data-bs-dismiss="modal">Yes, delete</button></div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <div class="modal modal-blur fade" id="transitionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-      <div class="modal-dialog modal-md modal-dialog-scrollable modal-fullscreen-sm-down">
-          <div class="modal-content">
-              <div class="modal-header bg-success text-white">
-                  <h5 class="modal-title">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
-                      Log Saved Successfully!
-                  </h5>
-                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" onclick="window.location.reload()"></button>
-              </div>
-              <div class="modal-body">
-                  <p class="text-muted mb-3">Select the next house to enter data for:</p>
-                  <div class="list-group list-group-flush" id="transitionHouseList">
-                      <!-- Filled by AJAX -->
-                  </div>
-              </div>
-              <div class="modal-footer">
-                  <button type="button" class="btn w-100" data-bs-dismiss="modal" onclick="window.location.reload()">Close</button>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  <div class="modal modal-blur fade" id="deleteLogModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-sm modal-dialog-scrollable modal-fullscreen-sm-down">
-          <div class="modal-content">
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              <div class="modal-status bg-danger"></div>
-              <div class="modal-body text-center py-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="width: 4rem; height: 4rem;"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
-                  <h3>Are you sure?</h3>
-                  <div class="text-muted">Do you really want to permanently delete this log? This action cannot be undone.</div>
-              </div>
-              <div class="modal-footer">
-                  <div class="w-100">
-                      <div class="row">
-                          <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
-                          <div class="col">
-                              {% if log %}
-                              <form action="{{ url_for('delete_daily_log', id=log.id) }}" method="POST">
-                                  <button type="submit" class="btn btn-danger w-100">Delete Log</button>
-                              </form>
-                              {% endif %}
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
 {% endblock %}
