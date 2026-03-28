@@ -82,13 +82,8 @@
 
 <!-- Rename Modals (Outside Table) -->
 {% for house in houses %}
-{% endfor %}
-
-
-
-<!-- Moved Modals -->
 <div class="modal fade" id="renameModal{{ house.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <form action="{{ url_for('admin_house_edit', id=house.id) }}" method="POST">
                 <div class="modal-header">
@@ -109,4 +104,6 @@
         </div>
     </div>
 </div>
+{% endfor %}
+
 {% endblock %}

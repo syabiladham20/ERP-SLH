@@ -84,65 +84,8 @@
                 </tr>
 
                 <!-- Edit Modal -->
-                {% endfor %}
-
-                <!-- Add New Row -->
-                <tr>
-                    <form method="POST" action="{{ url_for('manage_standards') }}">
-                        <td><input type="number" name="week" class="form-control" placeholder="Week" required></td>
-                        <td><input type="number" name="production_week" class="form-control" placeholder="Prod Wk"></td>
-                        <td><input type="number" step="0.01" name="std_mortality_male" class="form-control" placeholder="%"></td>
-                        <td><input type="number" step="0.01" name="std_mortality_female" class="form-control" placeholder="%"></td>
-                        <td><input type="number" step="0.1" name="std_bw_male" class="form-control" placeholder="g"></td>
-                        <td><input type="number" step="0.1" name="std_bw_female" class="form-control" placeholder="g"></td>
-                        <td><input type="number" step="0.1" name="std_egg_prod" class="form-control" placeholder="%"></td>
-                        <td><input type="number" step="0.1" name="std_egg_weight" class="form-control" placeholder="g"></td>
-                        <td><input type="number" step="0.1" name="std_hatching_egg_pct" class="form-control" placeholder="%"></td>
-                        <td><input type="number" step="0.1" name="std_hatchability" class="form-control" placeholder="%"></td>
-                        <td><input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" placeholder="Eggs"></td>
-                        <td><input type="number" step="0.1" name="std_cum_hatching_eggs_hha" class="form-control" placeholder="Hatch Eggs"></td>
-                        <td><input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" placeholder="Chicks"></td>
-                        <td>
-                            <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
-                        </td>
-                    </form>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Bulk Upload / Seed could be here -->
-</div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Check for saved scroll position
-        var scrollPos = sessionStorage.getItem('standards_scroll_pos');
-        if (scrollPos) {
-            var targetPos = parseInt(scrollPos);
-            window.scrollTo(0, targetPos);
-
-            // Retry after a small delay to ensure layout is ready
-            setTimeout(function() {
-                window.scrollTo(0, targetPos);
-                sessionStorage.removeItem('standards_scroll_pos');
-            }, 100);
-        }
-
-        // Attach submit listener to all forms
-        var forms = document.querySelectorAll('form');
-        forms.forEach(function(form) {
-            form.addEventListener('submit', function() {
-                sessionStorage.setItem('standards_scroll_pos', window.scrollY);
-            });
-        });
-    });
-</script>
-
-
-<!-- Moved Modals -->
                 <div class="modal fade" id="editModal{{ s.id }}" tabindex="-1">
-                    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
                         <div class="modal-content">
                             <form method="POST" action="{{ url_for('manage_standards') }}">
                                 <div class="modal-header">
@@ -228,4 +171,58 @@
                         </div>
                     </div>
                 </div>
+                {% endfor %}
+
+                <!-- Add New Row -->
+                <tr>
+                    <form method="POST" action="{{ url_for('manage_standards') }}">
+                        <td><input type="number" name="week" class="form-control" placeholder="Week" required></td>
+                        <td><input type="number" name="production_week" class="form-control" placeholder="Prod Wk"></td>
+                        <td><input type="number" step="0.01" name="std_mortality_male" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.01" name="std_mortality_female" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_bw_male" class="form-control" placeholder="g"></td>
+                        <td><input type="number" step="0.1" name="std_bw_female" class="form-control" placeholder="g"></td>
+                        <td><input type="number" step="0.1" name="std_egg_prod" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_egg_weight" class="form-control" placeholder="g"></td>
+                        <td><input type="number" step="0.1" name="std_hatching_egg_pct" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_hatchability" class="form-control" placeholder="%"></td>
+                        <td><input type="number" step="0.1" name="std_cum_eggs_hha" class="form-control" placeholder="Eggs"></td>
+                        <td><input type="number" step="0.1" name="std_cum_hatching_eggs_hha" class="form-control" placeholder="Hatch Eggs"></td>
+                        <td><input type="number" step="0.1" name="std_cum_chicks_hha" class="form-control" placeholder="Chicks"></td>
+                        <td>
+                            <button type="submit" name="action" value="add" class="btn btn-success btn-sm">Add</button>
+                        </td>
+                    </form>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Bulk Upload / Seed could be here -->
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Check for saved scroll position
+        var scrollPos = sessionStorage.getItem('standards_scroll_pos');
+        if (scrollPos) {
+            var targetPos = parseInt(scrollPos);
+            window.scrollTo(0, targetPos);
+
+            // Retry after a small delay to ensure layout is ready
+            setTimeout(function() {
+                window.scrollTo(0, targetPos);
+                sessionStorage.removeItem('standards_scroll_pos');
+            }, 100);
+        }
+
+        // Attach submit listener to all forms
+        var forms = document.querySelectorAll('form');
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+                sessionStorage.setItem('standards_scroll_pos', window.scrollY);
+            });
+        });
+    });
+</script>
 {% endblock %}
