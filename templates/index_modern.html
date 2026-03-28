@@ -416,11 +416,13 @@
               @keyframes slh-draw { 0%{stroke-dashoffset:400} 20%,100%{stroke-dashoffset:0} }
               @keyframes slh-pulse { 0%,20%{transform:scale(1)} 35%{transform:scale(1.08);filter:drop-shadow(0 0 8px #005eb866)} 50%,100%{transform:scale(1)} }
               .slh-anim { stroke-dasharray:400; stroke-dashoffset:400; animation:slh-draw 5s infinite cubic-bezier(.4,0,.2,1); }
-              .slh-anim.slh-eye { animation:slh-draw 5s infinite cubic-bezier(.4,0,.2,1), blinkEye 5s infinite; transform-origin: 65.286px 56.508px; }
+              .slh-anim.slh-eye { animation:slh-draw 5s infinite cubic-bezier(.4,0,.2,1), blinkEye 5s infinite;  }
               .slh-grp { transform-origin:center; animation:slh-pulse 5s infinite ease-in-out; }
 
               @keyframes blinkEye {
-                  0%, 96%, 98% { opacity: 1; transform: scaleY(1); }
+                  0%, 96%, 98%, 100% { opacity: 1; }
+                  97% { opacity: 0; }
+              }
                   97% { opacity: 0; transform: scaleY(0.1); }
               }
 

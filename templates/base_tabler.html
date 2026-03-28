@@ -75,18 +75,18 @@
             100% { stroke-dashoffset: -400; opacity: 0.2; }        }
 
         @keyframes blinkEye {
-            0%, 96%, 98% { opacity: 1; transform: scaleY(1); }
-            97% { opacity: 0; transform: scaleY(0.1); }
+            0%, 96%, 98%, 100% { opacity: 1; }
+            97% { opacity: 0; }
         }
 
         .slh-eye {
             animation: blinkEye 4s infinite;
-            transform-origin: 65.286px 56.508px;
+
         }
 
         .slh-logo .custom-logo-path.slh-eye {
             animation: drawBreeder 4s infinite ease-in-out, blinkEye 4s infinite;
-            transform-origin: 65.286px 56.508px;
+
         }
 
         .loader-text {
