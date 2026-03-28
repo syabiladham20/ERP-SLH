@@ -3937,6 +3937,39 @@ def daily_log():
             flash('Error: Invalid date format.', 'danger')
             return redirect(url_for('daily_log'))
         
+        # Gap Detection Logic
+        from markupsafe import Markup
+        if log_date > flock.intake_date:
+            # We need to check all dates from intake_date to log_date - 1
+            # We can find the missing dates by querying existing logs in that range
+            existing_logs_dates = [
+                d[0] for d in db.session.query(DailyLog.date).filter(
+                    DailyLog.flock_id == flock.id,
+                    DailyLog.date >= flock.intake_date,
+                    DailyLog.date < log_date
+                ).all()
+            ]
+
+            # Find the first missing date
+            current_check_date = flock.intake_date
+            missing_date = None
+            while current_check_date < log_date:
+                if current_check_date not in existing_logs_dates:
+                    missing_date = current_check_date
+                    break
+                current_check_date += timedelta(days=1)
+
+            if missing_date:
+                missing_date_str = missing_date.strftime('%Y-%m-%d')
+                missing_url = url_for('daily_log', house_id=house_id, date=missing_date_str)
+                error_msg = f'Error: Data Gap Detected. Please <a href="{missing_url}" class="alert-link">complete the missing daily log for {missing_date_str}</a> before proceeding.'
+
+                if request.headers.get('Accept') == 'application/json':
+                    return jsonify({'success': False, 'error': error_msg}), 400
+
+                flash(Markup(error_msg), 'danger')
+                return redirect(url_for('daily_log', house_id=house_id, date=date_str))
+
         existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
         
         if existing_log:
