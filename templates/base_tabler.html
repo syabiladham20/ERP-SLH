@@ -21,11 +21,8 @@
         }
 
         /* iOS Safe Area Adjustments */
-        header {
+        header.main-header {
             padding-top: env(safe-area-inset-top) !important;
-            position: sticky;
-            top: 0;
-            z-index: 1020;
         }
 
         .dropdown-menu {
@@ -198,8 +195,9 @@
     </div>
 
     <div class="page">
+      <div class="sticky-top" style="z-index: 1030;">
       <!-- Navbar -->
-      <header class="navbar navbar-expand-lg navbar-dark d-print-none" data-bs-theme="dark">
+      <header class="navbar navbar-expand-lg navbar-dark d-print-none main-header" data-bs-theme="dark" style="z-index: 1030;">
         <div class="container-fluid">
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu" aria-controls="navbar-menu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -274,7 +272,7 @@
       </header>
 
       <!-- Secondary Navbar for Links -->
-      <header class="navbar-expand-md">
+      <header class="navbar-expand-md secondary-header" style="z-index: 1020; position: relative;">
         <div class="collapse navbar-collapse" id="navbar-menu">
           <div class="navbar navbar-dark" data-bs-theme="dark">
             <div class="container-fluid">
@@ -395,6 +393,7 @@
           </div>
         </div>
       </header>
+      </div>
 
       <div class="page-wrapper" id="main-page-wrapper">
         <div id="ptr-container">
