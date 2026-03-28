@@ -76,8 +76,106 @@
                                     </tr>
 
                                     <!-- Edit Modal -->
+                                    <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <form action="{{ url_for('edit_inventory_item', id=item.id) }}" method="POST">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Edit Item: {{ item.name }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Name</label>
+                                                            <input type="text" name="name" class="form-control" value="{{ item.name }}" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Type</label>
+                                                            <select name="type" class="form-select">
+                                                                <option value="Vaccine" {% if item.type == 'Vaccine' %}selected{% endif %}>Vaccine</option>
+                                                                <option value="Medication" {% if item.type == 'Medication' %}selected{% endif %}>Medication</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Unit</label>
+                                                            <select name="unit" class="form-select">
+                                                                <option value="Bottle" {% if item.unit == 'Bottle' %}selected{% endif %}>Bottle</option>
+                                                                <option value="Kg" {% if item.unit == 'Kg' %}selected{% endif %}>Kg</option>
+                                                                <option value="Packet" {% if item.unit == 'Packet' %}selected{% endif %}>Packet</option>
+                                                                <option value="Liter" {% if item.unit == 'Liter' %}selected{% endif %}>Liter</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Min Stock Level (Warning Threshold)</label>
+                                                            <input type="number" step="0.01" name="min_stock_level" class="form-control" value="{{ item.min_stock_level }}">
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Doses Per Unit (Vaccines)</label>
+                                                            <input type="number" name="doses_per_unit" class="form-control" value="{{ item.doses_per_unit or '' }}">
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-6 mb-3">
+                                                                <label class="form-label">Batch Number</label>
+                                                                <input type="text" name="batch_number" class="form-control" value="{{ item.batch_number or '' }}">
+                                                            </div>
+                                                            <div class="col-md-6 mb-3">
+                                                                <label class="form-label">Expiry Date</label>
+                                                                <input type="date" name="expiry_date" class="form-control" value="{{ item.expiry_date or '' }}">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="submit" name="delete" value="1" class="btn btn-danger me-auto" onclick="return confirm('Are you sure you want to delete this item? History will be lost.')">Delete</button>
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
 
                                     <!-- Adjust Stock Modal -->
+                                    <div class="modal fade" id="adjustStockModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <form action="{{ url_for('inventory_transaction') }}" method="POST">
+                                                <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Adjust Stock: {{ item.name }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Transaction Type</label>
+                                                            <select name="transaction_type" class="form-select" required>
+                                                                <option value="Purchase">Purchase (Add Stock)</option>
+                                                                <option value="Usage">Usage (Remove Stock)</option>
+                                                                <option value="Adjustment">Adjustment (Correction)</option>
+                                                                <option value="Waste">Waste (Remove Stock)</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Quantity</label>
+                                                            <input type="number" step="0.01" name="quantity" class="form-control" required>
+                                                            <small class="text-muted">Enter positive number. 'Usage' and 'Waste' will subtract automatically.</small>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Date</label>
+                                                            <input type="date" name="transaction_date" class="form-control" value="{{ today }}" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Notes</label>
+                                                            <input type="text" name="notes" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                        <button type="submit" class="btn btn-primary">Submit Transaction</button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -177,117 +275,8 @@
 </div>
 
 <!-- Add Item Modal -->
-
-<!-- Edit Transaction Modals -->
-{% if is_admin %}
-{% for t in transactions %}
-{% endfor %}
-{% endif %}
-
-
-<!-- Moved Modals -->
-                                    <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
-                                            <form action="{{ url_for('edit_inventory_item', id=item.id) }}" method="POST">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Edit Item: {{ item.name }}</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Name</label>
-                                                            <input type="text" name="name" class="form-control" value="{{ item.name }}" required>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Type</label>
-                                                            <select name="type" class="form-select">
-                                                                <option value="Vaccine" {% if item.type == 'Vaccine' %}selected{% endif %}>Vaccine</option>
-                                                                <option value="Medication" {% if item.type == 'Medication' %}selected{% endif %}>Medication</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Unit</label>
-                                                            <select name="unit" class="form-select">
-                                                                <option value="Bottle" {% if item.unit == 'Bottle' %}selected{% endif %}>Bottle</option>
-                                                                <option value="Kg" {% if item.unit == 'Kg' %}selected{% endif %}>Kg</option>
-                                                                <option value="Packet" {% if item.unit == 'Packet' %}selected{% endif %}>Packet</option>
-                                                                <option value="Liter" {% if item.unit == 'Liter' %}selected{% endif %}>Liter</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Min Stock Level (Warning Threshold)</label>
-                                                            <input type="number" step="0.01" name="min_stock_level" class="form-control" value="{{ item.min_stock_level }}">
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Doses Per Unit (Vaccines)</label>
-                                                            <input type="number" name="doses_per_unit" class="form-control" value="{{ item.doses_per_unit or '' }}">
-                                                        </div>
-                                                        <div class="row">
-                                                            <div class="col-md-6 mb-3">
-                                                                <label class="form-label">Batch Number</label>
-                                                                <input type="text" name="batch_number" class="form-control" value="{{ item.batch_number or '' }}">
-                                                            </div>
-                                                            <div class="col-md-6 mb-3">
-                                                                <label class="form-label">Expiry Date</label>
-                                                                <input type="date" name="expiry_date" class="form-control" value="{{ item.expiry_date or '' }}">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="submit" name="delete" value="1" class="btn btn-danger me-auto" onclick="return confirm('Are you sure you want to delete this item? History will be lost.')">Delete</button>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <div class="modal fade" id="adjustStockModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
-                                            <form action="{{ url_for('inventory_transaction') }}" method="POST">
-                                                <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Adjust Stock: {{ item.name }}</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Transaction Type</label>
-                                                            <select name="transaction_type" class="form-select" required>
-                                                                <option value="Purchase">Purchase (Add Stock)</option>
-                                                                <option value="Usage">Usage (Remove Stock)</option>
-                                                                <option value="Adjustment">Adjustment (Correction)</option>
-                                                                <option value="Waste">Waste (Remove Stock)</option>
-                                                            </select>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Quantity</label>
-                                                            <input type="number" step="0.01" name="quantity" class="form-control" required>
-                                                            <small class="text-muted">Enter positive number. 'Usage' and 'Waste' will subtract automatically.</small>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Date</label>
-                                                            <input type="date" name="transaction_date" class="form-control" value="{{ today }}" required>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Notes</label>
-                                                            <input type="text" name="notes" class="form-control">
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                                        <button type="submit" class="btn btn-primary">Submit Transaction</button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-dialog">
         <form action="{{ url_for('add_inventory_item') }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
@@ -347,8 +336,11 @@
     </div>
 </div>
 
+<!-- Edit Transaction Modals -->
+{% if is_admin %}
+{% for t in transactions %}
 <div class="modal fade" id="editTransModal{{ t.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-dialog">
         <form action="{{ url_for('edit_inventory_transaction', id=t.id) }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
@@ -388,4 +380,6 @@
         </form>
     </div>
 </div>
+{% endfor %}
+{% endif %}
 {% endblock %}
