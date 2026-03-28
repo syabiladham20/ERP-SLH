@@ -240,6 +240,17 @@ class PushSubscription(db.Model):
     subscription_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class NotificationHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    url = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    is_read = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref=db.backref('notifications', lazy=True, cascade="all, delete-orphan"))
+
 class NotificationRule(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -1182,19 +1193,44 @@ def logout():
 @app.route('/settings', methods=['GET'])
 @login_required
 def settings():
-    # Only render settings page, pass vapid public key
+    user_id = session.get('user_id')
+    # Fetch notification history for the user (last 30)
+    notifications = NotificationHistory.query.filter_by(user_id=user_id).order_by(NotificationHistory.created_at.desc()).limit(30).all()
+
+    # Mark as read when viewing settings
+    for n in notifications:
+        if not n.is_read:
+            n.is_read = True
+    db.session.commit()
+
+    # Pass vapid public key
     vapid_public_key = os.getenv('VAPID_PUBLIC_KEY', '')
     if not vapid_public_key:
         flash("VAPID Keys are missing. Push notifications cannot be enabled.", "warning")
-    return render_template('settings.html', vapid_public_key=vapid_public_key)
+
+    return render_template('settings.html', vapid_public_key=vapid_public_key, notifications=notifications)
 
 def send_push_alert(user_id, title, body, url=None):
+    # Log the notification history for the user
+    try:
+        new_notification = NotificationHistory(
+            user_id=user_id,
+            title=title,
+            body=body,
+            url=url
+        )
+        db.session.add(new_notification)
+        db.session.commit()
+    except Exception as e:
+        app.logger.warning(f"Failed to log notification history: {e}")
+        db.session.rollback()
+
     vapid_private_key = os.getenv('VAPID_PRIVATE_KEY')
     vapid_claim_email = os.getenv('VAPID_CLAIM_EMAIL')
 
     if not vapid_private_key or not vapid_claim_email:
         app.logger.warning("VAPID keys not configured. Cannot send push notification.")
-        return
+        return False
 
     subscriptions = PushSubscription.query.filter_by(user_id=user_id).all()
     if not subscriptions:
@@ -5801,9 +5837,9 @@ def update_log_from_request(log, req):
             title = f"Alert: {rule.name}"
             body = f"{house_name}: {rule.metric} is {metric_values.get(rule.metric):.2f}% ({rule.operator} {rule.threshold}%)"
 
-            # Find all management users
-            management_users = User.query.filter_by(role='Management').all()
-            for user in management_users:
+            # Notify all users
+            all_users = User.query.all()
+            for user in all_users:
                 try:
                     # Provide a URL to deep link to the flock detail
                     alert_url = url_for('view_flock', id=log.flock.id) if log.flock else '/'
