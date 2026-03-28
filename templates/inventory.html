@@ -77,8 +77,7 @@
 
                                     <!-- Edit Modal -->
                                     <div class="modal fade" id="editItemModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <form action="{{ url_for('edit_inventory_item', id=item.id) }}" method="POST">
+                                        <div class="modal-dialog">                                            <form action="{{ url_for('edit_inventory_item', id=item.id) }}" method="POST">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
                                                         <h5 class="modal-title">Edit Item: {{ item.name }}</h5>
@@ -136,8 +135,7 @@
 
                                     <!-- Adjust Stock Modal -->
                                     <div class="modal fade" id="adjustStockModal{{ item.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <form action="{{ url_for('inventory_transaction') }}" method="POST">
+                                        <div class="modal-dialog">                                            <form action="{{ url_for('inventory_transaction') }}" method="POST">
                                                 <input type="hidden" name="inventory_item_id" value="{{ item.id }}">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
@@ -213,7 +211,7 @@
                                                 {% if t.transaction_type == 'Purchase' %}bg-success
                                                 {% elif t.transaction_type == 'Waste' %}bg-danger
                                                 {% elif t.transaction_type == 'Usage' %}bg-warning text-dark
-                                                {% else %}bg-secondary{% endif %}">
+                                               {% else %}bg-secondary{% endif %}">
                                                 {{ t.transaction_type }}
                                             </span>
                                         </td>
@@ -276,8 +274,7 @@
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form action="{{ url_for('add_inventory_item') }}" method="POST">
+    <div class="modal-dialog">        <form action="{{ url_for('add_inventory_item') }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Add New Inventory Item</h5>
@@ -340,8 +337,7 @@
 {% if is_admin %}
 {% for t in transactions %}
 <div class="modal fade" id="editTransModal{{ t.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <form action="{{ url_for('edit_inventory_transaction', id=t.id) }}" method="POST">
+    <div class="modal-dialog">        <form action="{{ url_for('edit_inventory_transaction', id=t.id) }}" method="POST">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Transaction #{{ t.id }}</h5>

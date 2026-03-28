@@ -27,7 +27,7 @@
                             <td>{{ user.username }}</td>
                             <td>
                                 <span class="badge
-                                    {% if user.dept == 'Admin' %}bg-danger{% elif user.dept == 'Farm' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                   {% if user.dept == 'Admin' %}bg-danger{% elif user.dept == 'Farm' %}bg-success{% else %}bg-warning text-dark{% endif %}">
                                     {{ user.dept }}
                                 </span>
                             </td>
@@ -47,8 +47,7 @@
 
                                 <!-- Edit Modal -->
                                 <div class="modal fade" id="editUserModal{{ user.id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
+                                    <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_edit', user_id=user.id) }}" method="POST">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Edit User: {{ user.username }}</h5>
@@ -80,8 +79,7 @@
 
                                 <!-- Reset Password Modal -->
                                 <div class="modal fade" id="resetPassModal{{ user.id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
+                                    <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_reset_password', user_id=user.id) }}" method="POST">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Reset Password: {{ user.username }}</h5>
@@ -104,8 +102,7 @@
 
                                 <!-- Delete Modal -->
                                 <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
+                                    <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_delete', user_id=user.id) }}" method="POST">
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Delete User: {{ user.username }}</h5>
@@ -135,8 +132,7 @@
 
 <!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
+    <div class="modal-dialog">        <div class="modal-content">
             <form action="{{ url_for('admin_user_add') }}" method="POST">
                 <div class="modal-header">
                     <h5 class="modal-title">Add New User</h5>
