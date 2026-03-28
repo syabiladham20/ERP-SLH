@@ -81,6 +81,14 @@ class FarmTestCase(unittest.TestCase):
             'intake_male': 100,
             'intake_female': 100
         })
+
+        # Submit log for intake_date first (to pass gap check)
+        self.app.post('/daily_log', data={
+            'house_id': 1,
+            'date': '2023-10-27',
+            'mortality_male': 0,
+            'feed_program': 'Full Feed'
+        }, follow_redirects=True)
         
         # Submit log
         response = self.app.post('/daily_log', data={
@@ -94,7 +102,7 @@ class FarmTestCase(unittest.TestCase):
         }, follow_redirects=True)
         
         self.assertIn(b'Daily Log submitted successfully', response.data)
-        log = DailyLog.query.first()
+        log = DailyLog.query.filter_by(date='2023-10-28').first()
         self.assertEqual(log.mortality_male, 5)
         self.assertEqual(log.feed_program, 'Full Feed')
         self.assertEqual(log.water_reading_1, 10000)
@@ -160,8 +168,9 @@ class FarmTestCase(unittest.TestCase):
             'intake_male': 100,
             'intake_female': 100
         })
+        self.app.post('/daily_log', data={'house_id': 1, 'date': '2023-11-01', 'mortality_male': 0})
         self.app.post('/daily_log', data={'house_id': 1, 'date': '2023-11-02', 'mortality_male': 5})
-        log = DailyLog.query.first()
+        log = DailyLog.query.filter_by(date='2023-11-02').first()
         
         original_date = log.date
         original_flock_id = log.flock_id
