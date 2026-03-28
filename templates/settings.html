@@ -17,40 +17,96 @@
   <div class="container-xl">
     <div class="card">
       <div class="card-header border-bottom-0">
-        <h3 class="card-title">Real-Time Alerts</h3>
+        <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+          <li class="nav-item">
+            <a href="#tabs-settings" class="nav-link active" data-bs-toggle="tab">Settings</a>
+          </li>
+          <li class="nav-item">
+            <a href="#tabs-history" class="nav-link" data-bs-toggle="tab">Notification History</a>
+          </li>
+        </ul>
       </div>
       <div class="card-body">
-        <div class="mb-4">
-            <p class="text-secondary">Enable push notifications to receive real-time alerts when important events occur (e.g., mortality spikes or low egg production).</p>
-        </div>
-        <div class="d-flex align-items-center mb-3">
-            <label class="form-check form-switch form-switch-lg">
-                <input class="form-check-input" type="checkbox" id="push-toggle">
-                <span class="form-check-label h3 mb-0" style="margin-top: 1px;">Enable Real-Time Alerts</span>
-            </label>
-        </div>
-        <div class="mt-4" id="push-actions">
-            <button class="btn btn-outline-primary" id="btn-test-notification" disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-ringing" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <div class="tab-content">
+          <div class="tab-pane active show" id="tabs-settings">
+            <div class="mb-4">
+                <p class="text-secondary">Enable push notifications to receive real-time alerts when important events occur (e.g., mortality spikes or low egg production).</p>
+            </div>
+            <div class="d-flex align-items-center mb-3">
+                <label class="form-check form-switch form-switch-lg">
+                    <input class="form-check-input" type="checkbox" id="push-toggle">
+                    <span class="form-check-label h3 mb-0" style="margin-top: 1px;">Enable Real-Time Alerts</span>
+                </label>
+            </div>
+            <div class="mt-4" id="push-actions">
+                <button class="btn btn-outline-primary" id="btn-test-notification" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-ringing" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
+                        <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
+                        <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727"></path>
+                        <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727"></path>
+                    </svg>
+                    Send Test Notification
+                </button>
+                <button class="btn btn-outline-danger ms-2" id="btn-reset-resync" title="Force a hard reset of your Push Subscription if alerts aren't arriving.">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                        <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
+                        <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+                    </svg>
+                    Reset & Resync
+                </button>
+                <div class="text-muted small mt-2" id="push-actions-hint">Enable real-time alerts to test notifications.</div>
+            </div>
+            <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
+          </div>
+          <div class="tab-pane" id="tabs-history">
+            {% if notifications %}
+              <div class="table-responsive">
+                <table class="table table-vcenter card-table table-striped">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Title</th>
+                      <th>Message</th>
+                      <th>Link</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for note in notifications %}
+                    <tr>
+                      <td class="text-muted">{{ note.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+                      <td>{{ note.title }}</td>
+                      <td>{{ note.body }}</td>
+                      <td>
+                        {% if note.url and note.url != '/' %}
+                          <a href="{{ note.url }}" class="btn btn-sm btn-outline-primary">View</a>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="empty">
+                <div class="empty-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-bell-off" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
+                    <path d="M9.346 5.353c.21 -.129 .428 -.246 .654 -.353a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3m-1 3h-13a4 4 0 0 0 2 -3v-3a6.996 6.996 0 0 1 1.273 -3.707"></path>
                     <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
-                    <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727"></path>
-                    <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727"></path>
-                </svg>
-                Send Test Notification
-            </button>
-            <button class="btn btn-outline-danger ms-2" id="btn-reset-resync" title="Force a hard reset of your Push Subscription if alerts aren't arriving.">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"></path>
-                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                </svg>
-                Reset & Resync
-            </button>
-            <div class="text-muted small mt-2" id="push-actions-hint">Enable real-time alerts to test notifications.</div>
+                    <path d="M3 3l18 18"></path>
+                  </svg>
+                </div>
+                <p class="empty-title">No notifications yet</p>
+                <p class="empty-subtitle text-muted">
+                  You haven't received any real-time alerts.
+                </p>
+              </div>
+            {% endif %}
+          </div>
         </div>
-        <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
       </div>
     </div>
   </div>
