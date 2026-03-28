@@ -305,7 +305,7 @@ class InventoryTransaction(db.Model):
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
-    farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=True, index=True)
+    farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=False, index=True)
     flock_id = db.Column(db.String(100), unique=True, nullable=False)
     intake_date = db.Column(db.Date, nullable=False, default=date.today)
     
@@ -1685,15 +1685,16 @@ def edit_flock(id):
 
         # Farm Update
         farm_name = request.form.get('farm_name', '').strip()
-        if farm_name:
-            farm = Farm.query.filter_by(name=farm_name).first()
-            if not farm:
-                farm = Farm(name=farm_name)
-                db.session.add(farm)
-                db.session.commit()
-            flock.farm_id = farm.id
-        else:
-            flock.farm_id = None
+        if not farm_name:
+            flash('Error: Farm name is required.', 'danger')
+            return render_template('flock_edit.html', flock=flock)
+
+        farm = Farm.query.filter_by(name=farm_name).first()
+        if not farm:
+            farm = Farm(name=farm_name)
+            db.session.add(farm)
+            db.session.commit()
+        flock.farm_id = farm.id
 
         new_data = {
             'flock_id': flock.flock_id,
@@ -1757,15 +1758,18 @@ def manage_flocks():
         
         # Find or Create Farm
         farm_name = request.form.get('farm_name', '').strip()
+        if not farm_name:
+            flash('Error: Farm name is required.', 'danger')
+            return redirect(url_for('manage_flocks'))
+
         farm_id = None
-        if farm_name:
-            farm = Farm.query.filter_by(name=farm_name).first()
-            if not farm:
-                farm = Farm(name=farm_name)
-                db.session.add(farm)
-                db.session.commit()
-                flash(f'Created new Farm: {farm_name}', 'info')
-            farm_id = farm.id
+        farm = Farm.query.filter_by(name=farm_name).first()
+        if not farm:
+            farm = Farm(name=farm_name)
+            db.session.add(farm)
+            db.session.commit()
+            flash(f'Created new Farm: {farm_name}', 'info')
+        farm_id = farm.id
 
         # Find or Create House
         house = House.query.filter_by(name=house_name).first()
@@ -5625,15 +5629,17 @@ def check_daily_log_completion(farm_id, selected_date):
     """
     Checks the DailyLog table for the current farm_id and selected_date.
     Returns a list of dictionaries with house info and completion status.
+    If farm_id is None, returns all active flocks across the entire system.
     """
-    if not farm_id or not selected_date:
+    if not selected_date:
         return []
 
-    # Get all active flocks for the given farm
-    active_flocks = Flock.query.join(House).filter(
-        Flock.farm_id == farm_id,
-        Flock.status == 'Active'
-    ).order_by(House.name).all()
+    # Get active flocks for the given farm, or all active flocks if farm_id is None
+    query = Flock.query.join(House).filter(Flock.status == 'Active')
+    if farm_id:
+        query = query.filter(Flock.farm_id == farm_id)
+
+    active_flocks = query.order_by(House.name).all()
 
     # Pre-fetch daily logs for these flocks on the selected date
     flock_ids = [f.id for f in active_flocks]

@@ -10,8 +10,8 @@
       <div class="card-body">
         <form method="POST">
           <div class="mb-3">
-            <label for="farm_name" class="form-label">Farm Name</label>
-            <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" placeholder="Type to search or add new...">
+            <label for="farm_name" class="form-label required">Farm Name</label>
+            <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" placeholder="Type to search or add new..." required>
             <datalist id="farmOptions">
               {% for farm in farms %}
                 <option value="{{ farm.name }}">

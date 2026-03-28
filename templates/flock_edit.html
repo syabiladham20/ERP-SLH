@@ -8,7 +8,7 @@
     <form method="POST">
       <div class="mb-3">
         <label for="farm_name" class="form-label">Farm</label>
-        <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" value="{{ flock.farm.name if flock.farm else '' }}" placeholder="Type to search or add new...">
+        <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" value="{{ flock.farm.name if flock.farm else '' }}" placeholder="Type to search or add new..." required>
         <datalist id="farmOptions">
           {% for farm in farms %}
             <option value="{{ farm.name }}">

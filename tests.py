@@ -33,7 +33,7 @@ class FarmTestCase(unittest.TestCase):
         self.ctx.pop()
 
     def test_create_flock(self):
-        response = self.app.post('/flocks', data={
+        response = self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'VA1',
             'intake_date': '2023-10-27',
             'intake_male': 100,
@@ -47,12 +47,12 @@ class FarmTestCase(unittest.TestCase):
 
     def test_prevent_duplicate_active_flock(self):
         # Create first flock
-        self.app.post('/flocks', data={
+        self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'VA1',
             'intake_date': '2023-10-27'
         })
         # Try second flock in same house
-        response = self.app.post('/flocks', data={
+        response = self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'VA1',
             'intake_date': '2023-10-28'
         }, follow_redirects=True)
@@ -62,7 +62,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_close_flock(self):
         # Create flock
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-10-27'})
+        self.app.post('/flocks', data={'farm_name': 'Farm 1', 'house_name': 'VA1', 'intake_date': '2023-10-27'})
         flock = Flock.query.first()
         
         # Close flock
@@ -75,7 +75,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_daily_log_submission(self):
         # Create flock
-        self.app.post('/flocks', data={
+        self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'VA1',
             'intake_date': '2023-10-27',
             'intake_male': 100,
@@ -102,7 +102,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_water_calculation(self):
         # Create flock
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-10-27'})
+        self.app.post('/flocks', data={'farm_name': 'Farm 1', 'house_name': 'VA1', 'intake_date': '2023-10-27'})
         
         # Day 1 Log: Reading 1 = 10000 (100.00)
         self.app.post('/daily_log', data={
@@ -124,7 +124,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_manual_house_creation(self):
         # Create flock with NEW house
-        response = self.app.post('/flocks', data={
+        response = self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'NewHouse1',
             'intake_date': '2023-11-01',
             'intake_male': 100,
@@ -139,7 +139,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_toggle_phase(self):
         # Create flock (default Rearing)
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-11-01'})
+        self.app.post('/flocks', data={'farm_name': 'Farm 1', 'house_name': 'VA1', 'intake_date': '2023-11-01'})
         flock = Flock.query.filter_by(house_id=1).first() # VA1 is id 1
         
         # Toggle
@@ -154,7 +154,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_edit_log(self):
         # Create flock & log
-        self.app.post('/flocks', data={
+        self.app.post('/flocks', data={'farm_name': 'Farm 1',
             'house_name': 'VA1',
             'intake_date': '2023-11-01',
             'intake_male': 100,
@@ -190,7 +190,7 @@ class FarmTestCase(unittest.TestCase):
 
     def test_sampling_schedule_init(self):
         # Create flock
-        self.app.post('/flocks', data={'house_name': 'VA1', 'intake_date': '2023-11-01'})
+        self.app.post('/flocks', data={'farm_name': 'Farm 1', 'house_name': 'VA1', 'intake_date': '2023-11-01'})
         flock = Flock.query.filter_by(house_id=1).first()
 
         # Check Schedule
