@@ -66,24 +66,16 @@
             color: #005eb8; /* SLH Blue */
         }
 
-        .comb-path, .profile-path, .wattle-path {
-            stroke-dasharray: 200;
-            stroke-dashoffset: 200;
-            animation: drawBreeder 2.5s infinite ease-in-out;
-        }
-
-        .comb-path { animation-delay: 0s; }
-        .profile-path { animation-delay: 0.2s; }
-        .wattle-path { animation-delay: 0.4s; }
-
-        .eye-path {
-            animation: blinkEye 2.5s infinite;
+        .custom-logo-path {
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            animation: drawBreeder 4s infinite ease-in-out;
         }
 
         @keyframes drawBreeder {
-            0% { stroke-dashoffset: 200; opacity: 0.2; }
+            0% { stroke-dashoffset: 400; opacity: 0.2; }
             50% { stroke-dashoffset: 0; opacity: 1; }
-            100% { stroke-dashoffset: -200; opacity: 0.2; }
+            100% { stroke-dashoffset: -400; opacity: 0.2; }
         }
 
         @keyframes blinkEye {
@@ -196,12 +188,11 @@
     <div id="loading-overlay" class="loader-overlay" style="display:none;">
         <div class="chicken-loader">
             <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 100 100" class="breeder-head-svg slh-logo">
-  <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path class="comb-path" d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
-    <path class="profile-path" d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
-    <path class="wattle-path" d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
-    <path class="wattle-path" d="M 70 82 L 72 95" />
-    <circle cx="62" cy="42" r="4" fill="currentColor" stroke="none" class="eye-path" />
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path class="custom-logo-path" d="m78.14 54.345 0.0026-0.28244c-0.0283 5.3531-0.97265 7.988-3.9396 12.32 0 0 0.46373 3.5974 1.0821 5.6 1.0595 3.4311 3.2798 6.8098 4.3272 10.4 2.0178 6.9167 1.0516 14.202-6.0322 15.69" stroke-width="2.6457"/>
+    <path class="custom-logo-path" d="m65.286 56.508 0.05668 0.07851" stroke-width="7.5591"/>
+    <path class="custom-logo-path" d="m36.428 46.586c-4.3086 3.3052-12.213 18.443-14.207 22.975-3.3406 7.5952-4.0449 13.587-5.142 23.537" stroke-width="2.6457"/>
+    <path class="custom-logo-path" d="m78.152 53.839c-1.965-6.7001-9.8729-14.401-20.105-14.614-6.0786-0.12664-12.418 2.4074-17.6 5.2086-2.3866 1.2901-4.2248 2.6267-7.2 1.7926-6.5183-1.8275-11.381-14.927-5.3772-20.378 3.0047-2.7277 8.4544 0.26719 9.7865 2.1708-0.11421-2.8074 0.17607-8.4781 3.0135-10.641 4.3843-3.3414 10.195 3.6196 11.963 5.9337 0.75757-2.9175 2.9364-8.474 7.0257-8.5769 5.4617-0.13744 9.8604 10.598 10.637 10.633 0.63106 0.02814 1.137-6.6833 4.5926-5.7878 3.8393 0.99495 6.945 9.2974 7.3992 11.31 0.41019 1.8173 1.0486 6.6207 0.71243 9.0916-0.83596 6.1454-1.5141 11.284-4.8478 13.894 2.2642-0.08264 4.323 2.3963 7.4699 4.9891 0.74514 0.61392 5.4132 4.645 6.768 8.1934 0.85452 2.2382-7.5759-0.61032-13.543-1.208-2.2242-0.22276-3.9924-0.25544-6.4 0.34136-2.0416 0.50606-3.0152 1.1589-4.7969 2.7056-6.1463 5.3354-10.377 15.576-6.7451 23.081 2.868 5.9265 7.7202 7.5046 13.142 5.9752 0.33347 3.8243 1.9984 7.5108 2.4 12.428" stroke-width="2.6457"/>
   </g>
 </svg>
             <p class="loader-text">Processing...</p>
@@ -228,12 +219,11 @@
           <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
             <a href="{{ url_for('index') }}" class="text-decoration-none text-white d-flex align-items-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" class="me-2 slh-logo" width="24" height="24">
-  <g fill="none" stroke="#005eb8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 34 46 C 25 35 25 15 45 20 C 50 5 70 5 75 25 C 85 25 85 45 68 47" />
-    <path d="M 28 65 C 28 35 45 35 60 35 C 65 35 70 38 75 42 C 80 44 85 46 90 50 L 68 52" />
-    <path d="M 68 52 C 55 55 55 75 62 82 C 70 90 85 75 75 60 C 73 55 68 52 68 52 Z" />
-    <path d="M 70 82 L 72 95" />
-    <circle cx="62" cy="42" r="4" fill="#005eb8" stroke="none" />
+  <g fill="none" stroke="#005eb8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m78.14 54.345 0.0026-0.28244c-0.0283 5.3531-0.97265 7.988-3.9396 12.32 0 0 0.46373 3.5974 1.0821 5.6 1.0595 3.4311 3.2798 6.8098 4.3272 10.4 2.0178 6.9167 1.0516 14.202-6.0322 15.69" stroke-width="2.6457"/>
+    <path d="m65.286 56.508 0.05668 0.07851" stroke-width="7.5591"/>
+    <path d="m36.428 46.586c-4.3086 3.3052-12.213 18.443-14.207 22.975-3.3406 7.5952-4.0449 13.587-5.142 23.537" stroke-width="2.6457"/>
+    <path d="m78.152 53.839c-1.965-6.7001-9.8729-14.401-20.105-14.614-6.0786-0.12664-12.418 2.4074-17.6 5.2086-2.3866 1.2901-4.2248 2.6267-7.2 1.7926-6.5183-1.8275-11.381-14.927-5.3772-20.378 3.0047-2.7277 8.4544 0.26719 9.7865 2.1708-0.11421-2.8074 0.17607-8.4781 3.0135-10.641 4.3843-3.3414 10.195 3.6196 11.963 5.9337 0.75757-2.9175 2.9364-8.474 7.0257-8.5769 5.4617-0.13744 9.8604 10.598 10.637 10.633 0.63106 0.02814 1.137-6.6833 4.5926-5.7878 3.8393 0.99495 6.945 9.2974 7.3992 11.31 0.41019 1.8173 1.0486 6.6207 0.71243 9.0916-0.83596 6.1454-1.5141 11.284-4.8478 13.894 2.2642-0.08264 4.323 2.3963 7.4699 4.9891 0.74514 0.61392 5.4132 4.645 6.768 8.1934 0.85452 2.2382-7.5759-0.61032-13.543-1.208-2.2242-0.22276-3.9924-0.25544-6.4 0.34136-2.0416 0.50606-3.0152 1.1589-4.7969 2.7056-6.1463 5.3354-10.377 15.576-6.7451 23.081 2.868 5.9265 7.7202 7.5046 13.142 5.9752 0.33347 3.8243 1.9984 7.5108 2.4 12.428" stroke-width="2.6457"/>
   </g>
 </svg>
               SLH-OP <small class="text-muted ms-2 fs-5">({{ user_dept or 'Guest' }})</small>
@@ -364,7 +354,7 @@
                         </div>
                     </li>
 
-                {% elif user_role == 'Farm' or user_dept not in ['Admin', 'Management', 'Hatchery'] %}
+                {% elif user_role == 'Farm' or session.get('user_dept') not in ['Admin', 'Management', 'Hatchery'] %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
                             <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
@@ -887,39 +877,6 @@
         }
       });
     </script>
-    {% block extra_scripts %}
-
-<!-- Moved Modals -->
-    <div class="modal modal-blur fade" id="ios-install-modal" tabindex="-1" role="dialog" aria-hidden="true">
-      <div class="modal-dialog modal-sm modal-dialog-scrollable modal-fullscreen-sm-down" role="document">
-        <div class="modal-content">
-          <div class="modal-body text-center py-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-primary icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                <path d="M6 5a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-14z"></path>
-                <path d="M11 4h2"></path>
-                <path d="M12 17v.01"></path>
-            </svg>
-            <h3>Install SLH-OP</h3>
-            <div class="text-muted mb-3">Install this app on your device for quick and easy offline access.</div>
-
-            <div class="card text-start bg-blue-lt">
-                <div class="card-body p-3">
-                    <p class="mb-2"><strong>1.</strong> Tap the <strong>Share</strong> icon <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-share-2 d-inline-block align-text-bottom" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: -2px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M8 9h-1a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-8a2 2 0 0 0 -2 -2h-1"></path><path d="M12 14v-11"></path><path d="M9 6l3 -3l3 3"></path></svg> at the bottom of Safari.</p>
-                    <p class="mb-0"><strong>2.</strong> Scroll down and tap <strong>Add to Home Screen</strong> <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-plus d-inline-block align-text-bottom" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: -2px;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 5l0 14"></path><path d="M5 12l14 0"></path></svg>.</p>
-                </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <div class="w-100">
-              <div class="row">
-                <div class="col"><a href="#" class="btn w-100" onclick="document.getElementById('ios-install-modal').classList.remove('show'); document.getElementById('ios-install-modal').style.display = 'none'; document.body.classList.remove('modal-open');">Got it</a></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-{% endblock %}
+    {% block extra_scripts %}{% endblock %}
   </body>
 </html>
