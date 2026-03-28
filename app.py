@@ -40,6 +40,18 @@ from sqlalchemy import text
 
 load_dotenv()
 
+# Constants for fast membership checks
+ALLOWED_EXPORT_ROLES = frozenset(['Management', 'Farm'])
+FARM_HATCHERY_ADMIN_DEPTS = frozenset(['Farm', 'Hatchery', 'Admin'])
+FARM_HATCHERY_ADMIN_MGMT_DEPTS = frozenset(['Farm', 'Hatchery', 'Admin', 'Management'])
+ADMIN_FARM_MGMT_ROLES = frozenset(['Admin', 'Farm', 'Management'])
+
+INV_TX_TYPES_ALL = frozenset(['Purchase', 'Usage', 'Adjustment', 'Waste'])
+INV_TX_TYPES_USAGE_WASTE = frozenset(['Usage', 'Waste'])
+
+REARING_PHASES = frozenset(['Brooding', 'Growing', 'Pre-lay'])
+EMPTY_NOTE_VALUES = frozenset(['none', 'nan'])
+
 # Initial User Data for Seeding
 INITIAL_USERS = [
     {'username': 'admin', 'password': 'admin123', 'dept': 'Admin', 'role': 'Admin'},
@@ -1562,7 +1574,7 @@ def index():
                 f.has_log_today = True
 
             # Cumulative Pct (Phase specific)
-            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing', 'Pre-lay']:
+            if getattr(f, 'calculated_phase', f.phase) in REARING_PHASES:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
@@ -3123,7 +3135,7 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
 @app.route('/api/flock/<int:flock_id>/export_csv')
 def export_flock_csv(flock_id):
     # Both Farm and Executive roles can view flock details, so both should be able to export
-    if not session.get('is_admin') and session.get('user_role') not in ['Management', 'Farm']:
+    if not session.get('is_admin') and session.get('user_role') not in ALLOWED_EXPORT_ROLES:
         flash('Access Denied.', 'danger')
         return redirect(url_for('index'))
 
@@ -3325,7 +3337,7 @@ def flock_spreadsheet_save(flock_id):
             clinical_signs_val = row.get('clinical_signs')
 
             # Since ClinicalNote model list represents detailed notes and clinical_notes text is main note:
-            if clinical_signs_val and clinical_signs_val.strip() and clinical_signs_val.strip().lower() not in ('none', 'nan'):
+            if clinical_signs_val and clinical_signs_val.strip() and clinical_signs_val.strip().lower() not in EMPTY_NOTE_VALUES:
                 log.clinical_notes = clinical_signs_val.strip()
             else:
                 log.clinical_notes = None
@@ -3702,7 +3714,7 @@ def upload_sampling_result(id, event_id):
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
 def flock_hatchability(id):
-    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
+    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
         return redirect(url_for('login'))
 
@@ -3774,7 +3786,7 @@ def delete_hatchability(id, record_id):
 
 @app.route('/hatchery/charts/<int:flock_id>')
 def hatchery_charts(flock_id):
-    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin']:
+    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
         return redirect(url_for('login'))
 
@@ -3887,7 +3899,7 @@ def hatchery_charts(flock_id):
 
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>', methods=['GET', 'POST'])
 def hatchability_diagnosis(id, date_str):
-    if session.get('user_dept') not in ['Farm', 'Hatchery', 'Admin', 'Management']:
+    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_MGMT_DEPTS:
         return redirect(url_for('login'))
 
     is_readonly = request.args.get('readonly') == 'true'
@@ -5501,7 +5513,7 @@ def process_import(file, commit=True, preview=False):
             val_rem = row.iloc[idx_remarks] if (idx_remarks and len(row) > idx_remarks) else None
             if pd.notna(val_rem):
                 rem_str = str(val_rem).strip()
-                if rem_str and rem_str.lower() not in ('none', 'nan'):
+                if rem_str and rem_str.lower() not in EMPTY_NOTE_VALUES:
                     log.clinical_notes = rem_str
                 else:
                     log.clinical_notes = None
@@ -6047,7 +6059,7 @@ def update_log_from_request(log, req):
     log.feed_cleanup_end = req.form.get('feed_cleanup_end')
 
     clin_notes = req.form.get('clinical_notes')
-    if clin_notes and clin_notes.strip() and clin_notes.strip().lower() not in ('none', 'nan'):
+    if clin_notes and clin_notes.strip() and clin_notes.strip().lower() not in EMPTY_NOTE_VALUES:
         log.clinical_notes = clin_notes.strip()
     else:
         log.clinical_notes = None
@@ -6780,7 +6792,7 @@ def ai_insight(flock_id):
     flock = Flock.query.get_or_404(flock_id)
 
     # Needs to be available to both Farm and Executive
-    if session.get('user_role') not in ['Admin', 'Farm', 'Management']:
+    if session.get('user_role') not in ADMIN_FARM_MGMT_ROLES:
         flash('Unauthorized Access.', 'error')
         return redirect(url_for('dashboard'))
 
@@ -6928,7 +6940,7 @@ def inventory_transaction():
 
     item = InventoryItem.query.get_or_404(item_id)
 
-    if type_ in ['Usage', 'Waste']:
+    if type_ in INV_TX_TYPES_USAGE_WASTE:
         item.current_stock -= qty
     else: # Purchase, Adjustment
         item.current_stock += qty
@@ -7027,7 +7039,7 @@ def delete_inventory_transaction(id):
 
     # Revert Stock
     if item:
-        if t.transaction_type in ['Usage', 'Waste']:
+        if t.transaction_type in INV_TX_TYPES_USAGE_WASTE:
             item.current_stock += t.quantity
         else: # Purchase, Adjustment
             item.current_stock -= t.quantity
@@ -7061,13 +7073,13 @@ def edit_inventory_transaction(id):
         flash("Quantity must be positive.", "danger")
         return redirect(url_for('inventory'))
 
-    if new_type and new_type not in ['Purchase', 'Usage', 'Adjustment', 'Waste']:
+    if new_type and new_type not in INV_TX_TYPES_ALL:
         flash("Invalid transaction type.", "danger")
         return redirect(url_for('inventory'))
 
     # Revert Old Effect
     if item:
-        if t.transaction_type in ['Usage', 'Waste']:
+        if t.transaction_type in INV_TX_TYPES_USAGE_WASTE:
             item.current_stock += t.quantity
         else:
             item.current_stock -= t.quantity
@@ -7096,7 +7108,7 @@ def edit_inventory_transaction(id):
 
     # Apply New Effect
     if item:
-        if t.transaction_type in ['Usage', 'Waste']:
+        if t.transaction_type in INV_TX_TYPES_USAGE_WASTE:
             item.current_stock -= new_qty
         else:
             item.current_stock += new_qty
@@ -8259,7 +8271,7 @@ def executive_dashboard():
             if last['date'] == today:
                 f.has_log_today = True
 
-            if getattr(f, 'calculated_phase', f.phase) in ['Brooding', 'Growing', 'Pre-lay']:
+            if getattr(f, 'calculated_phase', f.phase) in REARING_PHASES:
                 f.rearing_mort_m_pct = last['mortality_cum_male_pct']
                 f.rearing_mort_f_pct = last['mortality_cum_female_pct']
             else:
