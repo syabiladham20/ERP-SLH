@@ -3208,6 +3208,20 @@ def flock_spreadsheet_save(flock_id):
         log_ids = [row.get('id') for row in data if row.get('id')]
         logs = {log.id: log for log in DailyLog.query.filter(DailyLog.id.in_(log_ids), DailyLog.flock_id == flock_id).all()}
 
+        # Fetch all existing logs for new row existence checks to avoid N+1 query
+        new_row_dates = []
+        for row in data:
+            if not row.get('id') and row.get('date'):
+                try:
+                    parsed_date = datetime.strptime(row.get('date'), '%Y-%m-%d').date()
+                    new_row_dates.append(parsed_date)
+                except ValueError:
+                    continue
+
+        existing_logs_by_date = {}
+        if new_row_dates:
+            existing_logs_by_date = {log.date: log for log in DailyLog.query.filter(DailyLog.date.in_(new_row_dates), DailyLog.flock_id == flock_id).all()}
+
         flock = Flock.query.get(flock_id)
         if not flock:
             return jsonify({'success': False, 'error': 'Flock not found'}), 404
@@ -3226,10 +3240,11 @@ def flock_spreadsheet_save(flock_id):
                     continue
 
                 # Check if it exists
-                log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
+                log = existing_logs_by_date.get(log_date)
                 if not log:
                     log = DailyLog(flock_id=flock_id, date=log_date)
                     db.session.add(log)
+                    existing_logs_by_date[log_date] = log
                     is_new = True
             else:
                 if log_id not in logs:
