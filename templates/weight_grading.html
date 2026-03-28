@@ -49,7 +49,7 @@
                         {% if 'Male' in sexes %}
                           {% set m = sexes['Male'] %}
                           <span class="badge bg-blue text-blue-fg">M</span>
-                          Count: {{ m.count }} | Avg: {{ m.average_weight }}g | Uni: {{ m.uniformity }}%
+                          Count: {{ m.count }} | Avg: {{ m.average_weight | round | int }}g | Uni: {{ m.uniformity | round | int }}%
                         {% else %}
                           <span class="text-muted">N/A</span>
                         {% endif %}
@@ -58,7 +58,7 @@
                         {% if 'Female' in sexes %}
                           {% set f = sexes['Female'] %}
                           <span class="badge bg-pink text-pink-fg">F</span>
-                          Count: {{ f.count }} | Avg: {{ f.average_weight }}g | Uni: {{ f.uniformity }}%
+                          Count: {{ f.count }} | Avg: {{ f.average_weight | round | int }}g | Uni: {{ f.uniformity | round | int }}%
                         {% else %}
                           <span class="text-muted">N/A</span>
                         {% endif %}
@@ -153,9 +153,9 @@
                       <div class="card-body">
                         <div class="row g-3">
                           <div class="col-6"><strong>Count:</strong> {{ stat.count }}</div>
-                          <div class="col-6"><strong>Average:</strong> {{ stat.average_weight }}g</div>
-                          <div class="col-6"><strong>Uniformity:</strong> <mark class="fw-bold bg-yellow text-dark">{{ stat.uniformity }}%</mark></div>
-                          <div class="col-6"><strong>Range:</strong> {{ stat.lowest_weight }}g - {{ stat.highest_weight }}g</div>
+                          <div class="col-6"><strong>Average:</strong> {{ stat.average_weight | round | int }}g ({{ (stat.average_weight * 0.9) | round | int }}g - {{ (stat.average_weight * 1.1) | round | int }}g)</div>
+                          <div class="col-6"><strong>Uniformity:</strong> <mark class="fw-bold bg-yellow text-dark">{{ stat.uniformity | round | int }}%</mark></div>
+                          <div class="col-6"><strong>Range:</strong> {{ stat.lowest_weight | round | int }}g - {{ stat.highest_weight | round | int }}g</div>
 
                           <div class="col-12 mt-4">
                             <h4>Weight Distribution</h4>
