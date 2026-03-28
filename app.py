@@ -134,6 +134,14 @@ def inject_metadata():
         'build_date': DISPLAY_DATE
     }
 
+@app.template_filter('from_json')
+def from_json_filter(value):
+    import json
+    try:
+        return json.loads(value)
+    except:
+        return {}
+
 @app.template_filter('date_fmt')
 def date_fmt_filter(value):
     if value is None:
@@ -660,6 +668,26 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_male = db.Column(db.Integer, default=0)
     bw_female = db.Column(db.Integer, default=0)
 
+class FlockGrading(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
+    age_week = db.Column(db.Integer, nullable=False)
+    sex = db.Column(db.String(10), nullable=False) # 'Male' or 'Female'
+
+    # Statistics
+    count = db.Column(db.Integer, default=0)
+    average_weight = db.Column(db.Float, default=0.0)
+    uniformity = db.Column(db.Float, default=0.0)
+
+    # Limits
+    lowest_weight = db.Column(db.Float, default=0.0)
+    highest_weight = db.Column(db.Float, default=0.0)
+
+    # Bins Mapping in JSON
+    grading_bins = db.Column(db.Text, nullable=True) # e.g. '{"700": 5, "800": 10}'
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Hatchability(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
@@ -896,6 +924,9 @@ def init_ui_elements(commit=True):
         {'key': 'nav_health_sampling', 'label': 'Sampling', 'section': 'navbar_health', 'order': 2},
         {'key': 'nav_health_medication', 'label': 'Medication', 'section': 'navbar_health', 'order': 3},
         {'key': 'nav_health_notes', 'label': 'Clinical Notes', 'section': 'navbar_health', 'order': 4},
+
+        # Grading
+        {'key': 'nav_weight_grading', 'label': 'Weight Grading', 'section': 'navbar_main', 'order': 5},
 
         # Flock Card (Dashboard)
         {'key': 'card_details', 'label': 'See Details', 'section': 'flock_card', 'order': 1},
@@ -7283,6 +7314,201 @@ def get_weekly_data_aggregated(flocks):
     return final_data
 
 
+
+import math
+
+def calculate_grading_stats(weights):
+    if not weights:
+        return None
+
+    count = len(weights)
+    avg_weight = sum(weights) / count
+    lower_limit = avg_weight * 0.9
+    upper_limit = avg_weight * 1.1
+
+    in_range = sum(1 for w in weights if lower_limit <= w <= upper_limit)
+    uniformity = (in_range / count) * 100 if count > 0 else 0.0
+
+    lowest = min(weights)
+    highest = max(weights)
+
+    # Bins: Floor lowest to 100, ceil highest to 100
+    bin_min = int(math.floor(lowest / 100.0)) * 100
+    bin_max = int(math.ceil(highest / 100.0)) * 100
+
+    # Initialize bins with zero counts to ensure they're ordered
+    bins = {}
+    for b in range(bin_min, bin_max + 100, 100):
+        bins[str(b)] = 0
+
+    # Populate bins
+    for w in weights:
+        # Find which bin it belongs to
+        # Normally, a bin like 1500 means [1450, 1550) or [1500, 1600)?
+        # Looking at standard distributions, usually round to nearest 100
+        # If w = 1530, round(1530/100)*100 = 1500. Let's use standard rounding.
+        b_key = str(int(round(w / 100.0)) * 100)
+        if b_key in bins:
+            bins[b_key] += 1
+        else:
+            # Fallback if outside somehow
+            bins[b_key] = 1
+
+    return {
+        'count': count,
+        'average_weight': round(avg_weight, 2),
+        'uniformity': round(uniformity, 2),
+        'lowest_weight': lowest,
+        'highest_weight': highest,
+        'grading_bins': json.dumps(bins)
+    }
+
+@app.route('/upload_weights', methods=['POST'])
+@dept_required(['Farm', 'Management'])
+def upload_weights():
+    house_id = request.form.get('house_id')
+    age_week = request.form.get('age_week')
+
+    if not house_id or not age_week:
+        flash("House and Age Week are required.", "danger")
+        return redirect(url_for('weight_grading'))
+
+    if 'file' not in request.files:
+        flash("No file part.", "danger")
+        return redirect(url_for('weight_grading'))
+
+    file = request.files['file']
+    if file.filename == '':
+        flash("No selected file.", "danger")
+        return redirect(url_for('weight_grading'))
+
+    if file and (file.filename.endswith('.csv') or file.filename.endswith('.xlsx')):
+        try:
+            if file.filename.endswith('.csv'):
+                df_dict = {'Sheet1': pd.read_csv(file)}
+            else:
+                df_dict = pd.read_excel(file, sheet_name=None)
+
+            m_weights = []
+            f_weights = []
+
+            for sheet_name, df in df_dict.items():
+                # Try to determine sex from sheet name if possible, or assume mixed and check column headers
+                # Looking at the user's image, there's a file header "File: VB1-M P2"
+                # Sometimes it's in the rows. Let's look for 'Weight (g)' column and a 'File' column
+                # or just look at all columns that might contain weights.
+
+                # Identify if there's a column like "Weight [g]" or "Weight (g)"
+                weight_col = None
+                for col in df.columns:
+                    if 'weight' in str(col).lower():
+                        weight_col = col
+                        break
+
+                file_col = None
+                for col in df.columns:
+                    if 'file' in str(col).lower():
+                        file_col = col
+                        break
+
+                if weight_col:
+                    # If we have a file column, we can check row by row for 'M' or 'F'
+                    for index, row in df.iterrows():
+                        w = row[weight_col]
+                        # check if it's a valid number
+                        try:
+                            w = float(w)
+                            if pd.isna(w) or w <= 0:
+                                continue
+
+                            sex = None
+                            if file_col and pd.notna(row[file_col]):
+                                f_name = str(row[file_col]).upper()
+                                if '-M' in f_name or ' M ' in f_name or f_name.endswith(' M'):
+                                    sex = 'Male'
+                                elif '-F' in f_name or ' F ' in f_name or f_name.endswith(' F'):
+                                    sex = 'Female'
+
+                            if not sex:
+                                # Fallback to sheet name
+                                s_name = str(sheet_name).upper()
+                                if '-M' in s_name or ' M ' in s_name or s_name.endswith(' M'):
+                                    sex = 'Male'
+                                elif '-F' in s_name or ' F ' in s_name or s_name.endswith(' F'):
+                                    sex = 'Female'
+                                else:
+                                    # Default to Female if unknown? Or skip? Let's skip if we can't identify.
+                                    continue
+
+                            if sex == 'Male':
+                                m_weights.append(w)
+                            else:
+                                f_weights.append(w)
+                        except:
+                            continue
+
+            # Process and save
+            if m_weights:
+                stats = calculate_grading_stats(m_weights)
+                if stats:
+                    # Check if exists
+                    grading = FlockGrading.query.filter_by(house_id=house_id, age_week=age_week, sex='Male').first()
+                    if not grading:
+                        grading = FlockGrading(house_id=house_id, age_week=age_week, sex='Male')
+                        db.session.add(grading)
+
+                    grading.count = stats['count']
+                    grading.average_weight = stats['average_weight']
+                    grading.uniformity = stats['uniformity']
+                    grading.lowest_weight = stats['lowest_weight']
+                    grading.highest_weight = stats['highest_weight']
+                    grading.grading_bins = stats['grading_bins']
+
+            if f_weights:
+                stats = calculate_grading_stats(f_weights)
+                if stats:
+                    # Check if exists
+                    grading = FlockGrading.query.filter_by(house_id=house_id, age_week=age_week, sex='Female').first()
+                    if not grading:
+                        grading = FlockGrading(house_id=house_id, age_week=age_week, sex='Female')
+                        db.session.add(grading)
+
+                    grading.count = stats['count']
+                    grading.average_weight = stats['average_weight']
+                    grading.uniformity = stats['uniformity']
+                    grading.lowest_weight = stats['lowest_weight']
+                    grading.highest_weight = stats['highest_weight']
+                    grading.grading_bins = stats['grading_bins']
+
+            db.session.commit()
+            flash(f"Successfully processed weights. Males: {len(m_weights)}, Females: {len(f_weights)}", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error processing file: {str(e)}", "danger")
+    else:
+        flash("Invalid file format. Please upload .csv or .xlsx", "danger")
+
+    return redirect(url_for('weight_grading'))
+
+@app.route('/weight_grading', methods=['GET'])
+@dept_required(['Farm', 'Management'])
+def weight_grading():
+    houses = House.query.order_by(House.name).all()
+
+    # Fetch all records, sort by house name, then age week descending
+    records = db.session.query(FlockGrading, House.name).join(House).order_by(House.name, FlockGrading.age_week.desc()).all()
+
+    # Group by House -> Week -> Sex
+    # Result format: { 'House A': { 13: { 'Male': grading_obj, 'Female': grading_obj } } }
+    grouped_data = {}
+    for grading, house_name in records:
+        if house_name not in grouped_data:
+            grouped_data[house_name] = {}
+        if grading.age_week not in grouped_data[house_name]:
+            grouped_data[house_name][grading.age_week] = {}
+        grouped_data[house_name][grading.age_week][grading.sex] = grading
+
+    return render_template('weight_grading.html', houses=houses, grouped_data=grouped_data)
 
 @app.route('/additional_report')
 def additional_report():
