@@ -438,6 +438,48 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Generate Daily Report Modal -->
+<div class="modal modal-blur fade" id="generateReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Generate Daily House Report</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Report Date</label>
+          <input type="date" class="form-control" id="reportDate">
+        </div>
+
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label mb-0">Select Houses</label>
+            <a href="#" id="selectAllHouses" class="text-primary text-decoration-none">Select All</a>
+          </div>
+          <div class="row">
+            {% for flock in active_flocks %}
+            <div class="col-6 mb-2">
+              <label class="form-check">
+                <input class="form-check-input house-checkbox" type="checkbox" value="{{ flock.id }}" data-house-name="{{ flock.house.name }}">
+                <span class="form-check-label">{{ flock.house.name }}</span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="text-muted" style="font-size: 0.85rem;">
+          Tip: Images are automatically saved for 7 days for quick sharing.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary w-100" id="btnGenerateReport">Generate Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];

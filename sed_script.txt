@@ -1,0 +1,4 @@
+/<\/script>/ {
+  r patch_modal.txt
+  N
+}
