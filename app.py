@@ -2392,9 +2392,10 @@ def toggle_phase(id):
         diff_m = expected_m - actual_m
         diff_f = expected_f - actual_f
 
-        msg = f'Flock {flock.flock_id} switched to Production.'
-        if diff_m != 0 or diff_f != 0:
-            msg += f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.'
+        msg = (
+            f"Flock {flock.flock_id} switched to Production."
+            f"{f' Warning: Count Discrepancy (M: {diff_m}, F: {diff_f}). Baseline reset to {actual_m} M / {actual_f} F.' if (diff_m != 0 or diff_f != 0) else ''}"
+        )
 
         flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
     else:
@@ -3660,9 +3661,10 @@ def flock_hatchability(id):
 
                 db.session.commit()
 
-                msg = 'Hatchability record added.'
-                if large_window:
-                    msg += ' Note: Large collection window detected. Average Male Ratio may be affected.'
+                msg = (
+                    "Hatchability record added."
+                    f"{' Note: Large collection window detected. Average Male Ratio may be affected.' if large_window else ''}"
+                )
 
                 flash(msg, 'success' if not large_window else 'warning')
             except ValueError as e:
