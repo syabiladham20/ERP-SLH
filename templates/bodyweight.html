@@ -36,6 +36,26 @@
             <div class="tab-content">
                 <!-- Insert Tab -->
                 <div class="tab-pane active show" id="tab-insert">
+                    {% if not active_flocks %}
+                    <div class="empty">
+                        <div class="empty-img">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-circle text-muted" width="64" height="64" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <circle cx="12" cy="12" r="9" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <p class="empty-title">No Active Flocks</p>
+                        <p class="empty-subtitle text-muted">There are currently no active flocks assigned to your farm. You cannot enter bodyweight data until a flock is registered.</p>
+                        <div class="empty-action">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                Register New Flock
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
                     <form method="post" action="{{ url_for('health_log_bodyweight') }}">
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -128,10 +148,31 @@
                             <button type="submit" class="btn btn-primary">Save Bodyweight Data</button>
                         </div>
                     </form>
+                    {% endif %}
                 </div>
 
                 <!-- History Tab -->
                 <div class="tab-pane" id="tab-history">
+                    {% if not active_flocks %}
+                    <div class="empty">
+                        <div class="empty-img">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-circle text-muted" width="64" height="64" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                                <circle cx="12" cy="12" r="9" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <p class="empty-title">No Active Flocks</p>
+                        <p class="empty-subtitle text-muted">There are currently no active flocks assigned to your farm. Bodyweight grading history is unavailable.</p>
+                        <div class="empty-action">
+                            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                                Register New Flock
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
                     <!-- Filters and Controls -->
                     <div class="row mb-3 align-items-center">
                         <div class="col-md-6 mb-2 mb-md-0">
@@ -475,6 +516,7 @@
     </div>
   {% endfor %}
 {% endfor %}
+{% endif %}
 
 
 
@@ -548,6 +590,7 @@
 
         // Pass the log data from python to JS
         const logData = {{ bodyweight_logs | tojson | safe }};
+        if (!logData) return;
 
         function renderCharts(selectedHouse) {
             // Filter logs by house
