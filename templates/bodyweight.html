@@ -34,11 +34,11 @@
             <div class="tab-content">
                 <!-- Insert Tab -->
                 <div class="tab-pane active show" id="tab-insert">
-                    <form method="post" action="{{ url_for('weight_grading') }}">
+                    <form method="post" action="{{ url_for('bodyweight') }}">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label required">House</label>
-                                <select name="flock_id" class="form-select" required>
+                                <select name="flock_id" id="flock_id_select" class="form-select" required>
                                     <option value="">Select House</option>
                                     {% for f in active_flocks %}
                                         <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
@@ -47,7 +47,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label required">Date</label>
-                                <input type="date" name="date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                                <input type="date" name="date" id="date_input" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
                             </div>
                         </div>
 
@@ -55,11 +55,11 @@
                         <div class="row mb-3" id="standard_bw_section">
                             <div class="col-12 col-md-6">
                                 <label class="form-label text-muted small">Std Male BW</label>
-                                <input type="number" step="0.01" class="form-control" name="standard_bw_male">
+                                <input type="number" step="0.01" class="form-control bg-light" name="standard_bw_male" id="std_bw_male" readonly tabindex="-1">
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label text-muted small">Std Female BW</label>
-                                <input type="number" step="0.01" class="form-control" name="standard_bw_female">
+                                <input type="number" step="0.01" class="form-control bg-light" name="standard_bw_female" id="std_bw_female" readonly tabindex="-1">
                             </div>
                         </div>
 
@@ -186,6 +186,44 @@
     </div>
 </div>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const flockIdSelect = document.getElementById('flock_id_select');
+        const dateInput = document.getElementById('date_input');
+        const stdBwMale = document.getElementById('std_bw_male');
+        const stdBwFemale = document.getElementById('std_bw_female');
+
+        function fetchStandardBW() {
+            const flockId = flockIdSelect.value;
+            const dateStr = dateInput.value;
+
+            if (flockId && dateStr) {
+                fetch(`/api/get_standard_bw?flock_id=${flockId}&date=${dateStr}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && !data.error) {
+                            stdBwMale.value = data.std_bw_male || '';
+                            stdBwFemale.value = data.std_bw_female || '';
+                        } else {
+                            stdBwMale.value = '';
+                            stdBwFemale.value = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching standard BW:', error);
+                        stdBwMale.value = '';
+                        stdBwFemale.value = '';
+                    });
+            } else {
+                stdBwMale.value = '';
+                stdBwFemale.value = '';
+            }
+        }
+
+        flockIdSelect.addEventListener('change', fetchStandardBW);
+        dateInput.addEventListener('change', fetchStandardBW);
+        fetchStandardBW();
+    });
+
     function addPartition(sex) {
         for(let i=1; i<=8; i++) {
             let row = document.getElementById('row_' + sex + i);
