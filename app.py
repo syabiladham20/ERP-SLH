@@ -9469,8 +9469,9 @@ def backup_report_image():
 with app.app_context():
     try:
         db.create_all()
+        init_ui_elements(commit=True)
     except Exception as e:
-        app.logger.warning(f"Error during db.create_all(): {e}")
+        app.logger.warning(f"Error during db.create_all() or init_ui_elements(): {e}")
 
 
 
