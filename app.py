@@ -4897,6 +4897,9 @@ def seed_arbor_acres_standards():
 
         df_filtered = df[df['Age (Weeks)'] >= 25]
 
+        # Pre-fetch all existing standards into a dictionary keyed by week
+        existing_standards = {s.week: s for s in Standard.query.all()}
+
         count = 0
         for index, row in df_filtered.iterrows():
             week = int(row['Age (Weeks)'])
@@ -4911,10 +4914,11 @@ def seed_arbor_acres_standards():
             std_hatch_egg_pct = float(row['Std Hatching Egg %']) if 'Std Hatching Egg %' in row and pd.notna(row['Std Hatching Egg %']) else 0.0
 
             # Find or Create Standard
-            s = Standard.query.filter_by(week=week).first()
+            s = existing_standards.get(week)
             if not s:
                 s = Standard(week=week)
                 db.session.add(s)
+                existing_standards[week] = s
 
             # Update Fields
             s.production_week = prod_week
@@ -4957,6 +4961,9 @@ def seed_standards_from_file():
         # 27: Egg Weight (Empty)
         # 26: Hatchability (Empty)
 
+        # Pre-fetch existing standards to avoid N+1 queries
+        existing_standards = {s.week: s for s in Standard.query.all()}
+
         count = 0
         for index, row in df.iterrows():
             try:
@@ -4984,10 +4991,11 @@ def seed_standards_from_file():
             std_hatch = 0.0
 
             # Check existing
-            s = Standard.query.filter_by(week=week_val).first()
+            s = existing_standards.get(week_val)
             if not s:
                 s = Standard(week=week_val)
                 db.session.add(s)
+                existing_standards[week_val] = s
 
             s.std_mortality_male = std_mort # Using same for both sexes if only one col
             s.std_mortality_female = std_mort
