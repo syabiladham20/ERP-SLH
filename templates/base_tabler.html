@@ -343,6 +343,8 @@
                                                 {% elif h_item.key == 'nav_health_notes' %}
                                                     <div class="dropdown-divider"></div>
                                                     <a href="{{ url_for('post_mortem') }}" class="dropdown-item">{{ h_item.label }}</a>
+                                                {% elif h_item.key == 'nav_weight_grading' %}
+                                                    <a href="{{ url_for('bodyweight') }}" class="dropdown-item">{{ h_item.label }}</a>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
@@ -386,6 +388,8 @@
                                         {% elif h_item.key == 'nav_health_notes' %}
                                             <div class="dropdown-divider"></div>
                                             <a href="{{ url_for('post_mortem') }}" class="dropdown-item">{{ h_item.label }}</a>
+                                        {% elif h_item.key == 'nav_weight_grading' %}
+                                            <a href="{{ url_for('bodyweight') }}" class="dropdown-item">{{ h_item.label }}</a>
                                         {% endif %}
                                     {% endfor %}
                                 </div>

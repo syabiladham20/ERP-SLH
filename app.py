@@ -7578,7 +7578,7 @@ def upload_weights():
 
     if not house_id or not age_week:
         flash("House and Age Week are required.", "danger")
-        return redirect(url_for('weight_grading'))
+        return redirect(url_for('bodyweight'))
 
     if 'file' not in request.files:
         flash("No file part.", "danger")
@@ -7695,18 +7695,18 @@ def upload_weights():
     else:
         flash("Invalid file format. Please upload .csv or .xlsx", "danger")
 
-    return redirect(url_for('weight_grading'))
+    return redirect(url_for('bodyweight'))
 
 @app.route('/bodyweight', methods=['GET', 'POST'])
 @dept_required(['Farm', 'Management'])
-def weight_grading():
+def bodyweight():
     if request.method == 'POST':
         flock_id = request.form.get('flock_id')
         date_str = request.form.get('date')
 
         if not flock_id or not date_str:
             flash("House and Date are required.", "danger")
-            return redirect(url_for('weight_grading'))
+            return redirect(url_for('bodyweight'))
 
         try:
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -7760,7 +7760,7 @@ def weight_grading():
 
         db.session.commit()
         flash("Bodyweight data saved successfully.", "success")
-        return redirect(url_for('weight_grading'))
+        return redirect(url_for('bodyweight'))
 
     houses = House.query.order_by(House.name).all()
 
