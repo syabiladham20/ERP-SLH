@@ -1,0 +1,362 @@
+{% extends session.get('user_theme', 'base_tabler.html') %}
+{% block title %}Weight Grading - SLH Dashboard{% endblock %}
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none mb-3">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-scale-outline" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 20l10 0" /><path d="M6 6l6 -1l6 1" /><path d="M12 3v17" /><path d="M9 12l-3 -6l-3 6a3 3 0 0 0 6 0" /><path d="M21 12l-3 -6l-3 6a3 3 0 0 0 6 0" /></svg>
+                    Bodyweight
+                </h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                    Upload Weights
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+                <li class="nav-item">
+                    <a href="#tab-insert" class="nav-link active" data-bs-toggle="tab">Bodyweight Entry</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#tab-history" class="nav-link" data-bs-toggle="tab">Bodyweight Grading</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Insert Tab -->
+                <div class="tab-pane active show" id="tab-insert">
+                    <form method="post" action="{{ url_for('weight_grading') }}">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label required">House</label>
+                                <select name="flock_id" class="form-select" required>
+                                    <option value="">Select House</option>
+                                    {% for f in active_flocks %}
+                                        <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Date</label>
+                                <input type="date" name="date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+
+                        <!-- Standard BW -->
+                        <div class="row mb-3" id="standard_bw_section">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label text-muted small">Std Male BW</label>
+                                <input type="number" step="0.01" class="form-control" name="standard_bw_male">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label text-muted small">Std Female BW</label>
+                                <input type="number" step="0.01" class="form-control" name="standard_bw_female">
+                            </div>
+                        </div>
+
+                        <!-- Partitions Section -->
+                        <div id="partitions_section">
+                            <div class="row">
+                                <!-- Male Section -->
+                                <div class="col-md-6 border-end">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="text-primary mb-0">Male Partitions (Max 8)</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPartition('M')">+ Add</button>
+                                    </div>
+                                    {% for i in range(1, 9) %}
+                                    {% set show_style = 'display:flex;' if i <= 2 else 'display:none;' %}
+                                    <div class="row mb-2 partition-row-M" id="row_M{{i}}" style="{{ show_style }}">
+                                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">M{{i}}</span></div>
+                                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" onchange="calcAvg()"></div>
+                                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Unif" onchange="calcAvg()"></div>
+                                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('M', {{i}})">&times;</button></div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <!-- Female Section -->
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="text-danger mb-0">Female Partitions (Max 8)</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="addPartition('F')">+ Add</button>
+                                    </div>
+                                    {% for i in range(1, 9) %}
+                                    {% set show_style = 'display:flex;' if i <= 4 else 'display:none;' %}
+                                    <div class="row mb-2 partition-row-F" id="row_F{{i}}" style="{{ show_style }}">
+                                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">F{{i}}</span></div>
+                                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" onchange="calcAvg()"></div>
+                                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Unif" onchange="calcAvg()"></div>
+                                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('F', {{i}})">&times;</button></div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <hr>
+                        </div>
+
+                        <div class="row" id="average_section">
+                            <div class="col-12 col-md-6 mb-2">
+                                <label for="body_weight_male">Avg Male BW</label>
+                                <input type="number" step="0.01" class="form-control form-control-lg bg-light" name="body_weight_male" id="body_weight_male" placeholder="Avg Male BW" readonly>
+                            </div>
+                            <div class="col-12 col-md-6 mb-2">
+                                <label for="body_weight_female">Avg Female BW</label>
+                                <input type="number" step="0.01" class="form-control form-control-lg bg-light" name="body_weight_female" id="body_weight_female" placeholder="Avg Female BW" readonly>
+                            </div>
+                            <div class="col-12 col-md-6 mb-2">
+                                <label for="uniformity_male">Avg Male Unif %</label>
+                                <input type="number" step="0.01" class="form-control form-control-lg bg-light" name="uniformity_male" id="uniformity_male" placeholder="Avg Male Unif %" readonly>
+                            </div>
+                            <div class="col-12 col-md-6 mb-2">
+                                <label for="uniformity_female">Avg Female Unif %</label>
+                                <input type="number" step="0.01" class="form-control form-control-lg bg-light" name="uniformity_female" id="uniformity_female" placeholder="Avg Female Unif %" readonly>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-4">
+                            <button type="submit" class="btn btn-primary">Save Bodyweight Data</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- History Tab -->
+                <div class="tab-pane" id="tab-history">
+                    <div class="table-responsive">
+                        <table class="table card-table table-vcenter text-nowrap datatable table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>House</th>
+                                    <th>Age (Week)</th>
+                                    <th>Details (Male)</th>
+                                    <th>Details (Female)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for house, weeks in grouped_data.items() %}
+                                    {% for week, sexes in weeks.items() %}
+                                        <tr>
+                                            <td><strong>{{ house }}</strong></td>
+                                            <td>Week {{ week }}</td>
+                                            <td>
+                                                {% if 'Male' in sexes %}
+                                                    {% set m = sexes['Male'] %}
+                                                    <span class="badge bg-blue text-blue-fg me-1">M</span>
+                                                    Count: {{ m.count }} | Avg: {{ m.average_weight | round | int }}g | Uni: {{ m.uniformity | round | int }}%
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if 'Female' in sexes %}
+                                                    {% set f = sexes['Female'] %}
+                                                    <span class="badge bg-pink text-pink-fg me-1">F</span>
+                                                    Count: {{ f.count }} | Avg: {{ f.average_weight | round | int }}g | Uni: {{ f.uniformity | round | int }}%
+                                                {% else %}
+                                                    <span class="text-muted">N/A</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal_{{ house | replace(' ', '_') }}_{{ week }}">
+                                                    View Report
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">No grading data available.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function addPartition(sex) {
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_' + sex + i);
+            if(row && row.style.display === 'none') {
+                row.style.display = 'flex';
+                break;
+            }
+        }
+    }
+
+    function removePartition(sex, index) {
+        let row = document.getElementById('row_' + sex + index);
+        if(row) {
+            row.style.display = 'none';
+            let inputs = row.getElementsByTagName('input');
+            for(let inp of inputs) {
+                inp.value = '';
+            }
+            calcAvg();
+        }
+    }
+
+    function calcAvg() {
+        // Male
+        let m_sum = 0, m_cnt = 0;
+        let mu_sum = 0;
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_M' + i);
+            if(row && row.style.display !== 'none') {
+                let bw = parseFloat(document.getElementsByName('bw_M' + i)[0].value) || 0;
+                let uni = parseFloat(document.getElementsByName('uni_M' + i)[0].value) || 0;
+                if(bw > 0) {
+                    m_sum += bw;
+                    m_cnt++;
+                    mu_sum += uni;
+                }
+            }
+        }
+        document.getElementById('body_weight_male').value = m_cnt > 0 ? (m_sum / m_cnt).toFixed(2) : '';
+        document.getElementById('uniformity_male').value = m_cnt > 0 ? (mu_sum / m_cnt).toFixed(2) : '';
+
+        // Female
+        let f_sum = 0, f_cnt = 0;
+        let fu_sum = 0;
+        for(let i=1; i<=8; i++) {
+            let row = document.getElementById('row_F' + i);
+            if(row && row.style.display !== 'none') {
+                let bw = parseFloat(document.getElementsByName('bw_F' + i)[0].value) || 0;
+                let uni = parseFloat(document.getElementsByName('uni_F' + i)[0].value) || 0;
+                if(bw > 0) {
+                    f_sum += bw;
+                    f_cnt++;
+                    fu_sum += uni;
+                }
+            }
+        }
+        document.getElementById('body_weight_female').value = f_cnt > 0 ? (f_sum / f_cnt).toFixed(2) : '';
+        document.getElementById('uniformity_female').value = f_cnt > 0 ? (fu_sum / f_cnt).toFixed(2) : '';
+    }
+</script>
+
+<!-- Upload Modal -->
+<div class="modal modal-blur fade" id="uploadModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('upload_weights') }}" method="POST" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Upload Raw Weights</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <label class="form-label required">House</label>
+                <select name="house_id" class="form-select" required>
+                  <option value="">Select House...</option>
+                  {% for h in houses %}
+                    <option value="{{ h.id }}">{{ h.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="mb-3">
+                <label class="form-label required">Age (Week)</label>
+                <input type="number" class="form-control" name="age_week" required min="0" placeholder="e.g. 13">
+              </div>
+            </div>
+            <div class="col-lg-12">
+              <div class="mb-3">
+                <label class="form-label required">Weight File (.csv or .xlsx)</label>
+                <input type="file" class="form-control" name="file" accept=".csv, .xlsx" required>
+                <small class="form-hint">The file should contain columns like 'Weight (g)' and optionally 'File' to distinguish M/F. Or place M/F in sheet names.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary ms-auto">Upload & Process</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- View Modals -->
+{% for house, weeks in grouped_data.items() %}
+  {% for week, sexes in weeks.items() %}
+    <div class="modal modal-blur fade" id="viewModal_{{ house | replace(' ', '_') }}_{{ week }}" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Selection Report - {{ house }} (Week {{ week }})</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row row-cards">
+              {% for sex in ['Male', 'Female'] %}
+                {% if sex in sexes %}
+                  {% set stat = sexes[sex] %}
+                  <div class="col-md-6">
+                    <div class="card">
+                      <div class="card-header bg-{{ 'blue' if sex == 'Male' else 'pink' }}-lt">
+                        <h3 class="card-title">{{ sex }}</h3>
+                      </div>
+                      <div class="card-body">
+                        <div class="row g-3">
+                          <div class="col-6"><strong>Count:</strong> {{ stat.count }}</div>
+                          <div class="col-6"><strong>Average:</strong> {{ stat.average_weight | round | int }}g ({{ (stat.average_weight * 0.9) | round | int }}g - {{ (stat.average_weight * 1.1) | round | int }}g)</div>
+                          <div class="col-6"><strong>Uniformity:</strong> <mark class="fw-bold bg-yellow text-dark">{{ stat.uniformity | round | int }}%</mark></div>
+                          <div class="col-6"><strong>Range:</strong> {{ stat.lowest_weight | round | int }}g - {{ stat.highest_weight | round | int }}g</div>
+
+                          <div class="col-12 mt-4">
+                            <h4>Weight Distribution</h4>
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                              <table class="table table-sm table-bordered">
+                                <thead>
+                                  <tr>
+                                    <th>Weight (g)</th>
+                                    <th>Birds</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {% set bins = stat.grading_bins | from_json %}
+                                  {% for k, v in bins.items() %}
+                                    <tr>
+                                      <td>{{ k }}</td>
+                                      <td>{{ v }}</td>
+                                    </tr>
+                                  {% endfor %}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+{% endfor %}
+
+{% endblock %}

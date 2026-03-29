@@ -144,8 +144,23 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header sticky-header bg-success text-white">Feed</div>
+      <div class="card-header sticky-header bg-success text-white">Feed & Lighting</div>
       <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-12 col-md-6 mb-2">
+              <div class="form-floating">
+                <input type="time" class="form-control form-control-lg" name="light_on_time" id="light_on_time" placeholder="Light On" value="{{ log.light_on_time if log else '' }}">
+                <label for="light_on_time">Light On Time</label>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 mb-2">
+              <div class="form-floating">
+                <input type="time" class="form-control form-control-lg" name="light_off_time" id="light_off_time" placeholder="Light Off" value="{{ log.light_off_time if log else '' }}">
+                <label for="light_off_time">Light Off Time</label>
+              </div>
+            </div>
+        </div>
+        <hr>
         <div class="row mb-3">
             <div class="col-md-4">
                 <label class="form-label">Feed Program</label>
@@ -260,326 +275,67 @@
     </div>
 
     <div class="card mb-3">
-      <div class="card-header sticky-header bg-secondary text-white d-flex justify-content-between align-items-center">
-        <span>Body Weight & Uniformity</span>
-        <div class="form-check form-switch text-light">
-           <input class="form-check-input" type="checkbox" id="is_weighing_day" name="is_weighing_day" onchange="togglePartitions()" {{ 'checked' if log and log.is_weighing_day else '' }}>
-           <label class="form-check-label" for="is_weighing_day">Weighing Day</label>
-        </div>
-      </div>
+      <div class="card-header sticky-header bg-dark text-white">Remarks</div>
       <div class="card-body">
-        <div class="mb-3 form-check">
-            <input class="form-check-input" type="checkbox" name="selection_done" id="selection_done" {{ 'checked' if log and log.selection_done else '' }}>
-            <label class="form-check-label text-muted small" for="selection_done">
-                Selection Done
-            </label>
-        </div>
-        <!-- Standard BW -->
-        <div class="row mb-3" id="standard_bw_section">
-           <div class="col-12 col-md-6">
-             <label class="form-label text-muted small">Std Male BW</label>
-             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_male" value="{{ log.standard_bw_male if log and log.standard_bw_male else '' }}">
-           </div>
-           <div class="col-12 col-md-6">
-             <label class="form-label text-muted small">Std Female BW</label>
-             <input type="number" step="0.01" class="form-control form-control-sm" name="standard_bw_female" value="{{ log.standard_bw_female if log and log.standard_bw_female else '' }}">
-           </div>
-        </div>
-
-        <!-- Partitions Section (Hidden unless Weighing Day & Rearing) -->
-        <div id="partitions_section" style="display:none;">
-            <div class="row">
-                <!-- Male Section -->
-                <div class="col-md-6 border-end">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-primary mb-0">Male Partitions (Max 8)</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPartition('M')">+ Add</button>
-                    </div>
-                    {% for i in range(1, 9) %}
-                    {% set bw_val = get_partition_val(log, 'M' ~ i, 'bw') %}
-                    {% set uni_val = get_partition_val(log, 'M' ~ i, 'uni') %}
-                    <!-- If existing log has data, show it. Otherwise hide P3-P8 initially -->
-                    {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 2) else 'display:none;' %}
-                    <div class="row mb-2 partition-row-M" id="row_M{{i}}" style="{{ show_style }}">
-                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">M{{i}}</span></div>
-                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_M{{i}}" placeholder="BW" value="{{ bw_val or '' }}" onchange="calcAvg()"></div>
-                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_M{{i}}" placeholder="Unif" value="{{ uni_val or '' }}" onchange="calcAvg()"></div>
-                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('M', {{i}})">&times;</button></div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- Female Section -->
-                <div class="col-md-6">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-danger mb-0">Female Partitions (Max 8)</h6>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="addPartition('F')">+ Add</button>
-                    </div>
-                    {% for i in range(1, 9) %}
-                    {% set bw_val = get_partition_val(log, 'F' ~ i, 'bw') %}
-                    {% set uni_val = get_partition_val(log, 'F' ~ i, 'uni') %}
-                    {% set show_style = 'display:flex;' if (bw_val > 0 or i <= 4) else 'display:none;' %}
-                    <div class="row mb-2 partition-row-F" id="row_F{{i}}" style="{{ show_style }}">
-                        <div class="col-1 d-flex align-items-center"><span class="badge bg-light text-dark">F{{i}}</span></div>
-                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="bw_F{{i}}" placeholder="BW" value="{{ bw_val or '' }}" onchange="calcAvg()"></div>
-                        <div class="col-12 col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="uni_F{{i}}" placeholder="Unif" value="{{ uni_val or '' }}" onchange="calcAvg()"></div>
-                        <div class="col-2"><button type="button" class="btn btn-sm text-danger" onclick="removePartition('F', {{i}})">&times;</button></div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            <hr>
-        </div>
-
-        <div class="row" id="average_section">
-          <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="body_weight_male" id="body_weight_male" placeholder="Avg Male BW" value="{{ log.body_weight_male if log and log.body_weight_male else '' }}">
-              <label for="body_weight_male">Avg Male BW</label>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="body_weight_female" id="body_weight_female" placeholder="Avg Female BW" value="{{ log.body_weight_female if log and log.body_weight_female else '' }}">
-              <label for="body_weight_female">Avg Female BW</label>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="uniformity_male" id="uniformity_male" placeholder="Avg Male Unif %" value="{{ log.uniformity_male if log and log.uniformity_male else '' }}">
-              <label for="uniformity_male">Avg Male Unif %</label>
-            </div>
-          </div>
-          <div class="col-12 col-md-6 mb-2">
-            <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="uniformity_female" id="uniformity_female" placeholder="Avg Female Unif %" value="{{ log.uniformity_female if log and log.uniformity_female else '' }}">
-              <label for="uniformity_female">Avg Female Unif %</label>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-3">
-      <div class="card-header sticky-header bg-dark text-white">Other & Clinical</div>
-      <div class="card-body">
-        <div class="row mb-3">
-          <div class="col-12 col-md-6">
-            <label class="form-label">Light On</label>
-            <input type="time" class="form-control form-control-lg" name="light_on_time" value="{{ log.light_on_time if log else '' }}">
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label">Light Off</label>
-            <input type="time" class="form-control form-control-lg" name="light_off_time" value="{{ log.light_off_time if log else '' }}">
-          </div>
-        </div>
         <div class="mb-3">
-          <label class="form-label">Clinical Notes</label>
-          <textarea class="form-control form-control-lg" name="clinical_notes" rows="3">{{ log.clinical_notes if log else '' }}</textarea>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Photo Upload (Post-Mortem)</label>
-          <input type="file" class="form-control form-control-lg" name="photo" multiple accept="image/*">
-
-          {% if log and log.photos %}
-            <div class="mt-2">
-                <label class="small text-muted">Existing Photos:</label>
-                <ul class="list-group list-group-flush" id="photoList">
-                    {% for p in log.photos %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center p-2" id="photo-{{ p.id }}">
-                        <div class="text-truncate me-2">
-                            <a href="{{ url_for('uploaded_file', filename=p.file_path | basename) }}" target="_blank" class="text-decoration-none">
-                                {{ p.original_filename or (p.file_path | basename) }}
-                            </a>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePhoto({{ p.id }}, '{{ p.original_filename or (p.file_path | basename) }}')" title="Delete Photo">&times;</button>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-3">
-      <div class="card-header sticky-header bg-dark text-white d-flex justify-content-between align-items-center">
-        <span>Detailed Clinical Notes (Optional)</span>
-        <button type="button" class="btn btn-sm btn-light fw-bold" onclick="addNoteRow()">+ Add Note Group</button>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-light border small mb-3">
-            Add detailed notes with specific photos (e.g. "Lesions on liver"). These will appear as separate entries in the dashboard.
-        </div>
-
-        <div id="notes_container">
-            <!-- Dynamic rows -->
-            {% if log and log.clinical_notes_list %}
-                {% for note in log.clinical_notes_list %}
-                <div class="note-row border-bottom pb-3 mb-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <h6>Note Group {{ loop.index }}</h6>
-                        <!-- We use existing ID for updates -->
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteExistingNote({{ note.id }}, this)">Delete</button>
-                    </div>
-                    <input type="hidden" name="existing_note_id[]" value="{{ note.id }}">
-                    <div class="mb-2">
-                        <label class="form-label">Caption</label>
-                        <input type="text" class="form-control form-control-lg" name="existing_note_caption_{{ note.id }}" value="{{ note.caption }}">
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label">Add Photos</label>
-                        <input type="file" class="form-control form-control-lg" name="existing_note_photos_{{ note.id }}" multiple accept="image/*">
-                        {% if note.photos %}
-                        <div class="mt-1 small text-muted">
-                            Existing:
-                            {% for p in note.photos %}
-                                <a href="{{ url_for('uploaded_file', filename=p.file_path | basename) }}" target="_blank">{{ p.original_filename or 'Photo' }}</a>
-                                <button type="button" class="btn btn-link text-danger p-0 ms-1" style="font-size: 0.7rem; text-decoration: none;" onclick="deletePhoto({{ p.id }}, '{{ p.original_filename }}')">&times;</button>
-                                {{ "," if not loop.last }}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            {% endif %}
-        </div>
-
-        <!-- Template Row (Hidden) -->
-        <div id="note_template" style="display:none;">
-            <div class="note-row border-bottom pb-3 mb-3">
-                <div class="d-flex justify-content-between mb-2">
-                    <h6>New Note Group <span class="note-index"></span></h6>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeNoteRow(this)">Remove</button>
-                </div>
-                <!-- Using a counter for unique ID in this session -->
-                <input type="hidden" name="extra_note_index[]" value="" class="note-index-input">
-                <div class="mb-2">
-                    <label class="form-label">Caption</label>
-                    <input type="text" class="form-control note-caption-input" placeholder="Description...">
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Photos</label>
-                    <input type="file" class="form-control note-file-input" multiple accept="image/*">
-                </div>
-            </div>
+          <label class="form-label">Supervisor Notes for the Day</label>
+          <textarea class="form-control form-control-lg" name="remarks" rows="3" placeholder="Enter any general remarks or observations...">{{ log.remarks if log else '' }}</textarea>
         </div>
       </div>
     </div>
 
     {% if vaccines_due %}
     <div class="card mb-3 border-info">
-      <div class="card-header sticky-header bg-info text-white">Vaccinations (Pending / Done Today)</div>
-      <div class="card-body">
-        <div class="alert alert-light border small mb-2">
-            Below are vaccines scheduled around this date or marked as completed today.
-            Check the box to mark as <strong>Completed on {{ (log.date if log else selected_date) | date_fmt }}</strong>.
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-striped">
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Age</th>
-                        <th>Vaccine</th>
-                        <th>Est. Date</th>
-                        <th>Mark Completed</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in vaccines_due %}
-                    <tr class="{{ 'table-success' if v.actual_date else '' }}">
-                        <td>
-                            <input type="hidden" name="vaccine_present_ids" value="{{ v.id }}">
-                            {% if v.actual_date %}
-                                <span class="badge bg-success">Done</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ v.age_code }}</td>
-                        <td>{{ v.vaccine_name }}</td>
-                        <td>{{ v.est_date }}</td>
-                        <td>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="vaccine_completed_ids" value="{{ v.id }}" id="vac_{{ v.id }}" {{ 'checked' if v.actual_date else '' }}>
-                                <label class="form-check-label" for="vac_{{ v.id }}">Completed</label>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+      <div class="card-header sticky-header bg-info text-white d-flex justify-content-between align-items-center cursor-pointer" data-bs-toggle="collapse" data-bs-target="#vaccinesSection">
+        <span>Vaccinations (Pending / Done Today)</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-chevron-down text-white" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 9l6 6l6 -6" /></svg>
+      </div>
+      <div class="collapse" id="vaccinesSection">
+          <div class="card-body">
+            <div class="alert alert-light border small mb-2">
+                Below are vaccines scheduled around this date or marked as completed today.
+                Check the box to mark as <strong>Completed on {{ (log.date if log else selected_date) | date_fmt }}</strong>.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Age</th>
+                            <th>Vaccine</th>
+                            <th>Est. Date</th>
+                            <th>Mark Completed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in vaccines_due %}
+                        <tr class="{{ 'table-success' if v.actual_date else '' }}">
+                            <td>
+                                <input type="hidden" name="vaccine_present_ids" value="{{ v.id }}">
+                                {% if v.actual_date %}
+                                    <span class="badge bg-success">Done</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ v.age_code }}</td>
+                            <td>{{ v.vaccine_name }}</td>
+                            <td>{{ v.est_date }}</td>
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="vaccine_completed_ids" value="{{ v.id }}" id="vac_{{ v.id }}" {{ 'checked' if v.actual_date else '' }}>
+                                    <label class="form-check-label" for="vac_{{ v.id }}">Completed</label>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+          </div>
       </div>
     </div>
     {% endif %}
-
-    <div class="card mb-3">
-      <div class="card-header sticky-header bg-danger text-white d-flex justify-content-between align-items-center">
-        <span>Medication Record (Optional)</span>
-        <button type="button" class="btn btn-sm btn-light text-danger fw-bold" onclick="addMedicationRow()">+ Add Medication</button>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-light border small mb-3">
-            Fill this section only if you want to record a NEW medication usage or program starting/occurring today.
-            You can add multiple medications.
-        </div>
-
-        <div id="medication_container">
-            <!-- Dynamic rows will be added here -->
-        </div>
-
-        <!-- Template Row (Hidden) -->
-        <div id="medication_template" style="display:none;">
-            <div class="medication-row border-bottom pb-3 mb-3">
-                <div class="d-flex justify-content-between mb-2">
-                    <h6 class="text-danger">Medication Entry <span class="med-index">1</span></h6>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeMedicationRow(this)">Remove</button>
-                </div>
-                <div class="row">
-                    <div class="col-md-4 mb-2">
-                        <label class="form-label">Drug Name</label>
-                        <select class="form-select med-input med-select" name="med_inventory_id[]" onchange="toggleMedInput(this)">
-                            <option value="">-- Select from Inventory --</option>
-                            {% for item in medication_inventory %}
-                            <option value="{{ item.id }}" data-unit="{{ item.unit }}">{{ item.name }} ({{ item.current_stock }} {{ item.unit }})</option>
-                            {% endfor %}
-                            <option value="MANUAL">-- Enter Manually --</option>
-                        </select>
-                        <input type="text" class="form-control med-input med-manual mt-1" name="med_drug_name[]" placeholder="Enter Name" style="display:none;">
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label">Dosage</label>
-                        <input type="text" class="form-control med-input" name="med_dosage[]" placeholder="e.g. 10ml/100L">
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label">Amount Used</label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" class="form-control med-input" name="med_amount_qty[]" placeholder="Qty">
-                            <span class="input-group-text med-unit">-</span>
-                        </div>
-                        <input type="text" class="form-control med-input mt-1" name="med_amount_used[]" placeholder="Text (e.g. 500ml)">
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label">Start Date</label>
-                        <input type="date" class="form-control med-input" name="med_start_date[]" value="{{ log.date if log else '' }}">
-                    </div>
-                     <div class="col-md-2 mb-2">
-                        <label class="form-label">End Date</label>
-                        <input type="date" class="form-control med-input" name="med_end_date[]">
-                    </div>
-                </div>
-                <div class="mb-2">
-                     <label class="form-label">Remarks</label>
-                     <input type="text" class="form-control med-input" name="med_remarks[]" placeholder="Notes / Withdrawal Period">
-                </div>
-            </div>
-        </div>
-
-      </div>
-    </div>
 
     <div class="d-flex gap-2 mb-5">
         <button type="button" class="btn btn-primary flex-grow-1" onclick="triggerUpdateModal()">{{ 'Update Log' if log else 'Submit Log' }}</button>
@@ -775,7 +531,7 @@
              return;
         }
         {% endif %}
-        updatePhase();
+
     }
 
     function calculateWater() {
@@ -795,275 +551,12 @@
         document.getElementById('water_12h').innerText = consumption12h.toFixed(2);
     }
 
-    // Phase & Partition Logic
-    function updatePhase() {
-        let houseSelect = document.getElementById('house_id');
-        let phase = 'Rearing';
-        if (houseSelect && houseSelect.selectedIndex >= 0) {
-            let option = houseSelect.options[houseSelect.selectedIndex];
-            phase = option.getAttribute('data-phase') || 'Rearing';
-        } else {
-            // Fallback (though houseSelect should exist now)
-            let phaseInput = document.getElementById('phase_val');
-            phase = phaseInput ? phaseInput.value : 'Rearing';
-        }
-
-        let partitionsDiv = document.getElementById('partitions_section');
-        let avgDiv = document.getElementById('average_section');
-        let weighingCheck = document.getElementById('is_weighing_day');
-
-        if (phase === 'Production') {
-            partitionsDiv.style.display = 'none';
-            avgDiv.style.display = 'flex'; // Show row
-            setAvgReadonly(false);
-        } else {
-            togglePartitions();
-        }
-    }
-
-    function togglePartitions() {
-        let isWeighing = document.getElementById('is_weighing_day').checked;
-        let partitionsDiv = document.getElementById('partitions_section');
-        let avgDiv = document.getElementById('average_section');
-
-        // Double check phase
-        let houseSelect = document.getElementById('house_id');
-        let phase = 'Rearing';
-        if (houseSelect && houseSelect.selectedIndex >= 0) {
-             phase = houseSelect.options[houseSelect.selectedIndex].getAttribute('data-phase');
-        } else if (document.getElementById('phase_val')) {
-             phase = document.getElementById('phase_val').value;
-        }
-
-        if (phase === 'Production') {
-            partitionsDiv.style.display = 'none';
-            avgDiv.style.display = 'flex';
-            setAvgReadonly(false);
-            return;
-        }
-
-        if (isWeighing) {
-            partitionsDiv.style.display = 'block';
-            avgDiv.style.display = 'flex';
-            setAvgReadonly(true);
-            calcAvg();
-        } else {
-            partitionsDiv.style.display = 'none';
-            // "hide bodyweight column if there is no weighing that day"
-            avgDiv.style.display = 'none';
-        }
-    }
-
-    function setAvgReadonly(readonly) {
-        let ids = ['body_weight_male', 'body_weight_female', 'uniformity_male', 'uniformity_female'];
-        ids.forEach(id => {
-            let el = document.getElementById(id);
-            if(readonly) {
-                el.setAttribute('readonly', true);
-                el.classList.add('bg-light');
-            } else {
-                el.removeAttribute('readonly');
-                el.classList.remove('bg-light');
-            }
-        });
-    }
-
-    function addPartition(sex) {
-        // Find first hidden row
-        for(let i=1; i<=8; i++) {
-            let row = document.getElementById('row_' + sex + i);
-            if(row && row.style.display === 'none') {
-                row.style.display = 'flex';
-                break;
-            }
-        }
-    }
-
-    function removePartition(sex, index) {
-        let row = document.getElementById('row_' + sex + index);
-        if(row) {
-            row.style.display = 'none';
-            // Clear values
-            let inputs = row.getElementsByTagName('input');
-            for(let inp of inputs) {
-                inp.value = 0;
-            }
-            calcAvg();
-        }
-    }
-
-    function calcAvg() {
-        if (document.getElementById('partitions_section').style.display === 'none') return;
-
-        // Male
-        let m_sum = 0, m_cnt = 0;
-        let mu_sum = 0;
-
-        for(let i=1; i<=8; i++) {
-            let row = document.getElementById('row_M' + i);
-            if(row && row.style.display !== 'none') {
-                let bw = parseFloat(document.getElementsByName('bw_M' + i)[0].value) || 0;
-                let uni = parseFloat(document.getElementsByName('uni_M' + i)[0].value) || 0;
-                if(bw > 0) {
-                    m_sum += bw;
-                    m_cnt++;
-                    mu_sum += uni;
-                }
-            }
-        }
-        document.getElementById('body_weight_male').value = m_cnt > 0 ? (m_sum / m_cnt).toFixed(2) : '';
-        document.getElementById('uniformity_male').value = m_cnt > 0 ? (mu_sum / m_cnt).toFixed(2) : '';
-
-        // Female
-        let f_sum = 0, f_cnt = 0;
-        let fu_sum = 0;
-
-        for(let i=1; i<=8; i++) {
-            let row = document.getElementById('row_F' + i);
-            if(row && row.style.display !== 'none') {
-                let bw = parseFloat(document.getElementsByName('bw_F' + i)[0].value) || 0;
-                let uni = parseFloat(document.getElementsByName('uni_F' + i)[0].value) || 0;
-                if(bw > 0) {
-                    f_sum += bw;
-                    f_cnt++;
-                    fu_sum += uni;
-                }
-            }
-        }
-        document.getElementById('body_weight_female').value = f_cnt > 0 ? (f_sum / f_cnt).toFixed(2) : '';
-        document.getElementById('uniformity_female').value = f_cnt > 0 ? (fu_sum / f_cnt).toFixed(2) : '';
-    }
-
-    // Note Row Management
-    let noteIndex = 0;
-
-    function addNoteRow() {
-        noteIndex++;
-        let container = document.getElementById('notes_container');
-        let template = document.getElementById('note_template').innerHTML;
-
-        let newRow = document.createElement('div');
-        newRow.innerHTML = template;
-
-        // Update identifiers
-        newRow.querySelector('.note-index').textContent = noteIndex;
-
-        let idxInput = newRow.querySelector('.note-index-input');
-        idxInput.value = noteIndex;
-
-        let captionInput = newRow.querySelector('.note-caption-input');
-        captionInput.setAttribute('name', 'extra_note_caption_' + noteIndex);
-
-        let fileInput = newRow.querySelector('.note-file-input');
-        fileInput.setAttribute('name', 'extra_note_photos_' + noteIndex);
-
-        container.appendChild(newRow.firstElementChild);
-    }
-
-    function removeNoteRow(btn) {
-        let row = btn.closest('.note-row');
-        row.remove();
-    }
-
-    function deleteExistingNote(noteId, btn) {
-        document.getElementById('genericConfirmMessage').textContent = "Delete this entire note group and its photos?";
-        let btnConfirm = document.getElementById('genericConfirmBtn');
-        btnConfirm.onclick = function() {
-            let row = btn.closest('.note-row');
-            row.style.display = 'none';
-
-            // Remove inputs so they don't submit updates
-            let inputs = row.querySelectorAll('input');
-            inputs.forEach(i => i.disabled = true);
-
-            // Add to deleted list
-            let form = document.querySelector('form');
-            let input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'delete_note_ids[]';
-            input.value = noteId;
-            form.appendChild(input);
-        };
-        let modal = new bootstrap.Modal(document.getElementById('genericConfirmModal'));
-        modal.show();
-    }
-
-    // Medication Row Management
-    let medIndex = 0;
-
-    function addMedicationRow() {
-        medIndex++;
-        let container = document.getElementById('medication_container');
-        let template = document.getElementById('medication_template').innerHTML;
-
-        let newRow = document.createElement('div');
-        newRow.innerHTML = template;
-
-        // Update index label
-        newRow.querySelector('.med-index').textContent = medIndex;
-
-        container.appendChild(newRow.firstElementChild);
-    }
-
-    function removeMedicationRow(btn) {
-        let row = btn.closest('.medication-row');
-        row.remove();
-    }
-
-    function toggleMedInput(select) {
-        let row = select.closest('.row');
-        let manualInput = row.querySelector('.med-manual');
-        let unitLabel = row.querySelector('.med-unit');
-
-        if (select.value === 'MANUAL') {
-            manualInput.style.display = 'block';
-            unitLabel.textContent = '-';
-        } else {
-            manualInput.style.display = 'none';
-            // Set manual input value to empty so it doesn't override logic if we were using it logic-wise
-            manualInput.value = "";
-
-            // Update Unit Label
-            if (select.selectedIndex >= 0) {
-                let unit = select.options[select.selectedIndex].getAttribute('data-unit');
-                unitLabel.textContent = unit || '-';
-            }
-        }
-    }
-
     // Initialize
     window.onload = function() {
-        updatePhase();
-        // Add one empty medication row by default? No, user requested "add". Let's start empty or with one?
-        // Let's start with one empty row for convenience, or zero?
-        // Existing behavior was one set of fields. Let's add one row by default.
-        addMedicationRow();
-
         {% if not log %}
         prefillPreviousData();
         {% endif %}
     };
-
-    function deletePhoto(id, name) {
-        document.getElementById('genericConfirmMessage').textContent = "Are you sure you want to delete photo '" + name + "'?";
-        let btnConfirm = document.getElementById('genericConfirmBtn');
-        btnConfirm.onclick = function() {
-            fetch("{{ url_for('index') }}daily_log/photo/" + id + "/delete", {
-                method: "DELETE"
-            }).then(response => {
-                if(response.ok) {
-                    let el = document.getElementById("photo-" + id);
-                    if(el) el.remove();
-                } else {
-                    alert("Failed to delete photo.");
-                }
-            }).catch(err => {
-                alert("Error deleting photo: " + err);
-            });
-        };
-        let modal = new bootstrap.Modal(document.getElementById('genericConfirmModal'));
-        modal.show();
-    }
 
     let currentStockM = 0;
     let currentStockF = 0;

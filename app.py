@@ -463,6 +463,7 @@ class DailyLog(db.Model):
     feed_cleanup_end = db.Column(db.String(10), nullable=True) # HH:MM
     
     clinical_notes = db.Column(db.Text)
+    remarks = db.Column(db.Text)
     # photo_path removed, use relation 'photos'
     flushing = db.Column(db.Boolean, default=False)
     selection_done = db.Column(db.Boolean, default=False)
@@ -959,10 +960,10 @@ def init_ui_elements(commit=True):
         {'key': 'nav_health_vaccine', 'label': 'Vaccine', 'section': 'navbar_health', 'order': 1},
         {'key': 'nav_health_sampling', 'label': 'Sampling', 'section': 'navbar_health', 'order': 2},
         {'key': 'nav_health_medication', 'label': 'Medication', 'section': 'navbar_health', 'order': 3},
-        {'key': 'nav_health_notes', 'label': 'Clinical Notes', 'section': 'navbar_health', 'order': 4},
+        {'key': 'nav_health_notes', 'label': 'Post Mortem', 'section': 'navbar_health', 'order': 4},
 
         # Grading
-        {'key': 'nav_weight_grading', 'label': 'Weight Grading', 'section': 'navbar_main', 'order': 5},
+        {'key': 'nav_weight_grading', 'label': 'Bodyweight', 'section': 'navbar_main', 'order': 5},
 
         # Flock Card (Dashboard)
         {'key': 'card_details', 'label': 'See Details', 'section': 'flock_card', 'order': 1},
@@ -1687,9 +1688,63 @@ def history():
     inactive_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Inactive').order_by(Flock.intake_date.desc()).all()
     return render_template('flock_history.html', inactive_flocks=inactive_flocks)
 
-@app.route('/clinical_notes')
+@app.route('/post_mortem', methods=['GET', 'POST'])
 @dept_required('Farm')
-def clinical_notes():
+def post_mortem():
+    if request.method == 'POST':
+        flock_id = request.form.get('flock_id')
+        date_str = request.form.get('date')
+        clinical_notes = request.form.get('clinical_notes')
+
+        if not flock_id or not date_str:
+            flash("House and Date are required.", "danger")
+            return redirect(url_for('post_mortem'))
+
+        try:
+            log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash("Invalid date format.", "danger")
+            return redirect(url_for('post_mortem'))
+
+        # Find the existing log for this flock and date
+        log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
+
+        # If it doesn't exist, create an empty one (as long as it complies with constraints)
+        if not log:
+            log = DailyLog(flock_id=flock_id, date=log_date)
+            db.session.add(log)
+            db.session.flush() # get ID
+
+        if clinical_notes and clinical_notes.strip() and clinical_notes.strip().lower() not in EMPTY_NOTE_VALUES:
+            # If clinical_notes already exists, append or overwrite? User said update existing
+            # Let's append with newline if existing
+            if log.clinical_notes and log.clinical_notes.strip():
+                log.clinical_notes += "\n" + clinical_notes.strip()
+            else:
+                log.clinical_notes = clinical_notes.strip()
+
+        if 'photo' in request.files:
+            files = request.files.getlist('photo')
+            for file in files:
+                if file and file.filename != '':
+                    date_str_short = log.date.strftime('%y%m%d')
+                    raw_name = f"{log.flock.flock_id}_{date_str_short}_{file.filename}"
+                    filename = secure_filename(raw_name)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(filepath)
+
+                    new_photo = DailyLogPhoto(
+                        log_id=log.id,
+                        file_path=filepath,
+                        original_filename=file.filename
+                    )
+                    db.session.add(new_photo)
+
+        db.session.commit()
+        flash("Post Mortem details saved successfully.", "success")
+        return redirect(url_for('post_mortem'))
+
+    # Handle GET request (History view)
     house_id = request.args.get('house_id')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
@@ -1725,7 +1780,10 @@ def clinical_notes():
     logs = query.order_by(DailyLog.date.desc()).all()
     houses = House.query.order_by(House.name).all()
 
-    return render_template('clinical_notes.html', logs=logs, houses=houses)
+    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+
+    return render_template('post_mortem.html', logs=logs, houses=houses, active_flocks=active_flocks, today=date.today())
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
 @dept_required('Farm')
@@ -6073,11 +6131,12 @@ def update_log_from_request(log, req):
     log.feed_cleanup_start = req.form.get('feed_cleanup_start')
     log.feed_cleanup_end = req.form.get('feed_cleanup_end')
 
-    clin_notes = req.form.get('clinical_notes')
-    if clin_notes and clin_notes.strip() and clin_notes.strip().lower() not in EMPTY_NOTE_VALUES:
-        log.clinical_notes = clin_notes.strip()
+    # Only remarks is processed in the main daily log now (since clinical notes/post mortem was separated)
+    remarks_val = req.form.get('remarks')
+    if remarks_val and remarks_val.strip() and remarks_val.strip().lower() not in EMPTY_NOTE_VALUES:
+        log.remarks = remarks_val.strip()
     else:
-        log.clinical_notes = None
+        log.remarks = None
 
     if 'photo' in req.files:
         files = req.files.getlist('photo')
@@ -7628,10 +7687,75 @@ def upload_weights():
 
     return redirect(url_for('weight_grading'))
 
-@app.route('/weight_grading', methods=['GET'])
+@app.route('/bodyweight', methods=['GET', 'POST'])
 @dept_required(['Farm', 'Management'])
 def weight_grading():
+    if request.method == 'POST':
+        flock_id = request.form.get('flock_id')
+        date_str = request.form.get('date')
+
+        if not flock_id or not date_str:
+            flash("House and Date are required.", "danger")
+            return redirect(url_for('weight_grading'))
+
+        try:
+            log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash("Invalid date format.", "danger")
+            return redirect(url_for('weight_grading'))
+
+        log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
+        if not log:
+            log = DailyLog(flock_id=flock_id, date=log_date)
+            db.session.add(log)
+            db.session.flush()
+
+        log.is_weighing_day = True
+
+        # Male weights
+        if request.form.get('body_weight_male'):
+            log.body_weight_male = float(request.form.get('body_weight_male'))
+        if request.form.get('uniformity_male'):
+            log.uniformity_male = float(request.form.get('uniformity_male'))
+        if request.form.get('standard_bw_male'):
+            log.standard_bw_male = round_to_whole(request.form.get('standard_bw_male'))
+
+        # Female weights
+        if request.form.get('body_weight_female'):
+            log.body_weight_female = float(request.form.get('body_weight_female'))
+        if request.form.get('uniformity_female'):
+            log.uniformity_female = float(request.form.get('uniformity_female'))
+        if request.form.get('standard_bw_female'):
+            log.standard_bw_female = round_to_whole(request.form.get('standard_bw_female'))
+
+        # Save Partitions
+        existing_partitions = {pw.partition_name: pw for pw in log.partition_weights}
+
+        def save_partition(name, bw_str, unif_str):
+            bw = float(bw_str) if bw_str else 0
+            unif = float(unif_str) if unif_str else 0
+            if bw > 0:
+                if name in existing_partitions:
+                    existing_partitions[name].body_weight = bw
+                    existing_partitions[name].uniformity = unif
+                else:
+                    pw = PartitionWeight(log_id=log.id, partition_name=name, body_weight=bw, uniformity=unif)
+                    db.session.add(pw)
+            elif name in existing_partitions:
+                db.session.delete(existing_partitions[name])
+
+        for i in range(1, 9):
+            save_partition(f'M{i}', request.form.get(f'bw_M{i}'), request.form.get(f'uni_M{i}'))
+            save_partition(f'F{i}', request.form.get(f'bw_F{i}'), request.form.get(f'uni_F{i}'))
+
+        db.session.commit()
+        flash("Bodyweight data saved successfully.", "success")
+        return redirect(url_for('weight_grading'))
+
     houses = House.query.order_by(House.name).all()
+
+    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
+    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     # Fetch all records, sort by house name, then age week descending
     records = db.session.query(FlockGrading, House.name).join(House).order_by(House.name, FlockGrading.age_week.desc()).all()
@@ -7646,7 +7770,7 @@ def weight_grading():
             grouped_data[house_name][grading.age_week] = {}
         grouped_data[house_name][grading.age_week][grading.sex] = grading
 
-    return render_template('weight_grading.html', houses=houses, grouped_data=grouped_data)
+    return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, grouped_data=grouped_data, today=date.today())
 
 @app.route('/additional_report')
 def additional_report():
@@ -9059,6 +9183,8 @@ def api_daily_log_trend():
             duration = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
             if duration: feed_cleanup_hours = round(duration / 60.0, 1)
         except: pass
+
+    notes_str = log.remarks if log.remarks else "None"
 
     report_info = {
         'empty': False,
