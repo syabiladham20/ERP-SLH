@@ -4079,8 +4079,11 @@ def daily_log():
         log.flock = flock
         db.session.add(log)
 
+        alerts = {'ui_alerts': [], 'push_alerts': []}
         try:
-            update_log_from_request(log, request)
+            alerts = update_log_from_request(log, request)
+            if not alerts:
+                alerts = {'ui_alerts': [], 'push_alerts': []}
         except ValueError as e:
             db.session.rollback()
             if request.headers.get('Accept') == 'application/json':
@@ -4198,15 +4201,29 @@ def daily_log():
         try:
             db.session.commit()
             recalculate_flock_inventory(flock.id)
+
+            # Send push alerts after successful commit
+            if alerts.get('push_alerts'):
+                for alert in alerts['push_alerts']:
+                    try:
+                        send_push_alert(alert['user_id'], alert['title'], alert['body'], url=alert['url'])
+                    except Exception as e:
+                        app.logger.error(f"Failed to send push alert to user {alert['user_id']}: {str(e)}")
+
             if request.headers.get('Accept') == 'application/json':
                 house_status = check_daily_log_completion(flock.farm_id, log_date)
                 return jsonify({
                     'success': True,
                     'message': flash_msg,
                     'houses': house_status,
-                    'date': date_str
+                    'date': date_str,
+                    'ui_alerts': alerts.get('ui_alerts', [])
                 })
+
             flash(flash_msg, 'success')
+            if alerts.get('ui_alerts'):
+                for ui_alert in alerts['ui_alerts']:
+                    flash(ui_alert, 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         except Exception as e:
             db.session.rollback()
@@ -4693,8 +4710,11 @@ def edit_daily_log(id):
                     )
                     db.session.add(t)
 
+        alerts = {'ui_alerts': [], 'push_alerts': []}
         try:
-            update_log_from_request(log, request)
+            alerts = update_log_from_request(log, request)
+            if not alerts:
+                alerts = {'ui_alerts': [], 'push_alerts': []}
         except ValueError as e:
             db.session.rollback()
             if request.headers.get('Accept') == 'application/json':
@@ -4710,16 +4730,29 @@ def edit_daily_log(id):
         try:
             db.session.commit()
             recalculate_flock_inventory(log.flock_id)
+
+            if alerts.get('push_alerts'):
+                for alert in alerts['push_alerts']:
+                    try:
+                        send_push_alert(alert['user_id'], alert['title'], alert['body'], url=alert['url'])
+                    except Exception as e:
+                        app.logger.error(f"Failed to send push alert to user {alert['user_id']}: {str(e)}")
+
             if request.headers.get('Accept') == 'application/json':
                 house_status = check_daily_log_completion(log.flock.farm_id, log.date)
                 return jsonify({
                     'success': True,
                     'message': 'Log updated successfully.',
                     'houses': house_status,
-                    'date': log.date.strftime('%Y-%m-%d')
+                    'date': log.date.strftime('%Y-%m-%d'),
+                    'ui_alerts': alerts.get('ui_alerts', [])
                 })
-            flash('Log updated successfully.', 'success')
-            return redirect(url_for('edit_daily_log', id=id))
+
+            flash('Daily Log updated.', 'success')
+            if alerts.get('ui_alerts'):
+                for ui_alert in alerts['ui_alerts']:
+                    flash(ui_alert, 'danger')
+            return redirect(url_for('view_flock', id=log.flock_id))
         except Exception as e:
             db.session.rollback()
             if request.headers.get('Accept') == 'application/json':
@@ -5871,6 +5904,10 @@ def update_log_from_request(log, req):
     if log.mortality_female + log.culls_female > current_stock_f:
         raise ValueError(f"Female reductions (Mortality + Culls: {log.mortality_female + log.culls_female}) exceeds Current Stock ({current_stock_f}).")
 
+    # Output containers for alerts
+    ui_alerts = []
+    push_alerts = []
+
     # Automated Alerts: Mortality Spike
     alert_triggered = False
     mort_pct_m = 0.0
@@ -5880,13 +5917,13 @@ def update_log_from_request(log, req):
     if current_stock_m > 0:
         mort_pct_m = (log.mortality_male / current_stock_m) * 100
         if mort_pct_m > 0.5:
-            flash(f"ALERT: High Male Mortality Spike ({mort_pct_m:.2f}%) detected!", "danger")
+            ui_alerts.append(f"ALERT: High Male Mortality Spike ({mort_pct_m:.2f}%) detected!")
             alert_triggered = True
 
     if current_stock_f > 0:
         mort_pct_f = (log.mortality_female / current_stock_f) * 100
         if mort_pct_f > 0.5:
-            flash(f"ALERT: High Female Mortality Spike ({mort_pct_f:.2f}%) detected!", "danger")
+            ui_alerts.append(f"ALERT: High Female Mortality Spike ({mort_pct_f:.2f}%) detected!")
             alert_triggered = True
 
     if current_stock_f > 0 and getattr(log, 'eggs_collected', 0) > 0:
@@ -5935,12 +5972,9 @@ def update_log_from_request(log, req):
             # Notify all users
             all_users = User.query.all()
             for user in all_users:
-                try:
-                    # Provide a URL to deep link to the flock detail
-                    alert_url = url_for('view_flock', id=log.flock.id) if log.flock else '/'
-                    send_push_alert(user.id, title, body, url=alert_url)
-                except Exception as e:
-                    app.logger.error(f"Failed to send push alert to {user.username}: {str(e)}")
+                # Provide a URL to deep link to the flock detail
+                alert_url = url_for('view_flock', id=log.flock.id) if log.flock else '/'
+                push_alerts.append({'user_id': user.id, 'title': title, 'body': body, 'url': alert_url})
 
     # Feed Guardian Validation
     override = req.form.get('override_validation') == 'true'
@@ -6114,6 +6148,11 @@ def update_log_from_request(log, req):
     changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
     if changes:
         log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
+
+    return {
+        'ui_alerts': ui_alerts,
+        'push_alerts': push_alerts
+    }
 
 def save_note_photos(log, note, files):
     for file in files:
