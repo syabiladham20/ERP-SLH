@@ -1729,9 +1729,9 @@ def history():
     inactive_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Inactive').order_by(Flock.intake_date.desc()).all()
     return render_template('flock_history.html', inactive_flocks=inactive_flocks)
 
-@app.route('/post_mortem', methods=['GET', 'POST'])
+@app.route('/health_log/post_mortem', methods=['GET', 'POST'])
 @dept_required('Farm')
-def post_mortem():
+def health_log_post_mortem():
     if request.method == 'POST':
         flock_id = request.form.get('flock_id')
         date_str = request.form.get('date')
@@ -1739,13 +1739,13 @@ def post_mortem():
 
         if not flock_id or not date_str:
             flash("House and Date are required.", "danger")
-            return redirect(url_for('post_mortem'))
+            return redirect(url_for('health_log_post_mortem'))
 
         try:
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
             flash("Invalid date format.", "danger")
-            return redirect(url_for('post_mortem'))
+            return redirect(url_for('health_log_post_mortem'))
 
         # Find the existing log for this flock and date
         log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
@@ -1783,7 +1783,7 @@ def post_mortem():
 
         db.session.commit()
         flash("Post Mortem details saved successfully.", "success")
-        return redirect(url_for('post_mortem'))
+        return redirect(url_for('health_log_post_mortem'))
 
     # Handle GET request (History view)
     house_id = request.args.get('house_id')
@@ -1820,8 +1820,10 @@ def post_mortem():
 
     logs = query.order_by(DailyLog.date.desc()).all()
 
+    active_flocks = Flock.query.filter_by(status='Active').all()
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
+    houses = House.query.order_by(House.name).all()
     return render_template('post_mortem.html', logs=logs, houses=houses, active_flocks=active_flocks, today=date.today())
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
@@ -6661,7 +6663,7 @@ def health_log_sampling():
 
 @app.route('/health_log/medication', methods=['GET', 'POST'])
 def health_log_medication():
-    malaysia_tz = pytz.timezone('Asia/Kuala Lumpur')
+    malaysia_tz = pytz.timezone('Asia/Kuala_Lumpur')
     today = datetime.now(malaysia_tz).date()
     selected_flock_id = request.args.get('flock_id')
     edit_flock_id = request.args.get('edit_flock_id', type=int)
@@ -7617,7 +7619,7 @@ def upload_weights():
 
     if not house_id or not age_week:
         flash("House and Age Week are required.", "danger")
-        return redirect(url_for('bodyweight'))
+        return redirect(url_for('health_log_bodyweight'))
 
     if 'file' not in request.files:
         flash("No file part.", "danger")
@@ -7734,18 +7736,18 @@ def upload_weights():
     else:
         flash("Invalid file format. Please upload .csv or .xlsx", "danger")
 
-    return redirect(url_for('bodyweight'))
+    return redirect(url_for('health_log_bodyweight'))
 
-@app.route('/bodyweight', methods=['GET', 'POST'])
+@app.route('/health_log/bodyweight', methods=['GET', 'POST'])
 @dept_required(['Farm', 'Management'])
-def bodyweight():
+def health_log_bodyweight():
     if request.method == 'POST':
         flock_id = request.form.get('flock_id')
         date_str = request.form.get('date')
 
         if not flock_id or not date_str:
             flash("House and Date are required.", "danger")
-            return redirect(url_for('bodyweight'))
+            return redirect(url_for('health_log_bodyweight'))
 
         try:
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -7799,7 +7801,7 @@ def bodyweight():
 
         db.session.commit()
         flash("Bodyweight data saved successfully.", "success")
-        return redirect(url_for('bodyweight'))
+        return redirect(url_for('health_log_bodyweight'))
 
 
     active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))

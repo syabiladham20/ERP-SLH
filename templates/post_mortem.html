@@ -25,39 +25,49 @@
             <div class="tab-content">
                 <!-- Insert Tab -->
                 <div class="tab-pane active show" id="tab-insert">
-                    <form method="post" action="{{ url_for('post_mortem') }}" enctype="multipart/form-data">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label required">House</label>
-                                <select name="flock_id" class="form-select" required>
-                                    <option value="">Select House</option>
-                                    {% for f in active_flocks %}
-                                        <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
-                                    {% endfor %}
-                                </select>
+                    {% if active_flocks %}
+                        <form method="post" action="{{ url_for('health_log_post_mortem') }}" enctype="multipart/form-data">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label required">House</label>
+                                    <select name="flock_id" class="form-select" required>
+                                        <option value="">Select House</option>
+                                        {% for f in active_flocks %}
+                                            <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label required">Date</label>
+                                    <input type="date" name="date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label required">Date</label>
-                                <input type="date" name="date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                            <div class="mb-3">
+                                <label class="form-label">Post Mortem Details</label>
+                                <textarea name="clinical_notes" class="form-control" rows="4" placeholder="Enter post mortem details..."></textarea>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label">Photos</label>
+                                <input type="file" name="photo" class="form-control" multiple accept="image/*">
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">Save Post Mortem</button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="empty">
+                            <div class="empty-icon">
+                                <i class="ti ti-alert-circle"></i>
+                            </div>
+                            <p class="empty-title">No Active Flocks Found</p>
+                            <p class="empty-subtitle text-muted">Please ensure flocks are registered and marked as Active.</p>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Post Mortem Details</label>
-                            <textarea name="clinical_notes" class="form-control" rows="4" placeholder="Enter post mortem details..."></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Photos</label>
-                            <input type="file" name="photo" class="form-control" multiple accept="image/*">
-                        </div>
-                        <div class="text-end">
-                            <button type="submit" class="btn btn-primary">Save Post Mortem</button>
-                        </div>
-                    </form>
+                    {% endif %}
                 </div>
 
                 <!-- History Tab -->
                 <div class="tab-pane" id="tab-history">
-                    <form method="get" action="{{ url_for('post_mortem') }}" class="row g-3 align-items-end mb-4">
+                    <form method="get" action="{{ url_for('health_log_post_mortem') }}" class="row g-3 align-items-end mb-4">
                         <div class="col-md-3">
                             <label class="form-label">House</label>
                             <select name="house_id" class="form-select">
@@ -81,7 +91,7 @@
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-primary">Filter</button>
-                            <a href="{{ url_for('post_mortem') }}" class="btn btn-secondary">Reset</a>
+                            <a href="{{ url_for('health_log_post_mortem') }}" class="btn btn-secondary">Reset</a>
                         </div>
                     </form>
 
