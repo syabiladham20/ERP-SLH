@@ -140,6 +140,14 @@ if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Define human-readable labels for metrics
+METRIC_LABELS = {
+    'mortality_female_pct': 'Female Mortality',
+    'mortality_male_pct': 'Male Mortality',
+    'egg_production_pct': 'Egg Production Rate'
+}
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key')
@@ -6052,7 +6060,8 @@ def update_log_from_request(log, req):
         house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
         for rule in triggered_rules:
             title = f"Alert: {rule.name}"
-            body = f"{house_name}: {rule.metric} is {metric_values.get(rule.metric):.2f}% ({rule.operator} {rule.threshold}%)"
+            metric_label = METRIC_LABELS.get(rule.metric, rule.metric)
+            body = f"{house_name}: {rule.name} Alert! {metric_label} is {metric_values.get(rule.metric):.2f}% (Threshold: {rule.operator} {rule.threshold}%)"
 
             # Notify all users
             all_users = User.query.all()

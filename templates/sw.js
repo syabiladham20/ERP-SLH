@@ -56,11 +56,13 @@ self.addEventListener('push', function(event) {
     }
   }
 
-  const title = pushData.title || "SLH-OP Alert";
+  const title = "SLH-OP";
   const options = {
-    body: pushData.body || "You have a new alert.",
-    icon: '/static/icon-192.png',
-    badge: '/static/icon-192.png', // A small icon for Android status bar
+    body: pushData.body || "Alert: Check the dashboard for details.",
+    icon: '/static/img/icon-192.png',
+    badge: '/static/img/icon-192.png',
+    tag: 'farm-alert',
+    renotify: true,
     data: {
       url: pushData.url || '/'
     }
