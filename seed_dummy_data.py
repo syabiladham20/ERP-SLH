@@ -27,6 +27,7 @@ with app.app_context():
     if not flock:
         flock = Flock(
             house_id=house.id,
+            farm_id=1,
             flock_id="TestFlock",
             intake_date=date.today() - timedelta(days=300),
             intake_male=1000,
