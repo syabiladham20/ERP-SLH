@@ -342,7 +342,7 @@
                                                     <a href="{{ url_for('health_log_medication') }}" class="dropdown-item">{{ h_item.label }}</a>
                                                 {% elif h_item.key == 'nav_health_notes' %}
                                                     <div class="dropdown-divider"></div>
-                                                    <a href="{{ url_for('clinical_notes') }}" class="dropdown-item">{{ h_item.label }}</a>
+                                                    <a href="{{ url_for('post_mortem') }}" class="dropdown-item">{{ h_item.label }}</a>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
@@ -385,7 +385,7 @@
                                             <a href="{{ url_for('health_log_medication') }}" class="dropdown-item">{{ h_item.label }}</a>
                                         {% elif h_item.key == 'nav_health_notes' %}
                                             <div class="dropdown-divider"></div>
-                                            <a href="{{ url_for('clinical_notes') }}" class="dropdown-item">{{ h_item.label }}</a>
+                                            <a href="{{ url_for('post_mortem') }}" class="dropdown-item">{{ h_item.label }}</a>
                                         {% endif %}
                                     {% endfor %}
                                 </div>

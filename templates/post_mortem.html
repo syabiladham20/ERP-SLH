@@ -1,0 +1,175 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="page-header d-print-none mb-3">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">Post Mortem</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+                <li class="nav-item">
+                    <a href="#tab-insert" class="nav-link active" data-bs-toggle="tab">Insert Post Mortem</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#tab-history" class="nav-link" data-bs-toggle="tab">History Log</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Insert Tab -->
+                <div class="tab-pane active show" id="tab-insert">
+                    <form method="post" action="{{ url_for('post_mortem') }}" enctype="multipart/form-data">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label required">House</label>
+                                <select name="flock_id" class="form-select" required>
+                                    <option value="">Select House</option>
+                                    {% for f in active_flocks %}
+                                        <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Date</label>
+                                <input type="date" name="date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Post Mortem Details</label>
+                            <textarea name="clinical_notes" class="form-control" rows="4" placeholder="Enter post mortem details..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Photos</label>
+                            <input type="file" name="photo" class="form-control" multiple accept="image/*">
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Save Post Mortem</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- History Tab -->
+                <div class="tab-pane" id="tab-history">
+                    <form method="get" action="{{ url_for('post_mortem') }}" class="row g-3 align-items-end mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">House</label>
+                            <select name="house_id" class="form-select">
+                                <option value="">All Houses</option>
+                                {% for h in houses %}
+                                <option value="{{ h.id }}" {% if request.args.get('house_id')|int == h.id %}selected{% endif %}>{{ h.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Start Date</label>
+                            <input type="date" name="start_date" class="form-control" value="{{ request.args.get('start_date', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">End Date</label>
+                            <input type="date" name="end_date" class="form-control" value="{{ request.args.get('end_date', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control" placeholder="Keyword..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                            <a href="{{ url_for('post_mortem') }}" class="btn btn-secondary">Reset</a>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+                        <table class="table table-vcenter card-table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>House</th>
+                                    <th>Batch</th>
+                                    <th>Age</th>
+                                    <th>Post Mortem Details</th>
+                                    <th>Photos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td>{{ log.date | date_fmt }}</td>
+                                    <td>{{ log.flock.house.name }}</td>
+                                    <td><span class="text-muted">{{ log.flock.flock_id }}</span></td>
+                                    <td>{{ log.age_week_day }}</td>
+                                    <td>
+                                        {% if log.flushing %}
+                                            <span class="badge bg-warning text-dark me-1">FLUSHING</span>
+                                        {% endif %}
+                                        {{ log.clinical_notes or '-' }}
+                                    </td>
+                                    <td>
+                                        {% if log.photos %}
+                                            <a href="#" data-bs-toggle="modal" data-bs-target="#photoModal{{ log.id }}">
+                                                <img src="{{ url_for('uploaded_file', filename=log.photos[0].file_path|basename) }}"
+                                                     alt="Photo"
+                                                     class="img-thumbnail"
+                                                     style="max-height: 50px;">
+                                                {% if log.photos|length > 1 %}
+                                                    <span class="badge bg-secondary">+{{ log.photos|length - 1 }}</span>
+                                                {% endif %}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">No post mortem notes found matching criteria.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals must be outside the table -->
+{% for log in logs %}
+    {% if log.photos %}
+        <div class="modal fade" id="photoModal{{ log.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ log.date | date_fmt }} - {{ log.flock.house.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center">
+                        {% for photo in log.photos %}
+                            <div class="mb-3">
+                                <img src="{{ url_for('uploaded_file', filename=photo.file_path|basename) }}" class="img-fluid mb-2 rounded">
+                                {% if photo.original_filename %}
+                                    <small class="text-muted d-block">{{ photo.original_filename }}</small>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        {% if log.clinical_notes %}
+                        <div class="text-start mt-3 p-3 bg-light rounded">
+                            <strong>Details:</strong>
+                            <p class="mb-0 mt-1" style="white-space: pre-wrap;">{{ log.clinical_notes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endfor %}
+{% endblock %}

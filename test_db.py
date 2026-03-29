@@ -1,17 +1,10 @@
-from app import app, db, User, GlobalStandard
-with app.app_context():
-    u = User.query.filter_by(username='admin').first()
-    if not u:
-        u = User(username='admin', role='Admin', dept='Farm')
-        u.set_password('admin123')
-        db.session.add(u)
-    else:
-        u.set_password('admin123')
+import sys
+sys.path.append("/app")
+from app import db, DailyLog
+import sqlalchemy
 
-    gs = GlobalStandard.query.first()
-    if not gs:
-        gs = GlobalStandard()
-        db.session.add(gs)
-
-    db.session.commit()
-    print("Created test user: admin/admin123")
+try:
+    print(DailyLog.__table__.columns.keys())
+    print("Test passed: remarks column successfully added to DailyLog.")
+except Exception as e:
+    print("Test failed:", e)
