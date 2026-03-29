@@ -33,6 +33,7 @@ Before running the application for the first time, initialize the database:
 python init_db.py
 ```
 This creates `instance/farm.db` and populates initial House names.
+**Note**: The active production database for this application is always `./instance/farm.db`. Other database files (e.g., `db.sqlite3`, `farm.db`, `instance/erp.db`, `slhop.db`) should not be used.
 
 ## Running the Application
 
