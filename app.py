@@ -4,6 +4,7 @@ from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, and_, func, event
 from werkzeug.utils import secure_filename
+import pytz
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, timedelta
 import os
@@ -138,6 +139,7 @@ database_url = os.getenv('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
+basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev_key')
@@ -6620,7 +6622,8 @@ def health_log_sampling():
 
 @app.route('/health_log/medication', methods=['GET', 'POST'])
 def health_log_medication():
-    today = date.today()
+    malaysia_tz = pytz.timezone('Asia/Kuala Lumpur')
+    today = datetime.now(malaysia_tz).date()
     selected_flock_id = request.args.get('flock_id')
     edit_flock_id = request.args.get('edit_flock_id', type=int)
 
@@ -6760,7 +6763,8 @@ def health_log_medication():
         selected_flock_id=int(selected_flock_id) if selected_flock_id else None,
         edit_flock_id=edit_flock_id,
         flock_tasks=flock_tasks,
-        medication_inventory=medication_inventory
+        medication_inventory=medication_inventory,
+        today=today
     )
 
 @app.route('/api/metrics')

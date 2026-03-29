@@ -9,3 +9,4 @@ verification/
 test-env/
 venv/
 node_modules/
+trash_bin/
