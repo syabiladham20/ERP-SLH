@@ -1018,11 +1018,11 @@ def init_ui_elements(commit=True):
         {'key': 'detail_health', 'label': 'Health Log', 'section': 'flock_detail', 'order': 5},
     ]
 
-    # Bulk fetch existing keys to avoid N+1 queries
-    existing_keys = {e.key for e in db.session.query(UIElement.key).all()}
+    # Bulk fetch existing elements to avoid N+1 queries
+    existing_elements = {e.key: e for e in UIElement.query.all()}
 
     for elem in default_elements:
-        if elem['key'] not in existing_keys:
+        if elem['key'] not in existing_elements:
             new_elem = UIElement(
                 key=elem['key'],
                 label=elem['label'],
@@ -1030,6 +1030,13 @@ def init_ui_elements(commit=True):
                 order_index=elem['order']
             )
             db.session.add(new_elem)
+        else:
+            # Update existing element properties if they differ
+            existing = existing_elements[elem['key']]
+            if existing.label != elem['label'] or existing.section != elem['section'] or existing.order_index != elem['order']:
+                existing.label = elem['label']
+                existing.section = elem['section']
+                existing.order_index = elem['order']
 
     if commit:
         db.session.commit()
