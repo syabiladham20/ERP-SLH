@@ -62,12 +62,15 @@
                     {{ log.clinical_notes or '' }}
                 </td>
                 <td>
-                    {% if log.photo_path %}
+                    {% if log.photos %}
                         <a href="#" data-bs-toggle="modal" data-bs-target="#photoModal{{ log.id }}">
-                            <img src="{{ url_for('uploaded_file', filename=log.photo_path|basename) }}"
+                            <img src="{{ url_for('uploaded_file', filename=log.photos[0].file_path|basename) }}"
                                  alt="Photo"
                                  class="img-thumbnail"
                                  style="max-height: 50px;">
+                            {% if log.photos|length > 1 %}
+                                <span class="badge bg-secondary">+{{ log.photos|length - 1 }}</span>
+                            {% endif %}
                         </a>
 
                         <!-- Modal -->
@@ -78,7 +81,14 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body text-center">
-                                        <img src="{{ url_for('uploaded_file', filename=log.photo_path|basename) }}" class="img-fluid">
+                                        {% for photo in log.photos %}
+                                            <div class="mb-3">
+                                                <img src="{{ url_for('uploaded_file', filename=photo.file_path|basename) }}" class="img-fluid mb-2">
+                                                {% if photo.original_filename %}
+                                                    <small class="text-muted d-block">{{ photo.original_filename }}</small>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
                                         <p class="mt-2">{{ log.clinical_notes }}</p>
                                     </div>
                                 </div>
