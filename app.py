@@ -202,6 +202,47 @@ def serve_sw():
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     return response
 
+@app.route('/api/get_standard_bw')
+@login_required
+def get_standard_bw():
+    flock_id = request.args.get('flock_id', type=int)
+    date_str = request.args.get('date')
+
+    if not flock_id or not date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+
+    flock = db.session.get(Flock, flock_id)
+    if not flock:
+        return jsonify({'error': 'Flock not found'}), 404
+
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format'}), 400
+
+    # Calculate exact age in weeks
+    delta = (target_date - flock.intake_date).days
+    if delta < 0:
+        return jsonify({'error': 'Date is before intake date'}), 400
+
+    weeks = delta // 7
+
+    # Find standard for this week
+    std = Standard.query.filter_by(week=weeks).first()
+
+    if std:
+        return jsonify({
+            'week': weeks,
+            'std_bw_male': std.std_bw_male,
+            'std_bw_female': std.std_bw_female
+        })
+    else:
+        return jsonify({
+            'week': weeks,
+            'std_bw_male': '',
+            'std_bw_female': ''
+        })
+
 @app.route('/api/version')
 def get_version():
     return jsonify({'version': APP_VERSION})
