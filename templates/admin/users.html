@@ -16,7 +16,10 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Username</th>
+<<<<<<< HEAD
                             <th>Name</th>
+=======
+>>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                             <th>Department</th>
                             <th>Role</th>
                             <th>Actions</th>
@@ -26,7 +29,10 @@
                         {% for user in users %}
                         <tr>
                             <td>{{ user.username }}</td>
+<<<<<<< HEAD
                             <td>{{ user.name or '' }}</td>
+=======
+>>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                             <td>
                                 <span class="badge
                                    {% if user.dept == 'Admin' %}bg-danger{% elif user.dept == 'Farm' %}bg-success{% else %}bg-warning text-dark{% endif %}">
@@ -57,10 +63,13 @@
                                                 </div>
                                                 <div class="modal-body text-start">
                                                     <div class="mb-3">
+<<<<<<< HEAD
                                                         <label class="form-label">Name</label>
                                                         <input type="text" class="form-control" name="name" value="{{ user.name or '' }}">
                                                     </div>
                                                     <div class="mb-3">
+=======
+>>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                                                         <label class="form-label">Department</label>
                                                         <select class="form-select" name="dept">
                                                             <option value="Admin" {% if user.dept == 'Admin' %}selected{% endif %}>Admin</option>
@@ -150,10 +159,13 @@
                         <input type="text" class="form-control" name="username" required>
                     </div>
                     <div class="mb-3">
+<<<<<<< HEAD
                         <label class="form-label">Name (Display Name)</label>
                         <input type="text" class="form-control" name="name">
                     </div>
                     <div class="mb-3">
+=======
+>>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                         <label class="form-label">Password</label>
                         <input type="password" class="form-control" name="password" required>
                     </div>
