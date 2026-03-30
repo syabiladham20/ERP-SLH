@@ -1,10 +1,6 @@
 from flask import Flask
 from flask import render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
-<<<<<<< HEAD
-from flask_login import current_user, LoginManager, login_required, login_user, logout_user
-=======
 from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
@@ -79,9 +75,6 @@ def dept_required(required_dept):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-<<<<<<< HEAD
-            user_dept = session.get('user_dept')
-=======
             if not current_user.is_authenticated:
                 if request.path == url_for('login'): # Avoid loop
                     return f(*args, **kwargs)
@@ -93,7 +86,6 @@ def dept_required(required_dept):
                 return redirect(url_for('login'))
 
             user_dept = current_user.dept
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
             # Super Admin can access everything
             if user_dept == 'Admin':
@@ -108,21 +100,6 @@ def dept_required(required_dept):
                 if user_dept == required_dept:
                     return f(*args, **kwargs)
 
-<<<<<<< HEAD
-            # If guest (None)
-            if user_dept is None:
-                if request.path == url_for('login'): # Avoid loop
-                    return f(*args, **kwargs)
-
-                # Prevent duplicate flash messages
-                flashes = session.get('_flashes', [])
-                if not any(category == 'info' and msg == "Please log in to continue." for category, msg in flashes):
-                    flash("Please log in to continue.", "info")
-
-                return redirect(url_for('login'))
-
-=======
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             # If user is logged in but wrong department
             dept_str = ', '.join(required_dept) if isinstance(required_dept, (list, tuple)) else required_dept
             flash(f"Access Denied: You do not have permission to view the {dept_str} Department", "danger")
@@ -140,18 +117,6 @@ def dept_required(required_dept):
         return decorated_function
     return decorator
 
-<<<<<<< HEAD
-app = Flask(__name__)
-
-# 1. Initialize the Manager (Moved up to avoid NameError when calling init_app)
-login_manager = LoginManager()
-
-# 2. Attach it to your App
-login_manager.init_app(app)
-
-# 3. Tell it where to go if someone isn't logged in
-login_manager.login_view = 'login'
-=======
 
 app = Flask(__name__)
 
@@ -165,7 +130,6 @@ login_manager.login_message_category = "info"
 def load_user(user_id):
     return User.query.get(int(user_id))
 
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_url = os.getenv('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -303,11 +267,7 @@ def subscribe():
     if not existing:
         new_sub = PushSubscription(user_id=user_id, subscription_json=sub_str)
         db.session.add(new_sub)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     return jsonify({'success': True}), 201
 
@@ -322,11 +282,7 @@ def unsubscribe():
     sub_str = json.dumps(subscription_info)
 
     PushSubscription.query.filter_by(user_id=user_id, subscription_json=sub_str).delete()
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     return jsonify({'success': True}), 200
 
@@ -339,11 +295,6 @@ def offline_mirror():
     return render_template('offline_mirror.html')
 
 
-<<<<<<< HEAD
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-=======
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -362,7 +313,6 @@ def safe_commit():
 
 
 
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 # Enable WAL Mode for SQLite
 from sqlalchemy.engine import Engine
 
@@ -404,22 +354,14 @@ class NotificationRule(db.Model):
     threshold = db.Column(db.Float, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
 
-<<<<<<< HEAD
-from flask_login import UserMixin
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=True)
-=======
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     password_hash = db.Column(db.String(200), nullable=False)
     dept = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
     theme = db.Column(db.String(50), default='base_tabler.html')
+    farm_id = db.Column(db.Integer, nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -427,15 +369,6 @@ class User(db.Model, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-<<<<<<< HEAD
-# 4. The "User Loader" (Crucial for current_user to work)
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-
-=======
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
@@ -1126,11 +1059,7 @@ def init_ui_elements(commit=True):
                 existing.order_index = elem['order']
 
     if commit:
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     else:
         db.session.flush()
 
@@ -1178,11 +1107,7 @@ def initialize_sampling_schedule(flock_id, commit=True):
         db.session.add(event)
 
     if commit:
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     else:
         db.session.flush()
 
@@ -1198,11 +1123,7 @@ def initialize_users():
             )
             user.set_password(u_data['password'])
             db.session.add(user)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
 def initialize_vaccine_schedule(flock_id, commit=True):
     flock = Flock.query.get(flock_id)
@@ -1284,11 +1205,7 @@ def initialize_vaccine_schedule(flock_id, commit=True):
         db.session.add(v)
 
     if commit:
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     else:
         db.session.flush()
 
@@ -1304,12 +1221,6 @@ def inject_system_health():
 
     return dict(system_health_logs=logs)
 
-<<<<<<< HEAD
-@app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback() # Crucial: stops the database from getting stuck
-    return render_template('errors/500.html', error=error), 500
-=======
 @app.before_request
 def load_logged_in_user():
     # Keep the global variables set based on current_user
@@ -1343,7 +1254,6 @@ def load_logged_in_user():
             session['user_dept'] = admin.dept
             session['user_role'] = admin.role
             session['is_admin'] = (admin.role == 'Admin')
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -1357,21 +1267,11 @@ def login():
 
         user = User.query.filter_by(username=username).first()
 
-<<<<<<< HEAD
-
-        if user and user.check_password(password):
-            session.clear() # Clear BEFORE logging in so Flask-Login keys aren't deleted
-            login_user(user, remember=remember)
-            session['user_id'] = user.id
-
-            session['user_name'] = user.name if user.name else user.username
-=======
         if user and user.check_password(password):
             session.clear()
             login_user(user, remember=remember)
             session['user_id'] = user.id
             session['user_name'] = user.username
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             session['user_dept'] = user.dept
             session['user_role'] = user.role
             session['is_admin'] = (user.role == 'Admin')
@@ -1381,11 +1281,7 @@ def login():
             else:
                 session.permanent = False
 
-<<<<<<< HEAD
-            flash(f"Welcome back, {session['user_name']}!", "success")
-=======
             flash(f"Welcome back, {user.username}!", "success")
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
             if user.dept == 'Hatchery':
                 return redirect(url_for('hatchery_dashboard'))
@@ -1432,11 +1328,7 @@ def settings():
     for n in notifications:
         if not n.is_read:
             n.is_read = True
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     # Pass vapid public key
     vapid_public_key = os.getenv('VAPID_PUBLIC_KEY', '')
@@ -1456,11 +1348,7 @@ def send_push_alert(user_id, title, body, url=None, transient=False):
                 url=url
             )
             db.session.add(new_notification)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         except Exception as e:
             app.logger.warning(f"Failed to log notification history: {e}")
             db.session.rollback()
@@ -1498,11 +1386,7 @@ def send_push_alert(user_id, title, body, url=None, transient=False):
             if hasattr(ex, 'response') and ex.response and ex.response.status_code in [403, 404, 410]:
                 app.logger.debug(f"Cleaning up invalid push subscription (Status {ex.response.status_code})")
                 db.session.delete(sub)
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             elif hasattr(ex, 'response') and ex.response and ex.response.status_code >= 500:
                 app.logger.error(f"WebPush Critical Error: {repr(ex)}")
             else:
@@ -1527,49 +1411,6 @@ def test_notification():
         app.logger.error(f"Failed to send test push: {e}")
         return jsonify({'error': str(e)}), 500
 
-<<<<<<< HEAD
-@app.route('/settings/profile', methods=['POST'])
-@login_required
-def profile_update():
-    user = User.query.get(session['user_id'])
-
-    current_password = request.form.get('current_password')
-    name = request.form.get('name')
-    username = request.form.get('username')
-    new_password = request.form.get('new_password')
-    confirm_password = request.form.get('confirm_password')
-
-    if not user or not user.check_password(current_password):
-        flash("Incorrect current password. Profile not updated.", "danger")
-        return redirect(url_for('settings'))
-
-    # Update username and name
-    if username and username != user.username:
-        existing = User.query.filter_by(username=username).first()
-        if existing and existing.id != user.id:
-            flash("Username is already taken.", "danger")
-            return redirect(url_for('settings'))
-        user.username = username
-
-    user.name = name
-
-    # Update password if provided
-    if new_password:
-        if new_password != confirm_password:
-            flash("New passwords do not match. Profile not updated.", "danger")
-            return redirect(url_for('settings'))
-        user.set_password(new_password)
-
-    db.session.commit()
-
-    # Update session name
-    session['user_name'] = user.name if user.name else user.username
-
-    flash("Profile updated successfully.", "success")
-    return redirect(url_for('settings'))
-
-=======
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():
     if not session.get('user_id'):
@@ -1588,11 +1429,7 @@ def change_password():
             flash("New passwords do not match.", "danger")
         else:
             user.set_password(new_password)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash("Password updated successfully.", "success")
             return redirect(url_for('index'))
 
@@ -1652,11 +1489,7 @@ def manage_rules():
             is_active=is_active
         )
         db.session.add(rule)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"Rule '{name}' added successfully.", "success")
         return redirect(url_for('manage_rules'))
 
@@ -1724,11 +1557,7 @@ def delete_notification_rule(id):
 
     rule = NotificationRule.query.get_or_404(id)
     db.session.delete(rule)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash("Rule deleted.", "info")
     return redirect(url_for('manage_rules'))
 
@@ -1745,10 +1574,6 @@ def admin_user_add():
     if not session.get('is_admin'): return redirect(url_for('index'))
 
     username = request.form.get('username')
-<<<<<<< HEAD
-    name = request.form.get('name')
-=======
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     password = request.form.get('password')
     dept = request.form.get('dept')
     role = request.form.get('role')
@@ -1756,17 +1581,10 @@ def admin_user_add():
     if User.query.filter_by(username=username).first():
         flash(f"User {username} already exists.", "warning")
     else:
-<<<<<<< HEAD
-        u = User(username=username, name=name, dept=dept, role=role)
-        u.set_password(password)
-        db.session.add(u)
-        db.session.commit()
-=======
         u = User(username=username, dept=dept, role=role)
         u.set_password(password)
         db.session.add(u)
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"User {username} added.", "success")
     return redirect(url_for('admin_users'))
 
@@ -1775,27 +1593,12 @@ def admin_user_edit(user_id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
-<<<<<<< HEAD
-    name = request.form.get('name')
-    dept = request.form.get('dept')
-    role = request.form.get('role')
-
-    user.name = name
-    user.dept = dept
-    user.role = role
-    db.session.commit()
-
-    if user.id == session.get('user_id'):
-        session['user_name'] = user.name if user.name else user.username
-
-=======
     dept = request.form.get('dept')
     role = request.form.get('role')
 
     user.dept = dept
     user.role = role
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash(f"User {user.username} updated.", "success")
     return redirect(url_for('admin_users'))
 
@@ -1808,11 +1611,7 @@ def admin_user_delete(user_id):
         flash("Cannot delete yourself.", "danger")
     else:
         db.session.delete(user)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"User {user.username} deleted.", "info")
     return redirect(url_for('admin_users'))
 
@@ -1824,11 +1623,7 @@ def admin_user_reset_password(user_id):
     new_pass = request.form.get('new_password')
     if new_pass:
         user.set_password(new_pass)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"Password for {user.username} has been reset.", "success")
     else:
         flash("Password cannot be empty.", "danger")
@@ -1843,12 +1638,6 @@ def admin_project_report():
     return render_template('admin/project_report.html')
 
 @app.route('/hatchery')
-<<<<<<< HEAD
-@dept_required('Hatchery')
-def hatchery_dashboard():
-    active_flocks = Flock.query.filter_by(status='Active', phase='Production').all()
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 @login_required
 @dept_required('Hatchery')
 def hatchery_dashboard():
@@ -1856,7 +1645,6 @@ def hatchery_dashboard():
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
@@ -1877,10 +1665,7 @@ def hatchery_dashboard():
     return render_template('hatchery_dashboard.html', active_flocks=active_flocks, avg_hatch_pct=avg_hatch_pct, current_month=today.strftime('%B %Y'))
 
 @app.route('/')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def index():
     active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
@@ -1890,13 +1675,9 @@ def index():
     low_stock_count = len(low_stock_items)
     normal_stock_items = InventoryItem.query.filter(InventoryItem.current_stock >= InventoryItem.min_stock_level).all()
 
-<<<<<<< HEAD
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -2032,20 +1813,14 @@ def index():
                            next_week_vaccines=next_week_vaccines)
 
 @app.route('/history')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def history():
     inactive_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Inactive').order_by(Flock.intake_date.desc()).all()
     return render_template('flock_history.html', inactive_flocks=inactive_flocks)
 
 @app.route('/health_log/post_mortem', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def health_log_post_mortem():
     if request.method == 'POST':
@@ -2097,11 +1872,7 @@ def health_log_post_mortem():
                     )
                     db.session.add(new_photo)
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
         # Unconditional Push Alert
         try:
@@ -2154,24 +1925,16 @@ def health_log_post_mortem():
 
     logs = query.order_by(DailyLog.date.desc()).all()
 
-<<<<<<< HEAD
-    active_flocks = Flock.query.filter_by(status='Active').all()
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     houses = House.query.order_by(House.name).all()
     return render_template('post_mortem.html', logs=logs, houses=houses, active_flocks=active_flocks, today=date.today())
 
 @app.route('/flock/<int:id>/edit', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def edit_flock(id):
     flock = Flock.query.get_or_404(id)
@@ -2229,11 +1992,7 @@ def edit_flock(id):
         if not farm:
             farm = Farm(name=farm_name)
             db.session.add(farm)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flock.farm_id = farm.id
 
         new_data = {
@@ -2247,11 +2006,7 @@ def edit_flock(id):
         if changes:
             log_user_activity(session.get('user_id'), 'Edit', 'Flock', flock.flock_id, details=changes)
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f'Flock {flock.flock_id} updated.', 'success')
         return redirect(url_for('index'))
 
@@ -2259,10 +2014,7 @@ def edit_flock(id):
     return render_template('flock_edit.html', flock=flock, farms=farms)
 
 @app.route('/flock/<int:id>/delete', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def delete_flock(id):
     flock = Flock.query.get_or_404(id)
@@ -2271,21 +2023,11 @@ def delete_flock(id):
     log_user_activity(session.get('user_id'), 'Delete', 'Flock', flock_id_str)
 
     db.session.delete(flock)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash(f'Flock {flock_id_str} deleted.', 'warning')
     return redirect(url_for('manage_flocks'))
 
 @app.route('/flock_select')
-<<<<<<< HEAD
-@dept_required('Farm')
-def flock_select():
-    active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 @login_required
 @dept_required('Farm')
 def flock_select():
@@ -2293,7 +2035,6 @@ def flock_select():
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     if not active_flocks:
         flash("No active flocks found.", "warning")
@@ -2302,10 +2043,7 @@ def flock_select():
     return render_template('flock_select.html', active_flocks=active_flocks)
 
 @app.route('/flocks', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def manage_flocks():
     if request.method == 'POST':
@@ -2333,11 +2071,7 @@ def manage_flocks():
         if not farm:
             farm = Farm(name=farm_name)
             db.session.add(farm)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Created new Farm: {farm_name}', 'info')
         farm_id = farm.id
 
@@ -2346,11 +2080,7 @@ def manage_flocks():
         if not house:
             house = House(name=house_name)
             db.session.add(house)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Created new House: {house_name}', 'info')
         
         # Validation: Check if House has active flock
@@ -2390,11 +2120,7 @@ def manage_flocks():
             'intake_female': intake_female
         })
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
         initialize_sampling_schedule(new_flock.id)
         initialize_vaccine_schedule(new_flock.id)
@@ -2404,11 +2130,7 @@ def manage_flocks():
     
     farms = Farm.query.all()
     houses = House.query.all()
-<<<<<<< HEAD
-    flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
-=======
     flocks = Flock.query.options(joinedload(Flock.house)).order_by(Flock.intake_date.desc()).all()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     # Bulk fetch cumulative mortality for all flocks to prevent N+1 queries
     # Using coalesce to handle NULL values correctly in SQL addition
@@ -2442,28 +2164,18 @@ def manage_flocks():
     return render_template('flock_form.html', farms=farms, houses=houses, flocks=flocks)
 
 @app.route('/flock/<int:id>/close', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def close_flock(id):
     flock = Flock.query.get_or_404(id)
     flock.status = 'Inactive'
     flock.end_date = date.today()
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash(f'Flock {flock.flock_id} closed.', 'info')
     return redirect(url_for('index'))
 
 @app.route('/standards', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def manage_standards():
     if request.method == 'POST':
@@ -2492,11 +2204,7 @@ def manage_standards():
                 std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
             )
             db.session.add(s)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash('Standard added.', 'success')
         elif action == 'update':
             s_id = request.form.get('id')
@@ -2516,11 +2224,7 @@ def manage_standards():
                 s.std_cum_hatching_eggs_hha=float(request.form.get('std_cum_hatching_eggs_hha') or 0)
                 s.std_cum_chicks_hha=float(request.form.get('std_cum_chicks_hha') or 0)
 
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash(f'Standard for Week {s.week} updated.', 'success')
             else:
                 flash('Standard not found.', 'danger')
@@ -2534,11 +2238,7 @@ def manage_standards():
             gs.std_mortality_daily = float(request.form.get('std_mortality_daily') or 0.05)
             gs.std_mortality_weekly = float(request.form.get('std_mortality_weekly') or 0.3)
             gs.std_hatching_egg_pct = float(request.form.get('std_hatching_egg_pct') or 96.0)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash('Global standards updated.', 'success')
 
         elif action == 'seed_standards':
@@ -2564,10 +2264,7 @@ def manage_standards():
     return render_template('standards.html', standards=standards, global_std=global_std)
 
 @app.route('/feed_codes', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def manage_feed_codes():
     if request.method == 'POST':
@@ -2578,11 +2275,7 @@ def manage_feed_codes():
                 flash(f'Feed Code {code} already exists.', 'warning')
             else:
                 db.session.add(FeedCode(code=code))
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash(f'Feed Code {code} added.', 'success')
         return redirect(url_for('manage_feed_codes'))
 
@@ -2590,37 +2283,23 @@ def manage_feed_codes():
         default_codes = ['161C', '162C', '163C', '168C', '169C', '170P', '171P', '172P']
         for c in default_codes:
             db.session.add(FeedCode(code=c))
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
     return render_template('feed_codes.html', codes=codes)
 
 @app.route('/feed_codes/delete/<int:id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def delete_feed_code(id):
     fc = FeedCode.query.get_or_404(id)
     db.session.delete(fc)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash(f'Feed Code {fc.code} deleted.', 'info')
     return redirect(url_for('manage_feed_codes'))
 
 @app.route('/daily_log/delete/<int:id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def delete_daily_log(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
@@ -2642,19 +2321,12 @@ def delete_daily_log(id):
     # Reverting inventory is too risky without explicit link.
 
     db.session.delete(log)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash("Daily Log deleted.", "info")
     return redirect(url_for('view_flock', id=flock_id))
 
 @app.route('/daily_log/photo/<int:photo_id>/delete', methods=['DELETE'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def delete_daily_log_photo(photo_id):
     photo = DailyLogPhoto.query.get_or_404(photo_id)
@@ -2668,18 +2340,11 @@ def delete_daily_log_photo(photo_id):
             pass # Ignore if file missing
 
     db.session.delete(photo)
-<<<<<<< HEAD
-    db.session.commit()
-    return '', 204
-
-@app.route('/api/chart_data/<int:flock_id>')
-=======
     safe_commit()
     return '', 204
 
 @app.route('/api/chart_data/<int:flock_id>')
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def get_chart_data(flock_id):
     flock = Flock.query.get_or_404(flock_id)
@@ -3002,10 +2667,7 @@ def calculate_flock_summary(flock, daily_stats):
     return dashboard_metrics, summary_table
 
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def toggle_phase(id):
     flock = Flock.query.get_or_404(id)
@@ -3058,16 +2720,6 @@ def toggle_phase(id):
         flock.phase = 'Rearing'
         flock.production_start_date = None
         flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
-<<<<<<< HEAD
-    db.session.commit()
-    return redirect(url_for('index'))
-
-@app.route('/flock/<int:id>')
-@dept_required('Farm')
-def view_flock(id):
-    active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
     safe_commit()
     return redirect(url_for('index'))
 
@@ -3079,7 +2731,6 @@ def view_flock(id):
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -3091,11 +2742,7 @@ def view_flock(id):
     if not gs:
         gs = GlobalStandard()
         db.session.add(gs)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
@@ -3589,10 +3236,7 @@ def view_flock(id):
     return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
 
 @app.route('/flock/<int:id>/spreadsheet')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def flock_spreadsheet(id):
     if not session.get('is_admin'):
@@ -4013,11 +3657,7 @@ def flock_spreadsheet_save(flock_id):
             else:
                 log_user_activity(session.get('user_id'), 'Add', 'DailyLog', log.id, details={'date': str(log.date)})
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
         # Recalculate inventory cascading after bulk save
         recalculate_flock_inventory(flock_id)
@@ -4028,20 +3668,14 @@ def flock_spreadsheet_save(flock_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/flock/<int:id>/charts')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def flock_charts(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     return render_template('flock_charts.html', flock=flock)
 
 @app.route('/flock/<int:id>/sampling')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def flock_sampling(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
@@ -4049,10 +3683,7 @@ def flock_sampling(id):
     return render_template('flock_sampling.html', flock=flock, events=events)
 
 @app.route('/flock/<int:id>/vaccines', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def flock_vaccines(id):
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
@@ -4067,11 +3698,7 @@ def flock_vaccines(id):
         elif 'add_row' in request.form:
             v = Vaccine(flock_id=id, age_code='', vaccine_name='')
             db.session.add(v)
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash('New row added.', 'success')
 
         elif 'delete_id' in request.form:
@@ -4079,11 +3706,7 @@ def flock_vaccines(id):
             v = Vaccine.query.get(v_id)
             if v and v.flock_id == id:
                 db.session.delete(v)
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash('Record deleted.', 'info')
 
         elif 'save_changes' in request.form:
@@ -4182,11 +3805,7 @@ def flock_vaccines(id):
 
                 updated_count += 1
 
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Updated {updated_count} records.', 'success')
 
         return redirect(url_for('flock_vaccines', id=id))
@@ -4290,11 +3909,7 @@ def global_vaccine_schedule():
     last_day = calendar.monthrange(year, month)[1]
     end_date = date(year, month, last_day)
 
-<<<<<<< HEAD
-    active_flocks = Flock.query.filter_by(status='Active').all()
-=======
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flock_ids = [f.id for f in active_flocks]
 
     vaccines = Vaccine.query.filter(Vaccine.flock_id.in_(flock_ids)).filter(Vaccine.est_date >= start_date, Vaccine.est_date <= end_date).order_by(Vaccine.est_date).all()
@@ -4315,10 +3930,7 @@ def global_vaccine_schedule():
                            today=today)
 
 @app.route('/flock/<int:id>/sampling/<int:event_id>/upload', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def upload_sampling_result(id, event_id):
     event = SamplingEvent.query.get_or_404(event_id)
@@ -4337,21 +3949,13 @@ def upload_sampling_result(id, event_id):
                 event.result_file = filepath
                 event.upload_date = date.today()
                 event.status = 'Completed'
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash('Result uploaded successfully.', 'success')
             else:
                 flash('Only PDF files are allowed.', 'danger')
 
     if remarks and not ('file' in request.files and request.files['file'].filename != ''):
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash('Remarks updated.', 'success')
 
     return redirect(url_for('flock_sampling', id=id))
@@ -4399,11 +4003,7 @@ def flock_hatchability(id):
 
                 log_user_activity(session.get('user_id'), 'Add', 'Hatchability', h.id, details={'flock_id': flock.flock_id, 'setting_date': setting_date.strftime('%Y-%m-%d')})
 
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
                 msg = (
                     "Hatchability record added."
@@ -4419,10 +4019,7 @@ def flock_hatchability(id):
     return render_template('flock_hatchability.html', flock=flock, records=records)
 
 @app.route('/flock/<int:id>/hatchability/delete/<int:record_id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Hatchery')
 def delete_hatchability(id, record_id):
     record = Hatchability.query.get_or_404(record_id)
@@ -4433,11 +4030,7 @@ def delete_hatchability(id, record_id):
     log_user_activity(session.get('user_id'), 'Delete', 'Hatchability', record_id, details={'flock_id': record.flock.flock_id, 'setting_date': date_str})
 
     db.session.delete(record)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash('Record deleted.', 'info')
     return redirect(url_for('flock_hatchability', id=id))
 
@@ -4580,11 +4173,7 @@ def hatchability_diagnosis(id, date_str):
                         h_record.clear_eggs = int(request.form.get('clear_eggs') or 0)
                         h_record.rotten_eggs = int(request.form.get('rotten_eggs') or 0)
                         h_record.hatched_chicks = int(request.form.get('hatched_chicks') or 0)
-<<<<<<< HEAD
-                        db.session.commit()
-=======
                         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                         flash('Hatchability record updated.', 'success')
                     except ValueError:
                         flash('Invalid input.', 'danger')
@@ -4673,10 +4262,7 @@ def hatchability_diagnosis(id, date_str):
 
 
 @app.route('/daily_log', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def daily_log():
     if request.method == 'POST':
@@ -4861,11 +4447,7 @@ def daily_log():
                     db.session.add(t)
 
         try:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             recalculate_flock_inventory(flock.id)
             if request.headers.get('Accept') == 'application/json':
                 house_status = check_daily_log_completion(flock.farm_id, log_date)
@@ -4884,11 +4466,7 @@ def daily_log():
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
         
-<<<<<<< HEAD
-    active_flocks = Flock.query.filter_by(status='Active').all()
-=======
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     active_houses = [f.house for f in active_flocks]
 
     flock_phases = {}
@@ -5083,11 +4661,7 @@ def utility_processor():
                 user_dept=effective_dept,
                 user_role=effective_role,
                 is_debug=app.debug,
-<<<<<<< HEAD
-                current_user=current_user)
-=======
                 current_user=current_user if hasattr(g, 'user') and current_user else AnonymousUser())
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
 @app.route('/admin/ui', methods=['GET', 'POST'])
 def admin_ui_update():
@@ -5122,11 +4696,7 @@ def admin_ui_update():
             is_vis = request.form.get(f'visible_{eid}')
             elem.is_visible = (is_vis is not None)
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash('UI configuration updated.', 'success')
         return redirect(url_for('admin_ui_update'))
 
@@ -5168,11 +4738,7 @@ def change_theme():
         ]
         if theme in valid_themes:
             user.theme = theme
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash("Theme successfully updated.", "success")
         else:
             flash("Invalid theme selected.", "danger")
@@ -5192,11 +4758,7 @@ def toggle_login():
     # Toggle
     current = gs.login_required if hasattr(gs, 'login_required') else True
     gs.login_required = not current
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     status = "ON" if gs.login_required else "OFF"
 
@@ -5240,11 +4802,7 @@ def admin_house_add():
         flash(f"House '{name}' already exists.", "warning")
     else:
         db.session.add(House(name=name))
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"House '{name}' added.", "success")
 
     return redirect(url_for('admin_houses'))
@@ -5263,11 +4821,7 @@ def admin_house_edit(id):
     else:
         old_name = house.name
         house.name = new_name
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"Renamed House '{old_name}' to '{new_name}'.", "success")
 
     return redirect(url_for('admin_houses'))
@@ -5281,20 +4835,13 @@ def admin_house_delete(id):
         flash(f"Cannot delete House '{house.name}' because it has flocks associated with it.", "danger")
     else:
         db.session.delete(house)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash(f"House '{house.name}' deleted.", "info")
 
     return redirect(url_for('admin_houses'))
 
 @app.route('/daily_log/<int:id>/edit', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
@@ -5413,11 +4960,7 @@ def edit_daily_log(id):
             flash(f"First egg detected! Production tracking started for {log.flock.flock_id} from {log.date}.", "info")
 
         try:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             recalculate_flock_inventory(log.flock_id)
             if request.headers.get('Accept') == 'application/json':
                 house_status = check_daily_log_completion(log.flock.farm_id, log.date)
@@ -5463,10 +5006,7 @@ def edit_daily_log(id):
     return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory)
 
 @app.route('/import', methods=['GET', 'POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def import_data():
     if request.method == 'POST':
@@ -5554,10 +5094,7 @@ def import_data():
     return render_template('import.html')
 
 @app.route('/import_hatchability', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Hatchery')
 def import_hatchability():
     if 'file' not in request.files:
@@ -5634,11 +5171,7 @@ def seed_arbor_acres_standards():
 
             count += 1
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         return True, f"Imported/Updated {count} weeks of Arbor Acres standards."
 
     except Exception as e:
@@ -5713,11 +5246,7 @@ def seed_standards_from_file():
 
             count += 1
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         return True, f"Seeded/Updated {count} weeks of standards."
 
     except Exception as e:
@@ -5811,11 +5340,7 @@ def process_hatchability_import(file):
     house_map = {h.name: h.id for h in all_houses} # Name -> ID
 
     # Fetch all flocks, organize by house
-<<<<<<< HEAD
-    all_flocks = Flock.query.order_by(Flock.intake_date.desc()).all()
-=======
     all_flocks = Flock.query.options(joinedload(Flock.house)).order_by(Flock.intake_date.desc()).all()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flocks_by_house = {} # house_id -> list of Flock objects sorted desc
     for f in all_flocks:
         if f.house_id not in flocks_by_house:
@@ -5941,11 +5466,7 @@ def process_hatchability_import(file):
             hatch_cache[target_flock_id].sort(key=lambda x: x.setting_date)
             created_count += 1
 
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     return created_count, updated_count
 
 def process_import(file, commit=True, preview=False):
@@ -6022,11 +5543,7 @@ def process_import(file, commit=True, preview=False):
             house_id = house.id
             all_houses_map[house_name] = house_id
             if commit:
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         
         intake_date = parse_date(intake_date_val)
         if not intake_date:
@@ -6055,11 +5572,7 @@ def process_import(file, commit=True, preview=False):
             all_flocks_map[(house_id, intake_date)] = flock_id
             flock_counts[house_id] = n
             if commit:
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             
             initialize_sampling_schedule(flock_id, commit=commit)
             initialize_vaccine_schedule(flock_id, commit=commit)
@@ -6370,11 +5883,7 @@ def process_import(file, commit=True, preview=False):
             i += 1
 
         if commit:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         else:
             db.session.flush()
         
@@ -6394,11 +5903,7 @@ def process_import(file, commit=True, preview=False):
                     db.session.add(log)
 
         if commit:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         else:
             db.session.flush()
 
@@ -6504,11 +6009,7 @@ def recalculate_flock_inventory(flock_id):
         curr_males -= ((log.mortality_male or 0) + (log.culls_male or 0))
         curr_females -= ((log.mortality_female or 0) + (log.culls_female or 0))
 
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
 
 def check_daily_log_completion(farm_id, selected_date):
@@ -6990,11 +6491,7 @@ def health_log_vaccines():
             if flock_id_param:
                 v = Vaccine(flock_id=flock_id_param, age_code='', vaccine_name='')
                 db.session.add(v)
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash('New vaccine row added.', 'success')
 
         elif 'load_vaccine_standard' in request.form:
@@ -7010,11 +6507,7 @@ def health_log_vaccines():
             v = Vaccine.query.get(v_id)
             if v:
                 db.session.delete(v)
-<<<<<<< HEAD
-                db.session.commit()
-=======
                 safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                 flash('Vaccine record deleted.', 'info')
 
         elif 'save_changes' in request.form:
@@ -7061,11 +6554,7 @@ def health_log_vaccines():
 
                 updated_count += 1
 
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Updated {updated_count} records.', 'success')
 
         return redirect(url_for('health_log_vaccines', year=year, month=month, flock_id=flock_id_param, edit_flock_id=edit_flock_id))
@@ -7238,11 +6727,7 @@ def health_log_sampling():
 
 
         if updated_count > 0:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Updated {updated_count} records.', 'success')
 
         flock_id_param = request.form.get('flock_id') or selected_flock_id
@@ -7333,11 +6818,7 @@ def health_log_medication():
                 m = Medication.query.get(m_id)
                 if m:
                     db.session.delete(m)
-<<<<<<< HEAD
-                    db.session.commit()
-=======
                     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                     flash('Medication record deleted.', 'info')
             except Exception as e:
                 db.session.rollback()
@@ -7392,11 +6873,7 @@ def health_log_medication():
                          )
                          db.session.add(t)
 
-<<<<<<< HEAD
-                     db.session.commit()
-=======
                      safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
                      flash('Medication added.', 'success')
                  except Exception as e:
                      flash(f'Error adding medication: {str(e)}', 'danger')
@@ -7443,11 +6920,7 @@ def health_log_medication():
                 m.end_date = None; updated_count += 1
 
         if updated_count > 0:
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
             flash(f'Updated {updated_count} records.', 'success')
 
         flock_id_param = request.form.get('flock_id') or selected_flock_id
@@ -7481,10 +6954,7 @@ def get_metrics_list():
     return json.dumps(METRICS_REGISTRY)
 
 @app.route('/api/flock/<int:flock_id>/custom_data', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def get_custom_data(flock_id):
     flock = Flock.query.get_or_404(flock_id)
@@ -7650,10 +7120,7 @@ def chat():
 # --- Inventory Routes ---
 
 @app.route('/inventory')
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def inventory():
     items = InventoryItem.query.order_by(InventoryItem.name).all()
@@ -7687,10 +7154,7 @@ def inventory():
     return render_template('inventory.html', items=items, transactions=transactions, summary=summary_list, current_month=today.strftime('%B %Y'), today=today)
 
 @app.route('/inventory/add', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def add_inventory_item():
     name = request.form.get('name')
@@ -7713,11 +7177,7 @@ def add_inventory_item():
 
     log_user_activity(session.get('user_id'), 'Add', 'InventoryItem', item.id, details={'name': name, 'type': type_, 'initial_stock': stock})
 
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     if stock > 0:
         t = InventoryTransaction(
@@ -7728,20 +7188,13 @@ def add_inventory_item():
             notes='Initial Stock'
         )
         db.session.add(t)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     flash(f'Added {name} to inventory.', 'success')
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def inventory_transaction():
     item_id = int(request.form.get('inventory_item_id'))
@@ -7776,11 +7229,7 @@ def inventory_transaction():
     try:
         db.session.flush()
         log_user_activity(session.get('user_id'), 'Add', 'InventoryTransaction', t.id, details={'item_name': item.name, 'type': type_, 'quantity': qty})
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash('Transaction recorded.', 'success')
     except Exception as e:
         db.session.rollback()
@@ -7789,10 +7238,7 @@ def inventory_transaction():
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/edit/<int:id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def edit_inventory_item(id):
     item = InventoryItem.query.get_or_404(id)
@@ -7801,11 +7247,7 @@ def edit_inventory_item(id):
         item_name = item.name
         log_user_activity(session.get('user_id'), 'Delete', 'InventoryItem', id, details={'name': item_name})
         db.session.delete(item)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         flash('Item deleted.', 'info')
         return redirect(url_for('inventory'))
 
@@ -7849,19 +7291,12 @@ def edit_inventory_item(id):
     if changes:
         log_user_activity(session.get('user_id'), 'Edit', 'InventoryItem', item.id, details=changes)
 
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash('Item updated.', 'success')
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction/delete/<int:id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def delete_inventory_transaction(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
@@ -7882,19 +7317,12 @@ def delete_inventory_transaction(id):
             item.current_stock -= t.quantity
 
     db.session.delete(t)
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash(f"Transaction deleted. Stock reverted.", "info")
     return redirect(url_for('inventory'))
 
 @app.route('/inventory/transaction/edit/<int:id>', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required('Farm')
 def edit_inventory_transaction(id):
     if not session.get('is_admin'): return redirect(url_for('index'))
@@ -7958,11 +7386,7 @@ def edit_inventory_transaction(id):
         else:
             item.current_stock += new_qty
 
-<<<<<<< HEAD
-    db.session.commit()
-=======
     safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     flash("Transaction updated.", "success")
     return redirect(url_for('inventory'))
 
@@ -8336,10 +7760,7 @@ def calculate_grading_stats(weights):
     }
 
 @app.route('/upload_weights', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required(['Farm', 'Management'])
 def upload_weights():
     house_id = request.form.get('house_id')
@@ -8456,11 +7877,7 @@ def upload_weights():
                     grading.highest_weight = stats['highest_weight']
                     grading.grading_bins = stats['grading_bins']
 
-<<<<<<< HEAD
-            db.session.commit()
-=======
             safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
             # Unconditional Push Alert
             try:
@@ -8488,7 +7905,7 @@ def upload_weights():
 
 @app.route('/health_log/bodyweight', methods=['GET', 'POST'])
 @login_required
-@dept_required(['Farm', 'Management'])
+@dept_required(['Farm', 'Management', 'Admin'])
 def health_log_bodyweight():
     if request.method == 'POST':
         flock_id = request.form.get('flock_id')
@@ -8548,11 +7965,7 @@ def health_log_bodyweight():
             save_partition(f'M{i}', request.form.get(f'bw_M{i}'), request.form.get(f'uni_M{i}'))
             save_partition(f'F{i}', request.form.get(f'bw_F{i}'), request.form.get(f'uni_F{i}'))
 
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
         # Unconditional Push Alert
         try:
@@ -8574,12 +7987,12 @@ def health_log_bodyweight():
         flash("Bodyweight data saved successfully.", "success")
         return redirect(url_for('health_log_bodyweight'))
 
-    active_flocks = Flock.query.filter_by(status='Active', farm_id=current_user.farm_id).options(joinedload(Flock.house)).all()
-<<<<<<< HEAD
-=======
+    if current_user.role == 'Admin':
+        active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
+    else:
+        active_flocks = Flock.query.filter_by(status='Active', farm_id=current_user.farm_id).options(joinedload(Flock.house)).all()
 
 
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
@@ -8746,13 +8159,9 @@ def additional_report():
 
     # Active Flocks
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
-<<<<<<< HEAD
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     prod_flocks = [f for f in active_flocks if f.phase == 'Production']
     rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
@@ -9314,13 +8723,9 @@ def executive_dashboard():
 
     # --- Farm Data ---
     active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
-<<<<<<< HEAD
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     today = date.today()
 
@@ -9527,13 +8932,9 @@ def flock_detail_readonly_select():
         return redirect(url_for('index'))
 
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-<<<<<<< HEAD
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     if not active_flocks:
         flash("No active flocks found.", "warning")
@@ -9549,13 +8950,9 @@ def executive_flock_detail(id):
         return redirect(url_for('index'))
 
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
-<<<<<<< HEAD
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
-=======
 
     if active_flocks:
         active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -9564,11 +8961,7 @@ def executive_flock_detail(id):
     if not gs:
         gs = GlobalStandard()
         db.session.add(gs)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 
     # --- Standards Setup ---
     all_standards = Standard.query.all()
@@ -9976,10 +9369,7 @@ def executive_flock_detail(id):
 
 
 @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required(['Farm', 'Admin', 'Management'])
 def get_floating_notes(flock_id):
     notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
@@ -9995,10 +9385,7 @@ def get_floating_notes(flock_id):
     return jsonify(result)
 
 @app.route('/api/floating_notes', methods=['POST'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required(['Farm', 'Admin'])
 def create_floating_note():
     data = request.json
@@ -10011,31 +9398,20 @@ def create_floating_note():
             content=data['content']
         )
         db.session.add(new_note)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         return jsonify({'success': True, 'id': new_note.id}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/floating_notes/<int:note_id>', methods=['DELETE'])
-<<<<<<< HEAD
-=======
 @login_required
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
 @dept_required(['Farm', 'Admin'])
 def delete_floating_note(note_id):
     try:
         note = FloatingNote.query.get_or_404(note_id)
         db.session.delete(note)
-<<<<<<< HEAD
-        db.session.commit()
-=======
         safe_commit()
->>>>>>> origin/jules-audit-app-py-flask-login-13580675729170186842
         return jsonify({'success': True}), 200
     except Exception as e:
         db.session.rollback()
