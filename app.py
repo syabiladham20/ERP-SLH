@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
+from flask import Flask
+from flask import render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
+from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
@@ -7839,6 +7841,7 @@ def upload_weights():
     return redirect(url_for('health_log_bodyweight'))
 
 @app.route('/health_log/bodyweight', methods=['GET', 'POST'])
+@login_required
 @dept_required(['Farm', 'Management'])
 def health_log_bodyweight():
     if request.method == 'POST':
