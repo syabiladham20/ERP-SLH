@@ -1,0 +1,23 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="page page-center">
+  <div class="container-tight py-4">
+    <div class="empty">
+      <div class="empty-icon">
+        {% block error_icon %}{% endblock %}
+      </div>
+      <p class="empty-title">{% block error_title %}{% endblock %}</p>
+      <p class="empty-subtitle text-muted">
+        {% block error_subtitle %}{% endblock %}
+      </p>
+
+      {% block error_details %}{% endblock %}
+
+      <div class="empty-action">
+        {% block error_actions %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

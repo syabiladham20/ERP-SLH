@@ -1245,6 +1245,11 @@ def load_logged_in_user():
     else:
         g.user = None
 
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback() # Crucial: stops the database from getting stuck
+    return render_template('errors/500.html', error=error), 500
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if g.user:
