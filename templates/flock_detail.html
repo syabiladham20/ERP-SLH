@@ -1115,8 +1115,20 @@
               ...commonOptions,
               onClick: null,
               scales: {
-                  y: { type: 'linear', beginAtZero: true, display: true, position: 'left', title: { display: true, text: 'Water (ml)' }, ...scales },
-                  y1: { type: 'linear', beginAtZero: true, min: 0, max: 5, display: true, position: 'right', title: { display: true, text: 'Water:Feed Ratio' }, grid: { drawOnChartArea: false } }
+                  y: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Water (ml)' },
+                      ...scales
+                  },
+                  y1: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      title: { display: true, text: 'Ratio' },
+                      grid: { drawOnChartArea: false }
+                  }
               },
               plugins: {
                   ...commonOptions.plugins,
@@ -1212,7 +1224,7 @@
                       display: true,
                       position: 'right',
                       title: { display: true, text: 'Egg Prod %' },
-                      min: 0, max: 110,                      grid: { drawOnChartArea: false }
+                      min: -100, max: 110,                      grid: { drawOnChartArea: false }
                   }
               }
           }

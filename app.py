@@ -100,6 +100,7 @@ def dept_required(required_dept):
                 if user_dept == required_dept:
                     return f(*args, **kwargs)
 
+
             # If user is logged in but wrong department
             dept_str = ', '.join(required_dept) if isinstance(required_dept, (list, tuple)) else required_dept
             flash(f"Access Denied: You do not have permission to view the {dept_str} Department", "danger")
@@ -258,7 +259,7 @@ def subscribe():
     if not subscription_info:
         return jsonify({'error': 'Subscription info missing'}), 400
 
-    user_id = session.get('user_id')
+    user_id = current_user.id
 
     # Check if subscription already exists for this user
     sub_str = json.dumps(subscription_info)
@@ -278,7 +279,7 @@ def unsubscribe():
     if not subscription_info:
         return jsonify({'error': 'Subscription info missing'}), 400
 
-    user_id = session.get('user_id')
+    user_id = current_user.id
     sub_str = json.dumps(subscription_info)
 
     PushSubscription.query.filter_by(user_id=user_id, subscription_json=sub_str).delete()
@@ -368,6 +369,7 @@ class User(db.Model, UserMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
 
 class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1320,7 +1322,7 @@ def logout():
 @app.route('/settings', methods=['GET'])
 @login_required
 def settings():
-    user_id = session.get('user_id')
+    user_id = current_user.id
     # Fetch notification history for the user (last 30)
     notifications = NotificationHistory.query.filter_by(user_id=user_id).order_by(NotificationHistory.created_at.desc()).limit(30).all()
 
@@ -1399,7 +1401,7 @@ def send_push_alert(user_id, title, body, url=None, transient=False):
 @app.route('/api/test_notification', methods=['POST'])
 @login_required
 def test_notification():
-    user_id = session.get('user_id')
+    user_id = current_user.id
     # Call the push alert function
     try:
         success = send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=url_for('index'))
@@ -1411,9 +1413,11 @@ def test_notification():
         app.logger.error(f"Failed to send test push: {e}")
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/change_password', methods=['GET', 'POST'])
+@login_required
 def change_password():
-    if not session.get('user_id'):
+    if not current_user.id:
         return redirect(url_for('login'))
 
     if request.method == 'POST':
@@ -1436,8 +1440,9 @@ def change_password():
     return render_template('change_password.html')
 
 @app.route('/admin/audit_logs')
+@login_required
 def admin_audit_logs():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Access Denied.", "danger")
         return redirect(url_for('index'))
     logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).all()
@@ -1445,7 +1450,7 @@ def admin_audit_logs():
 
 @app.route('/admin/activity_log')
 def admin_activity_log():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Access Denied.", "danger")
         return redirect(url_for('index'))
 
@@ -1470,7 +1475,7 @@ def admin_activity_log():
 
 @app.route('/admin/rules', methods=['GET', 'POST'])
 def manage_rules():
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied.", "danger")
         return redirect(url_for('index'))
 
@@ -1504,7 +1509,7 @@ def manage_rules():
 
 @app.route('/admin/rules/test_alert', methods=['POST'])
 def test_alert():
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
 
     test_type = request.form.get('test_type')
@@ -1551,7 +1556,7 @@ def test_alert():
 
 @app.route('/admin/rules/delete/<int:id>', methods=['POST'])
 def delete_notification_rule(id):
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied.", "danger")
         return redirect(url_for('index'))
 
@@ -1562,26 +1567,33 @@ def delete_notification_rule(id):
     return redirect(url_for('manage_rules'))
 
 @app.route('/admin/users')
+@login_required
 def admin_users():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Access Denied.", "danger")
         return redirect(url_for('index'))
     users = User.query.order_by(User.username).all()
     return render_template('admin/users.html', users=users)
 
 @app.route('/admin/users/add', methods=['POST'])
+@login_required
 def admin_user_add():
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     username = request.form.get('username')
+    name = request.form.get('name')
     password = request.form.get('password')
     dept = request.form.get('dept')
     role = request.form.get('role')
+    farm_id = request.form.get('farm_id')
+
+    if farm_id == '':
+        farm_id = None
 
     if User.query.filter_by(username=username).first():
         flash(f"User {username} already exists.", "warning")
     else:
-        u = User(username=username, dept=dept, role=role)
+        u = User(username=username, name=name, dept=dept, role=role, farm_id=farm_id)
         u.set_password(password)
         db.session.add(u)
         safe_commit()
@@ -1589,25 +1601,33 @@ def admin_user_add():
     return redirect(url_for('admin_users'))
 
 @app.route('/admin/users/edit/<int:user_id>', methods=['POST'])
+@login_required
 def admin_user_edit(user_id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
+    name = request.form.get('name')
     dept = request.form.get('dept')
     role = request.form.get('role')
 
+    user.name = name
     user.dept = dept
     user.role = role
     safe_commit()
+
+    if user.id == current_user.id:
+        session['user_name'] = user.name if user.name else user.username
+
     flash(f"User {user.username} updated.", "success")
     return redirect(url_for('admin_users'))
 
 @app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+@login_required
 def admin_user_delete(user_id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
-    if user.id == session.get('user_id'):
+    if user.id == current_user.id:
         flash("Cannot delete yourself.", "danger")
     else:
         db.session.delete(user)
@@ -1616,8 +1636,9 @@ def admin_user_delete(user_id):
     return redirect(url_for('admin_users'))
 
 @app.route('/admin/users/reset_password/<int:user_id>', methods=['POST'])
+@login_required
 def admin_user_reset_password(user_id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
     new_pass = request.form.get('new_password')
@@ -1632,7 +1653,7 @@ def admin_user_reset_password(user_id):
 @app.route('/admin/project_report')
 @login_required
 def admin_project_report():
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied: Admin or Management View Only.", "danger")
         return redirect(url_for('index'))
     return render_template('admin/project_report.html')
@@ -1644,7 +1665,7 @@ def hatchery_dashboard():
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active', phase='Production').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
@@ -1677,7 +1698,7 @@ def index():
 
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     today = date.today()
     yesterday = today - timedelta(days=1)
@@ -1928,7 +1949,7 @@ def health_log_post_mortem():
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     houses = House.query.order_by(House.name).all()
     return render_template('post_mortem.html', logs=logs, houses=houses, active_flocks=active_flocks, today=date.today())
@@ -2004,7 +2025,7 @@ def edit_flock(id):
 
         changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
         if changes:
-            log_user_activity(session.get('user_id'), 'Edit', 'Flock', flock.flock_id, details=changes)
+            log_user_activity(current_user.id, 'Edit', 'Flock', flock.flock_id, details=changes)
 
         safe_commit()
         flash(f'Flock {flock.flock_id} updated.', 'success')
@@ -2020,7 +2041,7 @@ def delete_flock(id):
     flock = Flock.query.get_or_404(id)
     flock_id_str = flock.flock_id
 
-    log_user_activity(session.get('user_id'), 'Delete', 'Flock', flock_id_str)
+    log_user_activity(current_user.id, 'Delete', 'Flock', flock_id_str)
 
     db.session.delete(flock)
     safe_commit()
@@ -2034,7 +2055,7 @@ def flock_select():
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     if not active_flocks:
         flash("No active flocks found.", "warning")
@@ -2114,7 +2135,7 @@ def manage_flocks():
         db.session.add(new_flock)
         db.session.flush()
 
-        log_user_activity(session.get('user_id'), 'Add', 'Flock', new_flock.flock_id, details={
+        log_user_activity(current_user.id, 'Add', 'Flock', new_flock.flock_id, details={
             'house': house_name,
             'intake_male': intake_male,
             'intake_female': intake_female
@@ -2302,13 +2323,13 @@ def delete_feed_code(id):
 @login_required
 @dept_required('Farm')
 def delete_daily_log(id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     log = DailyLog.query.get_or_404(id)
     flock_id = log.flock_id
     date_str = log.date.strftime('%Y-%m-%d')
 
-    log_user_activity(session.get('user_id'), 'Delete', 'DailyLog', log.id, details={'date': date_str, 'flock_id': flock_id})
+    log_user_activity(current_user.id, 'Delete', 'DailyLog', log.id, details={'date': date_str, 'flock_id': flock_id})
 
     # Cascade delete handles partitions, but maybe not Inventory Transactions (Usage)?
     # We should probably revert usage if tracked?
@@ -2730,7 +2751,7 @@ def view_flock(id):
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -3239,7 +3260,7 @@ def view_flock(id):
 @login_required
 @dept_required('Farm')
 def flock_spreadsheet(id):
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash('Access Denied: Admin only.', 'danger')
         return redirect(url_for('view_flock', id=id))
 
@@ -3365,7 +3386,7 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
 @app.route('/api/flock/<int:flock_id>/export_csv')
 def export_flock_csv(flock_id):
     # Both Farm and Executive roles can view flock details, so both should be able to export
-    if not session.get('is_admin') and session.get('user_role') not in ALLOWED_EXPORT_ROLES:
+    if not current_user.role == 'Admin' and current_user.role not in ALLOWED_EXPORT_ROLES:
         flash('Access Denied.', 'danger')
         return redirect(url_for('index'))
 
@@ -3422,7 +3443,7 @@ def export_flock_csv(flock_id):
 
 @app.route('/api/flock/<int:flock_id>/spreadsheet_save', methods=['POST'])
 def flock_spreadsheet_save(flock_id):
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
     data = request.json.get('data', [])
@@ -3653,9 +3674,9 @@ def flock_spreadsheet_save(flock_id):
 
                 changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data.get(k)}
                 if changes:
-                    log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
+                    log_user_activity(current_user.id, 'Edit', 'DailyLog', log.id, details=changes)
             else:
-                log_user_activity(session.get('user_id'), 'Add', 'DailyLog', log.id, details={'date': str(log.date)})
+                log_user_activity(current_user.id, 'Add', 'DailyLog', log.id, details={'date': str(log.date)})
 
         safe_commit()
 
@@ -3963,13 +3984,13 @@ def upload_sampling_result(id, event_id):
 
 @app.route('/flock/<int:id>/hatchability', methods=['GET', 'POST'])
 def flock_hatchability(id):
-    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_DEPTS:
+    if current_user.dept not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
         return redirect(url_for('login'))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
-        if session.get('user_dept') == 'Farm':
+        if current_user.dept == 'Farm':
             flash("Farm users have read-only access to Hatchability.", "warning")
             return redirect(url_for('flock_hatchability', id=id))
 
@@ -4001,7 +4022,7 @@ def flock_hatchability(id):
                 db.session.add(h)
                 db.session.flush()
 
-                log_user_activity(session.get('user_id'), 'Add', 'Hatchability', h.id, details={'flock_id': flock.flock_id, 'setting_date': setting_date.strftime('%Y-%m-%d')})
+                log_user_activity(current_user.id, 'Add', 'Hatchability', h.id, details={'flock_id': flock.flock_id, 'setting_date': setting_date.strftime('%Y-%m-%d')})
 
                 safe_commit()
 
@@ -4027,7 +4048,7 @@ def delete_hatchability(id, record_id):
         return "Unauthorized", 403
 
     date_str = record.setting_date.strftime('%Y-%m-%d')
-    log_user_activity(session.get('user_id'), 'Delete', 'Hatchability', record_id, details={'flock_id': record.flock.flock_id, 'setting_date': date_str})
+    log_user_activity(current_user.id, 'Delete', 'Hatchability', record_id, details={'flock_id': record.flock.flock_id, 'setting_date': date_str})
 
     db.session.delete(record)
     safe_commit()
@@ -4036,7 +4057,7 @@ def delete_hatchability(id, record_id):
 
 @app.route('/hatchery/charts/<int:flock_id>')
 def hatchery_charts(flock_id):
-    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_DEPTS:
+    if current_user.dept not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
         return redirect(url_for('login'))
 
@@ -4149,7 +4170,7 @@ def hatchery_charts(flock_id):
 
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>', methods=['GET', 'POST'])
 def hatchability_diagnosis(id, date_str):
-    if session.get('user_dept') not in FARM_HATCHERY_ADMIN_MGMT_DEPTS:
+    if current_user.dept not in FARM_HATCHERY_ADMIN_MGMT_DEPTS:
         return redirect(url_for('login'))
 
     is_readonly = request.args.get('readonly') == 'true'
@@ -4162,7 +4183,7 @@ def hatchability_diagnosis(id, date_str):
         return redirect(url_for('flock_hatchability', id=id))
 
     if request.method == 'POST':
-        if session.get('user_dept') == 'Farm' or is_readonly:
+        if current_user.dept == 'Farm' or is_readonly:
             flash("Read-only access.", "warning")
         else:
             h_id = request.form.get('hatchability_id')
@@ -4600,8 +4621,9 @@ def get_previous_daily_log_data():
     return jsonify(data), 200
 
 @app.route('/toggle_admin_view')
+@login_required
 def toggle_admin_view():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Unauthorized.", "danger")
         return redirect(url_for('index'))
 
@@ -4611,12 +4633,12 @@ def toggle_admin_view():
 @app.context_processor
 def utility_processor():
     # Inject Effective Admin & Dept for Simulation
-    real_is_admin = session.get('is_admin', False)
+    real_is_admin = getattr(current_user, 'role', None) == 'Admin'
     hide_view = session.get('hide_admin_view', False)
 
     effective_is_admin = real_is_admin
-    effective_dept = session.get('user_dept')
-    effective_role = session.get('user_role')
+    effective_dept = getattr(current_user, "dept", None)
+    effective_role = getattr(current_user, "role", None)
 
     if real_is_admin and hide_view:
         effective_is_admin = False
@@ -4664,8 +4686,9 @@ def utility_processor():
                 current_user=current_user if hasattr(g, 'user') and current_user else AnonymousUser())
 
 @app.route('/admin/ui', methods=['GET', 'POST'])
+@login_required
 def admin_ui_update():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -4711,8 +4734,9 @@ def admin_ui_update():
     return render_template('admin/ui_manager.html', elements=elements)
 
 @app.route('/admin/control-panel')
+@login_required
 def admin_control_panel():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Access Denied: Admin only.", "danger")
         return redirect(url_for('index'))
 
@@ -4723,7 +4747,7 @@ def admin_control_panel():
 
 @app.route('/change_theme', methods=['POST'])
 def change_theme():
-    if not session.get('user_id'):
+    if not current_user.id:
         flash("You must be logged in to change your theme.", "warning")
         return redirect(url_for('login'))
 
@@ -4746,8 +4770,9 @@ def change_theme():
     return redirect(request.referrer or url_for('index'))
 
 @app.route('/admin/toggle_login', methods=['POST'])
+@login_required
 def toggle_login():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         return redirect(url_for('index'))
 
     gs = GlobalStandard.query.first()
@@ -4772,15 +4797,17 @@ def toggle_login():
     return redirect(url_for('admin_control_panel'))
 
 @app.route('/admin/performance_report')
+@login_required
 def admin_performance_report():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         return redirect(url_for('index'))
 
     return render_template('admin/performance_report.html')
 
 @app.route('/admin/houses')
+@login_required
 def admin_houses():
-    if not session.get('is_admin'):
+    if not current_user.role == 'Admin':
         flash("Access Denied: Admin only.", "danger")
         return redirect(url_for('index'))
 
@@ -4792,8 +4819,9 @@ def admin_houses():
     return render_template('admin/houses.html', houses=houses)
 
 @app.route('/admin/houses/add', methods=['POST'])
+@login_required
 def admin_house_add():
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     name = request.form.get('name').strip()
     if not name:
@@ -4808,8 +4836,9 @@ def admin_house_add():
     return redirect(url_for('admin_houses'))
 
 @app.route('/admin/houses/edit/<int:id>', methods=['POST'])
+@login_required
 def admin_house_edit(id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     house = House.query.get_or_404(id)
     new_name = request.form.get('name').strip()
@@ -4827,8 +4856,9 @@ def admin_house_edit(id):
     return redirect(url_for('admin_houses'))
 
 @app.route('/admin/houses/delete/<int:id>', methods=['POST'])
+@login_required
 def admin_house_delete(id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     house = House.query.get_or_404(id)
     if Flock.query.filter_by(house_id=id).count() > 0:
@@ -6377,7 +6407,7 @@ def update_log_from_request(log, req):
 
     changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
     if changes:
-        log_user_activity(session.get('user_id'), 'Edit', 'DailyLog', log.id, details=changes)
+        log_user_activity(current_user.id, 'Edit', 'DailyLog', log.id, details=changes)
 
 def save_note_photos(log, note, files):
     for file in files:
@@ -7059,7 +7089,7 @@ def ai_insight(flock_id):
     flock = Flock.query.get_or_404(flock_id)
 
     # Needs to be available to both Farm and Executive
-    if session.get('user_role') not in ADMIN_FARM_MGMT_ROLES:
+    if current_user.role not in ADMIN_FARM_MGMT_ROLES:
         flash('Unauthorized Access.', 'error')
         return redirect(url_for('dashboard'))
 
@@ -7175,7 +7205,7 @@ def add_inventory_item():
     db.session.add(item)
     db.session.flush()
 
-    log_user_activity(session.get('user_id'), 'Add', 'InventoryItem', item.id, details={'name': name, 'type': type_, 'initial_stock': stock})
+    log_user_activity(current_user.id, 'Add', 'InventoryItem', item.id, details={'name': name, 'type': type_, 'initial_stock': stock})
 
     safe_commit()
 
@@ -7228,7 +7258,7 @@ def inventory_transaction():
     db.session.add(t)
     try:
         db.session.flush()
-        log_user_activity(session.get('user_id'), 'Add', 'InventoryTransaction', t.id, details={'item_name': item.name, 'type': type_, 'quantity': qty})
+        log_user_activity(current_user.id, 'Add', 'InventoryTransaction', t.id, details={'item_name': item.name, 'type': type_, 'quantity': qty})
         safe_commit()
         flash('Transaction recorded.', 'success')
     except Exception as e:
@@ -7245,7 +7275,7 @@ def edit_inventory_item(id):
 
     if request.form.get('delete') == '1':
         item_name = item.name
-        log_user_activity(session.get('user_id'), 'Delete', 'InventoryItem', id, details={'name': item_name})
+        log_user_activity(current_user.id, 'Delete', 'InventoryItem', id, details={'name': item_name})
         db.session.delete(item)
         safe_commit()
         flash('Item deleted.', 'info')
@@ -7289,7 +7319,7 @@ def edit_inventory_item(id):
 
     changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
     if changes:
-        log_user_activity(session.get('user_id'), 'Edit', 'InventoryItem', item.id, details=changes)
+        log_user_activity(current_user.id, 'Edit', 'InventoryItem', item.id, details=changes)
 
     safe_commit()
     flash('Item updated.', 'success')
@@ -7299,7 +7329,7 @@ def edit_inventory_item(id):
 @login_required
 @dept_required('Farm')
 def delete_inventory_transaction(id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     t = InventoryTransaction.query.get_or_404(id)
     item = InventoryItem.query.get(t.inventory_item_id)
@@ -7307,7 +7337,7 @@ def delete_inventory_transaction(id):
     t_qty = t.quantity
     item_name = item.name if item else "Unknown"
 
-    log_user_activity(session.get('user_id'), 'Delete', 'InventoryTransaction', id, details={'item_name': item_name, 'type': t_type, 'quantity': t_qty})
+    log_user_activity(current_user.id, 'Delete', 'InventoryTransaction', id, details={'item_name': item_name, 'type': t_type, 'quantity': t_qty})
 
     # Revert Stock
     if item:
@@ -7325,7 +7355,7 @@ def delete_inventory_transaction(id):
 @login_required
 @dept_required('Farm')
 def edit_inventory_transaction(id):
-    if not session.get('is_admin'): return redirect(url_for('index'))
+    if not current_user.role == 'Admin': return redirect(url_for('index'))
 
     t = InventoryTransaction.query.get_or_404(id)
     item = InventoryItem.query.get(t.inventory_item_id)
@@ -7377,7 +7407,7 @@ def edit_inventory_transaction(id):
 
     changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
     if changes:
-        log_user_activity(session.get('user_id'), 'Edit', 'InventoryTransaction', t.id, details=changes)
+        log_user_activity(current_user.id, 'Edit', 'InventoryTransaction', t.id, details=changes)
 
     # Apply New Effect
     if item:
@@ -7994,7 +8024,7 @@ def health_log_bodyweight():
 
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     # Fetch all records, sort by house name, then age week descending
     records = db.session.query(FlockGrading, House.name).join(House).order_by(House.name, FlockGrading.age_week.desc()).all()
@@ -8151,9 +8181,10 @@ def health_log_bodyweight():
     return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, bodyweight_logs=bodyweight_logs, grouped_data={}, today=date.today())
 
 @app.route('/additional_report')
+@login_required
 def additional_report():
     # Role Check: Admin or Management
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
         return redirect(url_for('index'))
 
@@ -8161,7 +8192,7 @@ def additional_report():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     prod_flocks = [f for f in active_flocks if f.phase == 'Production']
     rearing_flocks = [f for f in active_flocks if f.phase == 'Rearing']
@@ -8715,9 +8746,10 @@ def get_hatchery_analytics():
     return last_hatch, next_hatch
 
 @app.route('/executive_dashboard')
+@login_required
 def executive_dashboard():
     # Role Check: Admin or Management
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
         return redirect(url_for('index'))
 
@@ -8725,7 +8757,7 @@ def executive_dashboard():
     active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     today = date.today()
 
@@ -8925,16 +8957,17 @@ def executive_dashboard():
 
 
 @app.route('/executive/flock_select')
+@login_required
 def flock_detail_readonly_select():
     # Role Check: Admin or Management
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
         return redirect(url_for('index'))
 
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     if not active_flocks:
         flash("No active flocks found.", "warning")
@@ -8943,16 +8976,17 @@ def flock_detail_readonly_select():
     return render_template('flock_detail_readonly_select.html', active_flocks=active_flocks)
 
 @app.route('/executive/flock/<int:id>')
+@login_required
 def executive_flock_detail(id):
     # Role Check: Admin or Management
-    if not session.get('is_admin') and session.get('user_role') != 'Management':
+    if not current_user.role == 'Admin' and current_user.role != 'Management':
         flash("Access Denied: Executive View Only.", "danger")
         return redirect(url_for('index'))
 
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
     if active_flocks:
-        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -9664,12 +9698,12 @@ with app.app_context():
 
 @app.route('/api/offline_snapshot')
 def offline_snapshot():
-    if not session.get('user_id'):
+    if not current_user.id:
         return jsonify({'error': 'Unauthorized'}), 401
 
-    user_dept = session.get('user_dept')
-    is_admin = session.get('is_admin')
-    user_role = session.get('user_role')
+    user_dept = current_user.dept
+    is_admin = current_user.role == 'Admin'
+    user_role = current_user.role
 
     # Restrict to allowed departments if not Admin/Management
     query = Flock.query.filter_by(status='Active')
