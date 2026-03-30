@@ -1323,20 +1323,21 @@ def settings():
 
     return render_template('settings.html', vapid_public_key=vapid_public_key, notifications=notifications)
 
-def send_push_alert(user_id, title, body, url=None):
+def send_push_alert(user_id, title, body, url=None, transient=False):
     # Log the notification history for the user
-    try:
-        new_notification = NotificationHistory(
-            user_id=user_id,
-            title=title,
-            body=body,
-            url=url
-        )
-        db.session.add(new_notification)
-        db.session.commit()
-    except Exception as e:
-        app.logger.warning(f"Failed to log notification history: {e}")
-        db.session.rollback()
+    if not transient:
+        try:
+            new_notification = NotificationHistory(
+                user_id=user_id,
+                title=title,
+                body=body,
+                url=url
+            )
+            db.session.add(new_notification)
+            db.session.commit()
+        except Exception as e:
+            app.logger.warning(f"Failed to log notification history: {e}")
+            db.session.rollback()
 
     vapid_private_key = os.getenv('VAPID_PRIVATE_KEY')
     vapid_claim_email = os.getenv('VAPID_CLAIM_EMAIL')
@@ -1479,7 +1480,60 @@ def manage_rules():
         return redirect(url_for('manage_rules'))
 
     rules = NotificationRule.query.all()
-    return render_template('admin/rules_manager.html', rules=rules)
+
+    # Get users with active subscriptions for the target user dropdown
+    subbed_user_ids = db.session.query(PushSubscription.user_id).distinct().all()
+    subbed_user_ids = [uid[0] for uid in subbed_user_ids]
+    subscribed_users = User.query.filter(User.id.in_(subbed_user_ids)).order_by(User.username).all()
+
+    return render_template('admin/rules_manager.html', rules=rules, subscribed_users=subscribed_users)
+
+@app.route('/admin/rules/test_alert', methods=['POST'])
+def test_alert():
+    if not session.get('is_admin') and session.get('user_role') != 'Management':
+        return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
+
+    test_type = request.form.get('test_type')
+    target_user_id = request.form.get('target_user')
+
+    if test_type == 'mortality':
+        title = "SLH-OP: [TEST] Mortality"
+        body = "VA2: Mortality exceeded 0.05% (TEST)"
+    elif test_type == 'bodyweight':
+        title = "SLH-OP: [TEST] Weight"
+        body = "VA2: Week 47 weights updated (TEST)"
+    else:
+        return jsonify({'status': 'error', 'message': 'Invalid test type'}), 400
+
+    query = PushSubscription.query
+    if target_user_id and target_user_id != 'all':
+        try:
+            target_id = int(target_user_id)
+            query = query.filter_by(user_id=target_id)
+        except ValueError:
+            pass
+
+    subscriptions = query.all()
+    successful_users = set()
+    failed_count = 0
+
+    unique_user_ids = list(set([sub.user_id for sub in subscriptions]))
+
+    for uid in unique_user_ids:
+        user = User.query.get(uid)
+        if user:
+            # send_push_alert returns boolean indicating if at least one sub succeeded
+            success = send_push_alert(uid, title, body, transient=True)
+            if success:
+                successful_users.add(user.username)
+            else:
+                failed_count += 1
+
+    return jsonify({
+        'status': 'success',
+        'successful_users': sorted(list(successful_users)),
+        'failed_count': failed_count
+    })
 
 @app.route('/admin/rules/delete/<int:id>', methods=['POST'])
 def delete_notification_rule(id):
