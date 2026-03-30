@@ -294,7 +294,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'cull_eggs_abnormal_pct': safe_div(abnormal, eggs),
 
             'water_per_bird': safe_div(log.water_intake_calculated * 1000, (stock_m_start + stock_f_start), multiplier=1.0),
-            'water_feed_ratio': (log.water_intake_calculated / (feed_m_kg + feed_f_kg)) if log.water_intake_calculated and (feed_m_kg + feed_f_kg) > 0 else None
+            'water_feed_ratio': safe_div(log.water_intake_calculated * 1000, (feed_m_kg + feed_f_kg) * 1000, multiplier=1.0)
         }
 
         # Hatchability Merge
