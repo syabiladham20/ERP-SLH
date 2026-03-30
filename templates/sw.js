@@ -29,17 +29,28 @@ self.addEventListener('install', (event) => {
 
 // Fetch Event: Network-First Strategy
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept').includes('text/html'))) {
+  if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
       fetch(event.request).catch(() => {
         // Redirect to offline mirror for dashboard-like navigations
-        return caches.match('/offline_mirror');
+        return caches.match('/offline_mirror').then(response => {
+           return response || new Response('Offline. Please check your connection.', {
+               status: 503,
+               statusText: 'Service Unavailable',
+               headers: new Headers({ 'Content-Type': 'text/plain' })
+           });
+        });
       })
     );
   } else {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match(event.request);
+        return caches.match(event.request).then(response => {
+           // Return a generic fallback if not found in cache
+           if (response) return response;
+           // If it's an image or something else, we could return a placeholder or 404
+           return new Response('', { status: 404, statusText: 'Not Found' });
+        });
       })
     );
   }

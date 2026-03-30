@@ -980,7 +980,11 @@
       interaction: {
         mode: 'index',
         intersect: false
-},
+      },
+      hover: {
+        mode: 'index',
+        intersect: false
+      },
       plugins: {
           legend: {
               position: 'bottom'
@@ -1495,10 +1499,10 @@
                   main_note: n.main_note, main_photos: n.main_photos, extra_notes: n.extra_notes, // New
                   originalIndex: i // Backup safety
               });
-          } else {
-              // IMPORTANT: Push null to keep the array lengths identical
-              notesPoints.push(null);
           }
+          // Do not push null when using object {x, y} format for line/scatter charts.
+          // Chart.js will automatically align objects with the 'x' property to the correct label,
+          // avoiding "Cannot read properties of null (reading 'x')" errors.
       });
 
       const notesDataset = {
