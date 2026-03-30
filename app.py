@@ -7819,8 +7819,9 @@ def health_log_bodyweight():
         flash("Bodyweight data saved successfully.", "success")
         return redirect(url_for('health_log_bodyweight'))
 
-
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+    active_flocks = Flock.query.filter_by(status='Active', farm_id=current_user.farm_id).options(joinedload(Flock.house)).all()
+    if active_flocks:
+        active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
 
     # Fetch all records, sort by house name, then age week descending
     records = db.session.query(FlockGrading, House.name).join(House).order_by(House.name, FlockGrading.age_week.desc()).all()
@@ -7837,8 +7838,7 @@ def health_log_bodyweight():
 
     houses = House.query.order_by(House.name).all()
 
-    active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
-    active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+    # active_flocks is already fetched and sorted above
 
     # Fetch bodyweight logs (is_weighing_day=True)
     logs = DailyLog.query.join(Flock).join(House).options(
