@@ -1,6 +1,6 @@
 from flask import Flask
 from flask import render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
-from flask_login import current_user
+from flask_login import current_user, LoginManager, login_required, login_user, logout_user
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from sqlalchemy.orm import joinedload
@@ -70,22 +70,6 @@ def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower()
             for text in _ns_re.split(s)]
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        user_dept = session.get('user_dept')
-        if user_dept is None:
-            if request.path == url_for('login'): # Avoid loop
-                return f(*args, **kwargs)
-
-            # Prevent duplicate flash messages
-            flashes = session.get('_flashes', [])
-            if not any(category == 'info' and msg == "Please log in to continue." for category, msg in flashes):
-                flash("Please log in to continue.", "info")
-
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
 
 def dept_required(required_dept):
     def decorator(f):
@@ -136,6 +120,15 @@ def dept_required(required_dept):
     return decorator
 
 app = Flask(__name__)
+
+# 1. Initialize the Manager (Moved up to avoid NameError when calling init_app)
+login_manager = LoginManager()
+
+# 2. Attach it to your App
+login_manager.init_app(app)
+
+# 3. Tell it where to go if someone isn't logged in
+login_manager.login_view = 'login'
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_url = os.getenv('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
@@ -345,7 +338,9 @@ class NotificationRule(db.Model):
     threshold = db.Column(db.Float, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
 
-class User(db.Model):
+from flask_login import UserMixin
+
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=True)
@@ -359,6 +354,12 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+# 4. The "User Loader" (Crucial for current_user to work)
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 
 class FeedCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1212,40 +1213,6 @@ def inject_system_health():
 
     return dict(system_health_logs=logs)
 
-@app.before_request
-def load_logged_in_user():
-    # TEMPORARY FEATURE: Auto-login if login_required is False
-    login_not_required = False
-    try:
-        gs = GlobalStandard.query.first()
-        if gs and hasattr(gs, 'login_required') and not gs.login_required:
-            login_not_required = True
-    except Exception:
-        pass # Table might not exist yet during initial setup/migration
-
-    user_id = session.get('user_id')
-
-    if login_not_required and not user_id:
-        # Auto-login as Admin
-        admin = User.query.filter_by(role='Admin').first()
-        if not admin:
-             # Fallback to username 'admin'
-             admin = User.query.filter_by(username='admin').first()
-
-        if admin:
-            session.clear()
-            session['user_id'] = admin.id
-            session['user_name'] = admin.name if admin.name else admin.username
-            session['user_dept'] = admin.dept
-            session['user_role'] = admin.role
-            session['is_admin'] = (admin.role == 'Admin')
-            user_id = admin.id
-
-    if user_id and isinstance(user_id, int):
-        g.user = User.query.get(user_id)
-    else:
-        g.user = None
-
 @app.errorhandler(500)
 def internal_error(error):
     db.session.rollback() # Crucial: stops the database from getting stuck
@@ -1253,7 +1220,7 @@ def internal_error(error):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if g.user:
+    if current_user.is_authenticated:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -1263,9 +1230,12 @@ def login():
 
         user = User.query.filter_by(username=username).first()
 
+
         if user and user.check_password(password):
-            session.clear()
+            session.clear() # Clear BEFORE logging in so Flask-Login keys aren't deleted
+            login_user(user, remember=remember)
             session['user_id'] = user.id
+
             session['user_name'] = user.name if user.name else user.username
             session['user_dept'] = user.dept
             session['user_role'] = user.role
@@ -1293,6 +1263,7 @@ def login():
 
 @app.route('/logout')
 def logout():
+    logout_user()
     session.clear()
     flash("You have been logged out.", "info")
 
@@ -4662,7 +4633,7 @@ def utility_processor():
                 user_dept=effective_dept,
                 user_role=effective_role,
                 is_debug=app.debug,
-                current_user=g.user if hasattr(g, 'user') and g.user else AnonymousUser())
+                current_user=current_user)
 
 @app.route('/admin/ui', methods=['GET', 'POST'])
 def admin_ui_update():
