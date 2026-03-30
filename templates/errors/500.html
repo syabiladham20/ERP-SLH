@@ -1,0 +1,46 @@
+{% extends "errors/base_error.html" %}
+
+{% block error_icon %}
+<svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-warning" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <path d="M12 9v4" />
+  <path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" />
+  <path d="M12 16h.01" />
+</svg>
+{% endblock %}
+
+{% block error_title %}
+Technical Hiccup Detected
+{% endblock %}
+
+{% block error_subtitle %}
+We encountered an unexpected issue while processing your request. Our team has been notified.
+{% endblock %}
+
+{% block error_details %}
+{% if error %}
+<div class="accordion mb-4" id="error-details-accordion">
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="heading-error-details">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-error-details" aria-expanded="false" aria-controls="collapse-error-details">
+        Technical Details
+      </button>
+    </h2>
+    <div id="collapse-error-details" class="accordion-collapse collapse" aria-labelledby="heading-error-details" data-bs-parent="#error-details-accordion">
+      <div class="accordion-body pt-0 text-start">
+        <pre class="mb-0 text-muted" style="white-space: pre-wrap; font-size: 0.85rem;">{{ error }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block error_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-primary">
+  Back to Dashboard
+</a>
+<button type="button" class="btn btn-ghost-secondary ms-2" onclick="window.history.back()">
+  Go Back
+</button>
+{% endblock %}
