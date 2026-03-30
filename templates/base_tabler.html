@@ -102,14 +102,14 @@
         .btn-floating {
             position: fixed;
             bottom: 20px;
-            right: 20px;
+            left: 20px;
             z-index: 1090;
             display: none;
+            align-items: center;
+            justify-content: center;
             border-radius: 50%;
             width: 50px;
             height: 50px;
-            line-height: 50px;
-            text-align: center;
             font-size: 24px;
             padding: 0;
         }
@@ -133,7 +133,7 @@
         /* AI Chat Widget */
         .ai-chat-btn {
             position: fixed;
-            bottom: 80px;
+            bottom: 20px;
             right: 20px;
             z-index: 1090;
             border-radius: 50%;
@@ -142,11 +142,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 0;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .ai-chat-box {
             position: fixed;
-            bottom: 140px;
+            bottom: 80px;
             right: 20px;
             width: 320px;
             max-width: calc(100vw - 40px);
@@ -577,7 +578,7 @@
 
             window.onscroll = function () {
                 if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    mybutton.style.display = "block";
+                    mybutton.style.display = "flex";
                 } else {
                     mybutton.style.display = "none";
                 }
