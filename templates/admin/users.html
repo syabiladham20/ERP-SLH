@@ -16,6 +16,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Username</th>
+                            <th>Name</th>
                             <th>Department</th>
                             <th>Role</th>
                             <th>Actions</th>
@@ -25,6 +26,7 @@
                         {% for user in users %}
                         <tr>
                             <td>{{ user.username }}</td>
+                            <td>{{ user.name or '' }}</td>
                             <td>
                                 <span class="badge
                                    {% if user.dept == 'Admin' %}bg-danger{% elif user.dept == 'Farm' %}bg-success{% else %}bg-warning text-dark{% endif %}">
@@ -54,6 +56,10 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body text-start">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Name</label>
+                                                        <input type="text" class="form-control" name="name" value="{{ user.name or '' }}">
+                                                    </div>
                                                     <div class="mb-3">
                                                         <label class="form-label">Department</label>
                                                         <select class="form-select" name="dept">
@@ -142,6 +148,10 @@
                     <div class="mb-3">
                         <label class="form-label">Username</label>
                         <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Name (Display Name)</label>
+                        <input type="text" class="form-control" name="name">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Password</label>

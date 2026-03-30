@@ -22,6 +22,9 @@
             <a href="#tabs-settings" class="nav-link active" data-bs-toggle="tab">Settings</a>
           </li>
           <li class="nav-item">
+            <a href="#tabs-profile" class="nav-link" data-bs-toggle="tab">Profile</a>
+          </li>
+          <li class="nav-item">
             <a href="#tabs-history" class="nav-link" data-bs-toggle="tab">Notification History</a>
           </li>
         </ul>
@@ -60,6 +63,36 @@
                 <div class="text-muted small mt-2" id="push-actions-hint">Enable real-time alerts to test notifications.</div>
             </div>
             <div id="push-status-msg" class="text-success mt-2 d-none fw-bold"></div>
+          </div>
+          <div class="tab-pane" id="tabs-profile">
+            <form action="{{ url_for('profile_update') }}" method="POST">
+              <div class="mb-3">
+                <label class="form-label">Name (Display Name)</label>
+                <input type="text" class="form-control" name="name" value="{{ g.user.name or '' }}" placeholder="Enter your display name">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" name="username" value="{{ g.user.username }}" required>
+              </div>
+              <hr>
+              <h4 class="mb-3">Change Password (Optional)</h4>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep current password">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" name="confirm_password" placeholder="Confirm your new password">
+              </div>
+              <hr>
+              <div class="mb-3">
+                <label class="form-label text-danger">Current Password (Required to save changes)</label>
+                <input type="password" class="form-control" name="current_password" required placeholder="Enter your current password">
+              </div>
+              <div class="form-footer">
+                <button type="submit" class="btn btn-primary">Save Profile</button>
+              </div>
+            </form>
           </div>
           <div class="tab-pane" id="tabs-history">
             {% if notifications %}
