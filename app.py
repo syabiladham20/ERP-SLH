@@ -7810,72 +7810,66 @@ def upload_weights():
         return redirect(url_for('weight_grading'))
 
     if file and (file.filename.endswith('.csv') or file.filename.endswith('.xlsx')):
+
+
+
         try:
             if file.filename.endswith('.csv'):
-                df_dict = {'Sheet1': pd.read_csv(file)}
+                df_dict = {'Sheet1': pd.read_csv(file, header=None)}
             else:
-                df_dict = pd.read_excel(file, sheet_name=None)
+                df_dict = pd.read_excel(file, sheet_name=None, header=None)
 
             m_weights = []
             f_weights = []
 
             for sheet_name, df in df_dict.items():
-                # Try to determine sex from sheet name if possible, or assume mixed and check column headers
-                # Looking at the user's image, there's a file header "File: VB1-M P2"
-                # Sometimes it's in the rows. Let's look for 'Weight (g)' column and a 'File' column
-                # or just look at all columns that might contain weights.
+                active_sex = None
+                collecting = False
 
-                # Identify if there's a column like "Weight [g]" or "Weight (g)"
-                weight_col = None
-                for col in df.columns:
-                    if 'weight' in str(col).lower():
-                        weight_col = col
-                        break
+                for index in range(len(df)):
+                    row = df.iloc[index]
 
-                file_col = None
-                for col in df.columns:
-                    if 'file' in str(col).lower():
-                        file_col = col
-                        break
+                    # 1. The Scanner Phase (Column B is index 1)
+                    if len(row) > 1 and pd.notna(row[1]):
+                        col_b_val = str(row[1]).strip()
+                        if col_b_val:
+                            # Use regex to find (M|F)
+                            match = re.search(r'\b(M|F)\b', col_b_val.upper())
+                            if match:
+                                active_sex = 'Male' if match.group(1) == 'M' else 'Female'
+                                collecting = False # Stop collecting previous block
 
-                if weight_col:
-                    # If we have a file column, we can check row by row for 'M' or 'F'
-                    for index, row in df.iterrows():
-                        w = row[weight_col]
-                        # check if it's a valid number
-                        try:
-                            w = float(w)
-                            if pd.isna(w) or w <= 0:
-                                continue
+                    # 2. The Data Trigger (Column D is index 3)
+                    if len(row) > 3 and pd.notna(row[3]):
+                        col_d_val = str(row[3]).strip()
 
-                            sex = None
-                            if file_col and pd.notna(row[file_col]):
-                                f_name = str(row[file_col]).upper()
-                                if '-M' in f_name or ' M ' in f_name or f_name.endswith(' M'):
-                                    sex = 'Male'
-                                elif '-F' in f_name or ' F ' in f_name or f_name.endswith(' F'):
-                                    sex = 'Female'
+                        if active_sex and 'weight [g]' in col_d_val.lower():
+                            collecting = True
+                            continue # Skip the header row itself
 
-                            if not sex:
-                                # Fallback to sheet name
-                                s_name = str(sheet_name).upper()
-                                if '-M' in s_name or ' M ' in s_name or s_name.endswith(' M'):
-                                    sex = 'Male'
-                                elif '-F' in s_name or ' F ' in s_name or s_name.endswith(' F'):
-                                    sex = 'Female'
-                                else:
-                                    # Default to Female if unknown? Or skip? Let's skip if we can't identify.
+                        # 3. The Aggregation Phase
+                        if collecting:
+                            try:
+                                w = float(col_d_val)
+                                if pd.isna(w) or w <= 0:
                                     continue
 
-                            if sex == 'Male':
-                                m_weights.append(w)
-                            else:
-                                f_weights.append(w)
-                        except:
-                            continue
+                                if active_sex == 'Male':
+                                    m_weights.append(w)
+                                elif active_sex == 'Female':
+                                    f_weights.append(w)
+                            except ValueError:
+                                # Stop collecting on non-numeric value (like footer or new header)
+                                collecting = False
+                    else:
+                        # Stop collecting if Column D is empty
+                        collecting = False
 
             # Process and save
+
+
             if m_weights:
+
                 stats = calculate_grading_stats(m_weights)
                 if stats:
                     # Check if exists
@@ -8089,15 +8083,25 @@ def health_log_bodyweight():
         m_parts = []
         f_parts = []
 
+        std_m = log.standard_bw_male
+        std_f = log.standard_bw_female
+
+        # Fallback to Standard model if not saved in log or is 0
+        if not std_m or not std_f:
+            std_record = Standard.query.filter_by(week=age_weeks).first()
+            if std_record:
+                if not std_m: std_m = std_record.std_bw_male
+                if not std_f: std_f = std_record.std_bw_female
+
         avg_m_diff = "N/A"
         if prev_log and log.body_weight_male is not None and prev_log.body_weight_male is not None:
             diff = log.body_weight_male - prev_log.body_weight_male
-            avg_m_diff = f"{'+' if diff >= 0 else ''}{diff:.0f}g"
+            avg_m_diff = f"{'+' if diff > 0 else ''}{diff:.0f}g"
 
         avg_f_diff = "N/A"
         if prev_log and log.body_weight_female is not None and prev_log.body_weight_female is not None:
             diff = log.body_weight_female - prev_log.body_weight_female
-            avg_f_diff = f"{'+' if diff >= 0 else ''}{diff:.0f}g"
+            avg_f_diff = f"{'+' if diff > 0 else ''}{diff:.0f}g"
 
         for i in range(1, 9):
             cur_m = get_p(log, f'M{i}')
@@ -8107,13 +8111,13 @@ def health_log_bodyweight():
                 diff_u = "N/A"
                 if prev_m and prev_m.body_weight > 0:
                     dg = cur_m.body_weight - prev_m.body_weight
-                    diff_g = f"{'+' if dg >= 0 else ''}{dg:.0f}g"
+                    diff_g = f"{'+' if dg > 0 else ''}{dg:.0f}g"
                     du = cur_m.uniformity - prev_m.uniformity
-                    diff_u = f"{'+' if du >= 0 else ''}{du:.1f}%"
+                    diff_u = f"{'+' if du > 0 else ''}{du:.1f}%"
 
                 var_pct = 0
-                if log.standard_bw_male and log.standard_bw_male > 0:
-                    var_pct = ((cur_m.body_weight - log.standard_bw_male) / log.standard_bw_male) * 100
+                if std_m and std_m > 0:
+                    var_pct = ((cur_m.body_weight - std_m) / std_m) * 100
 
                 m_parts.append({
                     'name': f'P{i}',
@@ -8131,13 +8135,13 @@ def health_log_bodyweight():
                 diff_u = "N/A"
                 if prev_f and prev_f.body_weight > 0:
                     dg = cur_f.body_weight - prev_f.body_weight
-                    diff_g = f"{'+' if dg >= 0 else ''}{dg:.0f}g"
+                    diff_g = f"{'+' if dg > 0 else ''}{dg:.0f}g"
                     du = cur_f.uniformity - prev_f.uniformity
-                    diff_u = f"{'+' if du >= 0 else ''}{du:.1f}%"
+                    diff_u = f"{'+' if du > 0 else ''}{du:.1f}%"
 
                 var_pct = 0
-                if log.standard_bw_female and log.standard_bw_female > 0:
-                    var_pct = ((cur_f.body_weight - log.standard_bw_female) / log.standard_bw_female) * 100
+                if std_f and std_f > 0:
+                    var_pct = ((cur_f.body_weight - std_f) / std_f) * 100
 
                 f_parts.append({
                     'name': f'P{i}',
@@ -8151,11 +8155,11 @@ def health_log_bodyweight():
         has_report = reports_map.get((log.flock.house_id, age_weeks), False)
 
         avg_m_var = 0
-        if log.body_weight_male and log.standard_bw_male:
-            avg_m_var = ((log.body_weight_male - log.standard_bw_male) / log.standard_bw_male) * 100
+        if log.body_weight_male and std_m:
+            avg_m_var = ((log.body_weight_male - std_m) / std_m) * 100
         avg_f_var = 0
-        if log.body_weight_female and log.standard_bw_female:
-            avg_f_var = ((log.body_weight_female - log.standard_bw_female) / log.standard_bw_female) * 100
+        if log.body_weight_female and std_f:
+            avg_f_var = ((log.body_weight_female - std_f) / std_f) * 100
 
         bodyweight_logs.append({
             'log_id': log.id,
@@ -8163,8 +8167,8 @@ def health_log_bodyweight():
             'house_id': log.flock.house_id,
             'age_weeks': age_weeks,
             'date': log.date.strftime('%Y-%m-%d'),
-            'std_m': log.standard_bw_male or 0,
-            'std_f': log.standard_bw_female or 0,
+            'std_m': std_m or 0,
+            'std_f': std_f or 0,
             'avg_m': log.body_weight_male or 0,
             'avg_f': log.body_weight_female or 0,
             'avg_m_diff': avg_m_diff,
