@@ -348,6 +348,7 @@ class NotificationRule(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=True)
     password_hash = db.Column(db.String(200), nullable=False)
     dept = db.Column(db.String(50), nullable=False)
     role = db.Column(db.String(50), nullable=False)
@@ -1234,7 +1235,7 @@ def load_logged_in_user():
         if admin:
             session.clear()
             session['user_id'] = admin.id
-            session['user_name'] = admin.username
+            session['user_name'] = admin.name if admin.name else admin.username
             session['user_dept'] = admin.dept
             session['user_role'] = admin.role
             session['is_admin'] = (admin.role == 'Admin')
@@ -1260,7 +1261,7 @@ def login():
         if user and user.check_password(password):
             session.clear()
             session['user_id'] = user.id
-            session['user_name'] = user.username
+            session['user_name'] = user.name if user.name else user.username
             session['user_dept'] = user.dept
             session['user_role'] = user.role
             session['is_admin'] = (user.role == 'Admin')
@@ -1270,7 +1271,7 @@ def login():
             else:
                 session.permanent = False
 
-            flash(f"Welcome back, {user.username}!", "success")
+            flash(f"Welcome back, {session['user_name']}!", "success")
 
             if user.dept == 'Hatchery':
                 return redirect(url_for('hatchery_dashboard'))
@@ -1398,6 +1399,46 @@ def test_notification():
     except Exception as e:
         app.logger.error(f"Failed to send test push: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/settings/profile', methods=['POST'])
+@login_required
+def profile_update():
+    user = User.query.get(session['user_id'])
+
+    current_password = request.form.get('current_password')
+    name = request.form.get('name')
+    username = request.form.get('username')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+
+    if not user or not user.check_password(current_password):
+        flash("Incorrect current password. Profile not updated.", "danger")
+        return redirect(url_for('settings'))
+
+    # Update username and name
+    if username and username != user.username:
+        existing = User.query.filter_by(username=username).first()
+        if existing and existing.id != user.id:
+            flash("Username is already taken.", "danger")
+            return redirect(url_for('settings'))
+        user.username = username
+
+    user.name = name
+
+    # Update password if provided
+    if new_password:
+        if new_password != confirm_password:
+            flash("New passwords do not match. Profile not updated.", "danger")
+            return redirect(url_for('settings'))
+        user.set_password(new_password)
+
+    db.session.commit()
+
+    # Update session name
+    session['user_name'] = user.name if user.name else user.username
+
+    flash("Profile updated successfully.", "success")
+    return redirect(url_for('settings'))
 
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():
@@ -1562,6 +1603,7 @@ def admin_user_add():
     if not session.get('is_admin'): return redirect(url_for('index'))
 
     username = request.form.get('username')
+    name = request.form.get('name')
     password = request.form.get('password')
     dept = request.form.get('dept')
     role = request.form.get('role')
@@ -1569,7 +1611,7 @@ def admin_user_add():
     if User.query.filter_by(username=username).first():
         flash(f"User {username} already exists.", "warning")
     else:
-        u = User(username=username, dept=dept, role=role)
+        u = User(username=username, name=name, dept=dept, role=role)
         u.set_password(password)
         db.session.add(u)
         db.session.commit()
@@ -1581,12 +1623,18 @@ def admin_user_edit(user_id):
     if not session.get('is_admin'): return redirect(url_for('index'))
 
     user = User.query.get_or_404(user_id)
+    name = request.form.get('name')
     dept = request.form.get('dept')
     role = request.form.get('role')
 
+    user.name = name
     user.dept = dept
     user.role = role
     db.session.commit()
+
+    if user.id == session.get('user_id'):
+        session['user_name'] = user.name if user.name else user.username
+
     flash(f"User {user.username} updated.", "success")
     return redirect(url_for('admin_users'))
 
