@@ -63,7 +63,7 @@
             color: #005eb8; /* SLH Blue */
         }
 
-        .custom-logo-path {
+        .drawBreeder {
             stroke-dasharray: 400;
             stroke-dashoffset: 400;
             animation: drawBreeder 4s infinite ease-in-out;
@@ -79,12 +79,12 @@
             97% { opacity: 0; }
         }
 
-        .slh-eye {
+        .blinkEye {
             animation: blinkEye 4s infinite;
 
         }
 
-        .slh-logo .custom-logo-path.slh-eye {
+        .slh-logo .drawBreeder.blinkEye {
             animation: drawBreeder 4s infinite ease-in-out, blinkEye 4s infinite;
 
         }
@@ -664,6 +664,39 @@
                     }
                 });
             });
+
+            // Show loading overlay on all links that look like regular page transitions
+            document.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Ignore links that:
+                    // - are just hashes (e.g., #tabs)
+                    // - have target="_blank"
+                    // - have data-bs-toggle (modals, dropdowns, tabs)
+                    // - have javascript: hrefs
+                    // - open a new page or don't navigate
+                    // - are a download link
+                    const href = this.getAttribute('href');
+                    const hasToggle = this.hasAttribute('data-bs-toggle');
+                    const hasTarget = this.getAttribute('target') === '_blank';
+                    const isDownload = this.hasAttribute('download');
+                    const isHash = href && href.startsWith('#');
+                    const isJs = href && href.startsWith('javascript:');
+
+                    // If it's a valid link that causes navigation, show loader
+                    if (href && !hasToggle && !hasTarget && !isDownload && !isHash && !isJs) {
+                        // Only show overlay if it's the same origin
+                        try {
+                            const url = new URL(this.href);
+                            if (url.origin === window.location.origin) {
+                                overlay.style.display = 'flex';
+                            }
+                        } catch (err) {
+                            // Invalid URL format, ignore
+                        }
+                    }
+                });
+            });
+
             window.addEventListener('pageshow', function() {
                 overlay.style.display = 'none';
             });
