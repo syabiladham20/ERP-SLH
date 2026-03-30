@@ -1797,6 +1797,20 @@ def health_log_post_mortem():
                     db.session.add(new_photo)
 
         db.session.commit()
+
+        # Unconditional Push Alert
+        try:
+            house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
+            title = "SLH-OP: Post Mortem"
+            body = f"{house_name}: New Post Mortem report filed. Please review clinical findings."
+            alert_url = url_for('view_flock', id=log.flock.id) if log.flock else '/'
+
+            all_users = User.query.all()
+            for user in all_users:
+                send_push_alert(user.id, title, body, url=alert_url)
+        except Exception as e:
+            app.logger.error(f"Failed to send Post Mortem push alert: {str(e)}")
+
         flash("Post Mortem details saved successfully.", "success")
         return redirect(url_for('health_log_post_mortem'))
 
@@ -7745,6 +7759,22 @@ def upload_weights():
                     grading.grading_bins = stats['grading_bins']
 
             db.session.commit()
+
+            # Unconditional Push Alert
+            try:
+                house = House.query.get(house_id)
+                house_name = house.name if house else "Unknown House"
+                title = "SLH-OP: Grading Report"
+                body = f"{house_name}: Week {age_week} Selection/Grading Report is now available."
+                # We don't have flock id directly, but we can redirect to bodyweight page
+                alert_url = url_for('health_log_bodyweight')
+
+                all_users = User.query.all()
+                for user in all_users:
+                    send_push_alert(user.id, title, body, url=alert_url)
+            except Exception as e:
+                app.logger.error(f"Failed to send Grading Report push alert: {str(e)}")
+
             flash(f"Successfully processed weights. Males: {len(m_weights)}, Females: {len(f_weights)}", "success")
         except Exception as e:
             db.session.rollback()
@@ -7816,6 +7846,24 @@ def health_log_bodyweight():
             save_partition(f'F{i}', request.form.get(f'bw_F{i}'), request.form.get(f'uni_F{i}'))
 
         db.session.commit()
+
+        # Unconditional Push Alert
+        try:
+            house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
+            age_week = 0
+            if log.flock and log.flock.intake_date:
+                age_week = (log.date - log.flock.intake_date).days // 7
+
+            title = "SLH-OP: Weight Entry"
+            body = f"{house_name}: Week {age_week} Bodyweight updated."
+            alert_url = url_for('health_log_bodyweight')
+
+            all_users = User.query.all()
+            for user in all_users:
+                send_push_alert(user.id, title, body, url=alert_url)
+        except Exception as e:
+            app.logger.error(f"Failed to send Bodyweight push alert: {str(e)}")
+
         flash("Bodyweight data saved successfully.", "success")
         return redirect(url_for('health_log_bodyweight'))
 
