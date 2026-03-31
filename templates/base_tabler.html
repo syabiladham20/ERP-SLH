@@ -548,7 +548,7 @@
     {% endif %}
 
     <!-- Update Toast Notification -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100;">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="dynamic-toast-container" style="z-index: 1100;">
       <div id="updateToast" class="toast text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header bg-primary text-white border-bottom-0">
           <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-refresh" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -569,6 +569,40 @@
     <!-- Tabler Core JS & Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}"></script>
     <script>
+        function showToast(message, type = "success") {
+          const container = document.getElementById("dynamic-toast-container");
+          if (!container) return;
+
+          const toastId = "toast-" + Date.now() + Math.floor(Math.random() * 1000);
+          const bgClass = type === "success" ? "bg-success" : (type === "error" ? "bg-danger" : "bg-primary");
+          const title = type === "success" ? "Success" : (type === "error" ? "Error" : "Info");
+          const iconHtml = type === "success"
+              ? `<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-check text-white" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M5 12l5 5l10 -10"></path></svg>`
+              : `<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle text-white" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 9v4"></path><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path><path d="M12 16h.01"></path></svg>`;
+
+          const toastHtml = `
+            <div id="${toastId}" class="toast text-white ${bgClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+              <div class="toast-header ${bgClass} text-white border-bottom-0">
+                ${iconHtml}
+                <strong class="me-auto ms-2">${title}</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+              <div class="toast-body pt-0"></div>
+            </div>
+          `;
+
+          container.insertAdjacentHTML("beforeend", toastHtml);
+          const toastEl = document.getElementById(toastId);
+          toastEl.querySelector('.toast-body').textContent = message;
+          // Assuming bootstrap object is available globally either directly or via tabler
+          const bsToast = new (window.bootstrap || window.tabler).Toast(toastEl);
+          bsToast.show();
+
+          toastEl.addEventListener("hidden.bs.toast", function () {
+            toastEl.remove();
+          });
+        }
+
         // Alias Tabler's bundled Bootstrap so existing scripts that rely on `new bootstrap.Modal()` continue to work.
         if (typeof window.bootstrap === 'undefined' && typeof window.tabler !== 'undefined') {
             window.bootstrap = window.tabler;

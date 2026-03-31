@@ -133,14 +133,26 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Changes saved successfully!');
+                    if (typeof showToast === 'function') {
+                        showToast('Changes saved successfully!', 'success');
+                    } else {
+                        alert('Changes saved successfully!');
+                    }
                 } else {
-                    alert('Error saving changes: ' + (data.error || 'Unknown error'));
+                    if (typeof showToast === 'function') {
+                        showToast('Error saving changes: ' + (data.error || 'Unknown error'), 'error');
+                    } else {
+                        alert('Error saving changes: ' + (data.error || 'Unknown error'));
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while saving.');
+                if (typeof showToast === 'function') {
+                    showToast('An error occurred while saving.', 'error');
+                } else {
+                    alert('An error occurred while saving.');
+                }
             })
             .finally(() => {
                 btn.disabled = false;
