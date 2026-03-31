@@ -1210,6 +1210,19 @@ def initialize_vaccine_schedule(flock_id, commit=True):
     else:
         db.session.flush()
 
+# --- Error Handlers ---
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    import traceback
+    error_details = traceback.format_exc() if app.debug else "An unexpected error occurred."
+    return render_template('errors/500.html', error=error_details), 500
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('errors/404.html'), 404
+
 # --- Routes ---
 
 @app.context_processor

@@ -1,0 +1,28 @@
+{% extends "errors/base_error.html" %}
+
+{% block error_icon %}
+<svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <circle cx="12" cy="12" r="9" />
+  <line x1="9" y1="10" x2="9.01" y2="10" />
+  <line x1="15" y1="10" x2="15.01" y2="10" />
+  <path d="M9.5 15.25a3.5 3.5 0 0 1 5 0" />
+</svg>
+{% endblock %}
+
+{% block error_title %}
+Page Not Found
+{% endblock %}
+
+{% block error_subtitle %}
+The page you are looking for does not exist or has been moved.
+{% endblock %}
+
+{% block error_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-primary">
+  Back to Dashboard
+</a>
+<button type="button" class="btn btn-ghost-secondary ms-2" onclick="window.history.back()">
+  Go Back
+</button>
+{% endblock %}
