@@ -1318,6 +1318,58 @@ def logout():
     """ % url_for('login')
     return response
 
+@app.route('/settings/profile_update', methods=['POST'])
+@login_required
+def profile_update():
+    user = User.query.get(current_user.id)
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for('login'))
+
+    current_password = request.form.get('current_password')
+    new_name = request.form.get('name')
+    new_username = request.form.get('username')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+
+    # Phase 2: Security check - Does the password match?
+    if not check_password_hash(user.password_hash, current_password):
+        flash("Incorrect current password. Profile update denied.", "danger")
+        return redirect(url_for('settings'))
+
+    changed = False
+
+    if new_username and new_username != user.username:
+        # Check if username already exists
+        existing_user = User.query.filter_by(username=new_username).first()
+        if existing_user:
+            flash("Username already taken. Please choose another.", "danger")
+            return redirect(url_for('settings'))
+        user.username = new_username
+        changed = True
+
+    if new_name is not None and new_name != user.name:
+        user.name = new_name
+        changed = True
+
+    if new_password:
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "danger")
+            return redirect(url_for('settings'))
+        user.set_password(new_password)
+        changed = True
+
+    if changed:
+        if safe_commit():
+            session['user_name'] = user.name or user.username
+            flash("Profile updated successfully.", "success")
+        else:
+            flash("Database error occurred while updating profile.", "danger")
+    else:
+        flash("No changes were made.", "info")
+
+    return redirect(url_for('settings'))
+
 @app.route('/settings', methods=['GET'])
 @login_required
 def settings():
@@ -9700,6 +9752,7 @@ with app.app_context():
 
 
 @app.route('/api/offline_snapshot')
+@login_required
 def offline_snapshot():
     if not current_user.id:
         return jsonify({'error': 'Unauthorized'}), 401
