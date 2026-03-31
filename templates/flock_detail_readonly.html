@@ -1078,6 +1078,25 @@
       return newObj;
   }
 
+
+  function generateDailyLabels(dataObj) {
+      if (!dataObj || !dataObj.dates) return [];
+      return dataObj.dates.map((date, i) => {
+          if (dataObj.ages && dataObj.ages[i] !== undefined) {
+              const age = dataObj.ages[i];
+              let dateStr = date;
+              if (dateStr && dateStr.includes('-')) {
+                  const parts = dateStr.split('-');
+                  if (parts.length === 3) {
+                      dateStr = parts[2] + '-' + parts[1];
+                  }
+              }
+              return `${age} (${dateStr})`;
+          }
+          return date;
+      });
+  }
+
   function getScaleOptions(dataArrays, isPercentage) {
       return {
           beginAtZero: true,
@@ -1102,8 +1121,8 @@
                endAge = endDate;
           } else {
                if (dataObj.ages && dataObj.ages.length > 0) {
-                   startAge = "W" + dataObj.ages[0].split('.')[0];
-                   endAge = "W" + dataObj.ages[dataObj.ages.length - 1].split('.')[0];
+                   startAge = dataObj.ages[0];
+                   endAge = dataObj.ages[dataObj.ages.length - 1];
                } else {
                    startAge = "W" + calculateAgeWeeks(new Date(startDate));
                    endAge = "W" + calculateAgeWeeks(new Date(endDate));
@@ -1211,7 +1230,7 @@
       waterChart = new Chart(document.getElementById("waterChart").getContext("2d"), {
           type: "line",
           data: {
-              labels: data.dates,
+              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
               datasets: datasets
           },
           options: {
@@ -1321,7 +1340,7 @@
       feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
           type: 'line',
           data: {
-              labels: data.dates,
+              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
               datasets: datasets
           },
           options: {
@@ -1402,7 +1421,7 @@
       maleChart = new Chart(document.getElementById('maleChart').getContext('2d'), {
         type: 'line',
         data: {
-          labels: bwData.dates,
+          labels: mode === 'daily' ? generateDailyLabels(bwData) : bwData.dates,
           datasets: maleDatasets
         },
         options: {
@@ -1484,7 +1503,7 @@
       femaleChart = new Chart(document.getElementById('femaleChart').getContext('2d'), {
         type: 'line',
         data: {
-          labels: bwData.dates,
+          labels: mode === 'daily' ? generateDailyLabels(bwData) : bwData.dates,
           datasets: femaleDatasets
         },
         options: {
@@ -1512,6 +1531,52 @@
       });
   }
 
+
+  // Custom Plugin to dynamically scale y1 axis based on visible datasets
+  const dynamicYMaxPlugin = {
+      id: 'dynamicYMaxPlugin',
+      beforeUpdate(chart, args, options) {
+          if (chart.options.scales && chart.options.scales.y1) {
+              let currentVisibleMax = 0;
+              let hasVisibleData = false;
+
+              chart.data.datasets.forEach((dataset, index) => {
+                  // Only check datasets mapped to y1 axis and are currently visible
+                  if (dataset.yAxisID === 'y1' && chart.isDatasetVisible(index)) {
+                      // Skip baseline data if we only want to scale by actual data points, or include it?
+                      // The prompt says "based on the datasets currently visible (toggled on) in the chart."
+                      // So we include all visible y1 datasets.
+                      const datasetData = dataset.data;
+                      if (datasetData && datasetData.length > 0) {
+                          // Handle objects {x, y} or numbers
+                          const values = datasetData.map(point => {
+                              if (point === null || point === undefined) return 0;
+                              if (typeof point === 'object' && point.y !== undefined) return point.y;
+                              return Number(point);
+                          });
+
+                          const maxInDataset = Math.max(...values.filter(v => !isNaN(v)));
+                          if (maxInDataset > currentVisibleMax) {
+                              currentVisibleMax = maxInDataset;
+                          }
+                          hasVisibleData = true;
+                      }
+                  }
+              });
+
+              if (hasVisibleData && currentVisibleMax > 0) {
+                  // Apply 1.25x Headroom and use Math.ceil
+                  chart.options.scales.y1.max = Math.ceil(currentVisibleMax * 1.25);
+                  chart.options.scales.y1.min = 0; // Ensure zero-baseline
+              } else {
+                  // Fallback if no data or all hidden
+                  chart.options.scales.y1.max = 1; // Arbitrary low positive number
+                  chart.options.scales.y1.min = 0;
+              }
+          }
+      }
+  };
+
   function renderGeneralChart() {
       const mode = currentMode;
       const state = chartStates.general;
@@ -1532,18 +1597,12 @@
 
       const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
 
-      let labels = [];
+      let labels = mode === 'daily' ? generateDailyLabels(generalData) : generalData.dates || [];
       const notesPoints = [];
 
       // Single loop to ensure absolute index alignment
       (generalData.dates || []).forEach((date, i) => {
-          // 1. Create the Label
-          let labelString = date;
-          if (mode === 'daily' && generalData.ages && generalData.ages[i] !== undefined) {
-              const age = generalData.ages[i];
-              labelString = `W${age} (${date})`;
-          }
-          labels.push(labelString);
+          let labelString = labels[i] || date;
 
           // 2. Create the Point if a note exists
           const n = generalData.notes ? generalData.notes[i] : null;
@@ -1672,7 +1731,8 @@
               labels: labels,
               datasets: generalDatasets
           },
-          options: {
+          plugins: [dynamicYMaxPlugin],
+        options: {
               ...commonOptions,
               onClick: (e, elements) => {
                   if (elements.length) {
@@ -1707,19 +1767,7 @@
       updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', filteredData, mode === 'daily');
 
       // Labels logic
-      let labels = [];
-      if (mode === 'daily') {
-          if (filteredData.dates && filteredData.ages) {
-              labels = filteredData.dates.map((d, i) => {
-                  const age = filteredData.ages[i];
-                  return `W${age} (${d})`;
-              });
-          } else {
-              labels = filteredData.dates;
-          }
-      } else {
-          labels = filteredData.dates;
-      }
+      let labels = mode === 'daily' ? generateDailyLabels(filteredData) : filteredData.dates;
 
       const heData = filteredData.hatch_egg_pct || [];
       const heStdData = filteredData.std_hatching_egg_pct || [];
