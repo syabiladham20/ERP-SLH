@@ -1085,6 +1085,7 @@
   };
 
   function renderWaterChart() {
+      const mode = currentMode;
       const state = chartStates.water;
       const fullData = chartDataDaily; // Water is primarily daily
       const data = filterDataByDate(fullData, state.start, state.end, false);
@@ -1194,6 +1195,7 @@
   }
 
   function renderFeedChart() {
+      const mode = currentMode;
       const state = chartStates.feed;
       const fullData = chartDataDaily; // Feed is primarily daily
       const data = filterDataByDate(fullData, state.start, state.end, false);
@@ -1293,6 +1295,7 @@
   }
 
   function renderMaleChart() {
+      const mode = currentMode;
       const state = chartStates.male;
       // Force Weekly Data for Body Weight Charts
       const bwFullData = chartDataWeekly;
@@ -1391,6 +1394,7 @@
   }
 
   function renderFemaleChart() {
+      const mode = currentMode;
       const state = chartStates.female;
       const bwFullData = chartDataWeekly;
       const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
@@ -1613,9 +1617,16 @@
 
       // Add Medication Highlight Background (if daily)
       if (mode === 'daily' && generalData.medication_active) {
+          const medDataPoints = [];
+          (generalData.medication_active || []).forEach((active, i) => {
+              if (active) {
+                  medDataPoints.push({ x: labels[i] || generalData.dates[i], y: 1, originalIndex: i });
+              }
+          });
+
           generalDatasets.push({
               label: 'Medication',
-              data: generalData.medication_active.map(active => active ? 1 : null),
+              data: medDataPoints,
               type: 'bar',
               yAxisID: 'yMed',
               backgroundColor: 'rgba(255, 255, 0, 0.2)', // Light yellow
@@ -1626,13 +1637,13 @@
               tooltip: { enabled: false }, // Optionally disable tooltip for background
               datalabels: {
                   display: function(context) {
-                      if (!generalData.medication_names) return false;
-                      const currentMeds = generalData.medication_names[context.dataIndex];
-                      if (!currentMeds) return false; // No meds
+                      if (!generalData.medication_names || !context.raw || context.raw.originalIndex === undefined) return false;
+                      const origIdx = context.raw.originalIndex;
+                      const currentMeds = generalData.medication_names[origIdx];
+                      if (!currentMeds) return false;
 
-                      // Only show on the first day of the contiguous medication block
-                      if (context.dataIndex > 0) {
-                          const prevMeds = generalData.medication_names[context.dataIndex - 1];
+                      if (origIdx > 0) {
+                          const prevMeds = generalData.medication_names[origIdx - 1];
                           if (currentMeds === prevMeds) {
                               return false;
                           }
@@ -1640,8 +1651,10 @@
                       return true;
                   },
                   formatter: function(value, context) {
-                      if (!generalData.medication_names || !generalData.medication_names[context.dataIndex]) return '';
-                      return generalData.medication_names[context.dataIndex].split(',').map(s => s.trim());
+                      if (!context.raw || context.raw.originalIndex === undefined) return '';
+                      const origIdx = context.raw.originalIndex;
+                      if (!generalData.medication_names || !generalData.medication_names[origIdx]) return '';
+                      return generalData.medication_names[origIdx].split(',').map(s => s.trim());
                   },
                   align: 'bottom',
                   anchor: 'end', // Place text at the top of the highlight bar (which is at y=1)
