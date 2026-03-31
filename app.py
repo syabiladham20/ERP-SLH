@@ -6091,16 +6091,8 @@ def recalculate_flock_inventory(flock_id):
             else:
                 log.feed_female = 0.0
 
-        # Now re-calculate gp_bird based on Total Feed and Stock
-        if curr_males > 0 and log.feed_male is not None:
-            log.feed_male_gp_bird = (log.feed_male * 1000.0) / (curr_males * multiplier)
-        else:
-            log.feed_male_gp_bird = 0.0
-
-        if curr_females > 0 and log.feed_female is not None:
-            log.feed_female_gp_bird = (log.feed_female * 1000.0) / (curr_females * multiplier)
-        else:
-            log.feed_female_gp_bird = 0.0
+        # gp_bird is a raw input. Do not overwrite it based on Total Feed.
+        # It has already been used to calculate Total Kg (log.feed_male / log.feed_female) above.
 
         # Update stock for the next day
         # Only mortality and culls affect total house stock.
