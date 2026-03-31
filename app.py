@@ -3562,9 +3562,13 @@ def flock_spreadsheet_save(flock_id):
                     existing_logs_by_date[log_date] = log
                     is_new = True
             else:
-                if log_id not in logs:
+                try:
+                    log_id_int = int(log_id)
+                except (ValueError, TypeError):
                     continue
-                log = logs[log_id]
+                if log_id_int not in logs:
+                    continue
+                log = logs[log_id_int]
 
             old_data = {}
 
@@ -3639,12 +3643,12 @@ def flock_spreadsheet_save(flock_id):
             if start_m > 0:
                 log.feed_male = ((log.feed_male_gp_bird or 0.0) * multiplier * start_m) / 1000.0
             else:
-                log.feed_male = 0.0
+                log.feed_male = None
 
             if start_f > 0:
                 log.feed_female = ((log.feed_female_gp_bird or 0.0) * multiplier * start_f) / 1000.0
             else:
-                log.feed_female = 0.0
+                log.feed_female = None
 
             # Feed Codes
             if not is_new:
