@@ -2908,8 +2908,8 @@ def view_flock(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d.get('stock_male_prod_end', 0) + d.get('stock_male_hosp_end', 0),
+            'stock_female': d.get('stock_female_prod_end', 0) + d.get('stock_female_hosp_end', 0),
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -9160,8 +9160,8 @@ def executive_flock_detail(id):
 
         enriched_logs.append({
             'log': log,
-            'stock_male': d['stock_male_start'],
-            'stock_female': d['stock_female_start'],
+            'stock_male': d.get('stock_male_prod_end', 0) + d.get('stock_male_hosp_end', 0),
+            'stock_female': d.get('stock_female_prod_end', 0) + d.get('stock_female_hosp_end', 0),
             'lighting_hours': lighting_hours,
             'medications': meds_str,
             'egg_prod_pct': d['egg_prod_pct'],
@@ -9658,8 +9658,8 @@ def api_daily_log_trend():
     vaccines_used = Vaccine.query.filter_by(flock_id=flock_id, actual_date=log.date).all()
     vaccines_str = ", ".join([v.vaccine_name for v in vaccines_used]) if vaccines_used else ""
 
-    stock_m = end_day_log.get('stock_male_start', 0)
-    stock_f = end_day_log.get('stock_female_start', 0)
+    stock_m = end_day_log.get('stock_male_prod_end', 0) + end_day_log.get('stock_male_hosp_end', 0)
+    stock_f = end_day_log.get('stock_female_prod_end', 0) + end_day_log.get('stock_female_hosp_end', 0)
     total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
 
     # Get proper standard egg weight for the current week
@@ -9695,8 +9695,8 @@ def api_daily_log_trend():
         'date': end_date.strftime('%d-%m-%Y'),
         'lighting_hours': lighting_hours,
         'feed_cleanup_hours': feed_cleanup_hours,
-        'stock_m': stock_m,
-        'stock_f': stock_f,
+        'stock_m': end_day_log.get('stock_male_prod_end', 0) + end_day_log.get('stock_male_hosp_end', 0),
+        'stock_f': end_day_log.get('stock_female_prod_end', 0) + end_day_log.get('stock_female_hosp_end', 0),
         'cum_mort_m_pct': round(cum_mort_m_pct, 2),
         'cum_mort_f_pct': round(cum_mort_f_pct, 2),
         'egg_weight': log.egg_weight or 0.0,
