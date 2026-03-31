@@ -153,6 +153,9 @@ app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
 
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
 @app.template_filter('basename')
 def basename_filter(s):
     if not s:
@@ -296,11 +299,6 @@ def offline_mirror():
     return render_template('offline_mirror.html')
 
 
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-
-
 def safe_commit():
     try:
         db.session.commit()
@@ -363,6 +361,7 @@ class User(db.Model, UserMixin):
     role = db.Column(db.String(50), nullable=False)
     theme = db.Column(db.String(50), default='base_tabler.html')
     farm_id = db.Column(db.Integer, nullable=True)
+    name = db.Column(db.String(100), nullable=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
