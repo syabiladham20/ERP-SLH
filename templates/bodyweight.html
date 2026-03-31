@@ -843,28 +843,42 @@
                     stroke: strokeOptions,
                     dataLabels: {
                         enabled: true,
+                        enabledOnSeries: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // Show on all except standard/target which are usually at the end
                         offsetY: -10,
                         formatter: function (val, opts) {
                             if (val === null || val === undefined) return '';
                             let seriesName = opts.w.globals.seriesNames[opts.seriesIndex];
 
-                            if (seriesName === 'Standard BW' || seriesName === 'Average Uniformity') {
-                                return val;
+                            if (seriesName === 'Standard BW') {
+                                return val.toFixed(0);
+                            } else if (seriesName === 'Average Uniformity') {
+                                return val.toFixed(1) + "%";
                             }
 
-                            if (opts.dataPointIndex === 0) return val;
+                            const valFixed = val.toFixed(0);
+
+                            if (opts.dataPointIndex === 0) return valFixed;
                             const prevVal = opts.w.globals.series[opts.seriesIndex][opts.dataPointIndex - 1];
                             if (prevVal && val) {
                                 const diff = val - prevVal;
                                 const sign = diff >= 0 ? '+' : '';
-                                return `${val} (${sign}${diff.toFixed(0)})`;
+                                return `${valFixed} (${sign}${diff.toFixed(0)})`;
                             }
-                            return val;
+                            return valFixed;
                         },
+                        offsetY: -10,
                         style: {
                             fontSize: '10px'
                         },
-                        background: { enabled: false }
+                        background: {
+                            enabled: true,
+                            foreColor: '#fff',
+                            borderRadius: 2,
+                            padding: 4,
+                            opacity: 0.9,
+                            borderWidth: 1,
+                            borderColor: '#fff'
+                        }
                     },
                     title: { text: title, align: 'left' },
                     xaxis: { categories: categories },
@@ -873,7 +887,17 @@
                     legend: { show: true },
                     tooltip: {
                         shared: true,
-                        intersect: false
+                        intersect: false,
+                        y: {
+                            formatter: function (val, opts) {
+                                if (val === null || val === undefined) return val;
+                                let seriesName = opts.seriesName;
+                                if (seriesName === 'Average Uniformity') {
+                                    return val.toFixed(1) + "%";
+                                }
+                                return val.toFixed(0) + "g";
+                            }
+                        }
                     }
                 };
             };
