@@ -1581,7 +1581,8 @@
                       return true;
                   },
                   formatter: function(value, context) {
-                      return generalData.medication_names ? generalData.medication_names[context.dataIndex] : '';
+                      if (!generalData.medication_names || !generalData.medication_names[context.dataIndex]) return '';
+                      return generalData.medication_names[context.dataIndex].split(',').map(s => s.trim());
                   },
                   align: 'bottom',
                   anchor: 'end', // Place text at the top of the highlight bar (which is at y=1)
