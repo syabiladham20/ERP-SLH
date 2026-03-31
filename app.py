@@ -8233,7 +8233,7 @@ def health_log_bodyweight():
             'uni_f': log.uniformity_female or 0
         })
 
-    return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, bodyweight_logs=bodyweight_logs, grouped_data={}, today=date.today())
+    return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, bodyweight_logs=bodyweight_logs, grouped_data=grouped_data, today=date.today())
 
 @app.route('/additional_report')
 @login_required
