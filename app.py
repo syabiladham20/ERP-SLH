@@ -6371,8 +6371,8 @@ def update_log_from_request(log, req):
 
     log.body_weight_male = round_to_whole(bw_m_val)
     log.body_weight_female = round_to_whole(bw_f_val)
-    log.uniformity_male = uni_m_val
-    log.uniformity_female = uni_f_val
+    log.uniformity_male = uni_m_val if uni_m_val > 1.0 else (uni_m_val * 100) if uni_m_val > 0 else 0
+    log.uniformity_female = uni_f_val if uni_f_val > 1.0 else (uni_f_val * 100) if uni_f_val > 0 else 0
 
     log.is_weighing_day = 'is_weighing_day' in req.form
     log.bw_male_p1 = round_to_whole(req.form.get('bw_M1'))
@@ -8008,7 +8008,8 @@ def health_log_bodyweight():
         if request.form.get('body_weight_male'):
             log.body_weight_male = float(request.form.get('body_weight_male'))
         if request.form.get('uniformity_male'):
-            log.uniformity_male = float(request.form.get('uniformity_male'))
+            val = float(request.form.get('uniformity_male'))
+            log.uniformity_male = val if val > 1.0 else (val * 100)
         if request.form.get('standard_bw_male'):
             log.standard_bw_male = round_to_whole(request.form.get('standard_bw_male'))
 
@@ -8016,7 +8017,8 @@ def health_log_bodyweight():
         if request.form.get('body_weight_female'):
             log.body_weight_female = float(request.form.get('body_weight_female'))
         if request.form.get('uniformity_female'):
-            log.uniformity_female = float(request.form.get('uniformity_female'))
+            val = float(request.form.get('uniformity_female'))
+            log.uniformity_female = val if val > 1.0 else (val * 100)
         if request.form.get('standard_bw_female'):
             log.standard_bw_female = round_to_whole(request.form.get('standard_bw_female'))
 
@@ -8026,6 +8028,7 @@ def health_log_bodyweight():
         def save_partition(name, bw_str, unif_str):
             bw = float(bw_str) if bw_str else 0
             unif = float(unif_str) if unif_str else 0
+            unif = unif if unif > 1.0 else (unif * 100) if unif > 0 else 0
             if bw > 0:
                 if name in existing_partitions:
                     existing_partitions[name].body_weight = bw
@@ -8229,8 +8232,8 @@ def health_log_bodyweight():
             'm_parts': m_parts,
             'f_parts': f_parts,
             'has_report': has_report,
-            'uni_m': log.uniformity_male or 0,
-            'uni_f': log.uniformity_female or 0
+            'uni_m': (log.uniformity_male * 100) if (log.uniformity_male and log.uniformity_male <= 1.0) else (log.uniformity_male or 0),
+            'uni_f': (log.uniformity_female * 100) if (log.uniformity_female and log.uniformity_female <= 1.0) else (log.uniformity_female or 0)
         })
 
     return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, bodyweight_logs=bodyweight_logs, grouped_data=grouped_data, today=date.today())
