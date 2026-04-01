@@ -8282,6 +8282,113 @@ def health_log_bodyweight():
 
     return render_template('bodyweight.html', houses=houses, active_flocks=active_flocks, bodyweight_logs=bodyweight_logs, grouped_data=grouped_data, today=date.today())
 
+
+@app.route('/api/health_log/bodyweight_edit', methods=['POST'])
+@login_required
+@dept_required(['Farm', 'Management', 'Admin'])
+def health_log_bodyweight_edit():
+    log_id = request.form.get('log_id', type=int)
+    new_date_str = request.form.get('new_date')
+
+    if not log_id or not new_date_str:
+        return jsonify({"success": False, "message": "Log ID and Date are required."}), 400
+
+    try:
+        new_date = datetime.strptime(new_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"success": False, "message": "Invalid date format."}), 400
+
+    # Get original log
+    orig_log = DailyLog.query.get(log_id)
+    if not orig_log:
+        return jsonify({"success": False, "message": "Original log not found."}), 404
+
+    flock_id = orig_log.flock_id
+
+    # Check if target log exists for the new date
+    target_log = DailyLog.query.filter_by(flock_id=flock_id, date=new_date).first()
+
+    if not target_log:
+        target_log = DailyLog(
+            flock_id=flock_id,
+            date=new_date,
+            feed_male=0.0,
+            feed_female=0.0,
+            body_weight_male=0,
+            body_weight_female=0
+        )
+        db.session.add(target_log)
+        db.session.flush()
+
+    target_log.is_weighing_day = True
+
+    # If moving to a different date, clear original log's weight data
+    if orig_log.id != target_log.id:
+        # Transfer the standard bodyweight thresholds
+        target_log.standard_bw_male = orig_log.standard_bw_male
+        target_log.standard_bw_female = orig_log.standard_bw_female
+
+        orig_log.is_weighing_day = False
+        orig_log.body_weight_male = 0
+        orig_log.body_weight_female = 0
+        orig_log.uniformity_male = 0
+        orig_log.uniformity_female = 0
+        orig_log.standard_bw_male = None
+        orig_log.standard_bw_female = None
+
+        # Delete old partitions from original log
+        PartitionWeight.query.filter_by(log_id=orig_log.id).delete()
+
+    # Parse new weights and update target log
+    m_avg = request.form.get('avg_m', type=float) or 0.0
+    f_avg = request.form.get('avg_f', type=float) or 0.0
+    m_uni = request.form.get('uni_m', type=float) or 0.0
+    f_uni = request.form.get('uni_f', type=float) or 0.0
+
+    target_log.body_weight_male = m_avg
+    target_log.body_weight_female = f_avg
+
+    # Handle uniformity format
+    target_log.uniformity_male = m_uni if m_uni > 1.0 else (m_uni * 100) if m_uni > 0 else 0
+    target_log.uniformity_female = f_uni if f_uni > 1.0 else (f_uni * 100) if f_uni > 0 else 0
+
+    # We do not change standard_bw_male/female as it's typically set by the standard
+    # But if the user also submitted standard weights, we can update them
+    # target_log.standard_bw_male = orig_log.standard_bw_male (this logic is complex, keeping it as is or recalculating based on standard model)
+
+    # Process partitions
+    existing_partitions = {pw.partition_name: pw for pw in target_log.partition_weights}
+    new_partition_names = []
+
+    # Iterate through possible partitions M1-M8, F1-F8
+    for sex in ['M', 'F']:
+        for i in range(1, 9):
+            p_name = f"{sex}{i}"
+            bw_str = request.form.get(f'bw_{p_name}')
+            unif_str = request.form.get(f'uni_{p_name}')
+
+            bw = float(bw_str) if bw_str else 0
+            unif = float(unif_str) if unif_str else 0
+            unif = unif if unif > 1.0 else (unif * 100) if unif > 0 else 0
+
+            if bw > 0:
+                new_partition_names.append(p_name)
+                if p_name in existing_partitions:
+                    existing_partitions[p_name].body_weight = bw
+                    existing_partitions[p_name].uniformity = unif
+                else:
+                    pw = PartitionWeight(log_id=target_log.id, partition_name=p_name, body_weight=bw, uniformity=unif)
+                    db.session.add(pw)
+
+    # Remove partitions that are no longer present
+    for name, pw in existing_partitions.items():
+        if name not in new_partition_names:
+            db.session.delete(pw)
+
+    safe_commit()
+    return jsonify({"success": True, "message": "Bodyweight updated successfully."}), 200
+
+
 @app.route('/additional_report')
 @login_required
 def additional_report():
