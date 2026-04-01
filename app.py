@@ -487,10 +487,10 @@ class DailyLog(db.Model):
     egg_weight = db.Column(db.Float, default=0.0)
     
     # Body Weight (Split by Sex)
-    body_weight_male = db.Column(db.Integer, default=0)
-    body_weight_female = db.Column(db.Integer, default=0)
-    uniformity_male = db.Column(db.Float, default=0.0)
-    uniformity_female = db.Column(db.Float, default=0.0)
+    body_weight_male = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    body_weight_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    uniformity_male = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
+    uniformity_female = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
 
     # Partitions & Weighing Day
     is_weighing_day = db.Column(db.Boolean, default=False)
@@ -1928,7 +1928,14 @@ def health_log_post_mortem():
 
         # If it doesn't exist, create an empty one (as long as it complies with constraints)
         if not log:
-            log = DailyLog(flock_id=flock_id, date=log_date)
+            log = DailyLog(
+                flock_id=flock_id,
+                date=log_date,
+                feed_male=0.0,
+                feed_female=0.0,
+                body_weight_male=0,
+                body_weight_female=0
+            )
             db.session.add(log)
             db.session.flush() # get ID
 
@@ -3557,7 +3564,14 @@ def flock_spreadsheet_save(flock_id):
                 # Check if it exists
                 log = existing_logs_by_date.get(log_date)
                 if not log:
-                    log = DailyLog(flock_id=flock_id, date=log_date)
+                    log = DailyLog(
+                        flock_id=flock_id,
+                        date=log_date,
+                        feed_male=0.0,
+                        feed_female=0.0,
+                        body_weight_male=0,
+                        body_weight_female=0
+                    )
                     db.session.add(log)
                     existing_logs_by_date[log_date] = log
                     is_new = True
@@ -4412,7 +4426,14 @@ def daily_log():
             log = existing_log
             flash_msg = 'Daily Log updated successfully!'
         else:
-            log = DailyLog(flock_id=flock.id, date=log_date)
+            log = DailyLog(
+                flock_id=flock.id,
+                date=log_date,
+                feed_male=0.0,
+                feed_female=0.0,
+                body_weight_male=0,
+                body_weight_female=0
+            )
             db.session.add(log)
             flash_msg = 'Daily Log submitted successfully!'
 
@@ -5841,7 +5862,14 @@ def process_import(file, commit=True, preview=False):
             log = existing_logs_dict.get(log_date)
             is_new_log = False
             if not log:
-                log = DailyLog(flock_id=flock_id, date=log_date)
+                log = DailyLog(
+                    flock_id=flock_id,
+                    date=log_date,
+                    feed_male=0.0,
+                    feed_female=0.0,
+                    body_weight_male=0,
+                    body_weight_female=0
+                )
                 db.session.add(log)
                 existing_logs_dict[log_date] = log
                 is_new_log = True
@@ -8007,7 +8035,14 @@ def health_log_bodyweight():
 
         log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
         if not log:
-            log = DailyLog(flock_id=flock_id, date=log_date)
+            log = DailyLog(
+                flock_id=flock_id,
+                date=log_date,
+                feed_male=0.0,
+                feed_female=0.0,
+                body_weight_male=0,
+                body_weight_female=0
+            )
             db.session.add(log)
             db.session.flush()
 
