@@ -1,7 +1,5 @@
 {% extends session.get('user_theme', 'base_tabler.html') %}
-{% block title %}Weight Grading - SLH Dashboard
-
-{% endblock %}
+{% block title %}Weight Grading - SLH Dashboard{% endblock %}
 {% block content %}
 <div class="container-xl">
     <div class="page-header d-print-none mb-3">
@@ -243,56 +241,115 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        {% if log.has_report %}
-                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal_{{ log.house_name | replace(' ', '_') }}_{{ log.age_weeks }}">
-                                            View Report
-                                        </button>
-                                        {% endif %}
+                                        <div class="d-flex gap-2">
+                                            {% if log.has_report %}
+                                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewModal_{{ log.house_name | replace(' ', '_') }}_{{ log.age_weeks }}">
+                                                View Report
+                                            </button>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-edit-toggle" onclick="toggleEdit({{ log.log_id }}, this)">
+                                                Edit
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-primary btn-save-toggle" style="display:none;" onclick="saveBwEdit(event, {{ log.log_id }})">
+                                                Save
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div class="row">
-                                        <!-- Male Section -->
-                                        <div class="col-md-12 mb-3">
-                                            <strong>Male:</strong> (Std: {{ log.std_m }}g)
-                                            <div class="mt-2">
-                                                {% if log.m_parts %}
-                                                    {% for p in log.m_parts %}
-                                                        <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
-                                                            {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
-                                                            {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
-                                                            | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
-                                                        </span>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
-                                                        Avg: {{ log.avg_m }}g <span class="text-muted">({{ log.avg_m_diff }})</span>
-                                                        {{ "%.1f"|format(log.uni_m) }}%
-                                                    </span>
-                                                {% endif %}
+                                    <form class="bw-edit-form" id="form-{{ log.log_id }}" onsubmit="saveBwEdit(event, {{ log.log_id }})">
+                                        <input type="hidden" name="log_id" value="{{ log.log_id }}">
+
+                                        <!-- Editable Date -->
+                                        <div class="row mb-3 bw-edit-fields" style="display:none;">
+                                            <div class="col-md-4">
+                                                <label class="form-label form-label-sm">Date</label>
+                                                <input type="date" name="new_date" class="form-control form-control-sm" value="{{ log.date }}" required>
                                             </div>
                                         </div>
 
-                                        <!-- Female Section -->
-                                        <div class="col-md-12">
-                                            <strong>Female:</strong> (Std: {{ log.std_f }}g)
-                                            <div class="mt-2">
-                                                {% if log.f_parts %}
-                                                    {% for p in log.f_parts %}
+                                        <div class="row bw-view-fields">
+                                            <!-- Male Section -->
+                                            <div class="col-md-12 mb-3">
+                                                <strong>Male:</strong> (Std: {{ log.std_m }}g)
+                                                <div class="mt-2">
+                                                    {% if log.m_parts %}
+                                                        {% for p in log.m_parts %}
+                                                            <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
+                                                                {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
+                                                                {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
+                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
+                                                            </span>
+                                                        {% endfor %}
+                                                    {% else %}
                                                         <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
-                                                            {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
-                                                            {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
-                                                            | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
+                                                            Avg: {{ log.avg_m }}g <span class="text-muted">({{ log.avg_m_diff }})</span>
+                                                            {{ "%.1f"|format(log.uni_m) }}%
                                                         </span>
-                                                    {% endfor %}
-                                                {% else %}
-                                                    <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
-                                                        Avg: {{ log.avg_f }}g <span class="text-muted">({{ log.avg_f_diff }})</span>
-                                                        {{ "%.1f"|format(log.uni_f) }}%
-                                                    </span>
-                                                {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+
+                                            <!-- Female Section -->
+                                            <div class="col-md-12">
+                                                <strong>Female:</strong> (Std: {{ log.std_f }}g)
+                                                <div class="mt-2">
+                                                    {% if log.f_parts %}
+                                                        {% for p in log.f_parts %}
+                                                            <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
+                                                                {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
+                                                                {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
+                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
+                                                            </span>
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
+                                                            Avg: {{ log.avg_f }}g <span class="text-muted">({{ log.avg_f_diff }})</span>
+                                                            {{ "%.1f"|format(log.uni_f) }}%
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+
+                                        <!-- Edit Fields Container -->
+                                        <div class="row bw-edit-fields" style="display:none;">
+                                            <div class="col-md-6 border-end">
+                                                <h6 class="text-primary mb-2">Male Averages & Partitions</h6>
+                                                <div class="row mb-2">
+                                                    <div class="col-6"><label class="form-label form-label-sm">Avg BW</label><input type="number" step="0.01" class="form-control form-control-sm bg-light" name="avg_m" id="edit_avg_m_{{ log.log_id }}" value="{{ log.avg_m }}" readonly></div>
+                                                    <div class="col-6"><label class="form-label form-label-sm">Avg Unif %</label><input type="number" step="0.01" class="form-control form-control-sm bg-light" name="uni_m" id="edit_uni_m_{{ log.log_id }}" value="{{ log.uni_m }}" readonly></div>
+                                                </div>
+                                                <hr class="my-2">
+                                                {% for i in range(1, 9) %}
+                                                {% set p_data = None %}
+                                                {% for p in log.m_parts %}{% if p.name == 'P' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
+                                                <div class="row mb-2 align-items-center">
+                                                    <div class="col-2"><span class="badge bg-light text-dark">M{{i}}</span></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-m-{{log.log_id}}" name="bw_M{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-m-{{log.log_id}}" name="uni_M{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <h6 class="text-danger mb-2">Female Averages & Partitions</h6>
+                                                <div class="row mb-2">
+                                                    <div class="col-6"><label class="form-label form-label-sm">Avg BW</label><input type="number" step="0.01" class="form-control form-control-sm bg-light" name="avg_f" id="edit_avg_f_{{ log.log_id }}" value="{{ log.avg_f }}" readonly></div>
+                                                    <div class="col-6"><label class="form-label form-label-sm">Avg Unif %</label><input type="number" step="0.01" class="form-control form-control-sm bg-light" name="uni_f" id="edit_uni_f_{{ log.log_id }}" value="{{ log.uni_f }}" readonly></div>
+                                                </div>
+                                                <hr class="my-2">
+                                                {% for i in range(1, 9) %}
+                                                {% set p_data = None %}
+                                                {% for p in log.f_parts %}{% if p.name == 'P' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
+                                                <div class="row mb-2 align-items-center">
+                                                    <div class="col-2"><span class="badge bg-light text-dark">F{{i}}</span></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-f-{{log.log_id}}" name="bw_F{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-f-{{log.log_id}}" name="uni_F{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -954,4 +1011,113 @@
     });
 </script>
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+    function toggleEdit(logId, btn) {
+        const form = document.getElementById(`form-${logId}`);
+        const viewFields = form.querySelector('.bw-view-fields');
+        const editFields = form.querySelectorAll('.bw-edit-fields');
+        const saveBtn = btn.nextElementSibling;
+
+        if (viewFields.style.display !== 'none') {
+            viewFields.style.display = 'none';
+            editFields.forEach(el => el.style.display = 'flex');
+            btn.textContent = 'Cancel';
+            btn.classList.replace('btn-outline-secondary', 'btn-outline-danger');
+            saveBtn.style.display = 'inline-block';
+            recalcEdit(logId);
+        } else {
+            viewFields.style.display = 'flex';
+            editFields.forEach(el => el.style.display = 'none');
+            btn.textContent = 'Edit';
+            btn.classList.replace('btn-outline-danger', 'btn-outline-secondary');
+            saveBtn.style.display = 'none';
+            form.reset();
+        }
+    }
+
+    function recalcEdit(logId) {
+        let mBwInputs = document.querySelectorAll(`.bw-m-${logId}`);
+        let mUniInputs = document.querySelectorAll(`.uni-m-${logId}`);
+        let mSum = 0, mCnt = 0, muSum = 0;
+
+        for(let i=0; i<mBwInputs.length; i++) {
+            let bw = parseFloat(mBwInputs[i].value) || 0;
+            let uni = parseFloat(mUniInputs[i].value) || 0;
+            if(bw > 0) {
+                mSum += bw;
+                mCnt++;
+                muSum += uni;
+            }
+        }
+
+        const avgM = document.getElementById(`edit_avg_m_${logId}`);
+        const uniM = document.getElementById(`edit_uni_m_${logId}`);
+        if(mCnt > 0 && avgM && uniM) {
+            avgM.value = (mSum / mCnt).toFixed(2);
+            uniM.value = (muSum / mCnt).toFixed(2);
+        }
+
+        let fBwInputs = document.querySelectorAll(`.bw-f-${logId}`);
+        let fUniInputs = document.querySelectorAll(`.uni-f-${logId}`);
+        let fSum = 0, fCnt = 0, fuSum = 0;
+
+        for(let i=0; i<fBwInputs.length; i++) {
+            let bw = parseFloat(fBwInputs[i].value) || 0;
+            let uni = parseFloat(fUniInputs[i].value) || 0;
+            if(bw > 0) {
+                fSum += bw;
+                fCnt++;
+                fuSum += uni;
+            }
+        }
+
+        const avgF = document.getElementById(`edit_avg_f_${logId}`);
+        const uniF = document.getElementById(`edit_uni_f_${logId}`);
+        if(fCnt > 0 && avgF && uniF) {
+            avgF.value = (fSum / fCnt).toFixed(2);
+            uniF.value = (fuSum / fCnt).toFixed(2);
+        }
+    }
+
+    function saveBwEdit(event, logId) {
+        event.preventDefault();
+        event.preventDefault();
+
+        const form = document.getElementById(`form-${logId}`);
+        const formData = new FormData(form);
+
+        fetch('/api/health_log/bodyweight_edit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.message || 'Error saving bodyweight data', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('A network error occurred', 'error');
+        });
+    }
+</script>
 {% endblock %}
