@@ -532,7 +532,7 @@
                         <div class="row g-3">
                           <div class="col-6"><strong>Count:</strong> {{ stat.count }}</div>
                           <div class="col-6"><strong>Average:</strong> {{ stat.average_weight | round | int }}g ({{ (stat.average_weight * 0.9) | round | int }}g - {{ (stat.average_weight * 1.1) | round | int }}g)</div>
-                          <div class="col-6"><strong>Uniformity:</strong> <mark class="fw-bold bg-yellow text-dark">{{ stat.uniformity | round | int }}%</mark></div>
+                          <div class="col-6"><strong>Uniformity:</strong> <mark class="fw-bold bg-orange text-dark">{{ stat.uniformity | round | int }}%</mark></div>
                           <div class="col-6"><strong>Range:</strong> {{ stat.lowest_weight | round | int }}g - {{ stat.highest_weight | round | int }}g</div>
 
                           <div class="col-12 mt-4">
