@@ -230,10 +230,10 @@ def get_standard_bw():
 
     # Calculate exact age in weeks
     delta = (target_date - flock.intake_date).days
-    if delta < 0:
-        return jsonify({'error': 'Date is before intake date'}), 400
+    if delta <= 0:
+        return jsonify({'error': 'Date must be after intake date'}), 400
 
-    weeks = delta // 7
+    weeks = ((delta - 1) // 7) + 1
 
     # Find standard for this week
     std = Standard.query.filter_by(week=weeks).first()
@@ -544,16 +544,29 @@ class DailyLog(db.Model):
     partition_weights = db.relationship('PartitionWeight', backref='log', lazy=True, cascade="all, delete-orphan")
 
     @property
-    def age_week_day(self):
-        delta = (self.date - self.flock.intake_date).days
-        if delta == 0:
+    def age_days_total(self):
+        """Returns the total days since intake (Day 1 is the day after intake)."""
+        if not self.flock.intake_date or not self.date:
+            return 0
+        return (self.date - self.flock.intake_date).days
+
+    @property
+    def age_week(self):
+        """Returns the integer week number (e.g., Day 8 returns Week 2)."""
+        days = self.age_days_total
+        if days <= 0:
+            return 0
+        return ((days - 1) // 7) + 1
+
+    @property
+    def age_week_format(self):
+        """Returns the standard poultry string format (e.g., '2.1' for Week 2, Day 1)."""
+        days = self.age_days_total
+        if days <= 0:
             return "0.0"
-        elif delta > 0:
-            weeks = ((delta - 1) // 7) + 1
-            days = ((delta - 1) % 7) + 1
-            return f"{weeks}.{days}"
-        else:
-            return "0.0"
+        week = self.age_week
+        day_of_week = ((days - 1) % 7) + 1
+        return f"{week}.{day_of_week}"
 
 class FloatingNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1731,7 +1744,7 @@ def hatchery_dashboard():
     today = date.today()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+        f.current_week = 0 if days <= 0 else ((days - 1) // 7) + 1
 
     # Analytics: Current Month Hatchability (based on Hatch Date)
     start_month = date(today.year, today.month, 1)
@@ -1777,9 +1790,9 @@ def index():
 
         # Age
         days_age = (today - f.intake_date).days
-        f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.age_weeks = 0 if days_age <= 0 else ((days_age - 1) // 7) + 1
         f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
-        f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.current_week = 0 if days_age <= 0 else ((days_age - 1) // 7) + 1
 
         # Stats
         if daily_stats:
@@ -2971,6 +2984,40 @@ def view_flock(id):
             'photos': ws['photos']
         }
         weekly_data.append(w_item)
+
+    # 5. Current Stats (Stock at end of last processed log)
+    if daily_stats:
+        last = daily_stats[-1]
+
+        current_stats = {
+            'male_prod': last.get('stock_male_prod_end', 0),
+            'female_prod': last.get('stock_female_prod_end', 0),
+            'male_hosp': last.get('stock_male_hosp_end', 0),
+            'female_hosp': last.get('stock_female_hosp_end', 0),
+            'male_ratio': last['male_ratio_stock'] if last.get('male_ratio_stock') else 0
+        }
+    else:
+        current_stats = {
+            'male_prod': flock.intake_male,
+            'female_prod': flock.intake_female,
+            'male_hosp': 0,
+            'female_hosp': 0,
+            'male_ratio': (flock.intake_male / flock.intake_female * 100) if flock.intake_female > 0 else 0
+        }
+
+    weekly_data.reverse()
+
+    # Pre-check available reports for this flock
+    from werkzeug.utils import secure_filename
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    available_reports = set()
+    if os.path.exists(reports_dir):
+        # We need a quick way to know which dates have reports
+        prefix_to_match = f"_{secure_filename(flock.house.name)}_"
+        for f in os.listdir(reports_dir):
+            if prefix_to_match in f and f.endswith(".jpg"):
+                date_str = f.split("_")[0]
+                available_reports.add(date_str)
 
     return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
 
@@ -6205,7 +6252,7 @@ def verify_import_data(flock, logs=None):
     agg = {}
     for log in logs:
         delta = (log.date - flock.intake_date).days
-        week = 0 if delta == 0 else ((delta - 1) // 7) + 1 if delta > 0 else (delta // 7)
+        week = 0 if delta <= 0 else ((delta - 1) // 7) + 1
         if week not in agg:
             agg[week] = {'mort_f': 0, 'eggs': 0}
 
@@ -6330,7 +6377,7 @@ def health_log_vaccines():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+        f.current_week = 0 if days <= 0 else ((days - 1) // 7) + 1
     flock_ids = [f.id for f in active_flocks]
 
     vaccine_events_by_date = {}
@@ -6339,7 +6386,7 @@ def health_log_vaccines():
         d = v.est_date
         if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
         age_days = (d - v.flock.intake_date).days
-        age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+        age_week = 0 if age_days <= 0 else ((age_days - 1) // 7) + 1
         vaccine_events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock, 'age': age_week})
 
     flock_tasks = {}
@@ -6458,7 +6505,7 @@ def health_log_sampling():
             elif date_changed:
                 s.scheduled_date = new_date
                 diff = (new_date - s.flock.intake_date).days
-                s.age_week = 0 if diff == 0 else ((diff - 1) // 7) + 1 if diff > 0 else (diff // 7)
+                s.age_week = 0 if diff <= 0 else ((diff - 1) // 7) + 1
                 updated_count += 1
 
             actual_str = request.form.get(f's_actual_date_{sid}')
@@ -6505,7 +6552,7 @@ def health_log_sampling():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+        f.current_week = 0 if days <= 0 else ((days - 1) // 7) + 1
     flock_ids = [f.id for f in active_flocks]
 
     sampling_events_by_date = {}
@@ -6686,7 +6733,7 @@ def health_log_medication():
     active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
     for f in active_flocks:
         days = (today - f.intake_date).days
-        f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+        f.current_week = 0 if days <= 0 else ((days - 1) // 7) + 1
 
     flock_tasks = {}
     target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
@@ -7372,8 +7419,7 @@ def get_weekly_data_aggregated(flocks):
 
             # Age Calculation (at end of week)
             age_days = (w_data['end_date'] - flock.intake_date).days
-            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
-            if age_week < 0: age_week = 0
+            age_week = 0 if age_days <= 0 else ((age_days - 1) // 7) + 1
 
             # Standards
             std_bio = std_map.get(age_week) # Biological Standard (BW)
@@ -7669,7 +7715,7 @@ def health_log_bodyweight():
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
             flash("Invalid date format.", "danger")
-            return redirect(url_for('weight_grading'))
+            return redirect(url_for('health_log_bodyweight'))
 
         log = DailyLog.query.filter_by(flock_id=flock_id, date=log_date).first()
         if not log:
@@ -7729,7 +7775,8 @@ def health_log_bodyweight():
             house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
             age_week = 0
             if log.flock and log.flock.intake_date:
-                age_week = (log.date - log.flock.intake_date).days // 7
+                days_age = (log.date - log.flock.intake_date).days
+                age_week = 0 if days_age <= 0 else ((days_age - 1) // 7) + 1
 
             title = "SLH-OP: Weight Entry"
             body = f"{house_name}: Week {age_week} Bodyweight updated."
@@ -7795,13 +7842,14 @@ def health_log_bodyweight():
 
     for log in logs:
         age_days = (log.date - log.flock.intake_date).days
-        age_weeks = age_days // 7
+        age_weeks = 0 if age_days <= 0 else ((age_days - 1) // 7) + 1
 
         house_logs = logs_by_house[log.flock.house_id]
 
         prev_log = None
         for hl in house_logs:
-            hl_age_weeks = (hl.date - hl.flock.intake_date).days // 7
+            hl_age_days = (hl.date - hl.flock.intake_date).days
+            hl_age_weeks = 0 if hl_age_days <= 0 else ((hl_age_days - 1) // 7) + 1
             if hl_age_weeks == age_weeks - 1:
                 prev_log = hl
                 break
@@ -8573,7 +8621,7 @@ def get_hatchery_analytics():
         total_forecast = 0
         for r in next_records:
             age_days = (next_hatch_date_query - r.flock.intake_date).days
-            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            age_week = 0 if age_days <= 0 else ((age_days - 1) // 7) + 1
             std_hatch = std_map.get(age_week)
             if std_hatch is None: std_hatch = 0.0
             forecast = r.egg_set * (std_hatch / 100.0)
@@ -8655,9 +8703,9 @@ def executive_dashboard():
 
         # Age
         days_age = (today - f.intake_date).days
-        f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.age_weeks = 0 if days_age <= 0 else ((days_age - 1) // 7) + 1
         f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
-        f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+        f.current_week = 0 if days_age <= 0 else ((days_age - 1) // 7) + 1
 
         # Stats
         if daily_stats:
@@ -8981,6 +9029,38 @@ def executive_flock_detail(id):
             'photos': ws['photos']
         }
         weekly_data.append(w_item)
+
+    # 5. Current Stats
+    if daily_stats:
+        last = daily_stats[-1]
+        current_stats = {
+            'male_prod': last.get('stock_male_prod_end', 0),
+            'female_prod': last.get('stock_female_prod_end', 0),
+            'male_hosp': last.get('stock_male_hosp_end', 0),
+            'female_hosp': last.get('stock_female_hosp_end', 0),
+            'male_ratio': last['male_ratio_stock'] if last.get('male_ratio_stock') else 0
+        }
+    else:
+        current_stats = {
+            'male_prod': flock.intake_male,
+            'female_prod': flock.intake_female,
+            'male_hosp': 0,
+            'female_hosp': 0,
+            'male_ratio': (flock.intake_male / flock.intake_female * 100) if flock.intake_female > 0 else 0
+        }
+
+    weekly_data.reverse()
+
+    # Pre-check available reports for this flock
+    from werkzeug.utils import secure_filename
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    available_reports = set()
+    if os.path.exists(reports_dir):
+        prefix_to_match = f"_{secure_filename(flock.house.name)}_"
+        for f in os.listdir(reports_dir):
+            if prefix_to_match in f and f.endswith(".jpg"):
+                date_str = f.split("_")[0]
+                available_reports.add(date_str)
 
     return render_template('flock_detail_readonly.html',
                            flock=flock,
@@ -9340,7 +9420,7 @@ def offline_snapshot():
                 # Basic summary for dashboard
                 daily_logs_data.append({
                     'date': date_str,
-                    'age_week_day': d.get('age_week_day'),
+                    'week_day_format': d.get('week_day_format'),
                     'mortality_cum_female_pct': d.get('mortality_cum_female_pct'),
                     'eggs_production_pct': d.get('eggs_production_pct'),
                     'feed_female_gp_bird': d.get('feed_female_gp_bird'),
@@ -9355,7 +9435,7 @@ def offline_snapshot():
                     if log_obj:
                         recent_detailed_logs.append({
                             'date': date_str,
-                            'age_week_day': d.get('age_week_day'),
+                            'week_day_format': d.get('week_day_format'),
                             'calculated_phase': d.get('calculated_phase'),
                             'mortality_male': log_obj.mortality_male,
                             'mortality_female': log_obj.mortality_female,

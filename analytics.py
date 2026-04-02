@@ -191,7 +191,7 @@ def analyze_health_events(flock_logs):
         if is_significant:
             event = {
                 "date": log.date,
-                "age_week": (log.date - log.flock.intake_date).days // 7 + 1,
+                "age_week": log.age_week,
                 "notes": notes,
                 "predicted_diseases": predicted_diseases,
                 "metrics": {
