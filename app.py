@@ -6156,6 +6156,11 @@ def update_log_from_request(log, req):
     log.feed_male_gp_bird = float(req.form.get('feed_male_gp_bird') or 0)
     log.feed_female_gp_bird = float(req.form.get('feed_female_gp_bird') or 0)
 
+    if log.feed_male_gp_bird < 0 or log.feed_male_gp_bird > 200:
+        raise ValueError(f"Male feed ({log.feed_male_gp_bird}g) is outside the valid range of 0-200g per bird.")
+    if log.feed_female_gp_bird < 0 or log.feed_female_gp_bird > 200:
+        raise ValueError(f"Female feed ({log.feed_female_gp_bird}g) is outside the valid range of 0-200g per bird.")
+
     # Fetch logs before today to sum mortality
     # We query once and sum in Python to avoid N+1 and slow sum queries
     previous_logs = DailyLog.query.filter(
@@ -6190,6 +6195,10 @@ def update_log_from_request(log, req):
     current_stock_f = start_f - cum_mort_f - cum_culls_f
 
     # Data Integrity: Validation Layer
+    log.eggs_collected = int(req.form.get('eggs_collected') or 0)
+    if log.eggs_collected > current_stock_f:
+        raise ValueError(f"Eggs collected ({log.eggs_collected}) cannot exceed current alive females ({current_stock_f}).")
+
     if log.mortality_male + log.culls_male > current_stock_m:
         raise ValueError(f"Male reductions (Mortality + Culls: {log.mortality_male + log.culls_male}) exceeds Current Stock ({current_stock_m}).")
     if log.mortality_female + log.culls_female > current_stock_f:
@@ -7880,6 +7889,10 @@ def upload_weights():
                                 if pd.isna(w) or w <= 0:
                                     continue
 
+                                if w < 40 or w > 6000:
+                                    flash(f"Upload rejected: Bodyweight value ({w}g) found in row {index+1} is outside the valid range of 40-6000g.", "danger")
+                                    return redirect(url_for('weight_grading'))
+
                                 if active_sex == 'Male':
                                     m_weights.append(w)
                                 elif active_sex == 'Female':
@@ -7985,7 +7998,11 @@ def health_log_bodyweight():
 
         # Male weights
         if request.form.get('body_weight_male'):
-            log.body_weight_male = float(request.form.get('body_weight_male'))
+            bw_m = float(request.form.get('body_weight_male'))
+            if bw_m < 40 or bw_m > 6000:
+                flash(f"Male bodyweight ({bw_m}g) is outside the valid range of 40-6000g.", "danger")
+                return redirect(url_for('weight_grading'))
+            log.body_weight_male = bw_m
         if request.form.get('uniformity_male'):
             val = float(request.form.get('uniformity_male'))
             log.uniformity_male = val if val > 1.0 else (val * 100)
@@ -7994,7 +8011,11 @@ def health_log_bodyweight():
 
         # Female weights
         if request.form.get('body_weight_female'):
-            log.body_weight_female = float(request.form.get('body_weight_female'))
+            bw_f = float(request.form.get('body_weight_female'))
+            if bw_f < 40 or bw_f > 6000:
+                flash(f"Female bodyweight ({bw_f}g) is outside the valid range of 40-6000g.", "danger")
+                return redirect(url_for('weight_grading'))
+            log.body_weight_female = bw_f
         if request.form.get('uniformity_female'):
             val = float(request.form.get('uniformity_female'))
             log.uniformity_female = val if val > 1.0 else (val * 100)
@@ -8276,6 +8297,11 @@ def health_log_bodyweight_edit():
     f_avg = request.form.get('avg_f', type=float) or 0.0
     m_uni = request.form.get('uni_m', type=float) or 0.0
     f_uni = request.form.get('uni_f', type=float) or 0.0
+
+    if m_avg > 0 and (m_avg < 40 or m_avg > 6000):
+        return jsonify({"success": False, "message": f"Male bodyweight ({m_avg}g) is outside the valid range of 40-6000g."}), 400
+    if f_avg > 0 and (f_avg < 40 or f_avg > 6000):
+        return jsonify({"success": False, "message": f"Female bodyweight ({f_avg}g) is outside the valid range of 40-6000g."}), 400
 
     target_log.body_weight_male = m_avg
     target_log.body_weight_female = f_avg
