@@ -416,34 +416,18 @@ class Flock(db.Model):
     farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=False, index=True)
     flock_id = db.Column(db.String(100), unique=True, nullable=False)
     intake_date = db.Column(db.Date, nullable=False, default=date.today)
-    
+
     # Intake Counts
     intake_male = db.Column(db.Integer, default=0)
     intake_female = db.Column(db.Integer, default=0)
-    
+
     # DOA
     doa_male = db.Column(db.Integer, default=0)
     doa_female = db.Column(db.Integer, default=0)
-    
+
     status = db.Column(db.String(20), default='Active', nullable=False, index=True) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
-
-    @property
-    def production_start_date(self):
-        # We find the first log where egg production hit 5%
-        # Use self.logs to avoid N+1 queries if already loaded
-        logs = sorted(self.logs, key=lambda x: x.date) if self.logs else []
-        alive_females = (self.intake_female or 0) - (self.doa_female or 0)
-
-        for log in logs:
-            # Replicate the logic from metrics.py to ensure 100% SSOT match
-            alive_females -= ((log.mortality_female or 0) + (log.culls_female or 0))
-            if alive_females > 0 and (log.eggs_collected or 0) > 0:
-                hdp = ((log.eggs_collected or 0) / alive_females) * 100
-                if hdp >= 5.0:
-                    return log.date
-        return None
-
+    production_start_date = db.Column(db.Date, nullable=True) # Date when production phase started
     start_of_lay_date = db.Column(db.Date, nullable=True) # Date of First Egg (Biological Start)
 
     # Production Start Counts (New Baseline)
@@ -453,7 +437,7 @@ class Flock(db.Model):
     prod_start_female_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
     end_date = db.Column(db.Date, nullable=True)
-    
+
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
     weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
@@ -461,13 +445,13 @@ class DailyLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, default=date.today, index=True)
-    
+
     # Metrics
     males_at_start = db.Column(db.Integer, nullable=True)
     females_at_start = db.Column(db.Integer, nullable=True)
     mortality_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Mortality
     mortality_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     mortality_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Mortality
     culls_male_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Hospital Culls
 
@@ -476,7 +460,7 @@ class DailyLog(db.Model):
 
     culls_male = db.Column(db.Integer, default=0, nullable=False, server_default='0') # Production Culls
     culls_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     # Transfers
     males_moved_to_prod = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     males_moved_to_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
@@ -488,18 +472,18 @@ class DailyLog(db.Model):
     # Feed (Grams per Bird)
     feed_male_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
     feed_female_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
-    
+
     # Calculated Total Feed (Kg)
 
     eggs_collected = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     cull_eggs_jumbo = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_small = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_abnormal = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     cull_eggs_crack = db.Column(db.Integer, default=0, nullable=False, server_default='0')
-    
+
     egg_weight = db.Column(db.Float, default=0.0)
-    
+
     # Body Weight (Split by Sex)
     body_weight_male = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     body_weight_female = db.Column(db.Integer, default=0, nullable=False, server_default='0')
@@ -525,21 +509,21 @@ class DailyLog(db.Model):
 
     standard_bw_male = db.Column(db.Integer, default=0)
     standard_bw_female = db.Column(db.Integer, default=0)
-    
+
     # Water (Readings 1, 2, 3)
     water_reading_1 = db.Column(db.Integer, default=0)
     water_reading_2 = db.Column(db.Integer, default=0)
     water_reading_3 = db.Column(db.Integer, default=0)
     water_intake_calculated = db.Column(db.Float, default=0.0) # Calculated 24h intake
-    
+
     # Lighting (Start/End Times)
     light_on_time = db.Column(db.String(10), nullable=True) # HH:MM
     light_off_time = db.Column(db.String(10), nullable=True) # HH:MM
-    
+
     # Feed Cleanup (Start/End Times)
     feed_cleanup_start = db.Column(db.String(10), nullable=True) # HH:MM
     feed_cleanup_end = db.Column(db.String(10), nullable=True) # HH:MM
-    
+
     clinical_notes = db.Column(db.Text)
     remarks = db.Column(db.Text)
     # photo_path removed, use relation 'photos'
@@ -2063,7 +2047,11 @@ def edit_flock(id):
         if intake_date_str:
             flock.intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
 
-        # production_start_date is now dynamic based on egg_prod_pct >= 5.0, so no direct assignment
+        prod_start_str = request.form.get('production_start_date')
+        if prod_start_str:
+             flock.production_start_date = datetime.strptime(prod_start_str, '%Y-%m-%d').date()
+        else:
+             flock.production_start_date = None
 
         lay_date_str = request.form.get('start_of_lay_date')
         if lay_date_str:
@@ -2149,13 +2137,16 @@ def manage_flocks():
         house_name = request.form.get('house_name').strip()
         intake_date_str = request.form.get('intake_date')
 
-        # production_start_date is now dynamic based on egg_prod_pct >= 5.0, so no direct assignment
+        prod_start_date_str = request.form.get('production_start_date')
+        prod_start_date = None
+        if prod_start_date_str:
+            prod_start_date = datetime.strptime(prod_start_date_str, '%Y-%m-%d').date()
 
         intake_male = int(request.form.get('intake_male') or 0)
         intake_female = int(request.form.get('intake_female') or 0)
         doa_male = int(request.form.get('doa_male') or 0)
         doa_female = int(request.form.get('doa_female') or 0)
-        
+
         # Find or Create Farm
         farm_name = request.form.get('farm_name', '').strip()
         if not farm_name:
@@ -2178,23 +2169,23 @@ def manage_flocks():
             db.session.add(house)
             safe_commit()
             flash(f'Created new House: {house_name}', 'info')
-        
+
         # Validation: Check if House has active flock
         existing_active = Flock.query.filter_by(house_id=house.id, status='Active').first()
         if existing_active:
             flash(f'Error: House {house.name} already has an active flock (Batch: {existing_active.flock_id})', 'danger')
             return redirect(url_for('manage_flocks'))
-        
+
         # Generate Flock ID
         intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
         date_str = intake_date.strftime('%y%m%d')
-        
+
         # Calculate N (Total flocks for this house + 1)
         house_flock_count = Flock.query.filter_by(house_id=house.id).count()
         n = house_flock_count + 1
-        
+
         flock_id = f"{house.name}_{date_str}_Batch{n}"
-        
+
         new_flock = Flock(
             house_id=house.id,
             farm_id=farm_id,
@@ -2203,9 +2194,10 @@ def manage_flocks():
             intake_male=intake_male,
             intake_female=intake_female,
             doa_male=doa_male,
-            doa_female=doa_female
+            doa_female=doa_female,
+            production_start_date=prod_start_date
         )
-        
+
         db.session.add(new_flock)
         db.session.flush()
 
@@ -2222,7 +2214,7 @@ def manage_flocks():
 
         flash(f'Flock created successfully! Flock ID: {flock_id}', 'success')
         return redirect(url_for('index'))
-    
+
     farms = Farm.query.all()
     houses = House.query.all()
     flocks = Flock.query.options(joinedload(Flock.house)).order_by(Flock.intake_date.desc()).all()
@@ -2769,7 +2761,11 @@ def toggle_phase(id):
     if flock.phase == 'Rearing':
         flock.phase = 'Production'
 
-        # production_start_date is now dynamic based on egg_prod_pct >= 5.0, so no direct assignment
+        prod_date_str = request.form.get('production_start_date')
+        if prod_date_str:
+            flock.production_start_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
+        else:
+            flock.production_start_date = date.today()
 
         # Capture Start Counts
         prod_m = int(request.form.get('prod_start_male') or 0)
@@ -2809,6 +2805,7 @@ def toggle_phase(id):
         flash(msg, 'success' if (diff_m == 0 and diff_f == 0) else 'warning')
     else:
         flock.phase = 'Rearing'
+        flock.production_start_date = None
         flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
     safe_commit()
     return redirect(url_for('index'))
@@ -2882,7 +2879,7 @@ def view_flock(id):
 
     for d in daily_stats:
         log = d['log']
-        
+
         # View Specific: Lighting
         lighting_hours = 0
         if log.light_on_time and log.light_off_time:
@@ -3028,7 +3025,7 @@ def view_flock(id):
         'medication_active': [],
         'medication_names': []
     }
-    
+
     # Fill dynamic partitions and notes
     for i in range(1, 9):
         chart_data[f'bw_M{i}'] = []
@@ -3649,7 +3646,20 @@ def flock_spreadsheet_save(flock_id):
             elif log.feed_program == '2/1':
                 multiplier = 1.5
 
-            # Handle Feed Code mapping for Male
+            if start_m > 0:
+                log.feed_male = ((log.feed_male_gp_bird or 0.0) * multiplier * start_m) / 1000.0
+            else:
+                log.feed_male = None
+
+            if start_f > 0:
+                log.feed_female = ((log.feed_female_gp_bird or 0.0) * multiplier * start_f) / 1000.0
+            else:
+                log.feed_female = None
+
+            # Feed Codes
+            if not is_new:
+                old_data['feed_code_male'] = log.feed_code_male.code if log.feed_code_male else ''
+                old_data['feed_code_female'] = log.feed_code_female.code if log.feed_code_female else ''
             fc_m_code = row.get('feed_code_male')
             if fc_m_code and fc_m_code in feed_code_map:
                 log.feed_code_male_id = feed_code_map[fc_m_code]
@@ -4353,14 +4363,14 @@ def daily_log():
     if request.method == 'POST':
         house_id = request.form.get('house_id')
         date_str = request.form.get('date')
-        
+
         flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
         if not flock:
             if request.headers.get('Accept') == 'application/json':
                 return jsonify({'success': False, 'error': 'No active flock found for this house.'}), 400
             flash('Error: No active flock found for this house.', 'danger')
             return redirect(url_for('daily_log'))
-        
+
         try:
             log_date = datetime.strptime(date_str, '%Y-%m-%d').date()
         except ValueError:
@@ -4368,7 +4378,7 @@ def daily_log():
                 return jsonify({'success': False, 'error': 'Invalid date format.'}), 400
             flash('Error: Invalid date format.', 'danger')
             return redirect(url_for('daily_log'))
-        
+
         # Gap Detection Logic
         from markupsafe import Markup
         if log_date > flock.intake_date:
@@ -4403,7 +4413,7 @@ def daily_log():
                 return redirect(url_for('daily_log', house_id=house_id, date=date_str))
 
         existing_log = DailyLog.query.filter_by(flock_id=flock.id, date=log_date).first()
-        
+
         if existing_log:
             log = existing_log
             flash_msg = 'Daily Log updated successfully!'
@@ -4554,7 +4564,7 @@ def daily_log():
                 return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('daily_log', house_id=house_id, date=date_str))
-        
+
     active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
     active_houses = [f.house for f in active_flocks]
 
@@ -4943,7 +4953,7 @@ def admin_house_delete(id):
 @dept_required('Farm')
 def edit_daily_log(id):
     log = DailyLog.query.get_or_404(id)
-    
+
     if request.method == 'POST':
         # Handle Vaccines
         vaccine_present_ids = request.form.getlist('vaccine_present_ids')
@@ -5076,7 +5086,7 @@ def edit_daily_log(id):
                 return jsonify({'success': False, 'error': f"Database Error: {str(e)}"}), 500
             flash(f"Database Error: {str(e)}", 'danger')
             return redirect(url_for('edit_daily_log', id=id))
-    
+
     feed_codes = FeedCode.query.order_by(FeedCode.code.asc()).all()
 
     vaccines_due = []
@@ -5140,7 +5150,7 @@ def import_data():
         if 'files' not in request.files:
             flash('No file part', 'danger')
             return redirect(request.url)
-        
+
         files = request.files.getlist('files')
         if not files or files[0].filename == '':
             flash('No selected files', 'danger')
@@ -5188,7 +5198,7 @@ def import_data():
 
         flash("No valid data found to import.", "warning")
         return redirect(url_for('index'))
-            
+
     return render_template('import.html')
 
 @app.route('/import_hatchability', methods=['POST'])
@@ -5570,7 +5580,7 @@ def process_hatchability_import(file):
 def process_import(file, commit=True, preview=False):
     xls = pd.ExcelFile(file)
     sheets = xls.sheet_names
-    
+
     ignore_sheets = ['DASHBOARD', 'CHART', 'SUMMARY', 'TEMPLATE']
 
     all_houses_map = {h.name: h.id for h in House.query.all()}
@@ -5583,20 +5593,20 @@ def process_import(file, commit=True, preview=False):
         if f_intake_date:
              all_flocks_map[(f_house_id, f_intake_date)] = f_id
         flock_counts[f_house_id] = flock_counts.get(f_house_id, 0) + 1
-    
+
     changes = []
     all_warnings = []
 
     for sheet_name in sheets:
         if sheet_name.upper() in ignore_sheets:
             continue
-            
+
         # Optimization: Read the full sheet once
         df_full = pd.read_excel(xls, sheet_name=sheet_name, header=None)
 
         # 1. Metadata (First 10 rows)
         df_meta = df_full.iloc[:10].copy() if df_full.shape[0] > 0 else pd.DataFrame()
-        
+
         def get_val(r, c):
             try:
                 val = df_meta.iloc[r, c]
@@ -5620,7 +5630,7 @@ def process_import(file, commit=True, preview=False):
 
         house_name_cell = str(get_val(1, 1)).strip()
         house_name = house_name_cell if house_name_cell and house_name_cell != 'nan' else sheet_name
-        
+
         def safe_int(val):
             try: return int(float(val)) if val is not None else 0
             except: return 0
@@ -5628,11 +5638,11 @@ def process_import(file, commit=True, preview=False):
         intake_female = safe_int(get_val(2, 1))
         intake_male = safe_int(get_val(3, 1))
         intake_date_val = get_val(4, 1)
-        
+
         if not intake_date_val:
             print(f"Skipping sheet {sheet_name}: No Intake Date found.")
             continue
-            
+
         house_id = all_houses_map.get(house_name)
         if not house_id:
             house = House(name=house_name)
@@ -5642,20 +5652,20 @@ def process_import(file, commit=True, preview=False):
             all_houses_map[house_name] = house_id
             if commit:
                 safe_commit()
-        
+
         intake_date = parse_date(intake_date_val)
         if not intake_date:
             print(f"Skipping sheet {sheet_name}: Invalid Date {intake_date_val}")
             continue
-            
+
         date_str = intake_date.strftime('%y%m%d')
-        
+
         flock_id = all_flocks_map.get((house_id, intake_date))
         if not flock_id:
             current_count = flock_counts.get(house_id, 0)
             n = current_count + 1
             flock_uid_str = f"{house_name}_{date_str}_Batch{n}"
-            
+
             flock = Flock(
                 house_id=house_id,
                 flock_id=flock_uid_str,
@@ -5671,7 +5681,7 @@ def process_import(file, commit=True, preview=False):
             flock_counts[house_id] = n
             if commit:
                 safe_commit()
-            
+
             initialize_sampling_schedule(flock_id, commit=commit)
             initialize_vaccine_schedule(flock_id, commit=commit)
 
@@ -5718,7 +5728,7 @@ def process_import(file, commit=True, preview=False):
             df_data.reset_index(drop=True, inplace=True)
         else:
             df_data = pd.DataFrame()
-        
+
         # --- Column Mapping Logic ---
         headers = [str(c).upper().strip() for c in df_data.columns]
 
@@ -5802,7 +5812,7 @@ def process_import(file, commit=True, preview=False):
             if not log_date:
                 i+=1
                 continue
-            
+
             def get_float(r, idx):
                 if idx is None or idx >= len(r): return 0.0
                 val = r.iloc[idx]
@@ -5816,7 +5826,7 @@ def process_import(file, commit=True, preview=False):
                 if pd.isna(val): return 0
                 try: return int(float(val))
                 except (ValueError, TypeError): return 0
-                
+
             def get_str(r, idx):
                 if idx is None or idx >= len(r): return None
                 val = r.iloc[idx]
@@ -5988,7 +5998,7 @@ def process_import(file, commit=True, preview=False):
             safe_commit()
         else:
             db.session.flush()
-        
+
         all_logs = sorted(existing_logs_dict.values(), key=lambda x: x.date)
         for i, log in enumerate(all_logs):
             if i > 0:
@@ -6065,6 +6075,38 @@ def recalculate_flock_inventory(flock_id):
         elif log.feed_program == '2/1':
             multiplier = 1.5
 
+        # Calculate Total Kg based on updated stock only if feed_male_gp_bird/feed_female_gp_bird are provided
+        # Or if we want to overwrite them if they're 0, but as requested:
+        # "Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
+        # Wait, if we DO NOT modify total_feed_kg unless it's null, then we calculate g/bird.
+
+        # Calculate feed_male_gp_bird and feed_female_gp_bird:
+        if log.feed_male is not None and log.feed_male > 0:
+            # We have total feed kg. Calculate g/bird
+            if curr_males > 0:
+                # log.feed_male_gp_bird = (total_feed_kg * 1000.0) / (multiplier * curr_males)
+                # But wait, we should only NOT modify total_feed_kg unless it's null?
+                pass
+
+        # Original instruction:
+        # "Crucial: Calculate the feed_per_bird_g (Total Feed / Stock), but do not modify the total_feed_kg unless it's null."
+
+        # So we have feed_male (total) and feed_male_gp_bird.
+        if log.feed_male is None:
+            # Recompute total feed if null based on g/bird and stock
+            if curr_males > 0 and log.feed_male_gp_bird:
+                log.feed_male = (log.feed_male_gp_bird * multiplier * curr_males) / 1000.0
+            else:
+                log.feed_male = 0.0
+
+        if log.feed_female is None:
+            if curr_females > 0 and log.feed_female_gp_bird:
+                log.feed_female = (log.feed_female_gp_bird * multiplier * curr_females) / 1000.0
+            else:
+                log.feed_female = 0.0
+
+        # gp_bird is a raw input. Do not overwrite it based on Total Feed.
+        # It has already been used to calculate Total Kg (log.feed_male / log.feed_female) above.
 
         # Update stock for the next day
         # Only mortality and culls affect total house stock.
@@ -6296,7 +6338,15 @@ def update_log_from_request(log, req):
 
     # Calculate Total Kg
     # Formula: (g/bird * multiplier * stock) / 1000
-    # Calculations are now done on the fly in metrics.py
+    if current_stock_m > 0:
+        log.feed_male = (log.feed_male_gp_bird * multiplier * current_stock_m) / 1000.0
+    else:
+        log.feed_male = 0.0
+
+    if current_stock_f > 0:
+        log.feed_female = (log.feed_female_gp_bird * multiplier * current_stock_f) / 1000.0
+    else:
+        log.feed_female = 0.0
 
     log.eggs_collected = int(req.form.get('eggs_collected') or 0)
     log.cull_eggs_jumbo = int(req.form.get('cull_eggs_jumbo') or 0)
@@ -7594,9 +7644,7 @@ def get_weekly_data_aggregated(flocks):
         fd['cull_m'] += (log.culls_male or 0)
         fd['cull_f'] += (log.culls_female or 0)
         fd['eggs'] += (log.eggs_collected or 0)
-        # We don't have stock for this day immediately accessible here without calculating it
-        # But for 'feed_total_kg' we can just set it to 0 and rely on `enrich_flock_data` for accurate metrics later
-        fd['feed_total_kg'] += 0 # Removed explicit reference to log.feed_male
+        fd['feed_total_kg'] += ((log.feed_male or 0) + (log.feed_female or 0))
 
         if log.feed_female_gp_bird > 0:
             fd['feed_g_bird_sum_f'] += log.feed_female_gp_bird
@@ -8462,7 +8510,7 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
             l.mortality_male + l.mortality_female + l.culls_male + l.culls_female as daily_loss,
             l.mortality_female as mort_f,
             l.eggs_collected,
-            0 as total_feed,
+            (l.feed_male + l.feed_female) as total_feed,
             f.intake_female + f.intake_male as intake_total,
             f.intake_female,
             f.start_of_lay_date,
@@ -9044,93 +9092,10 @@ def executive_dashboard():
 
     active_tab = request.args.get('active_tab', 'overview')
 
-    # Phase 3 Optimization: Python Enrichment Engine to match SSOT
-    all_enriched_data = []
-
-    # Use the active_flocks we already fetched and enriched above
-    for flock in active_flocks:
-        if hasattr(flock, 'enriched_data') and flock.enriched_data:
-            # Filter for the selected year and append
-            enriched_year = [d for d in flock.enriched_data if d['date'].year == selected_year]
-            all_enriched_data.extend(enriched_year)
-
-    weekly_agg = aggregate_weekly_metrics(all_enriched_data)
-    monthly_agg = aggregate_monthly_metrics(all_enriched_data)
-
-    iso_data = {
-        'weekly': [],
-        'monthly': [],
-        'yearly': []
-    }
-
-    # Format weekly
-    for ws in reversed(weekly_agg):  # frontend expects descending
-        avg_hen = ws['stock_female_start'] - ((ws['mortality_female'] + ws['culls_female']) / 2)
-
-        iso_data['weekly'].append({
-            'period': f"Week {ws['week']}",
-            'avg_female_stock': int(avg_hen),
-            'total_eggs': ws['eggs_collected'],
-            'total_chicks': ws['hatched_chicks'],
-            'mortality_pct': ws['mortality_female_pct'],
-            'hatchability_pct': ws['hatchability_pct'],
-            'egg_production_pct': ws['egg_prod_pct']
-        })
-
-    # Format monthly
-    for ms in reversed(monthly_agg):
-        avg_hen = ms['stock_female_start'] - ((ms['mortality_female'] + ms['culls_female']) / 2)
-
-        iso_data['monthly'].append({
-            'period': ms['month'],
-            'avg_female_stock': int(avg_hen),
-            'total_eggs': ms['eggs_collected'],
-            'total_chicks': ms['hatched_chicks'],
-            'mortality_pct': ms['mortality_female_pct'],
-            'hatchability_pct': ms['hatchability_pct'],
-            'egg_production_pct': ms['egg_prod_pct']
-        })
-
-    # Build yearly aggregation manually since metrics.py doesn't have aggregate_yearly_metrics
-    yearly_stats = {}
-    for d in all_enriched_data:
-        y_key = str(d['date'].year)
-        if y_key not in yearly_stats:
-            yearly_stats[y_key] = {
-                'period': y_key,
-                'count': 0,
-                'stock_female_start': d['stock_female_start'],
-                'mortality_female': 0,
-                'culls_female': 0,
-                'eggs_collected': 0,
-                'hatched_chicks': 0,
-                'egg_set': 0
-            }
-
-        ys = yearly_stats[y_key]
-        ys['count'] += 1
-        ys['mortality_female'] += d['mortality_female']
-        ys['culls_female'] += d['culls_female']
-        ys['eggs_collected'] += d['eggs_collected']
-        if d.get('hatched_chicks'): ys['hatched_chicks'] += d['hatched_chicks']
-        if d.get('egg_set'): ys['egg_set'] += d['egg_set']
-
-    for y_key in sorted(yearly_stats.keys(), reverse=True):
-        ys = yearly_stats[y_key]
-        avg_hen = ys['stock_female_start'] - ((ys['mortality_female'] + ys['culls_female']) / 2)
-        mortality_pct = (ys['mortality_female'] / ys['stock_female_start'] * 100) if ys['stock_female_start'] > 0 else 0
-        egg_prod_pct = (ys['eggs_collected'] / (avg_hen * ys['count'])) * 100 if (avg_hen * ys['count']) > 0 else 0
-        hatchability_pct = (ys['hatched_chicks'] / ys['egg_set'] * 100) if ys['egg_set'] > 0 else 0
-
-        iso_data['yearly'].append({
-            'period': y_key,
-            'avg_female_stock': int(avg_hen),
-            'total_eggs': ys['eggs_collected'],
-            'total_chicks': ys['hatched_chicks'],
-            'mortality_pct': mortality_pct,
-            'hatchability_pct': hatchability_pct,
-            'egg_production_pct': egg_prod_pct
-        })
+    # Phase 2 Optimization: Use SQL-based aggregation
+    # iso_data = get_iso_aggregated_data(active_flocks, target_year=selected_year)
+    flock_ids = [f.id for f in active_flocks]
+    iso_data = get_iso_aggregated_data_sql(flock_ids, selected_year)
 
     # Monthly Inventory Usage Calculation
     current_month_start = today.replace(day=1)
