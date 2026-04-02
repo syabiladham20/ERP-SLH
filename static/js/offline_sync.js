@@ -186,7 +186,7 @@ window.renderFlockDetail = function(flockId) {
 
     // Prepare chart data (chronological)
     const dates = logs.map(l => l.date);
-    const ages = logs.map(l => l.age_week_day ? String(l.age_week_day).split('.')[0] : 'N/A');
+    const ages = logs.map(l => l.week_day_format ? String(l.week_day_format).split('.')[0] : 'N/A');
     const mortM = logs.map(l => l.mortality_male_pct);
     const mortF = logs.map(l => l.mortality_female_pct);
     const cullM = logs.map(l => (l.culls_male / (l.stock_male_start || 1)) * 100);
@@ -270,7 +270,7 @@ window.renderFlockDetail = function(flockId) {
                             ${reversedLogs.map(l => `
                             <tr>
                                 <td class="fw-bold">${l.date}</td>
-                                <td>W${l.age_week_day ? String(l.age_week_day).split('.')[0] : 'N/A'}</td>
+                                <td>W${l.week_day_format ? String(l.week_day_format).split('.')[0] : 'N/A'}</td>
                                 <td><span class="${l.mortality_male > 0 ? 'text-danger fw-bold' : 'text-muted'}">${l.mortality_male || 0}</span> / <span class="${l.mortality_female > 0 ? 'text-danger fw-bold' : 'text-muted'}">${l.mortality_female || 0}</span></td>
                                 <td><span class="${l.culls_male > 0 ? 'text-warning fw-bold' : 'text-muted'}">${l.culls_male || 0}</span> / <span class="${l.culls_female > 0 ? 'text-warning fw-bold' : 'text-muted'}">${l.culls_female || 0}</span></td>
                                 <td>${l.feed_male_gp_bird !== null ? l.feed_male_gp_bird.toFixed(1) : '0.0'}g / ${l.feed_female_gp_bird !== null ? l.feed_female_gp_bird.toFixed(1) : '0.0'}g</td>
