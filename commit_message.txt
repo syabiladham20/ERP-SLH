@@ -1,0 +1,7 @@
+Refactor: Establish age_week SSOT and centralize async Chart.js architecture
+
+1. Core: Added age_days_total, age_week, and age_week_format properties to DailyLog for an exact SSOT.
+2. Backend API: Overhauled get_chart_data to serve the {"daily": ..., "weekly": ...} structure.
+3. SSOT Integration: Enforced Standard.query.filter_by(week=log.age_week) in the payload builder.
+4. Chart Logic: Centralized Chart.js rendering and DOM guards into templates/partials/_chart_module.html.
+5. Shell Template Cleanup: Replaced duplicated inline JS in flock_detail*.html files with include tags.

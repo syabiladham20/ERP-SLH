@@ -1,0 +1,1154 @@
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<style>
+/* Fullscreen Carousel Wrapper */
+#chartsWrapper:fullscreen, #chartsWrapper:-webkit-full-screen {
+    background-color: white;
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    padding: 0;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#chartsWrapper:fullscreen .card, #chartsWrapper:-webkit-full-screen .card {
+    min-width: 100vw;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+    scroll-snap-align: start;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#chartsWrapper:fullscreen .card-header, #chartsWrapper:-webkit-full-screen .card-header {
+    flex-shrink: 0;
+    padding: 0.5rem; /* Reduced padding */
+    font-size: 1rem; /* Reduced font size */
+    min-height: 40px; /* Compact height */
+    top: 0 !important; /* Force header to top in fullscreen */
+    z-index: 1050;
+}
+
+#chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+
+#chartsWrapper:fullscreen .chart-container-inner, #chartsWrapper:-webkit-full-screen .chart-container-inner {
+    flex-grow: 1;
+    height: 100% !important;
+    width: 100% !important;
+    overflow-x: auto; /* Allow internal chart scrolling */
+    padding-top: 5px; /* Slight spacing */
+}
+</style>
+
+
+  <!-- Charts Tab (Pane 3) -->
+  <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
+
+    <!-- Filter Control Bar -->
+    <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
+        <div class="input-group" style="max-width: 450px;">
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> Start</span>
+            <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> End</span>
+            <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
+        </div>
+        <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
+    </div>
+
+    <div id="chartsWrapper">
+        <!-- General Performance Chart -->
+        <div class="card mb-4 mt-3" id="cardGeneral">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="generalChartTitle" class="fw-bold mb-2 mb-md-0">General Performance</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <div class="btn-group btn-group-sm" role="group">
+                    <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" onchange="switchMode('daily')">
+                    <label class="btn btn-outline-secondary" for="modeDaily" title="Daily View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg></label>
+
+                    <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" checked onchange="switchMode('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
+                </div>
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
+            <canvas id="generalChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Hatching Egg Chart -->
+        <div class="card mb-4" id="cardHatching">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="hatchingEggChartTitle" class="fw-bold mb-2 mb-md-0">Hatching Egg & Culls</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="btn-group btn-group-sm ms-2 me-2" role="group">
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeDailyHatching" autocomplete="off" onchange="switchModeHatching('daily')">
+                    <label class="btn btn-outline-secondary" for="modeDailyHatching" title="Daily View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg></label>
+                    <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" checked onchange="switchModeHatching('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
+                </div>
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <canvas id="hatchingEggChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Daily Water Chart -->
+        <div class="card mb-4" id="cardWater">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="waterChartTitle" class="fw-bold mb-2 mb-md-0">Daily Water per Bird (mL)</span>
+             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="waterChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Daily Feed Chart -->
+        <div class="card mb-4" id="cardFeed">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="feedChartTitle" class="fw-bold mb-2 mb-md-0">Daily Gram per Bird</span>
+             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="feedChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Male Chart -->
+        <div class="card mb-4" id="cardMale">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="maleChartTitle" class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="maleChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Female Chart -->
+        <div class="card mb-4" id="cardFemale">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="femaleChartTitle" class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <!-- Per-Chart Date Picker -->
+                <div class="d-flex align-items-center gap-1 ms-2">
+                    <input type="date" id="start_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                    <span class="small">-</span>
+                    <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <canvas id="femaleChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+
+        </div>
+    </div>
+  </div>
+
+  <!-- Production Summary Tab (Pane 4) -->
+  <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
+    {% if summary_dashboard %}
+    <!-- Dashboard Cards -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4 mt-3">
+        <!-- Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-success">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-success fw-bold">{{ summary_dashboard.hha_total }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_total_std }}</span>
+                    </div>
+                    {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_eggs >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_eggs) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Hatching Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-primary">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Hatching Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-primary fw-bold">{{ summary_dashboard.hha_hatch }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_hatch_std }}</span>
+                    </div>
+                    {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_hatch >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_hatch) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Chicks HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-info">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Chicks HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-info fw-bold">{{ summary_dashboard.hha_chicks }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_chicks_std }}</span>
+                    </div>
+                    {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_chicks >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_chicks) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Liveability & Feed -->
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 bg-gray-100">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Efficiency Metrics</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Liveability:</span>
+                            <strong class="text-dark">{{ summary_dashboard.liveability }}%</strong>
+                        </li>
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Feed/100 Chicks:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_chicks }} kg
+                            </strong>
+                        </li>
+                        <li class="d-flex justify-content-between">
+                            <span class="text-secondary">Feed/100 H.Eggs:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_h_eggs }} kg
+                            </strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cumulative Table -->
+    <div class="table-responsive table-responsive-sticky mb-4">
+        <table class="table table-bordered table-sm text-center align-middle table-hover">
+            <thead class="table-light text-dark sticky-table-header text-dark">
+                <tr>
+                    <th rowspan="2" class="align-middle">Prod Week</th>
+                    <th rowspan="2" class="align-middle">Age Week</th>
+                    <th colspan="2">Cumulative Eggs HHA</th>
+                    <th colspan="2">Cumulative Hatching Eggs HHA</th>
+                    <th colspan="2">Cumulative Chicks HHA</th>
+                    <th colspan="2">Feed Efficiency (Kg)</th>
+                    <th rowspan="2" class="align-middle">Liveability %</th>
+                </tr>
+                <tr>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>/100 Chicks</th>
+                    <th>/100 H.Eggs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary_table %}
+                <tr>
+                    <td>{{ row.week }}</td>
+                    <td>{{ row.age }}</td>
+
+                    <!-- Eggs HHA -->
+                    {% set diff_e = row.cum_eggs_hha - row.std_cum_eggs_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_e >= 0 else 'text-danger' }}">
+                        {{ row.cum_eggs_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_eggs_hha }}</td>
+
+                    <!-- Hatching Eggs HHA -->
+                    <td>{{ row.cum_hatch_hha }}</td>
+                    <td class="text-muted">{{ row.std_cum_hatching_eggs_hha if row.std_cum_hatching_eggs_hha else 0 }}</td>
+
+                    <!-- Chicks HHA -->
+                    {% set diff_c = row.cum_chicks_hha - row.std_cum_chicks_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_c >= 0 else 'text-danger' }}">
+                        {{ row.cum_chicks_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_chicks_hha }}</td>
+
+                    <!-- Feed Eff -->
+                    <td>{{ row.feed_100_chicks }}</td>
+                    <td>{{ row.feed_100_h_eggs }}</td>
+
+                    <!-- Liveability -->
+                    <td>{{ row.liveability }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning mt-3">
+        <h4 class="alert-heading">Production Summary Not Available</h4>
+        <p>This flock has not started production or missing production start data.</p>
+        <hr>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date'.</p>
+        {% if not flock.start_of_lay_date %}
+        <p class="mb-0 fw-bold text-danger mt-2">
+            Missing 'Start of Lay Date' (First Egg).
+            <a href="{{ url_for('edit_flock', id=flock.id) }}" class="alert-link">Click here to set it</a> to enable Production Weeks.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Health Analytics Tab (Pane 5) -->
+  <div class="tab-pane fade" id="health-analytics" role="tabpanel" aria-labelledby="health-analytics-tab">
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+        <h4 class="mb-0">Health Analytics & Disease Prediction</h4>
+        <div>
+            <span class="badge bg-gradient-secondary">Experimental Feature</span>
+        </div>
+    </div>
+
+    {% if health_events %}
+    <div class="alert alert-info text-white border-0 shadow-sm">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        This tool analyzes daily logs for clinical keywords and correlates them with metric deviations (Mortality spikes, Water intake drops, Feed cleanup delays).
+        Predictions are rule-based suggestions and <strong>not a definitive diagnosis</strong>.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light text-dark">
+                <tr>
+                    <th style="width: 120px;">Date / Age</th>
+                    <th style="width: 30%;">Clinical Signs & Prediction</th>
+                    <th>Correlated Metrics</th>
+                    <th>Deviations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in health_events %}
+                <tr>
+                    <td>
+                        <div class="fw-bold">{{ event.date | date_fmt }}</div>
+                        <div class="text-muted small">Age: {{ event.age_week }} Weeks</div>
+                    </td>
+                    <td>
+                        {% if event.notes %}
+                            <div class="mb-2"><em>"{{ event.notes }}"</em></div>
+                        {% endif %}
+
+                        {% if event.predicted_diseases %}
+                            {% for disease in event.predicted_diseases %}
+                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                    {{ disease.name }}
+                                </span>
+                            {% endfor %}
+                            <div class="small text-muted mt-1">
+                                Symptoms matched: {{ event.predicted_diseases[0].matched_symptoms | join(', ') }}
+                            </div>
+                        {% else %}
+                            <span class="text-muted small">No specific disease matched.</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column gap-1 small">
+                            <div class="d-flex justify-content-between">
+                                <span>Mortality:</span>
+                                <span class="fw-bold">{{ event.metrics.mortality }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Water (ml):</span>
+                                <span class="fw-bold">{{ event.metrics.water }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Feed Time:</span>
+                                <span class="fw-bold">{{ event.metrics.cleanup_min if event.metrics.cleanup_min is not none else '-' }} m</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <ul class="list-unstyled mb-0 small">
+                            {% for flag in event.flags %}
+                                <li class="text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i> {{ flag }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center p-5 text-muted bg-gray-100 rounded border shadow-sm">
+        <h4 class="text-secondary">No Significant Health Events Detected</h4>
+        <p>No clinical keywords or major metric deviations found in the logs.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+
+  // Register plugin
+  Chart.register(ChartDataLabels);
+  Chart.register(window['chartjs-plugin-annotation']);
+  Chart.defaults.set('plugins.datalabels', {
+    display: true,
+    font: { size: 10 },
+    formatter: Math.round
+  });
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) {
+      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
+  }
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
+      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
+  }
+  Chart.defaults.set('plugins.datalabels', {
+    display: true,
+    font: { size: 10 },
+    formatter: Math.round
+  });
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) {
+      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
+  }
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
+      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
+  }
+
+  // Fix for zoom clipping
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+
+  const isMobile = window.innerWidth <= 768;
+
+
+
+  const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
+  const globalStdWeekly = {{ global_std.std_mortality_weekly if global_std else 0.3 }};
+  const intakeDateStr = "{{ flock.intake_date }}";
+  const intakeDate = new Date(intakeDateStr);
+  const flockId = "{{ flock.id }}";
+  const flockPhase = "{{ flock.calculated_phase }}";
+  const flockHouseName = "{{ flock.house.name }}";
+
+  let maleChart, femaleChart, generalChart, hatchingEggChart, waterChart, feedChart;
+  let currentMode = 'weekly';
+  let currentModeHatching = 'weekly';
+  // State Management for Date Ranges
+  const chartStates = {
+      general: { start: null, end: null },
+      hatching: { start: null, end: null },
+      water: { start: null, end: null },
+      feed: { start: null, end: null },
+      male: { start: null, end: null },
+      female: { start: null, end: null }
+  };
+
+  let globalPickerStart = null;
+  let globalPickerEnd = null;
+
+  function calculateAgeWeeks(dateObj) {
+      if (!intakeDate) return 0;
+      const diffTime = Math.abs(dateObj - intakeDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return Math.floor(diffDays / 7) + 1;
+  }
+
+  function getLatestDataIndex(dataArray, checkZero = false) {
+      if (!dataArray || dataArray.length === 0) return 0;
+      for (let i = dataArray.length - 1; i >= 0; i--) {
+          const val = dataArray[i];
+          if (val !== null && val !== undefined && (!checkZero || val > 0)) {
+              return i;
+          }
+      }
+      return 0;
+  }
+
+  // Single SSOT render function!
+  function initOrUpdateChart(chartVar, canvasId, chartDataGroup) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return chartVar; // Guard for views missing a specific chart
+      const ctx = canvas.getContext('2d');
+      if (chartVar) {
+          chartVar.data = chartDataGroup;
+          chartVar.update();
+          return chartVar;
+      }
+
+      return new Chart(ctx, {
+          data: chartDataGroup,
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: {
+                  legend: { position: 'bottom' },
+                  dynamicYMaxPlugin: true
+              },
+              onClick: function(e, elements) {
+                  if (elements.length > 0) {
+                      const idx = elements[0].index;
+                      const datasetIndex = elements[0].datasetIndex;
+                      let dataPoint = this.data.datasets[datasetIndex].data[idx];
+                      if (!dataPoint.notes) {
+                          for (let d of this.data.datasets) {
+                              if (d.data[idx] && d.data[idx].notes) {
+                                  dataPoint = d.data[idx];
+                                  break;
+                              }
+                          }
+                      }
+
+                      if (dataPoint && dataPoint.notes) {
+                          showNoteModal(dataPoint.x, dataPoint.notes, dataPoint.image_url);
+                      }
+                  }
+              }
+          }
+      });
+  }
+
+  let chartDataDaily = {{ chart_data_daily | default('null') | tojson | safe }};
+  let chartDataWeekly = {{ chart_data_weekly | default('null') | tojson | safe }};
+
+  function fetchAndRenderCharts() {
+      fetch(`/api/chart_data/${flockId}?mode=daily`)
+          .then(response => response.json())
+          .then(data => {
+              if (data.daily) {
+                  chartDataDaily = data.daily;
+                  chartDataWeekly = data.weekly || data.daily; // Fallback
+
+                  renderGeneralChart();
+                  renderHatchingChart();
+                  renderWaterChart();
+                  renderFeedChart();
+                  renderMaleChart();
+                  renderFemaleChart();
+              }
+          })
+          .catch(err => console.error("Error loading chart data:", err));
+  }
+
+  function renderGeneralChart() {
+      if (!document.getElementById('generalChart')) return;
+      const targetData = currentMode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.generalChart) return;
+      generalChart = initOrUpdateChart(generalChart, 'generalChart', targetData.generalChart);
+  }
+
+  function renderHatchingChart() {
+      if (!document.getElementById('hatchingEggChart')) return;
+      const targetData = currentModeHatching === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.hatchingEggChart) return;
+      hatchingEggChart = initOrUpdateChart(hatchingEggChart, 'hatchingEggChart', targetData.hatchingEggChart);
+  }
+
+  function renderWaterChart() {
+      if (!document.getElementById('waterChart')) return;
+      const targetData = currentMode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.waterChart) return;
+      waterChart = initOrUpdateChart(waterChart, 'waterChart', targetData.waterChart);
+  }
+
+  function renderFeedChart() {
+      if (!document.getElementById('feedChart')) return;
+      const targetData = currentMode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.feedChart) return;
+      feedChart = initOrUpdateChart(feedChart, 'feedChart', targetData.feedChart);
+  }
+
+  function renderMaleChart() {
+      if (!document.getElementById('maleChart')) return;
+      const targetData = currentMode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.maleChart) return;
+      maleChart = initOrUpdateChart(maleChart, 'maleChart', targetData.maleChart);
+  }
+
+  function renderFemaleChart() {
+      if (!document.getElementById('femaleChart')) return;
+      const targetData = currentMode === 'weekly' ? chartDataWeekly : chartDataDaily;
+      if (!targetData || !targetData.femaleChart) return;
+      femaleChart = initOrUpdateChart(femaleChart, 'femaleChart', targetData.femaleChart);
+  }
+
+  function switchMode(mode) {
+      currentMode = mode;
+      renderGeneralChart();
+      if (typeof updateChartAnnotations === 'function' && typeof generalChart !== 'undefined') updateChartAnnotations(generalChart);
+  }
+
+  function switchModeHatching(mode) {
+      currentModeHatching = mode;
+      renderHatchingChart();
+      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
+  }
+
+
+  function toggleFullScreenWrapper(targetCardId) {
+      const wrapper = document.getElementById('chartsWrapper');
+      if (!document.fullscreenElement) {
+          wrapper.requestFullscreen().then(() => {
+             const target = document.getElementById(targetCardId);
+             if (target) target.scrollIntoView({behavior: "smooth", inline: "start"});
+          }).catch(err => {
+             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+          });
+      } else {
+          document.exitFullscreen();
+      }
+  }
+
+  // Initial Render
+  document.addEventListener('DOMContentLoaded', function() {
+      // Handle URL hash for tabs
+      if (window.location.hash) {
+          const targetTab = document.querySelector(`button[data-bs-target="${window.location.hash}"]`);
+          if (targetTab) {
+              const tab = new bootstrap.Tab(targetTab);
+              tab.show();
+          }
+      }
+
+      // Update "Switch House" links with current hash
+      document.querySelectorAll('.switch-house-link').forEach(link => {
+          link.addEventListener('click', function(e) {
+              if (window.location.hash) {
+                  e.preventDefault();
+                  window.location.href = this.href + window.location.hash;
+              }
+          });
+      });
+
+      const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('shown.bs.tab', function (event) {
+          // Update URL hash when tab changes
+          history.replaceState(null, null, event.target.getAttribute('data-bs-target'));
+
+          if (event.target.id === 'charts-tab') {
+            if (maleChart) maleChart.resize();
+            if (femaleChart) femaleChart.resize();
+            if (generalChart) generalChart.resize();
+            if (hatchingEggChart) hatchingEggChart.resize();
+            if (waterChart) waterChart.resize();
+            if (feedChart) feedChart.resize();
+          }
+        });
+      });
+
+            // Flatpickr Init
+      let endDateDefault = new Date();
+      let startDateDefault = new Date();
+      startDateDefault.setDate(endDateDefault.getDate() - 30);
+
+      if (chartDataDaily && chartDataDaily.dates && chartDataDaily.dates.length > 0) {
+          const lastLogDateStr = chartDataDaily.dates[chartDataDaily.dates.length - 1];
+          const lastLogDate = new Date(lastLogDateStr + 'T00:00:00');
+          if (!isNaN(lastLogDate)) {
+              endDateDefault = lastLogDate;
+              startDateDefault = new Date(lastLogDate);
+              startDateDefault.setDate(endDateDefault.getDate() - 30);
+          }
+      }
+
+      // Ensure start date doesn't go before intake date if intakeDate is available
+      if (intakeDate && startDateDefault < intakeDate) {
+          startDateDefault = new Date(intakeDate);
+      }
+
+      // 1. Initialize Global Vars
+      globalPickerStart = startDateDefault;
+      globalPickerEnd = endDateDefault;
+
+      // Helper function to format Date object to YYYY-MM-DD
+      function formatDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        let month = '' + (d.getMonth() + 1),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+
+        return [year, month, day].join('-');
+      }
+
+      // 2. Helper to set individual pickers (Now Native)
+      function initChartPickers(key, renderFunc) {
+          // Defaults
+          chartStates[key].start = globalPickerStart;
+          chartStates[key].end = globalPickerEnd;
+
+          const startEl = document.getElementById(`start_${key}`);
+          const endEl = document.getElementById(`end_${key}`);
+
+          // Set Initial Values
+          if (startEl) startEl.value = formatDate(globalPickerStart);
+          if (endEl) endEl.value = formatDate(globalPickerEnd);
+
+          // Add Change Listeners
+          const updateFunc = function() {
+               const sVal = startEl.value;
+               const eVal = endEl.value;
+
+               if (sVal && eVal) {
+                   // Append time to force local time parsing or ensure consistency
+                   // Native input returns YYYY-MM-DD. new Date("YYYY-MM-DD") is UTC.
+                   // We want start of day in local time or consistent with how data is filtered.
+                   // Adding T00:00:00 often forces local time parsing in browsers.
+                   chartStates[key].start = new Date(sVal + 'T00:00:00');
+                   chartStates[key].end = new Date(eVal + 'T00:00:00');
+                   renderFunc();
+               }
+          };
+
+          if (startEl) startEl.addEventListener('change', updateFunc);
+          if (endEl) endEl.addEventListener('change', updateFunc);
+      }
+
+      // 3. Initialize Specific Pickers
+      initChartPickers('general', renderGeneralChart);
+      initChartPickers('hatching', renderHatchingChart);
+      initChartPickers('water', renderWaterChart);
+      initChartPickers('feed', renderFeedChart);
+      initChartPickers('male', renderMaleChart);
+      initChartPickers('female', renderFemaleChart);
+
+      // 4. Initialize Global Picker
+      const commonFlatpickrConfig = {
+          dateFormat: "Y-m-d",
+          // disableMobile: "true", // Removed to allow native mobile picker
+          onChange: function(selectedDates, dateStr, instance) {
+              updateGlobalDateRange();
+          }
+      };
+
+      const fpStart = flatpickr("#startDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: startDateDefault
+      });
+
+      const fpEnd = flatpickr("#endDateSlicer", {
+          ...commonFlatpickrConfig,
+          defaultDate: endDateDefault
+      });
+
+      function updateGlobalDateRange() {
+          const startDates = fpStart.selectedDates;
+          const endDates = fpEnd.selectedDates;
+
+          if (startDates.length > 0 && endDates.length > 0) {
+              globalPickerStart = startDates[0];
+              globalPickerEnd = endDates[0];
+
+              // Update Age Display
+              const startAge = calculateAgeWeeks(globalPickerStart);
+              const endAge = calculateAgeWeeks(globalPickerEnd);
+              document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+              // Update ALL individual states and re-render
+              Object.keys(chartStates).forEach(key => {
+                  chartStates[key].start = globalPickerStart;
+                  chartStates[key].end = globalPickerEnd;
+
+                  // Update UI (Native Inputs)
+                  const startEl = document.getElementById(`start_${key}`);
+                  const endEl = document.getElementById(`end_${key}`);
+                  if (startEl) startEl.value = formatDate(globalPickerStart);
+                  if (endEl) endEl.value = formatDate(globalPickerEnd);
+              });
+
+              renderGeneralChart();
+              renderHatchingChart();
+              renderWaterChart();
+              renderFeedChart();
+              renderMaleChart();
+              renderFemaleChart();
+          }
+      }
+
+      // 5. Initial Render
+      const startAge = calculateAgeWeeks(globalPickerStart);
+      const endAge = calculateAgeWeeks(globalPickerEnd);
+      document.getElementById('ageRangeDisplay').innerText = `Age: W${startAge} - W${endAge}`;
+
+      renderGeneralChart();
+      renderHatchingChart();
+      renderWaterChart();
+      renderFeedChart();
+      renderMaleChart();
+      renderFemaleChart();
+  });
+
+  // Listen for Fullscreen Changes to Resize Charts
+  function onFullScreenChange() {
+      // Small delay to allow CSS transitions to finish before resizing
+      setTimeout(() => {
+          if (maleChart) maleChart.resize();
+          if (femaleChart) femaleChart.resize();
+          if (generalChart) generalChart.resize();
+          if (hatchingEggChart) hatchingEggChart.resize();
+          if (waterChart) waterChart.resize();
+          if (feedChart) feedChart.resize();
+      }, 100);
+  }
+
+  document.addEventListener("fullscreenchange", onFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullScreenChange);
+  document.addEventListener("mozfullscreenchange", onFullScreenChange);
+  document.addEventListener("msfullscreenchange", onFullScreenChange);
+
+
+  function showNoteModal(pt) {
+      // Support legacy signature or object
+      let date, text, photos, main_photos, extra_notes;
+      if (typeof pt === 'string') {
+          // Legacy call protection (if any)
+          date = arguments[0];
+          text = arguments[1];
+          photos = arguments[2];
+      } else {
+          date = pt.date;
+          text = pt.main_note || pt.note; // Fallback
+          main_photos = pt.main_photos || pt.photos || [];
+          if(!Array.isArray(main_photos) && main_photos) main_photos = [{url: main_photos, name:'Photo'}];
+          extra_notes = pt.extra_notes || [];
+      }
+
+      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
+      // We will hide the static text/date elements and move everything into carousel slides
+      document.getElementById('noteModalText').style.display = 'none';
+      document.getElementById('noteModalDate').style.display = 'none';
+
+      const carousel = document.getElementById('photoCarousel');
+      const inner = document.getElementById('photoCarouselInner');
+      inner.innerHTML = '';
+      carousel.style.display = 'block';
+
+      let slides = [];
+
+      // 1. Main Slide
+      if (text || (main_photos && main_photos.length > 0)) {
+          slides.push({
+              title: "Main Clinical Note",
+              caption: text || "No text.",
+              photos: main_photos || []
+          });
+      }
+
+      // 2. Extra Slides
+      if (extra_notes) {
+          extra_notes.forEach((note, idx) => {
+              slides.push({
+                  title: `Detailed Note ${idx + 1}`,
+                  caption: note.caption || "No caption.",
+                  photos: note.photos || []
+              });
+          });
+      }
+
+      if (slides.length === 0) {
+          // Fallback if empty
+          slides.push({title: "Info", caption: "No data.", photos: []});
+      }
+
+      slides.forEach((slide, index) => {
+          const div = document.createElement('div');
+          div.className = 'carousel-item' + (index === 0 ? ' active' : '');
+
+          let photosHtml = '';
+          if (slide.photos.length > 0) {
+              photosHtml = `<div class="d-flex flex-wrap justify-content-center gap-2 mb-3" style="max-height: 400px; overflow-y: auto;">`;
+              slide.photos.forEach(p => {
+                  photosHtml += `
+                    <div class="text-center">
+                        <a href="${p.url}" target="_blank">
+                            <img src="${p.url}" class="img-thumbnail" style="max-height: 180px; object-fit: contain;" alt="${p.name}">
+                        </a>
+                        <div class="small text-muted mt-1" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
+                    </div>
+                  `;
+              });
+              photosHtml += `</div>`;
+          } else {
+              photosHtml = `<div class="d-flex align-items-center justify-content-center text-muted" style="height: 100px;">No Photos</div>`;
+          }
+
+          div.innerHTML = `
+            <div class="p-4 bg-white">
+                <h5 class="text-primary border-bottom pb-2">${slide.title}</h5>
+                ${photosHtml}
+                <div class="alert alert-light border mt-3">
+                    <strong>Note:</strong> ${slide.caption}
+                </div>
+            </div>
+          `;
+          inner.appendChild(div);
+      });
+
+      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
+      modal.show();
+  }
+
+// --- Floating Notes Logic ---
+let activeAddNoteChart = null;
+let allFloatingNotes = [];
+
+function toggleAddNoteMode(chartId) {
+    if (activeAddNoteChart === chartId) {
+        activeAddNoteChart = null;
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-secondary');
+        });
+    } else {
+        if (activeAddNoteChart) {
+            document.querySelectorAll(`button[onclick="toggleAddNoteMode('${activeAddNoteChart}')"]`).forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+        }
+        activeAddNoteChart = chartId;
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-primary');
+        });
+    }
+}
+
+const floatingNotePlugin = {
+    id: 'floatingNoteInteraction',
+    afterEvent(chart, args) {
+        if (args.event.type === 'click') {
+            const chartId = chart.canvas.id;
+
+            if (activeAddNoteChart === chartId) {
+                const xVal = chart.scales.x.getValueForPixel(args.event.x);
+                const yVal = chart.scales.y.getValueForPixel(args.event.y);
+
+                let xLabel = xVal;
+                if (chart.data.labels && chart.data.labels[xVal] !== undefined) {
+                    xLabel = chart.data.labels[xVal];
+                }
+
+                toggleAddNoteMode(chartId); // turn off mode
+
+                const noteText = prompt("Enter note text:");
+                if (noteText && noteText.trim() !== '') {
+                    const payload = {
+                        flock_id: {{ flock.id }},
+                        chart_id: chartId,
+                        x_value: String(xLabel),
+                        y_value: yVal,
+                        content: noteText.trim()
+                    };
+
+                    fetch('/api/floating_notes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            payload.id = res.id;
+                            allFloatingNotes.push(payload);
+                            updateChartAnnotations(chart);
+                        } else {
+                            alert("Failed to save note: " + res.error);
+                        }
+                    });
+                }
+            }
+        }
+    }
+};
+
+Chart.register(floatingNotePlugin);
+
+function updateChartAnnotations(chart) {
+    if (!chart) return;
+    const chartId = chart.canvas.id;
+    const chartNotes = allFloatingNotes.filter(n => n.chart_id === chartId);
+
+    if (!chart.options.plugins) chart.options.plugins = {};
+    if (!chart.options.plugins.annotation) chart.options.plugins.annotation = {};
+    if (!chart.options.plugins.annotation.annotations) chart.options.plugins.annotation.annotations = {};
+
+    const currentAnns = chart.options.plugins.annotation.annotations;
+    const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
+
+    for (const key of Object.keys(newAnnotations)) {
+        if (key.startsWith('note_')) {
+            delete newAnnotations[key];
+        }
+    }
+
+    chartNotes.forEach(note => {
+        newAnnotations['note_' + note.id] = {
+            type: 'label',
+            xValue: note.x_value,
+            yValue: note.y_value,
+            content: note.content,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            color: 'black',
+            borderWidth: 0,
+            borderRadius: 4,
+            padding: 4,
+            font: { size: 12 },
+            callout: { display: false },
+            click: function(ctx) {
+                if (activeAddNoteChart) return;
+                if (confirm('Delete this note: "' + note.content + '"?')) {
+                    fetch('/api/floating_notes/' + note.id, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            allFloatingNotes = allFloatingNotes.filter(n => n.id !== note.id);
+                            updateChartAnnotations(chart);
+                        } else {
+                            alert("Failed to delete note.");
+                        }
+                    });
+                }
+            }
+        };
+    });
+
+    chart.options.plugins.annotation.annotations = newAnnotations;
+    chart.update();
+}
+
+function fetchAndApplyFloatingNotes() {
+    fetch('/api/floating_notes/{{ flock.id }}')
+    .then(r => {
+        if (!r.ok || r.redirected) {
+            console.error("Failed to fetch floating notes");
+            return [];
+        }
+        return r.json().catch(() => {
+            console.error("Failed to fetch floating notes");
+            return [];
+        });
+    })    .then(data => {
+        allFloatingNotes = data;
+        const chartsToUpdate = [];
+        if (typeof generalChart !== 'undefined') chartsToUpdate.push(generalChart);
+        if (typeof waterChart !== 'undefined') chartsToUpdate.push(waterChart);
+        if (typeof feedChart !== 'undefined') chartsToUpdate.push(feedChart);
+        if (typeof maleChart !== 'undefined') chartsToUpdate.push(maleChart);
+        if (typeof femaleChart !== 'undefined') chartsToUpdate.push(femaleChart);
+        if (typeof hatchingEggChart !== 'undefined') chartsToUpdate.push(hatchingEggChart);
+        if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
+        if (typeof hatchChart !== 'undefined') chartsToUpdate.push(hatchChart);
+
+        chartsToUpdate.forEach(c => {
+            if (c) updateChartAnnotations(c);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(fetchAndApplyFloatingNotes, 1500);
+});
+</script>
