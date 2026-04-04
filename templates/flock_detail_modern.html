@@ -324,26 +324,248 @@
     {% include "partials/_chart_module.html" %}
   </div>
 
+  <!-- Production Summary Tab (Pane 4) -->
   <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Production Summary</h3>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Production summary data loading...</p>
-      </div>
+    {% if summary_dashboard %}
+    <!-- Dashboard Cards -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4 mt-3">
+        <!-- Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-success">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-success fw-bold">{{ summary_dashboard.hha_total }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_total_std }}</span>
+                    </div>
+                    {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_eggs >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_eggs) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Hatching Eggs HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-primary">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Hatching Eggs HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-primary fw-bold">{{ summary_dashboard.hha_hatch }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_hatch_std }}</span>
+                    </div>
+                    {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_hatch >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_hatch) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Chicks HHA -->
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-info">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Chicks HHA</h6>
+                    <div class="d-flex align-items-baseline">
+                        <h2 class="card-title mb-0 text-info fw-bold">{{ summary_dashboard.hha_chicks }}</h2>
+                        <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_chicks_std }}</span>
+                    </div>
+                    {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
+                    <small class="{{ 'text-success fw-bold' if diff_chicks >= 0 else 'text-danger fw-bold' }}">
+                        {{ "%+.1f"|format(diff_chicks) }} vs Target
+                    </small>
+                </div>
+            </div>
+        </div>
+        <!-- Liveability & Feed -->
+        <div class="col">
+            <div class="card h-100 shadow-sm border-0 bg-gray-100">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Efficiency Metrics</h6>
+                    <ul class="list-unstyled mb-0 small">
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Liveability:</span>
+                            <strong class="text-dark">{{ summary_dashboard.liveability }}%</strong>
+                        </li>
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Feed/100 Chicks:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_chicks }} kg
+                            </strong>
+                        </li>
+                        <li class="d-flex justify-content-between">
+                            <span class="text-secondary">Feed/100 H.Eggs:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
+                                {{ summary_dashboard.feed_100_h_eggs }} kg
+                            </strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Cumulative Table -->
+    <div class="table-responsive table-responsive-sticky mb-4">
+        <table class="table table-bordered table-sm text-center align-middle table-hover">
+            <thead class="table-light text-dark sticky-table-header text-dark">
+                <tr>
+                    <th rowspan="2" class="align-middle">Prod Week</th>
+                    <th rowspan="2" class="align-middle">Age Week</th>
+                    <th colspan="2">Cumulative Eggs HHA</th>
+                    <th colspan="2">Cumulative Hatching Eggs HHA</th>
+                    <th colspan="2">Cumulative Chicks HHA</th>
+                    <th colspan="2">Feed Efficiency (Kg)</th>
+                    <th rowspan="2" class="align-middle">Liveability %</th>
+                </tr>
+                <tr>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>Actual</th>
+                    <th>Standard</th>
+                    <th>/100 Chicks</th>
+                    <th>/100 H.Eggs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in summary_table %}
+                <tr>
+                    <td>{{ row.week }}</td>
+                    <td>{{ row.age }}</td>
+
+                    <!-- Eggs HHA -->
+                    {% set diff_e = row.cum_eggs_hha - row.std_cum_eggs_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_e >= 0 else 'text-danger' }}">
+                        {{ row.cum_eggs_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_eggs_hha }}</td>
+
+                    <!-- Hatching Eggs HHA -->
+                    <td>{{ row.cum_hatch_hha }}</td>
+                    <td class="text-muted">{{ row.std_cum_hatching_eggs_hha if row.std_cum_hatching_eggs_hha else 0 }}</td>
+
+                    <!-- Chicks HHA -->
+                    {% set diff_c = row.cum_chicks_hha - row.std_cum_chicks_hha %}
+                    <td class="{{ 'text-success fw-bold' if diff_c >= 0 else 'text-danger' }}">
+                        {{ row.cum_chicks_hha }}
+                    </td>
+                    <td class="text-muted">{{ row.std_cum_chicks_hha }}</td>
+
+                    <!-- Feed Eff -->
+                    <td>{{ row.feed_100_chicks }}</td>
+                    <td>{{ row.feed_100_h_eggs }}</td>
+
+                    <!-- Liveability -->
+                    <td>{{ row.liveability }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="alert alert-warning mt-3">
+        <h4 class="alert-heading">Production Summary Not Available</h4>
+        <p>This flock has not started production or missing production start data.</p>
+        <hr>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date'.</p>
+        {% if not flock.start_of_lay_date %}
+        <p class="mb-0 fw-bold text-danger mt-2">
+            Missing 'Start of Lay Date' (First Egg).
+            <a href="{{ url_for('edit_flock', id=flock.id) }}" class="alert-link">Click here to set it</a> to enable Production Weeks.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
   </div>
 
+  <!-- Health Analytics Tab (Pane 5) -->
   <div class="tab-pane fade" id="health-analytics" role="tabpanel" aria-labelledby="health-analytics-tab">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">Health Analytics</h3>
-      </div>
-      <div class="card-body">
-        <p class="text-muted">Health analytics data loading...</p>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+        <h4 class="mb-0">Health Analytics & Disease Prediction</h4>
+        <div>
+            <span class="badge bg-gradient-secondary">Experimental Feature</span>
+        </div>
     </div>
+
+    {% if health_events %}
+    <div class="alert alert-info text-white border-0 shadow-sm">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        This tool analyzes daily logs for clinical keywords and correlates them with metric deviations (Mortality spikes, Water intake drops, Feed cleanup delays).
+        Predictions are rule-based suggestions and <strong>not a definitive diagnosis</strong>.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light text-dark">
+                <tr>
+                    <th style="width: 120px;">Date / Age</th>
+                    <th style="width: 30%;">Clinical Signs & Prediction</th>
+                    <th>Correlated Metrics</th>
+                    <th>Deviations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in health_events %}
+                <tr>
+                    <td>
+                        <div class="fw-bold">{{ event.date | date_fmt }}</div>
+                        <div class="text-muted small">Age: {{ event.age_week }} Weeks</div>
+                    </td>
+                    <td>
+                        {% if event.notes %}
+                            <div class="mb-2"><em>"{{ event.notes }}"</em></div>
+                        {% endif %}
+
+                        {% if event.predicted_diseases %}
+                            {% for disease in event.predicted_diseases %}
+                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                    {{ disease.name }}
+                                </span>
+                            {% endfor %}
+                            <div class="small text-muted mt-1">
+                                Symptoms matched: {{ event.predicted_diseases[0].matched_symptoms | join(', ') }}
+                            </div>
+                        {% else %}
+                            <span class="text-muted small">No specific disease matched.</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column gap-1 small">
+                            <div class="d-flex justify-content-between">
+                                <span>Mortality:</span>
+                                <span class="fw-bold">{{ event.metrics.mortality }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Water (ml):</span>
+                                <span class="fw-bold">{{ event.metrics.water }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Feed Time:</span>
+                                <span class="fw-bold">{{ event.metrics.cleanup_min if event.metrics.cleanup_min is not none else '-' }} m</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <ul class="list-unstyled mb-0 small">
+                            {% for flag in event.flags %}
+                                <li class="text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i> {{ flag }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center p-5 text-muted bg-gray-100 rounded border shadow-sm">
+        <h4 class="text-secondary">No Significant Health Events Detected</h4>
+        <p>No clinical keywords or major metric deviations found in the logs.</p>
+    </div>
+    {% endif %}
   </div>
 
 </div>
