@@ -3073,6 +3073,24 @@ def view_flock(id):
             }
         })
 
+    # --- Current Stats ---
+    current_stats = {
+        'male_prod': 0,
+        'female_prod': 0,
+        'male_ratio': 0.0,
+        'male_hosp': 0,
+        'female_hosp': 0
+    }
+    if daily_stats:
+        last_day = daily_stats[-1]
+        current_stats['male_prod'] = last_day.get('stock_male_prod_end', 0)
+        current_stats['female_prod'] = last_day.get('stock_female_prod_end', 0)
+        current_stats['male_hosp'] = last_day.get('stock_male_hosp_end', 0)
+        current_stats['female_hosp'] = last_day.get('stock_female_hosp_end', 0)
+        total_prod = current_stats['male_prod'] + current_stats['female_prod']
+        if total_prod > 0:
+            current_stats['male_ratio'] = (current_stats['male_prod'] / total_prod) * 100
+
     # 2. Weekly Data (For Table)
     weekly_data = []
     for ws in weekly_stats:
@@ -3119,6 +3137,19 @@ def view_flock(id):
             'photos': ws['photos']
         }
         weekly_data.append(w_item)
+
+    # Calculate Available Reports
+    available_reports = set()
+    import os
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    if os.path.exists(reports_dir):
+        for filename in os.listdir(reports_dir):
+            if filename.endswith('.jpg') and flock.house.name.replace(' ', '_') in filename:
+                try:
+                    date_str = filename.split('_')[0]
+                    available_reports.add(date_str)
+                except:
+                    pass
 
     return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
 
@@ -9097,6 +9128,24 @@ def executive_flock_detail(id):
             }
         })
 
+    # --- Current Stats ---
+    current_stats = {
+        'male_prod': 0,
+        'female_prod': 0,
+        'male_ratio': 0.0,
+        'male_hosp': 0,
+        'female_hosp': 0
+    }
+    if daily_stats:
+        last_day = daily_stats[-1]
+        current_stats['male_prod'] = last_day.get('stock_male_prod_end', 0)
+        current_stats['female_prod'] = last_day.get('stock_female_prod_end', 0)
+        current_stats['male_hosp'] = last_day.get('stock_male_hosp_end', 0)
+        current_stats['female_hosp'] = last_day.get('stock_female_hosp_end', 0)
+        total_prod = current_stats['male_prod'] + current_stats['female_prod']
+        if total_prod > 0:
+            current_stats['male_ratio'] = (current_stats['male_prod'] / total_prod) * 100
+
     # 2. Weekly Data
     weekly_data = []
     for ws in weekly_stats:
@@ -9129,6 +9178,19 @@ def executive_flock_detail(id):
             'photos': ws['photos']
         }
         weekly_data.append(w_item)
+
+    # Calculate Available Reports
+    available_reports = set()
+    import os
+    reports_dir = os.path.join(app.root_path, 'static', 'reports')
+    if os.path.exists(reports_dir):
+        for filename in os.listdir(reports_dir):
+            if filename.endswith('.jpg') and flock.house.name.replace(' ', '_') in filename:
+                try:
+                    date_str = filename.split('_')[0]
+                    available_reports.add(date_str)
+                except:
+                    pass
 
     return render_template('flock_detail_readonly.html',
                            flock=flock,
