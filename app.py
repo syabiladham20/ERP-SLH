@@ -3151,7 +3151,8 @@ def view_flock(id):
                 except:
                     pass
 
-    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
+    chart_payload = {'daily': _generate_chart_payload(flock.id, mode='daily'), 'weekly': _generate_chart_payload(flock.id, mode='weekly')}
+    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports, chart_data_daily=chart_payload.get('daily'), chart_data_weekly=chart_payload.get('weekly'))
 
 @app.route('/flock/<int:id>/spreadsheet')
 @login_required
