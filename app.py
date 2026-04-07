@@ -1249,6 +1249,9 @@ def inject_system_health():
 from routes.auth import auth_bp
 app.register_blueprint(auth_bp)
 
+from routes.api import api_bp
+app.register_blueprint(api_bp, url_prefix='/api')
+
 @app.route('/settings/profile_update', methods=['POST'])
 @login_required
 def profile_update():
@@ -2350,9 +2353,6 @@ def delete_daily_log_photo(photo_id):
     safe_commit()
     return '', 204
 
-@app.route('/api/chart_data/<int:flock_id>')
-@login_required
-@dept_required('Farm')
 def calculate_flock_summary(flock, daily_stats):
     """
     Calculates the 'Summary' tab data:
@@ -2801,32 +2801,6 @@ def _generate_chart_payload(flock, daily_stats, weekly_stats, meds, vacs, start_
     weekly_charts['femaleChart']['datasets'] = [ds_bw_f_w, ds_bw_f_std_w, ds_uni_f_w]
 
     return {"daily": charts, "weekly": weekly_charts}
-
-def get_chart_data(flock_id):
-    flock = Flock.query.get_or_404(flock_id)
-
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
-    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
-
-    hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
-    all_logs = DailyLog.query.options(joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
-
-    # Fetch Health Data
-    meds = Medication.query.filter_by(flock_id=flock_id).all()
-    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
-
-    daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
-    weekly_stats = aggregate_weekly_metrics(daily_stats)
-
-    res = _generate_chart_payload(flock, daily_stats, weekly_stats, meds, vacs, start_date_str, end_date_str)
-    
-    if mode == 'daily':
-        return jsonify({'daily': res['daily']})
-    elif mode == 'weekly':
-        return jsonify({'weekly': res['weekly']})
-    
-    return jsonify(res)
 
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
 @login_required
