@@ -2449,32 +2449,17 @@ def delete_daily_log_photo(photo_id):
 @app.route('/api/chart_data/<int:flock_id>')
 @login_required
 @dept_required('Farm')
-def get_chart_data(flock_id):
-    flock = Flock.query.get_or_404(flock_id)
-
-    start_date_str = request.args.get('start_date')
-    end_date_str = request.args.get('end_date')
-    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
-
-    hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
-    all_logs = DailyLog.query.options(joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
-
-    # Fetch Health Data
-    meds = Medication.query.filter_by(flock_id=flock_id).all()
-    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
-
-    daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
-
+def _generate_chart_payload(flock, daily_stats, weekly_stats, meds, vacs, start_date_str=None, end_date_str=None):
     filtered_daily = []
+    from datetime import datetime
+    import os
+    from flask import url_for
     for d in daily_stats:
         if start_date_str and d['date'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
         if end_date_str and d['date'] > datetime.strptime(end_date_str, '%Y-%m-%d').date(): continue
         filtered_daily.append(d)
 
     labels = []
-
-    # We will build dataset groups for each chart: generalChart, hatchingEggChart, waterChart, feedChart, maleChart, femaleChart
-    # Each group will have its own 'labels' and 'datasets'
 
     charts = {
         'generalChart': {'labels': [], 'datasets': []},
@@ -2485,13 +2470,12 @@ def get_chart_data(flock_id):
         'femaleChart': {'labels': [], 'datasets': []}
     }
 
-    # Helper maps to build datasets
     def init_dataset(label, color, yAxisID, type_='line', fill=False, tension=0.1, borderDash=None, hidden=False, stack=None, is_bar=False, datalabels=None):
         ds = {
             "label": label,
             "data": [],
             "borderColor": color,
-            "backgroundColor": color if is_bar else color + "33", # Add some transparency for fill
+            "backgroundColor": color if is_bar else color + "33",
             "yAxisID": yAxisID,
             "tension": tension,
             "hidden": hidden,
@@ -2503,87 +2487,68 @@ def get_chart_data(flock_id):
         if datalabels: ds["datalabels"] = datalabels
         return ds
 
-    # General Chart
     ds_egg_prod = init_dataset("Egg Prod %", "#206bc4", "y", "line", False)
     ds_std_egg_prod = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
     ds_mort_f = init_dataset("Fem Depletion %", "#d63939", "y1", "bar", True, is_bar=True)
     ds_mort_m = init_dataset("Male Depletion %", "#f59f00", "y1", "bar", True, is_bar=True)
     ds_std_mort_f = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
-
-    # Hatching Chart
     ds_hatch_egg = init_dataset("Hatching Egg %", "#2fb344", "y", "line", False)
     ds_std_hatch_egg = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
-
-    # Water Chart
     ds_water = init_dataset("Water Intake (ml/bird)", "#4299e1", "y", "line", True)
     ds_water_ratio = init_dataset("Water:Feed Ratio", "#6574cd", "y1", "line", False)
-
-    # Feed Chart
     ds_feed_f = init_dataset("Female Feed (g/bird)", "#d63939", "y", "line", False)
     ds_feed_m = init_dataset("Male Feed (g/bird)", "#f59f00", "y", "line", False)
-
-    # BW Female Chart
     ds_bw_f = init_dataset("Female Bodyweight (g)", "#d63939", "y", "line", False)
     ds_bw_f_std = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_f = init_dataset("Female Uniformity %", "#206bc4", "y1", "line", False)
-
-    # BW Male Chart
     ds_bw_m = init_dataset("Male Bodyweight (g)", "#f59f00", "y", "line", False)
     ds_bw_m_std = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_m = init_dataset("Male Uniformity %", "#206bc4", "y1", "line", False)
 
-
     for d in filtered_daily:
         log = d['log']
-
-        # Use new SSOT property
         label = log.age_week_format
         labels.append(label)
 
-        # Build Notes for clinical modal trigger
         note_parts = []
         if log.flushing: note_parts.append("[FLUSHING]")
         if log.clinical_notes: note_parts.append(log.clinical_notes)
 
-        # Vacs
         done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
         if done_vacs: note_parts.append("Vac: " + ", ".join(done_vacs))
 
         main_photos = [p for p in log.photos if p.note_id is None]
-
         note_str = " | ".join(note_parts) if note_parts else None
-        image_url = url_for('uploaded_file', filename=os.path.basename(main_photos[0].file_path)) if main_photos else None
+
+        image_url = None
+        if main_photos:
+            try:
+                image_url = url_for('uploaded_file', filename=os.path.basename(main_photos[0].file_path))
+            except Exception:
+                pass
 
         def create_point(y_val):
             return {"x": label, "y": y_val, "notes": note_str, "image_url": image_url}
 
-        # Maps
         mort_f = d['mortality_female_pct'] + d['culls_female_pct']
         mort_m = d['mortality_male_pct'] + d['culls_male_pct']
-
-        # Query editable Standard table by SSOT age_week
         std_record = Standard.query.filter_by(week=log.age_week).first()
 
         ds_egg_prod["data"].append(create_point(round(d['egg_prod_pct'], 2)))
         ds_mort_f["data"].append(create_point(round(mort_f, 2)))
         ds_mort_m["data"].append(create_point(round(mort_m, 2)))
-
         ds_hatch_egg["data"].append(create_point(round(d['hatch_egg_pct'], 2)))
-
         water_val = round(d['water_per_bird'], 1) if d['water_per_bird'] >= 0 else None
         water_ratio_val = round(d.get('water_feed_ratio') or 0, 2) if (d.get('water_feed_ratio') or 0) >= 0 else None
         ds_water["data"].append(create_point(water_val))
         ds_water_ratio["data"].append(create_point(water_ratio_val))
-
         ds_feed_f["data"].append(create_point(round(d['feed_female_gp_bird'], 1)))
         ds_feed_m["data"].append(create_point(round(d['feed_male_gp_bird'], 1)))
-
         bw_f_val = d['body_weight_female'] if d['body_weight_female'] > 0 else None
         bw_m_val = d['body_weight_male'] if d['body_weight_male'] > 0 else None
         ds_bw_f["data"].append(create_point(bw_f_val))
         ds_bw_m["data"].append(create_point(bw_m_val))
 
-        # Handle 'Day 0' Gap for Standards
         if log.age_days_total <= 0:
             ds_std_egg_prod["data"].append(create_point(None))
             ds_std_mort_f["data"].append(create_point(None))
@@ -2596,7 +2561,6 @@ def get_chart_data(flock_id):
             std_hatch = std_record.std_hatching_egg_pct if std_record and std_record.std_hatching_egg_pct is not None else None
             std_bw_f = std_record.std_bw_female if std_record and std_record.std_bw_female is not None else None
             std_bw_m = std_record.std_bw_male if std_record and std_record.std_bw_male is not None else None
-
             ds_std_egg_prod["data"].append(create_point(round(std_egg, 2) if std_egg is not None else None))
             ds_std_mort_f["data"].append(create_point(round(std_mort_f, 3) if std_mort_f is not None else None))
             ds_std_hatch_egg["data"].append(create_point(round(std_hatch, 2) if std_hatch is not None else None))
@@ -2610,29 +2574,18 @@ def get_chart_data(flock_id):
 
     charts['generalChart']['labels'] = labels
     charts['generalChart']['datasets'] = [ds_egg_prod, ds_mort_f, ds_mort_m, ds_std_egg_prod, ds_std_mort_f]
-
     charts['hatchingEggChart']['labels'] = labels
     charts['hatchingEggChart']['datasets'] = [ds_hatch_egg, ds_std_hatch_egg]
-
     charts['waterChart']['labels'] = labels
     charts['waterChart']['datasets'] = [ds_water, ds_water_ratio]
-
     charts['feedChart']['labels'] = labels
     charts['feedChart']['datasets'] = [ds_feed_f, ds_feed_m]
-
     charts['maleChart']['labels'] = labels
     charts['maleChart']['datasets'] = [ds_bw_m, ds_bw_m_std, ds_uni_m]
-
     charts['femaleChart']['labels'] = labels
     charts['femaleChart']['datasets'] = [ds_bw_f, ds_bw_f_std, ds_uni_f]
 
-
-    # ------------------
     # Weekly Aggregation
-    # ------------------
-    weekly_stats = aggregate_weekly_metrics(daily_stats)
-
-    # Filter weekly stats based on dates if needed
     filtered_weekly = []
     for w in weekly_stats:
         filtered_weekly.append(w)
@@ -2646,26 +2599,20 @@ def get_chart_data(flock_id):
         'femaleChart': {'labels': [], 'datasets': []}
     }
 
-    # Clone Datasets for weekly
     ds_egg_prod_w = init_dataset("Egg Prod %", "#206bc4", "y", "line", False)
     ds_std_egg_prod_w = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
     ds_mort_f_w = init_dataset("Fem Depletion %", "#d63939", "y1", "bar", True, is_bar=True)
     ds_mort_m_w = init_dataset("Male Depletion %", "#f59f00", "y1", "bar", True, is_bar=True)
     ds_std_mort_f_w = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
-
     ds_hatch_egg_w = init_dataset("Hatching Egg %", "#2fb344", "y", "line", False)
     ds_std_hatch_egg_w = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
-
     ds_water_w = init_dataset("Water Intake (ml/bird)", "#4299e1", "y", "line", True)
     ds_water_ratio_w = init_dataset("Water:Feed Ratio", "#6574cd", "y1", "line", False)
-
     ds_feed_f_w = init_dataset("Female Feed (g/bird)", "#d63939", "y", "line", False)
     ds_feed_m_w = init_dataset("Male Feed (g/bird)", "#f59f00", "y", "line", False)
-
     ds_bw_f_w = init_dataset("Female Bodyweight (g)", "#d63939", "y", "line", False)
     ds_bw_f_std_w = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_f_w = init_dataset("Female Uniformity %", "#206bc4", "y1", "line", False)
-
     ds_bw_m_w = init_dataset("Male Bodyweight (g)", "#f59f00", "y", "line", False)
     ds_bw_m_std_w = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_m_w = init_dataset("Male Uniformity %", "#206bc4", "y1", "line", False)
@@ -2681,19 +2628,17 @@ def get_chart_data(flock_id):
 
         std_record = Standard.query.filter_by(week=w['week']).first()
 
-        # Maps
         mort_f = (w['mortality_female_pct'] + w['culls_female_pct']) * 100 if w['mortality_female_pct'] is not None else 0
         mort_m = (w['mortality_male_pct'] + w['culls_male_pct']) * 100 if w['mortality_male_pct'] is not None else 0
 
         ds_egg_prod_w["data"].append(create_point_w(round(w['egg_prod_pct'], 2)))
         ds_mort_f_w["data"].append(create_point_w(round(mort_f, 2)))
         ds_mort_m_w["data"].append(create_point_w(round(mort_m, 2)))
-
         ds_hatch_egg_w["data"].append(create_point_w(round(w['hatch_egg_pct'], 2)))
 
         water_val = round(w['water_per_bird'], 1) if w['water_per_bird'] >= 0 else None
         ds_water_w["data"].append(create_point_w(water_val))
-        ds_water_ratio_w["data"].append(create_point_w(None)) # Omitted for weekly unless calculated
+        ds_water_ratio_w["data"].append(create_point_w(None))
 
         ds_feed_f_w["data"].append(create_point_w(round(w['feed_female_gp_bird'], 1)))
         ds_feed_m_w["data"].append(create_point_w(round(w['feed_male_gp_bird'], 1)))
@@ -2729,169 +2674,48 @@ def get_chart_data(flock_id):
 
     weekly_charts['generalChart']['labels'] = weekly_labels
     weekly_charts['generalChart']['datasets'] = [ds_egg_prod_w, ds_mort_f_w, ds_mort_m_w, ds_std_egg_prod_w, ds_std_mort_f_w]
-
     weekly_charts['hatchingEggChart']['labels'] = weekly_labels
     weekly_charts['hatchingEggChart']['datasets'] = [ds_hatch_egg_w, ds_std_hatch_egg_w]
-
     weekly_charts['waterChart']['labels'] = weekly_labels
     weekly_charts['waterChart']['datasets'] = [ds_water_w, ds_water_ratio_w]
-
     weekly_charts['feedChart']['labels'] = weekly_labels
     weekly_charts['feedChart']['datasets'] = [ds_feed_f_w, ds_feed_m_w]
-
     weekly_charts['maleChart']['labels'] = weekly_labels
     weekly_charts['maleChart']['datasets'] = [ds_bw_m_w, ds_bw_m_std_w, ds_uni_m_w]
-
     weekly_charts['femaleChart']['labels'] = weekly_labels
     weekly_charts['femaleChart']['datasets'] = [ds_bw_f_w, ds_bw_f_std_w, ds_uni_f_w]
 
     return {"daily": charts, "weekly": weekly_charts}
 
-def calculate_flock_summary(flock, daily_stats):
-    """
-    Calculates the 'Summary' tab data:
-    1. Dashboard: Current Totals vs Depletion Targets.
-    2. Weekly Table: Cumulative metrics from Start of Production.
-    """
 
-    # 1. Determine Start of Production & Females Housed
-    start_date = flock.production_start_date
-    start_stock = flock.prod_start_female
+@app.route('/api/chart_data/<int:flock_id>')
+@login_required
+@dept_required('Farm')
+def get_chart_data(flock_id):
+    flock = Flock.query.get_or_404(flock_id)
 
-    if not start_date:
-        # Fallback: Try to find start date from logs (Production Week 1)
-        first_prod_log = next((d for d in daily_stats if d.get('production_week') and d['production_week'] >= 1), None)
-        if first_prod_log:
-            start_date = first_prod_log['date']
-            if start_stock == 0:
-                start_stock = first_prod_log['stock_female_start']
-        else:
-            return None, []
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
 
-    # If start_date is found but start_stock is 0 (User entered 0 or missing)
-    if start_stock == 0 and start_date:
-        # Find stock on that date from daily_stats
-        log_on_start = next((d for d in daily_stats if d['date'] == start_date), None)
-        if log_on_start:
-            start_stock = log_on_start['stock_female_start']
-        else:
-            # If no log exactly on start date, find first log after start date
-            first_log_after = next((d for d in daily_stats if d['date'] > start_date), None)
-            if first_log_after:
-                start_stock = first_log_after['stock_female_start']
+    hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
+    all_logs = DailyLog.query.options(joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
 
-    if start_stock <= 0:
-        start_stock = 1 # Avoid div by zero
+    # Fetch Health Data
+    meds = Medication.query.filter_by(flock_id=flock_id).all()
+    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
 
-    # 2. Iterate daily_stats
-    # Filter for production period
-    prod_stats = [d for d in daily_stats if d['date'] >= start_date]
+    daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
+    weekly_stats = aggregate_weekly_metrics(daily_stats)
 
-    # Group by Production Week
+    res = _generate_chart_payload(flock, daily_stats, weekly_stats, meds, vacs, start_date_str, end_date_str)
 
-    # Standards Map
-    all_standards = Standard.query.all()
-    std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+    if mode == 'daily':
+        return jsonify({'daily': res['daily']})
+    elif mode == 'weekly':
+        return jsonify({'weekly': res['weekly']})
 
-    cum_eggs = 0
-    cum_hatch_eggs = 0
-    cum_feed = 0
-    cum_chicks = 0
-
-    summary_table = []
-    dashboard_metrics = {}
-
-    # Grouping
-    by_week = {}
-    for d in prod_stats:
-        pw = d.get('production_week')
-        if not pw: continue
-        if pw not in by_week: by_week[pw] = []
-        by_week[pw].append(d)
-
-    sorted_weeks = sorted(by_week.keys())
-
-    for pw in sorted_weeks:
-        days = by_week[pw]
-
-        # Weekly Sums
-        w_eggs = sum(d['eggs_collected'] for d in days)
-        w_hatch_eggs = sum(d['hatch_eggs'] for d in days)
-        w_feed = sum(d['feed_f_kg'] for d in days) # Use calculated Kg from enrichment
-        w_chicks = sum(d['hatched_chicks'] or 0 for d in days)
-
-        # Update Cumulative
-        cum_eggs += w_eggs
-        cum_hatch_eggs += w_hatch_eggs
-        cum_feed += w_feed
-        cum_chicks += w_chicks
-
-        # Metrics
-        hha_total = cum_eggs / start_stock
-        hha_hatch = cum_hatch_eggs / start_stock
-        hha_chicks = cum_chicks / start_stock
-
-        feed_100_chicks = (cum_feed / cum_chicks * 100) if cum_chicks > 0 else 0
-        feed_100_h_eggs = (cum_feed / cum_hatch_eggs * 100) if cum_hatch_eggs > 0 else 0
-
-        # Liveability
-        last_day = days[-1]
-        current_live = last_day.get('stock_female_prod_end', 0)
-
-        liveability = (current_live / start_stock * 100)
-
-        # Standard
-        std = std_map.get(pw)
-        std_hha_total = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
-        std_hha_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
-
-        # Estimate Hatching Eggs HHA Target (From Standard if available, else Global %)
-        if std and std.std_cum_hatching_eggs_hha:
-            std_hha_hatch = std.std_cum_hatching_eggs_hha
-        else:
-            # Using Global Standard if available, else 96%
-            gs = GlobalStandard.query.first()
-            std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
-            std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
-
-        row = {
-            'week': pw,
-            'age': days[-1]['week'], # Bio Week
-            'cum_eggs_hha': round(hha_total, 1),
-            'std_cum_eggs_hha': std_hha_total,
-            'cum_hatch_hha': round(hha_hatch, 1),
-            'std_cum_hatching_eggs_hha': round(std_hha_hatch, 1),
-            'cum_chicks_hha': round(hha_chicks, 1),
-            'std_cum_chicks_hha': std_hha_chicks,
-            'feed_100_chicks': round(feed_100_chicks, 1),
-            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
-            'liveability': round(liveability, 2)
-        }
-        summary_table.append(row)
-
-        # Feed Targets (Placeholder or Derived if Standard table doesn't have them)
-        # For now, we set them to 0 if not available to avoid hardcoded mismatch
-        std_feed_chicks = 0
-        std_feed_h_eggs = 0
-
-        # Update Dashboard (Last valid week overwrites previous)
-        dashboard_metrics = {
-            'week': pw,
-            'age': days[-1]['week'],
-            'hha_total': round(hha_total, 1),
-            'hha_total_std': round(std_hha_total, 1),
-            'hha_hatch': round(hha_hatch, 1),
-            'hha_hatch_std': round(std_hha_hatch, 1),
-            'hha_chicks': round(hha_chicks, 1),
-            'hha_chicks_std': round(std_hha_chicks, 1),
-            'liveability': round(liveability, 2),
-            'feed_100_chicks': round(feed_100_chicks, 1),
-            'feed_100_chicks_std': std_feed_chicks, # Dynamic or 0
-            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
-            'feed_100_h_eggs_std': std_feed_h_eggs # Dynamic or 0
-        }
-
-    return dashboard_metrics, summary_table
+    return jsonify(res)
 
 @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
 @login_required
@@ -3151,8 +2975,28 @@ def view_flock(id):
                 except:
                     pass
 
-    return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
+     # --- Generate Chart Payload for Instant Load ---
+    medications = Medication.query.filter_by(flock_id=id).all()
+    vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
+    chart_payload = _generate_chart_payload(flock, daily_stats, weekly_stats, medications, vacs)
+    chart_data_daily = chart_payload['daily']
+    chart_data_weekly = chart_payload['weekly']
 
+    return render_template('flock_detail_modern.html',
+                           flock=flock,
+                           logs=list(reversed(enriched_logs)),
+                           weekly_data=weekly_data,
+                           chart_data=chart_data,
+                           chart_data_daily=chart_data_daily,
+                           chart_data_weekly_legacy=chart_data_weekly, # Legacy for old logic if still used
+                           chart_data_weekly=chart_data_weekly, # New structure for charts module
+                           current_stats=current_stats,
+                           global_std=gs,
+                           active_flocks=active_flocks,
+                           summary_dashboard=summary_dashboard,
+                           summary_table=summary_table,
+                           health_events=health_events,
+                           available_reports=available_reports)
 @app.route('/flock/<int:id>/spreadsheet')
 @login_required
 @dept_required('Farm')
@@ -9028,6 +8872,8 @@ def executive_flock_detail(id):
     hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
     # --- Metrics Engine ---
+     # --- Health Analytics ---
+    health_events = analyze_health_events(logs)
     daily_stats = enrich_flock_data(flock, logs, hatch_records)
 
     # --- Calculate Summary Tab Data ---
@@ -9192,6 +9038,13 @@ def executive_flock_detail(id):
                 except:
                     pass
 
+     # --- Generate Chart Payload for Instant Load ---
+    medications = Medication.query.filter_by(flock_id=id).all()
+    vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
+    chart_payload = _generate_chart_payload(flock, daily_stats, weekly_stats, medications, vacs)
+    chart_data_daily = chart_payload['daily']
+    chart_data_weekly_chartjs = chart_payload['weekly']
+
     return render_template('flock_detail_readonly.html',
                            flock=flock,
                            available_reports=available_reports,
@@ -9199,11 +9052,14 @@ def executive_flock_detail(id):
                            weekly_data=weekly_data,
                            current_stats=current_stats,
                            global_std=gs,
-                           active_flocks=active_flocks,
-                           hatch_records=hatch_records,
                            summary_dashboard=summary_dashboard,
                            summary_table=summary_table,
-                           std_hatch_map=std_hatch_map)
+                           active_flocks=active_flocks,
+                           chart_data=chart_data,
+                           chart_data_daily=chart_data_daily,
+                           chart_data_weekly=chart_data_weekly_chartjs,
+                           chart_data_weekly_legacy=chart_data_weekly,
+                           health_events=health_events)
 
 
 @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
