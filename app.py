@@ -2676,7 +2676,7 @@ def _generate_chart_payload(flock, daily_stats, weekly_stats, meds, vacs, start_
     for d in filtered_daily:
         log = d['log']
 
-        label = f"{log.age_week_format} ({log.date.strftime('%d-%b')})"
+        label = log.age_week_format
         labels.append(label)
 
         # Build Notes for clinical modal trigger
