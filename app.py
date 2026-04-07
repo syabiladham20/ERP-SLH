@@ -2452,8 +2452,9 @@ def delete_daily_log_photo(photo_id):
 def calculate_flock_summary(flock, daily_stats):
     """
     Reconstructed summary function to calculate KPI dashboard and table metrics.
+    FCR deliberately excluded.
     """
-    # Default fallback if there are no logs yet
+    # 1. Provide default fallbacks for ALL keys the Jinja template expects
     summary_dashboard = {
         'egg_prod_pct': 0.0,
         'hatch_egg_pct': 0.0,
@@ -2463,7 +2464,11 @@ def calculate_flock_summary(flock, daily_stats):
         'feed_m': 0.0,
         'water': 0.0,
         'bw_f': 0,
-        'bw_m': 0
+        'bw_m': 0,
+        'hha_total': 0.0,              # <-- Added to satisfy Jinja
+        'hha_total_std': 0.0,          # <-- Added to satisfy Jinja
+        'hatch_hha_total': 0.0,        # Added just in case Jinja looks for hatching HHA too
+        'hatch_hha_total_std': 0.0
     }
     summary_table = {}
 
@@ -2477,7 +2482,7 @@ def calculate_flock_summary(flock, daily_stats):
     mort_f = (latest.get('mortality_female_pct') or 0) + (latest.get('culls_female_pct') or 0)
     mort_m = (latest.get('mortality_male_pct') or 0) + (latest.get('culls_male_pct') or 0)
 
-    # Populate Dashboard KPIs safely
+    # Populate Dashboard KPIs safely using .get() to prevent dict KeyError
     summary_dashboard.update({
         'egg_prod_pct': round(latest.get('egg_prod_pct', 0) or 0, 2),
         'hatch_egg_pct': round(latest.get('hatch_egg_pct', 0) or 0, 2),
@@ -2487,10 +2492,14 @@ def calculate_flock_summary(flock, daily_stats):
         'feed_m': round(latest.get('feed_male_gp_bird', 0) or 0, 1),
         'water': round(latest.get('water_per_bird', 0) or 0, 1),
         'bw_f': latest.get('body_weight_female') or 0,
-        'bw_m': latest.get('body_weight_male') or 0
+        'bw_m': latest.get('body_weight_male') or 0,
+        'hha_total': round(latest.get('cum_hha', 0) or 0, 1),
+        'hha_total_std': round(latest.get('std_cum_hha', 0) or 0, 1),
+        'hatch_hha_total': round(latest.get('cum_hatch_hha', 0) or 0, 1),
+        'hatch_hha_total_std': round(latest.get('std_cum_hatch_hha', 0) or 0, 1)
     })
 
-    # Calculate Table Totals safely
+    # Calculate Table Totals
     summary_table = {
         'latest_date': latest.get('date'),
         'total_eggs_to_date': sum((d.get('eggs_produced') or 0) for d in daily_stats),
