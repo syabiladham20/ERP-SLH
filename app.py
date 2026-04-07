@@ -2451,24 +2451,149 @@ def delete_daily_log_photo(photo_id):
 @dept_required('Farm')
 def calculate_flock_summary(flock, daily_stats):
     """
-    Reconstructed summary function to calculate KPI dashboard and table metrics.
+    Calculates the 'Summary' tab data:
+    1. Dashboard: Current Totals vs Depletion Targets.
+    2. Weekly Table: Cumulative metrics from Start of Production.
     """
-    # Default fallback if there are no logs yet
-    summary_dashboard = {
-        'egg_prod_pct': 0.0,
-        'hatch_egg_pct': 0.0,
-        'female_depletion': 0.0,
-        'male_depletion': 0.0,
-        'feed_f': 0.0,
-        'feed_m': 0.0,
-        'water': 0.0,
-        'bw_f': 0,
-        'bw_m': 0
-    }
-    summary_table = {}
 
-    if not daily_stats:
-        return summary_dashboard, summary_table
+    # 1. Determine Start of Production & Females Housed
+    start_date = flock.production_start_date
+    start_stock = flock.prod_start_female
+
+    if not start_date:
+        # Fallback: Try to find start date from logs (Production Week 1)
+        first_prod_log = next((d for d in daily_stats if d.get('production_week') and d['production_week'] >= 1), None)
+        if first_prod_log:
+            start_date = first_prod_log['date']
+            if start_stock == 0:
+                start_stock = first_prod_log['stock_female_start']
+        else:
+            return None, []
+
+    # If start_date is found but start_stock is 0 (User entered 0 or missing)
+    if start_stock == 0 and start_date:
+        # Find stock on that date from daily_stats
+        log_on_start = next((d for d in daily_stats if d['date'] == start_date), None)
+        if log_on_start:
+            start_stock = log_on_start['stock_female_start']
+        else:
+            # If no log exactly on start date, find first log after start date
+            first_log_after = next((d for d in daily_stats if d['date'] > start_date), None)
+            if first_log_after:
+                start_stock = first_log_after['stock_female_start']
+
+    if start_stock <= 0:
+        start_stock = 1 # Avoid div by zero
+
+    # 2. Iterate daily_stats
+    # Filter for production period
+    prod_stats = [d for d in daily_stats if d['date'] >= start_date]
+
+    # Group by Production Week
+
+    # Standards Map
+    all_standards = Standard.query.all()
+    std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+
+    cum_eggs = 0
+    cum_hatch_eggs = 0
+    cum_feed = 0
+    cum_chicks = 0
+
+    summary_table = []
+    dashboard_metrics = {}
+
+    # Grouping
+    by_week = {}
+    for d in prod_stats:
+        pw = d.get('production_week')
+        if not pw: continue
+        if pw not in by_week: by_week[pw] = []
+        by_week[pw].append(d)
+
+    sorted_weeks = sorted(by_week.keys())
+
+    for pw in sorted_weeks:
+        days = by_week[pw]
+
+        # Weekly Sums
+        w_eggs = sum(d['eggs_collected'] for d in days)
+        w_hatch_eggs = sum(d['hatch_eggs'] for d in days)
+        w_feed = sum(d['feed_f_kg'] for d in days) # Use calculated Kg from enrichment
+        w_chicks = sum(d['hatched_chicks'] or 0 for d in days)
+
+        # Update Cumulative
+        cum_eggs += w_eggs
+        cum_hatch_eggs += w_hatch_eggs
+        cum_feed += w_feed
+        cum_chicks += w_chicks
+
+        # Metrics
+        hha_total = cum_eggs / start_stock
+        hha_hatch = cum_hatch_eggs / start_stock
+        hha_chicks = cum_chicks / start_stock
+
+        feed_100_chicks = (cum_feed / cum_chicks * 100) if cum_chicks > 0 else 0
+        feed_100_h_eggs = (cum_feed / cum_hatch_eggs * 100) if cum_hatch_eggs > 0 else 0
+
+        # Liveability
+        last_day = days[-1]
+        current_live = last_day.get('stock_female_prod_end', 0)
+
+        liveability = (current_live / start_stock * 100)
+
+        # Standard
+        std = std_map.get(pw)
+        std_hha_total = (std.std_cum_eggs_hha if std and std.std_cum_eggs_hha is not None else 0.0)
+        std_hha_chicks = (std.std_cum_chicks_hha if std and std.std_cum_chicks_hha is not None else 0.0)
+
+        # Estimate Hatching Eggs HHA Target (From Standard if available, else Global %)
+        if std and std.std_cum_hatching_eggs_hha:
+            std_hha_hatch = std.std_cum_hatching_eggs_hha
+        else:
+            # Using Global Standard if available, else 96%
+            gs = GlobalStandard.query.first()
+            std_he_pct = gs.std_hatching_egg_pct if gs else 96.0
+            std_hha_hatch = std_hha_total * (std_he_pct / 100.0)
+
+        row = {
+            'week': pw,
+            'age': days[-1]['week'], # Bio Week
+            'cum_eggs_hha': round(hha_total, 1),
+            'std_cum_eggs_hha': std_hha_total,
+            'cum_hatch_hha': round(hha_hatch, 1),
+            'std_cum_hatching_eggs_hha': round(std_hha_hatch, 1),
+            'cum_chicks_hha': round(hha_chicks, 1),
+            'std_cum_chicks_hha': std_hha_chicks,
+            'feed_100_chicks': round(feed_100_chicks, 1),
+            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
+            'liveability': round(liveability, 2)
+        }
+        summary_table.append(row)
+
+        # Feed Targets (Placeholder or Derived if Standard table doesn't have them)
+        # For now, we set them to 0 if not available to avoid hardcoded mismatch
+        std_feed_chicks = 0
+        std_feed_h_eggs = 0
+
+        # Update Dashboard (Last valid week overwrites previous)
+        dashboard_metrics = {
+            'week': pw,
+            'age': days[-1]['week'],
+            'hha_total': round(hha_total, 1),
+            'hha_total_std': round(std_hha_total, 1),
+            'hha_hatch': round(hha_hatch, 1),
+            'hha_hatch_std': round(std_hha_hatch, 1),
+            'hha_chicks': round(hha_chicks, 1),
+            'hha_chicks_std': round(std_hha_chicks, 1),
+            'liveability': round(liveability, 2),
+            'feed_100_chicks': round(feed_100_chicks, 1),
+            'feed_100_chicks_std': std_feed_chicks, # Dynamic or 0
+            'feed_100_h_eggs': round(feed_100_h_eggs, 1),
+            'feed_100_h_eggs_std': std_feed_h_eggs # Dynamic or 0
+        }
+
+    return dashboard_metrics, summary_table
 
     # Grab the most recent day's data
     latest = daily_stats[-1]
