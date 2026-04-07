@@ -3030,6 +3030,7 @@ def view_flock(id):
     chart_payload = _generate_chart_payload(flock, daily_stats, weekly_stats, medications, vacs)
     chart_data_daily = chart_payload['daily']
     chart_data_weekly = chart_payload['weekly']
+    chart_data = None
 
     return render_template('flock_detail_modern.html', 
                            flock=flock, 
@@ -9093,6 +9094,7 @@ def executive_flock_detail(id):
     chart_payload = _generate_chart_payload(flock, daily_stats, weekly_stats, medications, vacs)
     chart_data_daily = chart_payload['daily']
     chart_data_weekly_chartjs = chart_payload['weekly']
+    chart_data = None
 
     return render_template('flock_detail_readonly.html',
                            flock=flock,
