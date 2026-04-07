@@ -76,14 +76,14 @@ def dept_required(required_dept):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
-                if request.path == url_for('login'): # Avoid loop
+                if request.path == url_for('auth.login'): # Avoid loop
                     return f(*args, **kwargs)
 
                 # Prevent duplicate flash messages
                 flashes = session.get('_flashes', [])
                 if not any(category == 'info' and msg == "Please log in to continue." for category, msg in flashes):
                     flash("Please log in to continue.", "info")
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
 
             user_dept = current_user.dept
 
@@ -113,7 +113,7 @@ def dept_required(required_dept):
             elif user_dept == 'Management':
                 return redirect(url_for('executive_dashboard'))
             else:
-                return redirect(url_for('login')) # Fallback
+                return redirect(url_for('auth.login')) # Fallback
 
         return decorated_function
     return decorator
@@ -121,15 +121,7 @@ def dept_required(required_dept):
 
 app = Flask(__name__)
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-login_manager.login_message = "Please log in to continue."
-login_manager.login_message_category = "info"
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+from extensions import db, login_manager
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_url = os.getenv('DATABASE_URL')
@@ -153,7 +145,12 @@ app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
 
-db = SQLAlchemy(app)
+db.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = 'auth.login'
+login_manager.login_message = "Please log in to continue."
+login_manager.login_message_category = "info"
+
 migrate = Migrate(app, db)
 
 @app.template_filter('basename')
@@ -1249,101 +1246,8 @@ def inject_system_health():
 
     return dict(system_health_logs=logs)
 
-@app.before_request
-def load_logged_in_user():
-    # Keep the global variables set based on current_user
-    if current_user.is_authenticated:
-        session['user_id'] = current_user.id
-        session['user_name'] = current_user.username
-        session['user_dept'] = current_user.dept
-        session['user_role'] = current_user.role
-        session['is_admin'] = (current_user.role == 'Admin')
-
-    # TEMPORARY FEATURE: Auto-login if login_required is False
-    login_not_required = False
-    try:
-        gs = GlobalStandard.query.first()
-        if gs and hasattr(gs, 'login_required') and not gs.login_required:
-            login_not_required = True
-    except Exception:
-        pass # Table might not exist yet during initial setup/migration
-
-    if login_not_required and not current_user.is_authenticated:
-        # Auto-login as Admin
-        admin = User.query.filter_by(role='Admin').first()
-        if not admin:
-             # Fallback to username 'admin'
-             admin = User.query.filter_by(username='admin').first()
-
-        if admin:
-            login_user(admin)
-            session['user_id'] = admin.id
-            session['user_name'] = admin.username
-            session['user_dept'] = admin.dept
-            session['user_role'] = admin.role
-            session['is_admin'] = (admin.role == 'Admin')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        remember = True if request.form.get('remember') else False
-
-        user = User.query.filter_by(username=username).first()
-
-        if user and user.check_password(password):
-            session.clear()
-            login_user(user, remember=remember)
-            session['user_id'] = user.id
-            session['user_name'] = user.username
-            session['user_dept'] = user.dept
-            session['user_role'] = user.role
-            session['is_admin'] = (user.role == 'Admin')
-
-            if remember:
-                session.permanent = True
-            else:
-                session.permanent = False
-
-            flash(f"Welcome back, {user.username}!", "success")
-
-            if user.dept == 'Hatchery':
-                return redirect(url_for('hatchery_dashboard'))
-            elif user.dept == 'Admin':
-                return redirect(url_for('index'))
-            elif user.dept == 'Management':
-                return redirect(url_for('executive_dashboard'))
-            else:
-                return redirect(url_for('index'))
-        else:
-            flash("Invalid username or password.", "danger")
-
-    return render_template('login_modern.html')
-
-@app.route('/logout')
-def logout():
-    logout_user()
-    session.clear()
-    flash("You have been logged out.", "info")
-
-    # Render a small intermediate page to clear localStorage, then redirect to login
-    response = """
-    <html>
-        <body>
-            <script>
-                localStorage.removeItem("slh_offline_user_id");
-                localStorage.removeItem("slh_offline_user_role");
-                localStorage.removeItem("slh_offline_user_dept");
-                window.location.href = "%s";
-            </script>
-        </body>
-    </html>
-    """ % url_for('login')
-    return response
+from routes.auth import auth_bp
+app.register_blueprint(auth_bp)
 
 @app.route('/settings/profile_update', methods=['POST'])
 @login_required
@@ -1351,7 +1255,7 @@ def profile_update():
     user = User.query.get(current_user.id)
     if not user:
         flash("User not found.", "danger")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     current_password = request.form.get('current_password')
     new_name = request.form.get('name')
@@ -1496,7 +1400,7 @@ def test_notification():
 @login_required
 def change_password():
     if not current_user.id:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     if request.method == 'POST':
         current_password = request.form.get('current_password')
@@ -3943,7 +3847,7 @@ def upload_sampling_result(id, event_id):
 def flock_hatchability(id):
     if current_user.dept not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=id).first_or_404()
     if request.method == 'POST':
@@ -4016,7 +3920,7 @@ def delete_hatchability(id, record_id):
 def hatchery_charts(flock_id):
     if current_user.dept not in FARM_HATCHERY_ADMIN_DEPTS:
         flash("Access Denied.", "danger")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     flock = Flock.query.get_or_404(flock_id)
     records = Hatchability.query.filter_by(flock_id=flock_id).order_by(Hatchability.setting_date.asc()).all()
@@ -4128,7 +4032,7 @@ def hatchery_charts(flock_id):
 @app.route('/flock/<int:id>/hatchability/diagnosis/<date_str>', methods=['GET', 'POST'])
 def hatchability_diagnosis(id, date_str):
     if current_user.dept not in FARM_HATCHERY_ADMIN_MGMT_DEPTS:
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     is_readonly = request.args.get('readonly') == 'true'
 
@@ -4710,7 +4614,7 @@ def admin_control_panel():
 def change_theme():
     if not current_user.id:
         flash("You must be logged in to change your theme.", "warning")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     user = User.query.get(session['user_id'])
     if user:
@@ -4751,7 +4655,7 @@ def toggle_login():
     if gs.login_required:
         session.clear()
         flash("Login Page enabled. Please log in.", "info")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     else:
         flash(f"Login Page turned {status}.", "warning")
 
