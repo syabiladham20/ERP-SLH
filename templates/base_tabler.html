@@ -906,55 +906,55 @@
             })
             .catch(err => console.log('Version check failed', err));
         }
-
-        // PWA Installation Logic
-        let deferredPrompt;
-        const installBtn = document.getElementById('pwa-install-btn');
-
-        // Handle Android / Chrome install prompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            // Stash the event so it can be triggered later.
-            deferredPrompt = e;
-            // Update UI to notify the user they can add to home screen
-            if(installBtn) installBtn.classList.remove('d-none');
-        });
-
-        // Detect iOS devices
-        const isIos = () => {
-          const userAgent = window.navigator.userAgent.toLowerCase();
-          return /iphone|ipad|ipod/.test(userAgent);
-        };
-
-        // Detect if app is running in standalone mode
-        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
-
-        // Show install button for iOS if not installed
-        if (isIos() && !isInStandaloneMode()) {
-            if(installBtn) installBtn.classList.remove('d-none');
-        }
-
-        if(installBtn) {
-            installBtn.addEventListener('click', (e) => {
-                if (deferredPrompt) {
-                    // Handle Android/Chrome
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('User accepted the install prompt');
-                        }
-                        deferredPrompt = null;
-                        installBtn.classList.add('d-none');
-                    });
-                } else if (isIos() && !isInStandaloneMode()) {
-                    // Handle iOS Safari
-                    const iosModal = new window.bootstrap.Modal(document.getElementById('ios-install-modal'));
-                    iosModal.show();
-                }
-            });
-        }
       });
+
+      // PWA Installation Logic
+      let deferredPrompt;
+      const installBtn = document.getElementById('pwa-install-btn');
+
+      // Handle Android / Chrome install prompt
+      window.addEventListener('beforeinstallprompt', (e) => {
+          // Prevent Chrome 67 and earlier from automatically showing the prompt
+          e.preventDefault();
+          // Stash the event so it can be triggered later.
+          deferredPrompt = e;
+          // Update UI to notify the user they can add to home screen
+          if(installBtn) installBtn.classList.remove('d-none');
+      });
+
+      // Detect iOS devices
+      const isIos = () => {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        return /iphone|ipad|ipod/.test(userAgent);
+      };
+
+      // Detect if app is running in standalone mode
+      const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
+
+      // Show install button for iOS if not installed
+      if (isIos() && !isInStandaloneMode()) {
+          if(installBtn) installBtn.classList.remove('d-none');
+      }
+
+      if(installBtn) {
+          installBtn.addEventListener('click', (e) => {
+              if (deferredPrompt) {
+                  // Handle Android/Chrome
+                  deferredPrompt.prompt();
+                  deferredPrompt.userChoice.then((choiceResult) => {
+                      if (choiceResult.outcome === 'accepted') {
+                          console.log('User accepted the install prompt');
+                      }
+                      deferredPrompt = null;
+                      installBtn.classList.add('d-none');
+                  });
+              } else if (isIos() && !isInStandaloneMode()) {
+                  // Handle iOS Safari
+                  const iosModal = new window.bootstrap.Modal(document.getElementById('ios-install-modal'));
+                  iosModal.show();
+              }
+          });
+      }
     </script>
     {% block extra_scripts %}{% endblock %}
 

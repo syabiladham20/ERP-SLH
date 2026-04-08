@@ -713,12 +713,12 @@
                                     type: 'bar',
                                     label: 'Small (%)',
                                     data: trend.map(t => t.cull_small_pct),
-                                    backgroundColor: 'lightblue',
+                                    backgroundColor: '#520808',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#520808', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -735,12 +735,12 @@
                                     type: 'bar',
                                     label: 'Crack (%)',
                                     data: trend.map(t => t.cull_crack_pct),
-                                    backgroundColor: 'yellow',
+                                    backgroundColor: '#FF8C00', // Changed from yellow to dark orange for better contrast
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#FF8C00', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 }
                             ]
                         },
@@ -963,7 +963,7 @@
                                     {
                                         label: 'Uniformity %',
                                         data: data.weekly_trend.map(w => w[unifKey] ? (w[unifKey] <= 1 ? w[unifKey] * 100 : w[unifKey]) : null),
-                                        borderColor: 'yellow',
+                                        borderColor: '#FF8C00', // Changed from yellow to dark orange
                                         borderDash: [5, 5],
                                         yAxisID: 'yRight',
                                         spanGaps: true,
