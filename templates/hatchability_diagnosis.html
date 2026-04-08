@@ -133,7 +133,7 @@
                             {% for log in daily_logs %}
                             <tr>
                                 <td>{{ log.date | date_fmt }}</td>
-                                <td>{{ log.age_week_day }} W</td>
+                                <td>{{ log.age_week_format }} W</td>
                                 <td>
                                     <span class="{% if log.mortality_male > 0 %}text-danger{% endif %}">{{ log.mortality_male }}</span> /
                                     <span class="{% if log.mortality_female > 0 %}text-danger{% endif %}">{{ log.mortality_female }}</span>

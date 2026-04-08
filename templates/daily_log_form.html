@@ -192,14 +192,14 @@
         <div class="row">
           <div class="col-12 col-md-6 mb-2">
             <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="feed_male_gp_bird" id="feed_male_gp_bird" placeholder="Male Feed (g/bird)" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
+              <input type="number" step="0.01" class="form-control form-control-lg" min="0" max="200" name="feed_male_gp_bird" id="feed_male_gp_bird" placeholder="Male Feed (g/bird)" value="{{ log.feed_male_gp_bird if log and log.feed_male_gp_bird else '' }}">
               <label for="feed_male_gp_bird">Male Feed (g/bird)</label>
             </div>
             <div class="mt-1 small text-muted px-2">Auto Calc: <span id="live-feed-calc-male" class="fw-bold text-primary">0 kg</span></div>
           </div>
           <div class="col-12 col-md-6 mb-2">
             <div class="form-floating">
-              <input type="number" step="0.01" class="form-control form-control-lg" name="feed_female_gp_bird" id="feed_female_gp_bird" placeholder="Female Feed (g/bird)" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
+              <input type="number" step="0.01" class="form-control form-control-lg" min="0" max="200" name="feed_female_gp_bird" id="feed_female_gp_bird" placeholder="Female Feed (g/bird)" value="{{ log.feed_female_gp_bird if log and log.feed_female_gp_bird else '' }}">
               <label for="feed_female_gp_bird">Female Feed (g/bird)</label>
             </div>
             <div class="mt-1 small text-muted px-2">Auto Calc: <span id="live-feed-calc-female" class="fw-bold text-primary">0 kg</span></div>
