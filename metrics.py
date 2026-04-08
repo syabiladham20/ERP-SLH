@@ -143,6 +143,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
     current_phase = 'Brooding'
 
     for log in sorted_logs:
+        if log.age_days_total <= 0:
+            continue
+
         # --- A. Phase Switch Logic ---
         if current_phase == 'Brooding' and log.feed_program == 'Skip-a-day':
             current_phase = 'Growing'
@@ -215,12 +218,11 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         cum_mort_f += mort_f
 
         # Production Week Calculation
-        bio_days = (log.date - flock.intake_date).days
-        bio_week = 0 if bio_days == 0 else ((bio_days - 1) // 7) + 1 if bio_days > 0 else (bio_days // 7)
+        bio_week = log.age_week
         prod_week = None
         if flock.start_of_lay_date:
             start_days = (flock.start_of_lay_date - flock.intake_date).days
-            start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
+            start_bio_week = 0 if start_days <= 0 else ((start_days - 1) // 7) + 1
             if bio_week >= start_bio_week:
                 prod_week = bio_week - start_bio_week + 1
 
@@ -229,8 +231,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'date': log.date,
             'log': log, # Reference to original object
             'week': bio_week,
+            'week_day_format': log.age_week_format,
             'production_week': prod_week,
-            'age_days': (log.date - flock.intake_date).days,
+            'age_days': log.age_days_total,
 
             # Stocks
             'stock_male_start': stock_m_start,

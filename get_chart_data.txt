@@ -1,0 +1,251 @@
+2444:def get_chart_data(flock_id):
+2445-    flock = Flock.query.get_or_404(flock_id)
+2446-
+2447-    start_date_str = request.args.get('start_date')
+2448-    end_date_str = request.args.get('end_date')
+2449-    mode = request.args.get('mode', 'daily') # 'daily', 'weekly', 'monthly'
+2450-
+2451-    hatch_records = Hatchability.query.filter_by(flock_id=flock_id).all()
+2452-    all_logs = DailyLog.query.options(joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
+2453-
+2454-    # Fetch Health Data
+2455-    meds = Medication.query.filter_by(flock_id=flock_id).all()
+2456-    vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
+2457-
+2458-    daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
+2459-
+2460-    filtered_daily = []
+2461-    for d in daily_stats:
+2462-        if start_date_str and d['date'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
+2463-        if end_date_str and d['date'] > datetime.strptime(end_date_str, '%Y-%m-%d').date(): continue
+2464-        filtered_daily.append(d)
+2465-
+2466-    data = {
+2467-        'flock_id': flock.flock_id,
+2468-        'intake_date': flock.intake_date.isoformat(),
+2469-        'dates': [],
+2470-        'weeks': [],
+2471-        'ranges': [],
+2472-        'metrics': {
+2473-            'mortality_f_pct': [], 'mortality_m_pct': [],
+2474-            'culls_f_pct': [], 'culls_m_pct': [],
+2475-            'egg_prod_pct': [], 'hatch_egg_pct': [],
+2476-            'bw_f': [], 'bw_m': [],
+2477-            'uni_f': [], 'uni_m': [],
+2478-            'feed_f': [], 'feed_m': [],
+2479-            'water_per_bird': [],
+2480-            'water_feed_ratio': [],
+2481-        },
+2482-        'events': []
+2483-    }
+2484-
+2485-    if mode == 'daily':
+2486-        data['dates'] = [d['date'].isoformat() for d in filtered_daily]
+2487-        for d in filtered_daily:
+2488-            # We map Mortality % + Culls % to 'mortality_X_pct' in the chart logic usually?
+2489-            # Existing code: daily_mort_f_pct = (((log.mortality_female or 0) + (log.culls_female or 0)) / curr_stock_f) * 100
+2490-            # metrics.py separates them.
+2491-            # But the chart keys are: 'mortality_f_pct'.
+2492-            # I should combine them to match legacy chart behavior: "Depletion %"
+2493-
+2494-            mort_f = d['mortality_female_pct'] + d['culls_female_pct']
+2495-            mort_m = d['mortality_male_pct'] + d['culls_male_pct']
+2496-
+2497-            data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
+2498-            data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
+2499-            data['metrics']['egg_prod_pct'].append(round(d['egg_prod_pct'], 2))
+2500-            data['metrics']['hatch_egg_pct'].append(round(d['hatch_egg_pct'], 2))
+2501-            data['metrics']['bw_f'].append(d['body_weight_female'])
+2502-            data['metrics']['bw_m'].append(d['body_weight_male'])
+2503-            data['metrics']['uni_f'].append(d['uniformity_female'])
+2504-            data['metrics']['uni_m'].append(d['uniformity_male'])
+2505-            data['metrics']['feed_f'].append(d['feed_female_gp_bird'])
+2506-            data['metrics']['feed_m'].append(d['feed_male_gp_bird'])
+2507-            data['metrics']['water_per_bird'].append(round(d['water_per_bird'], 1) if d['water_per_bird'] >= 0 else None)
+2508-            data['metrics']['water_feed_ratio'].append(round(d.get('water_feed_ratio'), 2) if d.get('water_feed_ratio') is not None and d.get('water_feed_ratio') >= 0 else None)
+2509-
+2510-            log = d['log']
+2511-
+2512-            # Temporarily disabled to prevent OSError: write error on massive payload sizes
+2513-            # # Construct Note content
+2514-            # note_parts = []
+2515-            # if log.flushing: note_parts.append("[FLUSHING]")
+2516-            # if log.clinical_notes: note_parts.append(log.clinical_notes)
+2517-            #
+2518-            # # Active Meds
+2519-            # active_meds = [m.drug_name for m in meds if m.start_date <= log.date and (m.end_date is None or m.end_date >= log.date)]
+2520-            # if active_meds:
+2521-            #     note_parts.append("Meds: " + ", ".join(active_meds))
+2522-            #
+2523-            # # Completed Vaccines
+2524-            # done_vacs = [v.vaccine_name for v in vacs if v.actual_date == log.date]
+2525-            # if done_vacs:
+2526-            #     note_parts.append("Vac: " + ", ".join(done_vacs))
+2527-            #
+2528-            # # Main Photos
+2529-            # main_photos = [p for p in log.photos if p.note_id is None]
+2530-            #
+2531-            # # Extra Notes
+2532-            # extra_notes = []
+2533-            # if log.clinical_notes_list:
+2534-            #     for n in log.clinical_notes_list:
+2535-            #         n_photos = []
+2536-            #         for p in n.photos:
+2537-            #             n_photos.append({
+2538-            #                 'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+2539-            #                 'name': p.original_filename or 'Photo'
+2540-            #             })
+2541-            #         extra_notes.append({
+2542-            #             'caption': n.caption,
+2543-            #             'photos': n_photos
+2544-            #         })
+2545-            #
+2546-            # has_data = (note_parts or main_photos or extra_notes)
+2547-            #
+2548-            # if has_data:
+2549-            #     main_photo_list = []
+2550-            #     for p in main_photos:
+2551-            #         main_photo_list.append({
+2552-            #             'url': url_for('uploaded_file', filename=os.path.basename(p.file_path)),
+2553-            #             'name': p.original_filename or 'Photo'
+2554-            #         })
+2555-            #
+2556-            #     data['events'].append({
+2557-            #         'date': log.date.isoformat(),
+2558-            #         'note': " | ".join(note_parts),
+2559-            #         'main_note': " | ".join(note_parts),
+2560-            #         'photos': main_photo_list,
+2561-            #         'main_photos': main_photo_list,
+2562-            #         'extra_notes': extra_notes,
+2563-            #         'type': 'note'
+2564-            #     })
+2565-
+2566-    else:
+2567-        # Aggregated
+2568-        if mode == 'weekly':
+2569-            agg_stats = aggregate_weekly_metrics(filtered_daily)
+2570-            label_prefix = "Week "
+2571-            data['weeks'] = [a['week'] for a in agg_stats]
+2572-        else:
+2573-            agg_stats = aggregate_monthly_metrics(filtered_daily)
+2574-            label_prefix = ""
+2575-
+2576-        for a in agg_stats:
+2577-            lbl = f"{label_prefix}{a['week']}" if mode == 'weekly' else a['month']
+2578-            data['dates'].append(lbl)
+2579-            data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
+2580-
+2581-            # Combine Mort + Cull for Depletion
+2582-            mort_f = a['mortality_female_pct'] + a['culls_female_pct']
+2583-            mort_m = a['mortality_male_pct'] + a['culls_male_pct']
+2584-
+2585-            data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
+2586-            data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
+2587-            data['metrics']['egg_prod_pct'].append(round(a['egg_prod_pct'], 2))
+2588-            data['metrics']['hatch_egg_pct'].append(round(a['hatch_egg_pct'], 2))
+2589-            data['metrics']['bw_f'].append(round(a['body_weight_female'], 0))
+2590-            data['metrics']['bw_m'].append(round(a['body_weight_male'], 0))
+2591-            data['metrics']['uni_f'].append(round(a['uniformity_female'], 2))
+2592-            data['metrics']['uni_m'].append(round(a['uniformity_male'], 2))
+2593-            # Feed in agg is total kg? Or average g/bird?
+2594-            # aggregate_weekly_metrics does NOT return avg g/bird. It returns total_kg.
+2595-            # But the chart expects g/bird.
+2596-            # I need to calculate avg g/bird from total_kg and stock.
+2597-            # Avg g/bird = (Total Kg * 1000) / (Avg Stock * Days)
+2598-
+2599-            days_count = (a['date_end'] - a['date_start']).days + 1
+2600-            avg_stock_m = a['stock_male_start'] # Approx
+2601-            avg_stock_f = a['stock_female_start']
+2602-
+2603-            # This is hard because metrics.py didn't separate feed male/female kg in aggregation.
+2604-            # It only has 'feed_total_kg'.
+2605-            # I need to update metrics.py to aggregate feed_m_kg and feed_f_kg separately if I want this chart.
+2606-            # For now, I'll return 0 or calculate if possible.
+2607-            # Wait, daily_stats has 'feed_male_gp_bird'.
+2608-            # I should iterate daily stats inside aggregation to get average feed/bird?
+2609-            # Or just update metrics.py.
+2610-
+2611-            data['metrics']['feed_f'].append(round(a['feed_female_gp_bird'], 2))
+2612-            data['metrics']['feed_m'].append(round(a['feed_male_gp_bird'], 2))
+2613-            data['metrics']['water_per_bird'].append(round(a['water_per_bird'], 1) if a.get('water_per_bird', 0) >= 0 else None)
+2614-            data['metrics']['water_feed_ratio'].append(round(a.get('water_feed_ratio'), 2) if a.get('water_feed_ratio') is not None and a.get('water_feed_ratio') >= 0 else None)
+2615-
+2616-    return data
+2617-
+2618-def calculate_flock_summary(flock, daily_stats):
+2619-    """
+2620-    Calculates the 'Summary' tab data:
+2621-    1. Dashboard: Current Totals vs Depletion Targets.
+2622-    2. Weekly Table: Cumulative metrics from Start of Production.
+2623-    """
+2624-
+2625-    # 1. Determine Start of Production & Females Housed
+2626-    start_date = flock.production_start_date
+2627-    start_stock = flock.prod_start_female
+2628-
+2629-    if not start_date:
+2630-        # Fallback: Try to find start date from logs (Production Week 1)
+2631-        first_prod_log = next((d for d in daily_stats if d.get('production_week') and d['production_week'] >= 1), None)
+2632-        if first_prod_log:
+2633-            start_date = first_prod_log['date']
+2634-            if start_stock == 0:
+2635-                start_stock = first_prod_log['stock_female_start']
+2636-        else:
+2637-            return None, []
+2638-
+2639-    # If start_date is found but start_stock is 0 (User entered 0 or missing)
+2640-    if start_stock == 0 and start_date:
+2641-        # Find stock on that date from daily_stats
+2642-        log_on_start = next((d for d in daily_stats if d['date'] == start_date), None)
+2643-        if log_on_start:
+2644-            start_stock = log_on_start['stock_female_start']
+2645-        else:
+2646-            # If no log exactly on start date, find first log after start date
+2647-            first_log_after = next((d for d in daily_stats if d['date'] > start_date), None)
+2648-            if first_log_after:
+2649-                start_stock = first_log_after['stock_female_start']
+2650-
+2651-    if start_stock <= 0:
+2652-        start_stock = 1 # Avoid div by zero
+2653-
+2654-    # 2. Iterate daily_stats
+2655-    # Filter for production period
+2656-    prod_stats = [d for d in daily_stats if d['date'] >= start_date]
+2657-
+2658-    # Group by Production Week
+2659-
+2660-    # Standards Map
+2661-    all_standards = Standard.query.all()
+2662-    std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+2663-
+2664-    cum_eggs = 0
+2665-    cum_hatch_eggs = 0
+2666-    cum_feed = 0
+2667-    cum_chicks = 0
+2668-
+2669-    summary_table = []
+2670-    dashboard_metrics = {}
+2671-
+2672-    # Grouping
+2673-    by_week = {}
+2674-    for d in prod_stats:
+2675-        pw = d.get('production_week')
+2676-        if not pw: continue
+2677-        if pw not in by_week: by_week[pw] = []
+2678-        by_week[pw].append(d)
+2679-
+2680-    sorted_weeks = sorted(by_week.keys())
+2681-
+2682-    for pw in sorted_weeks:
+2683-        days = by_week[pw]
+2684-
+2685-        # Weekly Sums
+2686-        w_eggs = sum(d['eggs_collected'] for d in days)
+2687-        w_hatch_eggs = sum(d['hatch_eggs'] for d in days)
+2688-        w_feed = sum(d['feed_f_kg'] for d in days) # Use calculated Kg from enrichment
+2689-        w_chicks = sum(d['hatched_chicks'] or 0 for d in days)
+2690-
+2691-        # Update Cumulative
+2692-        cum_eggs += w_eggs
+2693-        cum_hatch_eggs += w_hatch_eggs
+2694-        cum_feed += w_feed
