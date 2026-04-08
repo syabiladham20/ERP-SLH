@@ -62,14 +62,14 @@ def get_chart_data(flock_id):
 
     # General Chart
     ds_egg_prod = init_dataset("Egg Prod %", "#206bc4", "y", "line", False)
-    ds_std_egg_prod = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_egg_prod = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
     ds_mort_f = init_dataset("Fem Depletion %", "#d63939", "y1", "bar", True, is_bar=True)
     ds_mort_m = init_dataset("Male Depletion %", "#f59f00", "y1", "bar", True, is_bar=True)
-    ds_std_mort_f = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_mort_f = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
 
     # Hatching Chart
     ds_hatch_egg = init_dataset("Hatching Egg %", "#2fb344", "y", "line", False)
-    ds_std_hatch_egg = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_hatch_egg = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
 
     # Culls datasets (stacked bars for hatching chart)
     ds_jumbo = init_dataset("Jumbo %", "#d63939", "y", "bar", True, is_bar=True, stack="culls")
@@ -87,12 +87,12 @@ def get_chart_data(flock_id):
 
     # BW Female Chart
     ds_bw_f = init_dataset("Female Bodyweight (g)", "#d63939", "y", "line", False)
-    ds_bw_f_std = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5])
+    ds_bw_f_std = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_f = init_dataset("Female Uniformity %", "#206bc4", "y1", "line", False)
 
     # BW Male Chart
     ds_bw_m = init_dataset("Male Bodyweight (g)", "#f59f00", "y", "line", False)
-    ds_bw_m_std = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5])
+    ds_bw_m_std = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_m = init_dataset("Male Uniformity %", "#206bc4", "y1", "line", False)
 
     for d in filtered_daily:
@@ -119,36 +119,49 @@ def get_chart_data(flock_id):
         def create_point(y_val):
             return {"x": label, "y": y_val, "notes": note_str, "image_url": image_url}
 
-        # Maps
-        mort_f = (d.get('mortality_female_pct') or 0.0) + (d.get('culls_female_pct') or 0.0)
-        mort_m = (d.get('mortality_male_pct') or 0.0) + (d.get('culls_male_pct') or 0.0)
+        # Maps - NO MATH allowed here, use SSOT values directly from daily_stats (d)
+        mort_f_val = d.get('mortality_female_pct')
+        mort_m_val = d.get('mortality_male_pct')
 
         # Query editable Standard table by SSOT age_week
         std_record = Standard.query.filter_by(week=log.age_week).first()
 
-        ds_egg_prod["data"].append(create_point(round(d.get('egg_prod_pct') or 0.0, 2)))
-        ds_mort_f["data"].append(create_point(round(mort_f, 2)))
-        ds_mort_m["data"].append(create_point(round(mort_m, 2)))
+        egg_prod_val = d.get('egg_prod_pct')
+        ds_egg_prod["data"].append(create_point(round(egg_prod_val, 2) if egg_prod_val is not None else None))
 
-        ds_hatch_egg["data"].append(create_point(round(d.get('hatch_egg_pct') or 0.0, 2)))
-        ds_jumbo["data"].append(create_point(round(d.get('cull_eggs_jumbo_pct') or 0.0, 2) if (d.get('cull_eggs_jumbo_pct') or 0.0) > 0 else None))
-        ds_small["data"].append(create_point(round(d.get('cull_eggs_small_pct') or 0.0, 2) if (d.get('cull_eggs_small_pct') or 0.0) > 0 else None))
-        ds_crack["data"].append(create_point(round(d.get('cull_eggs_crack_pct') or 0.0, 2) if (d.get('cull_eggs_crack_pct') or 0.0) > 0 else None))
-        ds_abnormal["data"].append(create_point(round(d.get('cull_eggs_abnormal_pct') or 0.0, 2) if (d.get('cull_eggs_abnormal_pct') or 0.0) > 0 else None))
+        ds_mort_f["data"].append(create_point(round(mort_f_val, 2) if mort_f_val is not None else None))
+        ds_mort_m["data"].append(create_point(round(mort_m_val, 2) if mort_m_val is not None else None))
 
-        water_val = round(d.get('water_per_bird', 0.0), 1) if d.get('water_per_bird') is not None and d.get('water_per_bird') >= 0 else None
-        water_ratio_val = round(d.get('water_feed_ratio', 0.0), 2) if d.get('water_feed_ratio') is not None and d.get('water_feed_ratio') >= 0 else None
+        hatch_egg_val = d.get('hatch_egg_pct')
+        ds_hatch_egg["data"].append(create_point(round(hatch_egg_val, 2) if hatch_egg_val is not None else None))
 
-        ds_water["data"].append(create_point(water_val))
-        ds_water_ratio["data"].append(create_point(water_ratio_val))
+        jumbo_val = d.get('cull_eggs_jumbo_pct')
+        ds_jumbo["data"].append(create_point(round(jumbo_val, 2) if jumbo_val else None))
 
-        ds_feed_f["data"].append(create_point(round(d.get('feed_female_gp_bird') or 0.0, 1)))
-        ds_feed_m["data"].append(create_point(round(d.get('feed_male_gp_bird') or 0.0, 1)))
+        small_val = d.get('cull_eggs_small_pct')
+        ds_small["data"].append(create_point(round(small_val, 2) if small_val else None))
 
-        bw_f_val = d.get('body_weight_female') if d.get('body_weight_female') is not None and d.get('body_weight_female') > 0 else None
-        bw_m_val = d.get('body_weight_male') if d.get('body_weight_male') is not None and d.get('body_weight_male') > 0 else None
-        ds_bw_f["data"].append(create_point(bw_f_val))
-        ds_bw_m["data"].append(create_point(bw_m_val))
+        crack_val = d.get('cull_eggs_crack_pct')
+        ds_crack["data"].append(create_point(round(crack_val, 2) if crack_val else None))
+
+        abnormal_val = d.get('cull_eggs_abnormal_pct')
+        ds_abnormal["data"].append(create_point(round(abnormal_val, 2) if abnormal_val else None))
+
+        water_val = d.get('water_per_bird')
+        water_ratio_val = d.get('water_feed_ratio')
+
+        ds_water["data"].append(create_point(round(water_val, 1) if water_val is not None else None))
+        ds_water_ratio["data"].append(create_point(round(water_ratio_val, 2) if water_ratio_val is not None else None))
+
+        feed_f_val = d.get('feed_female_gp_bird')
+        feed_m_val = d.get('feed_male_gp_bird')
+        ds_feed_f["data"].append(create_point(round(feed_f_val, 1) if feed_f_val is not None else None))
+        ds_feed_m["data"].append(create_point(round(feed_m_val, 1) if feed_m_val is not None else None))
+
+        bw_f_val = d.get('body_weight_female')
+        bw_m_val = d.get('body_weight_male')
+        ds_bw_f["data"].append(create_point(bw_f_val if bw_f_val is not None else None))
+        ds_bw_m["data"].append(create_point(bw_m_val if bw_m_val is not None else None))
 
         # Handle 'Day 0' Gap for Standards
         if log.age_days_total <= 0:
@@ -170,10 +183,10 @@ def get_chart_data(flock_id):
             ds_bw_f_std["data"].append(create_point(std_bw_f))
             ds_bw_m_std["data"].append(create_point(std_bw_m))
 
-        uni_f_val = round(d['uniformity_female'] * 100 if d['uniformity_female'] <= 1 else d['uniformity_female'], 2) if d.get('uniformity_female') is not None and d['uniformity_female'] > 0 else None
-        uni_m_val = round(d['uniformity_male'] * 100 if d['uniformity_male'] <= 1 else d['uniformity_male'], 2) if d.get('uniformity_male') is not None and d['uniformity_male'] > 0 else None
-        ds_uni_f["data"].append(create_point(uni_f_val))
-        ds_uni_m["data"].append(create_point(uni_m_val))
+        uni_f_val = d.get('uniformity_female')
+        uni_m_val = d.get('uniformity_male')
+        ds_uni_f["data"].append(create_point(round(uni_f_val, 2) if uni_f_val is not None else None))
+        ds_uni_m["data"].append(create_point(round(uni_m_val, 2) if uni_m_val is not None else None))
 
     charts['generalChart']['labels'] = labels
     charts['generalChart']['datasets'] = [ds_egg_prod, ds_mort_f, ds_mort_m, ds_std_egg_prod, ds_std_mort_f]
@@ -210,13 +223,13 @@ def get_chart_data(flock_id):
 
     # Clone Datasets for weekly
     ds_egg_prod_w = init_dataset("Egg Prod %", "#206bc4", "y", "line", False)
-    ds_std_egg_prod_w = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_egg_prod_w = init_dataset("Std Egg Prod %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
     ds_mort_f_w = init_dataset("Fem Depletion %", "#d63939", "y1", "bar", True, is_bar=True)
     ds_mort_m_w = init_dataset("Male Depletion %", "#f59f00", "y1", "bar", True, is_bar=True)
-    ds_std_mort_f_w = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_mort_f_w = init_dataset("Std Fem Depletion %", "#888888", "y1", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
 
     ds_hatch_egg_w = init_dataset("Hatching Egg %", "#2fb344", "y", "line", False)
-    ds_std_hatch_egg_w = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True)
+    ds_std_hatch_egg_w = init_dataset("Std Hatching Egg %", "#888888", "y", "line", False, borderDash=[5,5], hidden=True, datalabels={"display": False})
 
     ds_jumbo_w = init_dataset("Jumbo %", "#d63939", "y", "bar", True, is_bar=True, stack="culls")
     ds_small_w = init_dataset("Small %", "#f59f00", "y", "bar", True, is_bar=True, stack="culls")
@@ -230,11 +243,11 @@ def get_chart_data(flock_id):
     ds_feed_m_w = init_dataset("Male Feed (g/bird)", "#f59f00", "y", "line", False)
 
     ds_bw_f_w = init_dataset("Female Bodyweight (g)", "#d63939", "y", "line", False)
-    ds_bw_f_std_w = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5])
+    ds_bw_f_std_w = init_dataset("Std Female BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_f_w = init_dataset("Female Uniformity %", "#206bc4", "y1", "line", False)
 
     ds_bw_m_w = init_dataset("Male Bodyweight (g)", "#f59f00", "y", "line", False)
-    ds_bw_m_std_w = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5])
+    ds_bw_m_std_w = init_dataset("Std Male BW (g)", "#888888", "y", "line", False, borderDash=[5,5], datalabels={"display": False})
     ds_uni_m_w = init_dataset("Male Uniformity %", "#206bc4", "y1", "line", False)
 
     weekly_labels = []
@@ -248,31 +261,44 @@ def get_chart_data(flock_id):
 
         std_record = Standard.query.filter_by(week=w['week']).first()
 
-        # Maps
-        mort_f = (w.get('mortality_female_pct') or 0.0) * 100 + (w.get('culls_female_pct') or 0.0) * 100 if w.get('mortality_female_pct') is not None else 0.0
-        mort_m = (w.get('mortality_male_pct') or 0.0) * 100 + (w.get('culls_male_pct') or 0.0) * 100 if w.get('mortality_male_pct') is not None else 0.0
+        # Maps - NO MATH allowed here, use SSOT values directly from weekly_stats (w)
+        mort_f_w = w.get('mortality_female_pct')
+        mort_m_w = w.get('mortality_male_pct')
 
-        ds_egg_prod_w["data"].append(create_point_w(round(w.get('egg_prod_pct') or 0.0, 2)))
-        ds_mort_f_w["data"].append(create_point_w(round(mort_f, 2)))
-        ds_mort_m_w["data"].append(create_point_w(round(mort_m, 2)))
+        egg_prod_w_val = w.get('egg_prod_pct')
+        ds_egg_prod_w["data"].append(create_point_w(round(egg_prod_w_val, 2) if egg_prod_w_val is not None else None))
 
-        ds_hatch_egg_w["data"].append(create_point_w(round(w.get('hatch_egg_pct') or 0.0, 2)))
-        ds_jumbo_w["data"].append(create_point_w(round(w.get('cull_eggs_jumbo_pct') or 0.0, 2) * 100 if (w.get('cull_eggs_jumbo_pct') or 0.0) > 0 else None))
-        ds_small_w["data"].append(create_point_w(round(w.get('cull_eggs_small_pct') or 0.0, 2) * 100 if (w.get('cull_eggs_small_pct') or 0.0) > 0 else None))
-        ds_crack_w["data"].append(create_point_w(round(w.get('cull_eggs_crack_pct') or 0.0, 2) * 100 if (w.get('cull_eggs_crack_pct') or 0.0) > 0 else None))
-        ds_abnormal_w["data"].append(create_point_w(round(w.get('cull_eggs_abnormal_pct') or 0.0, 2) * 100 if (w.get('cull_eggs_abnormal_pct') or 0.0) > 0 else None))
+        ds_mort_f_w["data"].append(create_point_w(round(mort_f_w, 2) if mort_f_w is not None else None))
+        ds_mort_m_w["data"].append(create_point_w(round(mort_m_w, 2) if mort_m_w is not None else None))
 
-        water_val = round(w.get('water_per_bird', 0.0), 1) if w.get('water_per_bird') is not None and w.get('water_per_bird') >= 0 else None
-        ds_water_w["data"].append(create_point_w(water_val))
+        hatch_egg_w_val = w.get('hatch_egg_pct')
+        ds_hatch_egg_w["data"].append(create_point_w(round(hatch_egg_w_val, 2) if hatch_egg_w_val is not None else None))
+
+        jumbo_w_val = w.get('cull_eggs_jumbo_pct')
+        ds_jumbo_w["data"].append(create_point_w(round(jumbo_w_val, 2) if jumbo_w_val else None))
+
+        small_w_val = w.get('cull_eggs_small_pct')
+        ds_small_w["data"].append(create_point_w(round(small_w_val, 2) if small_w_val else None))
+
+        crack_w_val = w.get('cull_eggs_crack_pct')
+        ds_crack_w["data"].append(create_point_w(round(crack_w_val, 2) if crack_w_val else None))
+
+        abnormal_w_val = w.get('cull_eggs_abnormal_pct')
+        ds_abnormal_w["data"].append(create_point_w(round(abnormal_w_val, 2) if abnormal_w_val else None))
+
+        water_w_val = w.get('water_per_bird')
+        ds_water_w["data"].append(create_point_w(round(water_w_val, 1) if water_w_val is not None else None))
         ds_water_ratio_w["data"].append(create_point_w(None)) # Omitted for weekly unless calculated
 
-        ds_feed_f_w["data"].append(create_point_w(round(w.get('feed_female_gp_bird') or 0.0, 1)))
-        ds_feed_m_w["data"].append(create_point_w(round(w.get('feed_male_gp_bird') or 0.0, 1)))
+        feed_f_w_val = w.get('feed_female_gp_bird')
+        feed_m_w_val = w.get('feed_male_gp_bird')
+        ds_feed_f_w["data"].append(create_point_w(round(feed_f_w_val, 1) if feed_f_w_val is not None else None))
+        ds_feed_m_w["data"].append(create_point_w(round(feed_m_w_val, 1) if feed_m_w_val is not None else None))
 
-        bw_f_val = w.get('body_weight_female') if w.get('body_weight_female') is not None and w.get('body_weight_female') > 0 else None
-        bw_m_val = w.get('body_weight_male') if w.get('body_weight_male') is not None and w.get('body_weight_male') > 0 else None
-        ds_bw_f_w["data"].append(create_point_w(bw_f_val))
-        ds_bw_m_w["data"].append(create_point_w(bw_m_val))
+        bw_f_w_val = w.get('body_weight_female')
+        bw_m_w_val = w.get('body_weight_male')
+        ds_bw_f_w["data"].append(create_point_w(bw_f_w_val if bw_f_w_val is not None else None))
+        ds_bw_m_w["data"].append(create_point_w(bw_m_w_val if bw_m_w_val is not None else None))
 
         if w['week'] <= 0:
             ds_std_egg_prod_w["data"].append(create_point_w(None))
@@ -293,10 +319,10 @@ def get_chart_data(flock_id):
             ds_bw_f_std_w["data"].append(create_point_w(std_bw_f))
             ds_bw_m_std_w["data"].append(create_point_w(std_bw_m))
 
-        uni_f_val = round(w['uniformity_female'] * 100 if w['uniformity_female'] <= 1 else w['uniformity_female'], 2) if w.get('uniformity_female') is not None and w['uniformity_female'] > 0 else None
-        uni_m_val = round(w['uniformity_male'] * 100 if w['uniformity_male'] <= 1 else w['uniformity_male'], 2) if w.get('uniformity_male') is not None and w['uniformity_male'] > 0 else None
-        ds_uni_f_w["data"].append(create_point_w(uni_f_val))
-        ds_uni_m_w["data"].append(create_point_w(uni_m_val))
+        uni_f_w_val = w.get('uniformity_female')
+        uni_m_w_val = w.get('uniformity_male')
+        ds_uni_f_w["data"].append(create_point_w(round(uni_f_w_val, 2) if uni_f_w_val is not None else None))
+        ds_uni_m_w["data"].append(create_point_w(round(uni_m_w_val, 2) if uni_m_w_val is not None else None))
 
     weekly_charts['generalChart']['labels'] = weekly_labels
     weekly_charts['generalChart']['datasets'] = [ds_egg_prod_w, ds_mort_f_w, ds_mort_m_w, ds_std_egg_prod_w, ds_std_mort_f_w]
