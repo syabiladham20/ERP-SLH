@@ -1326,8 +1326,8 @@ def login():
 
 @app.route('/logout')
 def logout():
-    logout_user()
     session.clear()
+    logout_user()
     flash("You have been logged out.", "info")
 
     # Render a small intermediate page to clear localStorage, then redirect to login
