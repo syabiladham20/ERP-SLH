@@ -1801,8 +1801,8 @@
                endAge = endDate;
           } else {
                if (dataObj.ages && dataObj.ages.length > 0) {
-                   startAge = dataObj.ages[0];
-                   endAge = dataObj.ages[dataObj.ages.length - 1];
+                   startAge = 'W' + calculateAgeWeeks(new Date(startDate));
+                   endAge = 'W' + calculateAgeWeeks(new Date(endDate));
                } else {
                    startAge = "W" + calculateAgeWeeks(new Date(startDate));
                    endAge = "W" + calculateAgeWeeks(new Date(endDate));

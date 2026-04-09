@@ -2994,6 +2994,7 @@ def view_flock(id):
     # 3. Chart Data (Daily)
     chart_data = {
         'dates': [d['date'].strftime('%Y-%m-%d') for d in daily_stats],
+        'ages': [d['log'].age_week_day for d in daily_stats],
         'mortality_cum_male': [round(d['mortality_cum_male_pct'], 2) for d in daily_stats],
         'mortality_cum_female': [round(d['mortality_cum_female_pct'], 2) for d in daily_stats],
         'mortality_daily_male': [round(d['mortality_male_pct'], 2) for d in daily_stats],
