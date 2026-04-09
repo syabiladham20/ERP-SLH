@@ -238,18 +238,26 @@ def get_standard_bw():
     # Find standard for this week
     std = Standard.query.filter_by(week=weeks).first()
 
-    if std:
-        return jsonify({
-            'week': weeks,
-            'std_bw_male': std.std_bw_male,
-            'std_bw_female': std.std_bw_female
-        })
-    else:
-        return jsonify({
-            'week': weeks,
-            'std_bw_male': '',
-            'std_bw_female': ''
-        })
+    last_log = DailyLog.query.filter(
+        DailyLog.flock_id == flock_id,
+        DailyLog.is_weighing_day == True,
+        DailyLog.date <= target_date
+    ).order_by(DailyLog.date.desc()).first()
+
+    last_weighing_date = None
+    last_weighing_week = None
+    if last_log:
+        last_weighing_date = last_log.date.strftime('%Y-%m-%d')
+        last_weighing_week = (last_log.date - flock.intake_date).days // 7
+
+    response_data = {
+        'week': weeks,
+        'std_bw_male': std.std_bw_male if std else '',
+        'std_bw_female': std.std_bw_female if std else '',
+        'last_weighing_date': last_weighing_date,
+        'last_weighing_week': last_weighing_week
+    }
+    return jsonify(response_data)
 
 @app.route('/api/version')
 def get_version():
