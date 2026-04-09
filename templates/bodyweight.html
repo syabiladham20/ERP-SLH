@@ -71,6 +71,16 @@
                             </div>
                         </div>
 
+                        <!-- House Age & Last Weighing Info -->
+                        <div class="row mb-3" id="house_info_section">
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small" id="house_age_info">Age: -</div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small" id="last_weighing_info">Last Keyed In: -</div>
+                            </div>
+                        </div>
+
                         <!-- Standard BW -->
                         <div class="row mb-3" id="standard_bw_section">
                             <div class="col-12 col-md-6">
@@ -373,6 +383,9 @@
             const flockId = flockIdSelect.value;
             const dateStr = dateInput.value;
 
+            const ageInfo = document.getElementById('house_age_info');
+            const lastWeighingInfo = document.getElementById('last_weighing_info');
+
             if (flockId && dateStr) {
                 fetch(`/api/get_standard_bw?flock_id=${flockId}&date=${dateStr}`)
                     .then(response => response.json())
@@ -380,19 +393,31 @@
                         if (data && !data.error) {
                             stdBwMale.value = data.std_bw_male || '';
                             stdBwFemale.value = data.std_bw_female || '';
+                            ageInfo.textContent = `Age: Week ${data.week}`;
+                            if (data.last_weighing_date) {
+                                lastWeighingInfo.textContent = `Last Keyed In: ${data.last_weighing_date} (Week ${data.last_weighing_week})`;
+                            } else {
+                                lastWeighingInfo.textContent = 'Last Keyed In: N/A';
+                            }
                         } else {
                             stdBwMale.value = '';
                             stdBwFemale.value = '';
+                            ageInfo.textContent = 'Age: -';
+                            lastWeighingInfo.textContent = 'Last Keyed In: -';
                         }
                     })
                     .catch(error => {
                         console.error('Error fetching standard BW:', error);
                         stdBwMale.value = '';
                         stdBwFemale.value = '';
+                        ageInfo.textContent = 'Age: -';
+                        lastWeighingInfo.textContent = 'Last Keyed In: -';
                     });
             } else {
                 stdBwMale.value = '';
                 stdBwFemale.value = '';
+                if(ageInfo) ageInfo.textContent = 'Age: -';
+                if(lastWeighingInfo) lastWeighingInfo.textContent = 'Last Keyed In: -';
             }
         }
 
