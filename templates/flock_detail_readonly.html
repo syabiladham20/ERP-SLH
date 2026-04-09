@@ -43,7 +43,7 @@
 
 #chartsWrapper:fullscreen .card-body, #chartsWrapper:-webkit-full-screen .card-body {
     flex-grow: 1;
-    overflow: hidden;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -58,23 +58,82 @@
 }
 </style>
 
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-  <h2>Flock Details: {{ flock.house.name }}</h2>
-  <div class="d-flex gap-2">
-    <button id="btnConsultAI" class="btn btn-primary" onclick="consultAI({{ flock.id }})">
-        <i class="fas fa-robot me-1"></i> Consult AI
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 row-gap-2">
+  <h2>Flock Details: {{ flock.house.name }}{% if flock.farm %} ({{ flock.farm.name }}){% endif %}</h2>
+  <div class="dropdown">
+    <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+      Switch House
     </button>
-    <div class="dropdown">
-      <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
-        Switch House
-      </button>
-      <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="max-height: 300px; overflow-y: auto; z-index: 1050;">
-        {% for f in active_flocks %}
-        <li><a class="dropdown-item switch-house-link" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
-        {% endfor %}
-      </ul>
+    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="z-index: 1050;">
+      {% for f in active_flocks %}
+      <li><a class="dropdown-item switch-house-link" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<!-- Overview Card -->
+<div class="card mb-4 shadow-sm border-0">
+  <div class="card-header bg-transparent border-0 pb-0">
+    <h6 class="text-uppercase text-muted ls-1 mb-0">Overview</h6>
+  </div>
+  <div class="card-body">
+    <div class="row text-center mb-3">
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">House</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.house.name }}</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Farm</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.farm.name if flock.farm else 'N/A' }}</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Phase</span><br>
+          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} mt-1">{{ flock.calculated_phase }}</span>
+      </div>
+      <div class="col-md-3">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Intake Date</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.intake_date | date_fmt }}</span>
+      </div>
+    </div>
+    <div class="row text-center bg-gray-100 p-2 border-radius-md">
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Intake</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.intake_male }} M / {{ flock.intake_female }} F</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">DOA</span><br>
+          <span class="text-dark font-weight-bold">{{ flock.doa_male }} M / {{ flock.doa_female }} F</span>
+      </div>
+      <div class="col-md-3 border-end">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Current Prod</span><br>
+          <span class="text-dark font-weight-bold">{{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F</span><br>
+          <span class="text-xs text-info">Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</span>
+      </div>
+      <div class="col-md-3">
+          <span class="text-xs text-muted font-weight-bold text-uppercase">Current Hosp</span><br>
+          <span class="text-dark font-weight-bold">{{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F</span>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- Navigation Tabs -->
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 mt-3">
+    <h4>Flock Details</h4>
+    <div class="d-flex flex-wrap gap-2">
+        <button id="btnConsultAI" class="btn btn-primary" onclick="consultAI({{ flock.id }})">
+            <i class="fas fa-robot me-1"></i> Consult AI
+        </button>
+        <a href="{{ url_for('export_flock_csv', flock_id=flock.id) }}" class="btn btn-outline-success">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </a>
+        {% if session.get('user_role') == 'Admin' %}
+        <a href="{{ url_for('flock_spreadsheet', id=flock.id) }}" class="btn btn-info text-white">
+            <i class="fas fa-table"></i> Spreadsheet View
+        </a>
+        {% endif %}
+    </div>
 </div>
 
 <!-- AI Management Insights Box (Initially Hidden) -->
@@ -103,38 +162,6 @@
     </div>
 </div>
 
-<!-- Overview Card -->
-<div class="card mb-4">
-  <div class="card-header sticky-header">
-    Overview
-  </div>
-  <div class="card-body">
-    <div class="row">
-      <div class="col-md-3"><strong>House:</strong> {{ flock.house.name }}</div>
-      <div class="col-md-3"><strong>Status:</strong> {{ flock.status }}</div>
-      <div class="col-md-3"><strong>Phase:</strong> {{ flock.calculated_phase }}</div>
-      <div class="col-md-3"><strong>Intake Date:</strong> {{ flock.intake_date | date_fmt }}</div>
-    </div>
-    <div class="row mt-2">
-      <div class="col-md-3"><strong>Intake:</strong> {{ flock.intake_male }} M / {{ flock.intake_female }} F</div>
-      <div class="col-md-3"><strong>DOA:</strong> {{ flock.doa_male }} M / {{ flock.doa_female }} F</div>
-      <div class="col-md-3 border-start">
-          <strong>Current Prod:</strong> {{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F
-          <br>
-          <small class="text-muted">Male Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</small>
-      </div>
-      <div class="col-md-3">
-          <strong>Current Hosp:</strong> {{ current_stats.male_hosp }} M / {{ current_stats.female_hosp }} F
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Navigation Tabs -->
-<div class="d-flex justify-content-between align-items-center mb-3 mt-3">
-    <h4>Flock Details</h4>
-</div>
-
 <ul class="nav nav-tabs mb-4 gap-2 border-bottom-0" id="flockTabs" role="tablist">
   <li class="nav-item" role="presentation">
     <button class="nav-link active px-4 py-2 border rounded shadow-sm" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab" aria-controls="daily" aria-selected="true">Daily Logs</button>
@@ -143,81 +170,90 @@
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
   </li>
   <li class="nav-item" role="presentation">
-    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="hatch-tab" data-bs-toggle="tab" data-bs-target="#hatch" type="button" role="tab" aria-controls="hatch" aria-selected="false">Hatchability Logs</button>
-  </li>
-  <li class="nav-item" role="presentation">
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Production Summary</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health Analytics</button>
   </li>
 </ul>
 
 <!-- Tab Content -->
 <div class="tab-content" id="flockTabsContent">
 
-  <!-- Daily Logs Tab -->
+  <!-- Daily Logs Tab (Pane 1) -->
   <div class="tab-pane fade show active" id="daily" role="tabpanel" aria-labelledby="daily-tab">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3>Daily Logs</h3>
+    </div>
     <div class="table-responsive table-responsive-sticky">
       <table class="table table-bordered table-sm text-center align-middle" style="font-size: 0.8rem;">
         <thead class="sticky-table-header table-light text-dark">
           <tr>
             <th rowspan="2" class="align-middle">Date</th>
+            <th rowspan="2" class="align-middle">House</th>
             <th rowspan="2" class="align-middle">Age</th>
             <th colspan="2" class="bg-light">Stock</th>
-            <th colspan="2" class="bg-danger bg-opacity-10">Mortality</th>
-            <th colspan="2" class="bg-warning bg-opacity-10">Culls</th>
+            <th colspan="2" class="bg-danger text-white">Mortality</th>
+            <th colspan="2" class="bg-warning text-white">Culls</th>
             <th rowspan="2" class="align-middle">Feed<br>(Kg)</th>
-            <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
+            <th colspan="2" class="bg-success text-white">Feed/Bird<br>(g)</th>
             <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
             <th rowspan="2" class="align-middle">Medication</th>
-            <th colspan="3" class="bg-info bg-opacity-10">Production</th>
-            <th colspan="2">Jumbo</th>
-            <th colspan="2">Small</th>
-            <th colspan="2">Crack</th>
-            <th colspan="2">Abnormal</th>
-            <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
-            <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
+            <th colspan="3" class="bg-info text-white">Production</th>
+            <th colspan="2" class="bg-light">Jumbo</th>
+            <th colspan="2" class="bg-light">Small</th>
+            <th colspan="2" class="bg-light">Crack</th>
+            <th colspan="2" class="bg-light">Abnormal</th>
+            <th colspan="2" class="bg-primary text-white">Hatching</th>
+            <th colspan="2" class="bg-secondary text-white">Reject</th>
             <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
             <th rowspan="2" class="align-middle">Actions</th>
           </tr>
           <tr>
             <th class="bg-light">M</th>
             <th class="bg-light">F</th>
-            <th class="bg-danger bg-opacity-10">M</th>
-            <th class="bg-danger bg-opacity-10">F</th>
-            <th class="bg-warning bg-opacity-10">M</th>
-            <th class="bg-warning bg-opacity-10">F</th>
-            <th class="bg-success bg-opacity-10">M</th>
-            <th class="bg-success bg-opacity-10">F</th>
-            <th class="bg-info bg-opacity-10">%</th>
-            <th class="bg-info bg-opacity-10">Wt(g)</th>
-            <th class="bg-info bg-opacity-10">Qty</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th class="bg-primary bg-opacity-10">#</th>
-            <th class="bg-primary bg-opacity-10">%</th>
-            <th class="bg-secondary bg-opacity-10">#</th>
-            <th class="bg-secondary bg-opacity-10">%</th>
+            <th class="bg-danger text-white">M</th>
+            <th class="bg-danger text-white">F</th>
+            <th class="bg-warning text-white">M</th>
+            <th class="bg-warning text-white">F</th>
+            <th class="bg-success text-white">M</th>
+            <th class="bg-success text-white">F</th>
+            <th class="bg-info text-white">%</th>
+            <th class="bg-info text-white">Wt(g)</th>
+            <th class="bg-info text-white">Qty</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-light">#</th>
+            <th class="bg-light">%</th>
+            <th class="bg-primary text-white">#</th>
+            <th class="bg-primary text-white">%</th>
+            <th class="bg-secondary text-white">#</th>
+            <th class="bg-secondary text-white">%</th>
           </tr>
         </thead>
         <tbody>
           {% for item in logs %}
           <tr>
             <td class="text-nowrap fw-bold">{{ item.log.date | date_fmt }}</td>
+            <td>{{ flock.house.name }}</td>
             <td>W{{ item.log.age_week_day.split('.')[0] }}</td>
+
             <td class="fw-bold">{{ item.stock_male }}</td>
             <td class="fw-bold">{{ item.stock_female }}</td>
+
             <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
             <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
+
             <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
             <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
+
             <td class="fw-bold">
                 {{ "%.1f"|format(item.total_feed) }}
                 {% if item.feed_cleanup_hours is not none %}
@@ -226,9 +262,11 @@
             </td>
             <td>{{ "%.1f"|format(item.log.feed_male_gp_bird) if item.log.feed_male_gp_bird is not none else '0.0' }}g</td>
             <td>{{ "%.1f"|format(item.log.feed_female_gp_bird) if item.log.feed_female_gp_bird is not none else '0.0' }}g</td>
+
             {% set total_birds = item.stock_male + item.stock_female %}
             {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
             <td>{{ "%.0f"|format(water_per_bird) }}</td>
+
             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                 {% if item.medications %}
                     <span class="badge bg-info text-dark">{{ item.medications }}</span>
@@ -236,24 +274,34 @@
                     -
                 {% endif %}
             </td>
+
             <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
                 {{ "%.2f"|format(item.egg_prod_pct) }}%
             </td>
             <td>{{ item.log.egg_weight }}</td>
             <td class="fw-bold">{{ item.log.eggs_collected }}</td>
+
+            <!-- Cull Details -->
             <td class="small">{{ item.egg_data.jumbo }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
+
             <td class="small">{{ item.egg_data.small }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
+
             <td class="small">{{ item.egg_data.crack }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
+
             <td class="small">{{ item.egg_data.abnormal }}</td>
             <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
+
             <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
             <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
+
             <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
             <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
+
             <td>{{ item.lighting_hours }} hour</td>
+
             <td>
               {% if item.log.date.strftime('%Y-%m-%d') in available_reports %}
               <a href="{{ url_for('static', filename='reports/' + item.log.date.strftime('%Y-%m-%d') + '_' + flock.house.name|replace(' ', '_') + '_W' + item.age_weeks|string + '.jpg') }}" target="_blank" class="btn btn-sm btn-outline-info py-0 mb-1 d-block" style="font-size: 0.75rem;" title="View Report">
@@ -268,12 +316,13 @@
     </div>
   </div>
 
-  <!-- Weekly Summary Tab -->
+  <!-- Weekly Summary Tab (Pane 3) -->
   <div class="tab-pane fade" id="weekly" role="tabpanel" aria-labelledby="weekly-tab">
     {% if weekly_data %}
+    <h3>Weekly Summary</h3>
     <div class="table-responsive table-responsive-sticky mb-4">
-      <table class="table table-bordered table-sm">
-        <thead class="table-light text-dark sticky-table-header">
+      <table class="table table-bordered table-sm align-middle text-center">
+        <thead class="table-light text-dark sticky-table-header text-dark">
           <tr>
             <th>Week</th>
             <th>Mortality (M/F)</th>
@@ -320,55 +369,7 @@
     {% endif %}
   </div>
 
-  <!-- Hatchability Logs Tab -->
-  <div class="tab-pane fade" id="hatch" role="tabpanel" aria-labelledby="hatch-tab">
-    <div class="table-responsive" style="max-height: 80vh; overflow-y: auto;">
-        <table class="table table-striped table-bordered text-center">
-            <thead class="table-dark" style="position: sticky; top: 0; z-index: 100;">
-                <tr>
-                    <th>Setting Date</th>
-                    <th>Hatching Date</th>
-                    <th>Age (Weeks)</th>
-                    <th>Egg Set</th>
-                    <th>Hatched</th>
-                    <th>Hatch %</th>
-                    <th>Hatchable (Fertile)</th>
-                    <th>Fertility %</th>
-                    <th>Clear %</th>
-                    <th>Rotten %</th>
-                    <th>Male Ratio %</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in hatch_records %}
-                <tr>
-                    <td>{{ r.setting_date | date_fmt }}</td>
-                    <td>{{ r.hatching_date | date_fmt }}</td>
-                    <td>{{ ((r.setting_date - flock.intake_date).days // 7) + 1 }}</td>
-                    <td>{{ r.egg_set }}</td>
-                    <td>{{ r.hatched_chicks }}</td>
-                    <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
-                    <td>{{ r.hatchable_eggs }}</td>
-                    <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
-                    <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
-                    <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
-                    <td>{{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else '-' }}%</td>
-                    <td>
-                        <a href="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=r.setting_date, readonly='true') }}" class="btn btn-sm btn-info text-white" title="Diagnose Farm Data">
-                            Diagnose
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="12" class="text-center">No records found.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-  </div>
-
-  <!-- Charts Tab -->
+  <!-- Charts Tab (Pane 3) -->
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
 
     <!-- Filter Control Bar -->
@@ -386,7 +387,7 @@
         <!-- General Performance Chart -->
         <div class="card mb-4 mt-3" id="cardGeneral">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-            <span class="fw-bold mb-2 mb-md-0" id="generalChartTitle">General Performance</span>
+            <span id="generalChartTitle" class="fw-bold mb-2 mb-md-0">General Performance</span>
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="chartMode" id="modeDaily" autocomplete="off" onchange="switchMode('daily')">
@@ -396,18 +397,18 @@
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_general" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
             <canvas id="generalChart"></canvas>
             </div>
         </div>
@@ -425,12 +426,12 @@
                 </div>
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_hatching" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
@@ -442,41 +443,18 @@
         </div>
         </div>
 
-        <!-- Hatchability Chart -->
-        <div class="card mb-4" id="cardHatchability">
-        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-            <span class="fw-bold mb-2 mb-md-0" id="hatchChartTitle">Hatchability & Fertility</span>
-            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
-                <!-- Per-Chart Date Picker -->
-                <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
-                    <span class="small">-</span>
-                    <input type="text" id="end_hatchability" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
-                </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('hatchChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatchability')" title="Fullscreen">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
-                </button>
-            </div>
-        </div>
-        <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
-            <canvas id="hatchChart"></canvas>
-            </div>
-        </div>
-        </div>
-
         <!-- Daily Water Chart -->
         <div class="card mb-4" id="cardWater">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
             <span id="waterChartTitle" class="fw-bold mb-2 mb-md-0">Daily Water per Bird (mL)</span>
              <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_water" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_water" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('waterChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('waterChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardWater')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
@@ -494,12 +472,12 @@
             <span id="feedChartTitle" class="fw-bold mb-2 mb-md-0">Daily Gram per Bird</span>
              <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_feed" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_feed" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
+                <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('feedChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('feedChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFeed')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
@@ -514,16 +492,16 @@
         <!-- Male Chart -->
         <div class="card mb-4" id="cardMale">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-            <span class="fw-bold mb-2 mb-md-0" id="maleChartTitle">Male Statistics (BW & Uniformity)</span>
+            <span id="maleChartTitle" class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_male" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('maleChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
@@ -538,16 +516,16 @@
         <!-- Female Chart -->
         <div class="card mb-4" id="cardFemale">
         <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-            <span class="fw-bold mb-2 mb-md-0" id="femaleChartTitle">Female Statistics (BW & Uniformity)</span>
+            <span id="femaleChartTitle" class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
                 <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="text" id="start_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="Start">
+                    <input type="date" id="start_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
-                    <input type="text" id="end_female" class="form-control form-control-sm" style="width: 90px; font-size: 0.8rem;" placeholder="End">
+                    <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
                 </div>
-                <button class="btn btn-lg btn-secondary ms-2" onclick="toggleDataLabels('femaleChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
-                <button class="btn btn-lg btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
                 </button>
             </div>
@@ -564,22 +542,22 @@
     </div>
   </div>
 
-  <!-- Production Summary Tab -->
+  <!-- Production Summary Tab (Pane 4) -->
   <div class="tab-pane fade" id="summary" role="tabpanel" aria-labelledby="summary-tab">
     {% if summary_dashboard %}
     <!-- Dashboard Cards -->
-    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4 mt-3">
         <!-- Eggs HHA -->
         <div class="col">
-            <div class="card h-100 border-success border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total Eggs HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-success">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Eggs HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-success">{{ summary_dashboard.hha_total }}</h2>
+                        <h2 class="card-title mb-0 text-success fw-bold">{{ summary_dashboard.hha_total }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_total_std }}</span>
                     </div>
                     {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
-                    <small class="{{ 'text-success' if diff_eggs >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_eggs >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_eggs) }} vs Target
                     </small>
                 </div>
@@ -587,15 +565,15 @@
         </div>
         <!-- Hatching Eggs HHA -->
         <div class="col">
-            <div class="card h-100 border-primary border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Hatching Eggs HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-primary">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Hatching Eggs HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-primary">{{ summary_dashboard.hha_hatch }}</h2>
+                        <h2 class="card-title mb-0 text-primary fw-bold">{{ summary_dashboard.hha_hatch }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_hatch_std }}</span>
                     </div>
                     {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
-                    <small class="{{ 'text-success' if diff_hatch >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_hatch >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_hatch) }} vs Target
                     </small>
                 </div>
@@ -603,15 +581,15 @@
         </div>
         <!-- Chicks HHA -->
         <div class="col">
-            <div class="card h-100 border-info border-start-0 border-end-0 border-top-0 border-3 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Total Chicks HHA</h6>
+            <div class="card h-100 border-0 shadow-sm border-top border-3 border-info">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Total Chicks HHA</h6>
                     <div class="d-flex align-items-baseline">
-                        <h2 class="card-title mb-0 text-info">{{ summary_dashboard.hha_chicks }}</h2>
+                        <h2 class="card-title mb-0 text-info fw-bold">{{ summary_dashboard.hha_chicks }}</h2>
                         <span class="ms-2 text-muted small">/ {{ summary_dashboard.hha_chicks_std }}</span>
                     </div>
                     {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
-                    <small class="{{ 'text-success' if diff_chicks >= 0 else 'text-danger' }}">
+                    <small class="{{ 'text-success fw-bold' if diff_chicks >= 0 else 'text-danger fw-bold' }}">
                         {{ "%+.1f"|format(diff_chicks) }} vs Target
                     </small>
                 </div>
@@ -619,25 +597,25 @@
         </div>
         <!-- Liveability & Feed -->
         <div class="col">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Efficiency Metrics</h6>
+            <div class="card h-100 shadow-sm border-0 bg-gray-100">
+                <div class="card-body pb-3">
+                    <h6 class="text-uppercase text-muted fw-bold" style="font-size: 0.7rem;">Efficiency Metrics</h6>
                     <ul class="list-unstyled mb-0 small">
-                        <li class="d-flex justify-content-between">
-                            <span>Liveability:</span>
-                            <strong>{{ summary_dashboard.liveability }}%</strong>
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Liveability:</span>
+                            <strong class="text-dark">{{ summary_dashboard.liveability }}%</strong>
                         </li>
-                        <li class="d-flex justify-content-between">
-                            <span>Feed/100 Chicks:</span>
-                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
+                        <li class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary">Feed/100 Chicks:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_chicks > summary_dashboard.feed_100_chicks_std else 'text-success' }}">
                                 {{ summary_dashboard.feed_100_chicks }} kg
-                            </span>
+                            </strong>
                         </li>
                         <li class="d-flex justify-content-between">
-                            <span>Feed/100 H.Eggs:</span>
-                            <span class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
+                            <span class="text-secondary">Feed/100 H.Eggs:</span>
+                            <strong class="{{ 'text-danger' if summary_dashboard.feed_100_h_eggs > summary_dashboard.feed_100_h_eggs_std else 'text-success' }}">
                                 {{ summary_dashboard.feed_100_h_eggs }} kg
-                            </span>
+                            </strong>
                         </li>
                     </ul>
                 </div>
@@ -648,7 +626,7 @@
     <!-- Cumulative Table -->
     <div class="table-responsive table-responsive-sticky mb-4">
         <table class="table table-bordered table-sm text-center align-middle table-hover">
-            <thead class="table-light text-dark sticky-table-header">
+            <thead class="table-light text-dark sticky-table-header text-dark">
                 <tr>
                     <th rowspan="2" class="align-middle">Prod Week</th>
                     <th rowspan="2" class="align-middle">Age Week</th>
@@ -710,7 +688,100 @@
         <h4 class="alert-heading">Production Summary Not Available</h4>
         <p>This flock has not started production or missing production start data.</p>
         <hr>
-        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date' and 'Production Start Count'.</p>
+        <p class="mb-0">Ensure the flock is in 'Production' phase and has a valid 'Production Start Date'.</p>
+        {% if not flock.start_of_lay_date %}
+        <p class="mb-0 fw-bold text-danger mt-2">
+            Missing 'Start of Lay Date' (First Egg).
+            Contact farm admin to set it to enable Production Weeks.
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Health Analytics Tab (Pane 5) -->
+  <div class="tab-pane fade" id="health-analytics" role="tabpanel" aria-labelledby="health-analytics-tab">
+    <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
+        <h4 class="mb-0">Health Analytics & Disease Prediction</h4>
+        <div>
+            <span class="badge bg-gradient-secondary">Experimental Feature</span>
+        </div>
+    </div>
+
+    {% if health_events %}
+    <div class="alert alert-info text-white border-0 shadow-sm">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        This tool analyzes daily logs for clinical keywords and correlates them with metric deviations (Mortality spikes, Water intake drops, Feed cleanup delays).
+        Predictions are rule-based suggestions and <strong>not a definitive diagnosis</strong>.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle bg-white">
+            <thead class="table-light text-dark">
+                <tr>
+                    <th style="width: 120px;">Date / Age</th>
+                    <th style="width: 30%;">Clinical Signs & Prediction</th>
+                    <th>Correlated Metrics</th>
+                    <th>Deviations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in health_events %}
+                <tr>
+                    <td>
+                        <div class="fw-bold">{{ event.date | date_fmt }}</div>
+                        <div class="text-muted small">Age: {{ event.age_week }} Weeks</div>
+                    </td>
+                    <td>
+                        {% if event.notes %}
+                            <div class="mb-2"><em>"{{ event.notes }}"</em></div>
+                        {% endif %}
+
+                        {% if event.predicted_diseases %}
+                            {% for disease in event.predicted_diseases %}
+                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                    {{ disease.name }}
+                                </span>
+                            {% endfor %}
+                            <div class="small text-muted mt-1">
+                                Symptoms matched: {{ event.predicted_diseases[0].matched_symptoms | join(', ') }}
+                            </div>
+                        {% else %}
+                            <span class="text-muted small">No specific disease matched.</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column gap-1 small">
+                            <div class="d-flex justify-content-between">
+                                <span>Mortality:</span>
+                                <span class="fw-bold">{{ event.metrics.mortality }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Water (ml):</span>
+                                <span class="fw-bold">{{ event.metrics.water }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Feed Time:</span>
+                                <span class="fw-bold">{{ event.metrics.cleanup_min if event.metrics.cleanup_min is not none else '-' }} m</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <ul class="list-unstyled mb-0 small">
+                            {% for flag in event.flags %}
+                                <li class="text-danger"><i class="bi bi-exclamation-circle-fill me-1"></i> {{ flag }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center p-5 text-muted bg-gray-100 rounded border shadow-sm">
+        <h4 class="text-secondary">No Significant Health Events Detected</h4>
+        <p>No clinical keywords or major metric deviations found in the logs.</p>
     </div>
     {% endif %}
   </div>
@@ -722,6 +793,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
+
+  // Register plugin
   Chart.register(ChartDataLabels);
   Chart.register(window['chartjs-plugin-annotation']);
   Chart.defaults.set('plugins.datalabels', {
@@ -746,50 +819,7 @@
   if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
-  Chart.defaults.set('plugins.datalabels', {
-    display: true,
-    font: { size: 10 },
-    formatter: Math.round
-  });
-  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) {
-      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
-  }
-  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) {
-      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
-  }
-  Chart.defaults.set('plugins.datalabels', {
-    display: true,
-    font: { size: 10 },
-    formatter: Math.round
-  });
-  if (Chart.defaults.datasets.line) {
-      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
-  }
-  if (Chart.defaults.datasets.bar) {
-      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
-  }
-  Chart.defaults.set('plugins.datalabels', {
-    display: true,
-    font: { size: 10 },
-    formatter: Math.round
-  });
-  if (Chart.defaults.datasets.line) {
-      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
-  }
-  if (Chart.defaults.datasets.bar) {
-      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
-  }
-  Chart.defaults.set('plugins.datalabels', {
-    display: true,
-    font: { size: 10 },
-    formatter: Math.round
-  });
-  if (Chart.defaults.datasets.line) {
-      Chart.defaults.datasets.line.datalabels = { align: 'top', anchor: 'end' };
-  }
-  if (Chart.defaults.datasets.bar) {
-      Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
-  }
+
   // Fix for zoom clipping
   if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
   if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
@@ -797,7 +827,6 @@
 
   const isMobile = window.innerWidth <= 768;
 
-  const flockHouseName = "{{ flock.house.name }}";
   const chartDataDaily = {{ chart_data | tojson }};
   const chartDataWeekly = {{ chart_data_weekly | tojson }};
   const globalStd = {{ global_std.std_mortality_daily if global_std else 0.05 }};
@@ -806,37 +835,15 @@
   const intakeDate = new Date(intakeDateStr);
   const flockId = "{{ flock.id }}";
   const flockPhase = "{{ flock.calculated_phase }}";
+  const flockHouseName = "{{ flock.house.name }}";
 
-  let maleChart, femaleChart, generalChart, hatchChart, hatchingEggChart, waterChart, feedChart;
-
-  const hatchRecords = [
-      {% for r in hatch_records %}
-      {
-          date: "{{ r.setting_date | date_fmt }}",
-          age: {{ ((r.setting_date - flock.intake_date).days // 7) + 1 }},
-          hatch: {{ "%.2f"|format(r.hatchability_pct) }},
-          fertile: {{ "%.2f"|format(r.fertile_egg_pct) }},
-          clear: {{ "%.2f"|format(r.clear_egg_pct) }},
-          rotten: {{ "%.2f"|format(r.rotten_egg_pct) }},
-          male_ratio: {{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else 'null' }},
-          std_hatch: {{ std_hatch_map.get(((r.setting_date - flock.intake_date).days // 7) + 1, 0.0) }},
-          // Raw values for aggregation
-          egg_set: {{ r.egg_set or 0 }},
-          hatched: {{ r.hatched_chicks or 0 }},
-          clear_eggs: {{ r.clear_eggs or 0 }},
-          rotten_eggs: {{ r.rotten_eggs or 0 }}
-      },
-      {% endfor %}
-  ];
-  // Sort by date ASCENDING for chart logic (table is descending)
-  hatchRecords.sort((a,b) => new Date(a.date) - new Date(b.date));
-
+  let maleChart, femaleChart, generalChart, hatchingEggChart, waterChart, feedChart;
   let currentMode = 'weekly';
   let currentModeHatching = 'weekly';
+  // State Management for Date Ranges
   const chartStates = {
       general: { start: null, end: null },
       hatching: { start: null, end: null },
-      hatchability: { start: null, end: null },
       water: { start: null, end: null },
       feed: { start: null, end: null },
       male: { start: null, end: null },
@@ -852,172 +859,6 @@
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return Math.floor(diffDays / 7) + 1;
   }
-
-  // Week Separator Plugin
-  const weekSeparatorPlugin = {
-      id: 'weekSeparator',
-      beforeDraw: (chart) => {
-          if (!chart.config.options.plugins.weekSeparator || !chart.config.options.plugins.weekSeparator.enabled) {
-              return;
-          }
-
-          const ctx = chart.ctx;
-          const xAxis = chart.scales.x;
-          const yAxis = chart.scales.y;
-
-          // Get labels to determine week changes
-          const labels = chart.data.labels;
-          if (!labels || labels.length === 0) return;
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-          ctx.setLineDash([5, 5]);
-
-          let prevWeek = null;
-
-          for (let i = 0; i < labels.length; i++) {
-              const label = labels[i];
-              let currentWeek = null;
-              if (typeof label === 'string' && label.startsWith('W')) {
-                  const parts = label.split('.');
-                  if (parts.length > 0) {
-                      currentWeek = parts[0]; // "W20"
-                  }
-              }
-
-              if (prevWeek !== null && currentWeek !== null && currentWeek !== prevWeek) {
-                  const x = xAxis.getPixelForValue(i) - (xAxis.width / labels.length / 2);
-                  const x1 = xAxis.getPixelForValue(i-1);
-                  const x2 = xAxis.getPixelForValue(i);
-                  const midX = (x1 + x2) / 2;
-
-                  if (midX >= xAxis.left && midX <= xAxis.right) {
-                      ctx.moveTo(midX, yAxis.top);
-                      ctx.lineTo(midX, yAxis.bottom);
-                  }
-              }
-              prevWeek = currentWeek;
-          }
-
-          ctx.stroke();
-          ctx.restore();
-      }
-  };
-
-
-  function toggleDataLabels(chartId, btnElement) {
-      let chartInstance;
-      switch(chartId) {
-          case 'generalChart': chartInstance = generalChart; break;
-          case 'hatchingEggChart': chartInstance = hatchingEggChart; break;
-          case 'waterChart': chartInstance = waterChart; break;
-          case 'feedChart': chartInstance = feedChart; break;
-          case 'maleChart': chartInstance = maleChart; break;
-          case 'femaleChart': chartInstance = femaleChart; break;
-          case 'hatchChart': chartInstance = hatchChart; break;
-      }
-
-      if (!chartInstance) return;
-
-      // Toggle logic using custom _showLabels flag
-      let currentDisplay = chartInstance.options.plugins.datalabels._showLabels;
-      if (currentDisplay === undefined) currentDisplay = true;
-      const newDisplay = !currentDisplay;
-      chartInstance.options.plugins.datalabels._showLabels = newDisplay;
-
-      // Update button style
-      if (newDisplay) {
-          btnElement.classList.remove('btn-outline-secondary');
-          btnElement.classList.add('btn-secondary');
-      } else {
-          btnElement.classList.remove('btn-secondary');
-          btnElement.classList.add('btn-outline-secondary');
-      }
-
-      chartInstance.update();
-  }
-
-  const commonOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      spanGaps: true,
-      interaction: {
-        mode: 'index',
-        intersect: false
-},
-      plugins: {
-          legend: { position: 'bottom' },
-          weekSeparator: { enabled: false }, // Default disabled
-          zoom: {
-            limits: {
-              x: {min: 'original', max: 'original'},
-              y: {min: 'original', max: 'original'},
-              y1: {min: 'original', max: 'original'}
-            },
-            zoom: { wheel: { enabled: isMobile }, pinch: { enabled: isMobile }, mode: 'xy' },
-            pan: { enabled: isMobile, mode: 'xy' }
-          },
-          datalabels: {
-              _showLabels: true,              display: function(context) {
-                  const label = context.dataset.label || '';
-                  if (label.toLowerCase().includes('std') || label.toLowerCase().includes('standard')) {
-                      return false; // Never show labels for standard metrics
-                  }
-                  if (label.toLowerCase() === 'clinical notes') {
-                      return false;
-                  }
-                  return context.chart.options.plugins.datalabels._showLabels || false;
-              },
-              align: 'top',
-              anchor: 'end',
-                  clip: true,
-              formatter: (v, ctx) => {
-                  if (v === null || v === undefined) return '';
-                  if (ctx.dataset.label === 'Water:Feed Ratio') {
-                      return parseFloat(v).toFixed(2);
-                  }
-                  if (ctx.dataset.label.includes('%') || ctx.dataset.yAxisID === 'y1') {
-                      return parseFloat(v).toFixed(2) + '%';
-                  }
-                  return v;
-              },
-              font: { size: 10, weight: 'bold' },
-              color: '#444'
-          },
-          tooltip: {
-              callbacks: {
-                  label: function(context) {
-                      let label = context.dataset.label || '';
-                      if (label) {
-                          label += ': ';
-                      }
-                      if (context.dataset.label === 'Clinical Notes') {
-                          return context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '');
-                      }
-                      if (context.parsed.y !== null) {
-                          if (context.dataset.label === 'Water:Feed Ratio') {
-                              label += parseFloat(context.parsed.y).toFixed(2);
-                          } else if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
-                              label += parseFloat(context.parsed.y).toFixed(2) + '%';
-                          } else {
-                              label += context.parsed.y;
-                          }
-                      }
-                      return label;
-                  },
-                  afterBody: function(context) {
-                      const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
-                      if (noteItem && noteItem.raw && noteItem.raw.note) {
-                          return '\nNote: ' + noteItem.raw.note;
-                      }
-                      return '';
-                  }
-              }
-          }
-      }
-  };
 
   function getLatestDataIndex(dataArray, checkZero = false) {
       if (!dataArray || dataArray.length === 0) return 0;
@@ -1037,14 +878,18 @@
       let indices = [];
       const start = new Date(startDate);
       const end = new Date(endDate);
+      // Set hours to compare dates only
       start.setHours(0,0,0,0);
       end.setHours(23,59,59,999);
 
       if (isWeekly) {
+          // Weekly data has dates as "Week X"
+          // We filter by converting "Week X" to approx Age Week and comparing with selection
           const startAge = calculateAgeWeeks(start);
           const endAge = calculateAgeWeeks(end);
 
           dataObj.dates.forEach((label, idx) => {
+              // Extract number from "Week X"
               const match = label.toString().match(/(\d+)/);
               if (match) {
                   const weekNum = parseInt(match[1]);
@@ -1053,7 +898,9 @@
                   }
               }
           });
+
       } else {
+          // Daily data has YYYY-MM-DD
           dataObj.dates.forEach((dateStr, idx) => {
               const d = new Date(dateStr);
               if (d >= start && d <= end) {
@@ -1101,70 +948,135 @@
       return {
           beginAtZero: true,
           grace: isPercentage ? '5%' : '25%', // Add buffer above the highest visible data point
+          // We no longer hardcode suggestedMax or max based on all datasets
+          // so Chart.js can dynamically rescale when legends are toggled.
       };
   }
 
-  function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
-      const titleEl = document.getElementById(elementId);
-      if (!titleEl) return;
-
-      let startAge = '?', endAge = '?';
-      let startDate = '', endDate = '';
-
-      if (dataObj && dataObj.dates && dataObj.dates.length > 0) {
-          const count = dataObj.dates.length;
-          startDate = dataObj.dates[0];
-          endDate = dataObj.dates[count - 1];
-
-          if (!isDaily) {
-               startAge = startDate;
-               endAge = endDate;
-          } else {
-               if (dataObj.ages && dataObj.ages.length > 0) {
-                   startAge = dataObj.ages[0];
-                   endAge = dataObj.ages[dataObj.ages.length - 1];
-               } else {
-                   startAge = "W" + calculateAgeWeeks(new Date(startDate));
-                   endAge = "W" + calculateAgeWeeks(new Date(endDate));
-               }
-          }
+  // --- Common Chart Options ---
+  function toggleDataLabels(chartId, btnElement) {
+      let chartInstance;
+      switch(chartId) {
+          case 'generalChart': chartInstance = generalChart; break;
+          case 'hatchingEggChart': chartInstance = hatchingEggChart; break;
+          case 'waterChart': chartInstance = waterChart; break;
+          case 'feedChart': chartInstance = feedChart; break;
+          case 'maleChart': chartInstance = maleChart; break;
+          case 'femaleChart': chartInstance = femaleChart; break;
+          case 'hatchChart': chartInstance = hatchChart; break;
       }
 
-      function formatToDDMMYY(dateStr) {
-          if (!dateStr || !dateStr.includes('-')) return dateStr;
-          const parts = dateStr.split('-');
-          if (parts.length === 3) {
-             return `${parts[2]}-${parts[1]}-${parts[0].slice(2)}`;
-          }
-          return dateStr;
-      }
+      if (!chartInstance) return;
 
-      let dynamicText = `${baseTitle} - [${flockHouseName}`;
-      if (startAge !== '?' && endAge !== '?') {
-          dynamicText += ` (${startAge} to ${endAge}`;
-          if (isDaily && startDate && endDate) {
-              dynamicText += ` - ${formatToDDMMYY(startDate)} to ${formatToDDMMYY(endDate)}`;
-          }
-          dynamicText += `)`;
-      }
-      dynamicText += `]`;
+      // Toggle logic using custom _showLabels flag
+      let currentDisplay = chartInstance.options.plugins.datalabels._showLabels;
+      if (currentDisplay === undefined) currentDisplay = true;
+      const newDisplay = !currentDisplay;
+      chartInstance.options.plugins.datalabels._showLabels = newDisplay;
 
-      titleEl.innerText = dynamicText;
-  }
-
-  function toggleFullScreenWrapper(targetCardId) {
-      const wrapper = document.getElementById('chartsWrapper');
-      if (!document.fullscreenElement) {
-          wrapper.requestFullscreen().then(() => {
-             const target = document.getElementById(targetCardId);
-             if (target) target.scrollIntoView({behavior: "smooth", inline: "start"});
-          }).catch(err => {
-             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-          });
+      // Update button style
+      if (newDisplay) {
+          btnElement.classList.remove('btn-outline-secondary');
+          btnElement.classList.add('btn-secondary');
       } else {
-          document.exitFullscreen();
+          btnElement.classList.remove('btn-secondary');
+          btnElement.classList.add('btn-outline-secondary');
       }
+
+      chartInstance.update();
   }
+
+  const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      spanGaps: true,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      hover: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+          legend: {
+              position: 'bottom'
+          },
+          zoom: {
+            limits: {
+              x: {min: 'original', max: 'original'},
+              y: {min: 'original', max: 'original'},
+              y1: {min: 'original', max: 'original'}
+            },
+            zoom: {
+              wheel: { enabled: isMobile },
+              pinch: { enabled: isMobile },
+              mode: 'xy'
+},
+            pan: {
+              enabled: isMobile,
+              mode: 'xy'
+}
+          },
+          datalabels: {
+              _showLabels: true,              display: function(context) {
+                  const label = context.dataset.label || '';
+                  if (label.toLowerCase().includes('std') || label.toLowerCase().includes('standard')) {
+                      return false; // Never show labels for standard metrics
+                  }
+                  if (label.toLowerCase() === 'clinical notes') {
+                      return false;
+                  }
+                  return context.chart.options.plugins.datalabels._showLabels || false;
+              },
+              align: 'top',
+              anchor: 'end',
+              clip: true,
+              formatter: function(value, context) {
+                  if (!value) return '';
+                          if (context.dataset.label === 'Water:Feed Ratio') {
+                              return parseFloat(value).toFixed(2);
+                          }
+                  if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
+                      return parseFloat(value).toFixed(2) + '%';
+                  }
+                  return value;
+              },
+              font: { weight: 'bold', size: 10 },
+              color: '#333'
+          },
+          tooltip: {
+              callbacks: {
+                  label: function(context) {
+                      let label = context.dataset.label || '';
+                      if (label) {
+                          label += ': ';
+                      }
+                      if (context.dataset.label === 'Clinical Notes') {
+                          return context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '');
+                      }
+                      if (context.parsed.y !== null) {
+                          if (context.dataset.label === 'Water:Feed Ratio') {
+                              label += parseFloat(context.parsed.y).toFixed(2);
+                          } else if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
+                              label += parseFloat(context.parsed.y).toFixed(2) + '%';
+                          } else {
+                              label += context.parsed.y;
+                          }
+                      }
+                      return label;
+                  },
+                  afterBody: function(context) {
+                      const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
+                      if (noteItem && noteItem.raw && noteItem.raw.note) {
+                          return '\nNote: ' + noteItem.raw.note;
+                      }
+                      return '';
+                  }
+              }
+          }
+      }
+  };
 
   function renderWaterChart() {
       const mode = currentMode;
@@ -1179,7 +1091,7 @@
       const waterData = (data.water_per_bird || []).map(v => Math.round(v));
       const flushFlags = data.flushing || [];
 
-      // Point Styles
+      // Point Styles: Triangle and Red if Flushing, Circle and Blue if not
       const pointStyles = flushFlags.map(f => f ? 'triangle' : 'circle');
       const pointColors = flushFlags.map(f => f ? 'red' : '#36A2EB');
       const pointRadii = flushFlags.map(f => f ? 8 : 3);
@@ -1290,11 +1202,16 @@
       const feedF = data.feed_female_gp_bird || [];
       const eggProd = data.egg_prod || [];
 
+      // Use lines for feed to match water style, or bars? Prompt didn't specify, but "Daily Gram per Bird" often implies line or bar.
+      // Given it's "Daily", line is cleaner for trends. Bar is good for absolute values.
+      // Existing charts use lines for BW and Bars for Mortality.
+      // Let's use Line for Feed.
+
       const datasets = [
           {
               label: 'Male Feed (g)',
               data: feedM,
-              borderColor: '#36A2EB',
+              borderColor: '#36A2EB', // Blue
               backgroundColor: '#36A2EB',
               tension: 0.1,
               yAxisID: 'y',
@@ -1303,7 +1220,7 @@
           {
               label: 'Female Feed (g)',
               data: feedF,
-              borderColor: '#FF6384',
+              borderColor: '#FF6384', // Red/Pink
               backgroundColor: '#FF6384',
               tension: 0.1,
               yAxisID: 'y',
@@ -1316,7 +1233,7 @@
               borderDash: [],
               pointRadius: 0,
               yAxisID: 'y1',
-              hidden: false,              clip: true
+              hidden: false, // Initially hidden              clip: true
 }
       ];
 
@@ -1363,7 +1280,8 @@
                       display: true,
                       position: 'right',
                       title: { display: true, text: 'Egg Prod %' },
-                      min: -100, max: 110,                      grid: { drawOnChartArea: false }
+                      min: 0, max: 110,
+                      grid: { drawOnChartArea: false }
                   }
               }
           }
@@ -1373,14 +1291,15 @@
   function renderMaleChart() {
       const mode = currentMode;
       const state = chartStates.male;
+      // Force Weekly Data for Body Weight Charts
       const bwFullData = chartDataWeekly;
       const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
 
-      updateChartTitle('maleChartTitle', 'Male Statistics (BW & Uniformity)', bwData, false);
-
+      // Destroy existing
       if (maleChart) maleChart.destroy();
 
       const maleDatasets = [];
+      const colorsM = ['#36A2EB', '#0056b3', '#4bc0c0', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384'];
       const maleBWValues = [];
 
       const maleKey = 'avg_bw_male';
@@ -1395,6 +1314,22 @@
                 clip: true
 });
            maleBWValues.push(bwData[maleKey]);
+      }
+
+      for (let i = 1; i <= 8; i++) {
+          let key = 'bw_M' + i;
+          if (bwData[key] && bwData[key].some(val => val !== null)) {
+              maleDatasets.push({
+                label: 'BW M' + i,
+                data: bwData[key],
+                borderColor: colorsM[i-1] || '#333',
+                backgroundColor: colorsM[i-1] || '#333',
+                tension: 0.1,
+                yAxisID: 'y',
+                clip: true
+});
+              maleBWValues.push(bwData[key]);
+          }
       }
 
       maleDatasets.push({
@@ -1458,11 +1393,10 @@
       const bwFullData = chartDataWeekly;
       const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
 
-      updateChartTitle('femaleChartTitle', 'Female Statistics (BW & Uniformity)', bwData, false);
-
       if (femaleChart) femaleChart.destroy();
 
       const femaleDatasets = [];
+      const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
       const femaleBWValues = [];
 
       const femaleKey = 'avg_bw_female';
@@ -1478,6 +1412,21 @@
                 clip: true
 });
            femaleBWValues.push(bwData[femaleKey]);
+      }
+
+      for (let i = 1; i <= 8; i++) {
+          let key = 'bw_F' + i;
+          if (bwData[key] && bwData[key].some(val => val !== null)) {
+              femaleDatasets.push({
+                label: 'BW F' + i,
+                data: bwData[key],
+                borderColor: colorsF[i-1] || '#333',
+                backgroundColor: colorsF[i-1] || '#333',
+                yAxisID: 'y',
+                clip: true
+});
+              femaleBWValues.push(bwData[key]);
+          }
       }
 
       femaleDatasets.push({
@@ -1582,16 +1531,12 @@
   };
 
   function renderGeneralChart() {
-      const mode = currentMode;
+      const mode = currentMode; // uses global 'currentMode' toggled by radio
       const state = chartStates.general;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
       const generalData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
 
       if (generalChart) generalChart.destroy();
-
-      const isRearing = (flockPhase === 'Brooding' || flockPhase === 'Growing' || flockPhase === 'Pre-lay');
-      const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
-      updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
 
       const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
@@ -1620,16 +1565,15 @@
               notesPoints.push({
                   x: labelString, // Matches the axis perfectly
                   y: yVal,
-                  note: n.note,
-                  photos: n.photos,
-                  photo: n.photo,
                   date: date, // Keep raw date for the modal
+                  note: n.note, photos: n.photos, photo: n.photo, // Legacy
+                  main_note: n.main_note, main_photos: n.main_photos, extra_notes: n.extra_notes, // New
                   originalIndex: i // Backup safety
               });
-          } else {
-              // IMPORTANT: Push null to keep the array lengths identical
-              notesPoints.push(null);
           }
+          // Do not push null when using object {x, y} format for line/scatter charts.
+          // Chart.js will automatically align objects with the 'x' property to the correct label,
+          // avoiding "Cannot read properties of null (reading 'x')" errors.
       });
 
       const notesDataset = {
@@ -1655,6 +1599,14 @@
         baselineData
       ], true);
 
+      // --- Dynamic Chart Config Based on Phase ---
+      const isRearing = (flockPhase === 'Brooding' || flockPhase === 'Growing' || flockPhase === 'Pre-lay');
+
+      // 1. Update Title
+      const genTitleBase = isRearing ? 'Depletion %' : 'Depletion and Egg Production %';
+      updateChartTitle('generalChartTitle', genTitleBase, generalData, mode === 'daily');
+
+      // 2. Prepare Datasets
       const generalDatasets = [];
 
       // Add Medication Highlight Background (if daily)
@@ -1711,21 +1663,38 @@
           });
       }
 
-      generalDatasets.push(
-          { label: 'Egg Prod %', data: generalData.egg_prod, type:'line', borderColor:'green', yAxisID:'y', datalabels:{align:'bottom'}, clip: true
-},
-          { label: 'Std Egg Prod %', data: generalData.std_egg_prod, type:'line', borderColor:'#dc3545', borderDash:[], pointRadius:0, yAxisID:'y', clip: true
-},
-          { label: 'Mort Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID:'y1', clip: true
-},
-          { label: 'Mort Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID:'y1', clip: true
-},
-          { label: 'Cull Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID:'y1', clip: true
-},
-          { label: 'Cull Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID:'y1', clip: true
-},
+      if (!isRearing) {
+          generalDatasets.push({
+              label: 'Egg Production %',
+              data: generalData.egg_prod,
+              type: 'line',
+              borderColor: 'green',
+              yAxisID: 'y',
+              clip: true
+});
+          generalDatasets.push({
+              label: 'Standard Egg Prod %',
+              data: generalData.std_egg_prod,
+              type: 'line',
+              borderColor: 'darkgreen',
+              borderDash: [5, 5],
+              pointRadius: 0,
+              borderWidth: 2,
+              yAxisID: 'y',
+              clip: true
+});
+      }
 
-          {
+      generalDatasets.push(
+            { label: 'Mortality Male %', data: generalData[mortMKey], backgroundColor: '#B22222', yAxisID: 'y1', clip: true
+},
+            { label: 'Mortality Female %', data: generalData[mortFKey], backgroundColor: '#FF0000', yAxisID: 'y1', clip: true
+},
+            { label: 'Culls Male %', data: generalData[cullMKey], backgroundColor: '#DAA520', yAxisID: 'y1', clip: true
+},
+            { label: 'Culls Female %', data: generalData[cullFKey], backgroundColor: '#FFD700', yAxisID: 'y1', clip: true
+},
+            {
               label: 'Standard Mort Limit',
               data: baselineData,
               type: 'line',
@@ -1735,38 +1704,58 @@
               pointRadius: 0,
               yAxisID: 'y1',
               clip: true,
-              order: -1          },
-          notesDataset
+              order: -1
+          },            notesDataset
       );
 
-      generalChart = new Chart(document.getElementById('generalChart'), {
-          type: 'bar',
-          data: {
-              labels: labels,
-              datasets: generalDatasets
-          },
-          plugins: [dynamicYMaxPlugin],
+      const generalScales = {
+            y1: {
+              type: 'linear', display: true, position: 'left', title: { display: true, text: 'Mortality/Culls %' },
+              grid: { drawOnChartArea: false }, ...genMortScales
+            },
+            yMed: {
+              type: 'linear', display: false, position: 'right', min: 0, max: 1,
+              grid: { drawOnChartArea: false }
+            }
+      };
+
+      if (!isRearing) {
+          generalScales.y = {
+              type: 'linear', display: true, position: 'right', title: { display: true, text: 'Egg Production %' }, ...genEggScales
+          };
+      }
+
+      generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: generalDatasets
+        },
+        plugins: [dynamicYMaxPlugin],
         options: {
-              ...commonOptions,
-              onClick: (e, elements) => {
-                  if (elements.length) {
-                      const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
-                      const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
-                      if (notePoint) {
-                          const rawData = generalChart.data.datasets[notePoint.datasetIndex].data[notePoint.index];
-                          if (rawData && rawData.note) {
-                              // Use the rawData.date we saved in the point, not a calculated one
-                              showNoteModal(rawData.date, rawData.note, rawData.photos || rawData.photo);
-                          }
+          responsive: true,
+          maintainAspectRatio: false,
+          onClick: (e, elements) => {
+              if (elements.length) {
+                  // Find the index of the Clinical Notes dataset
+                  const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
+
+                  // Check if any of the clicked elements belong to the Clinical Notes dataset
+                  const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
+                  if (notePoint) {
+                      const rawData = generalChart.data.datasets[notePoint.datasetIndex].data[notePoint.index];
+                      if (rawData && (rawData.note || rawData.main_note)) {
+                          showNoteModal(rawData);
                       }
                   }
-              },
-              scales: {
-                  y: { type: 'linear', position: 'right', title: {display:true, text:'Egg Prod %'}, ...genEggScales },
-                  y1: { type: 'linear', position: 'left', title: {display:true, text:'Mortality/Culls %'}, grid: {drawOnChartArea: false}, ...genMortScales }
               }
           },
-          plugins: [weekSeparatorPlugin]
+          interaction: { mode: 'index', intersect: false },
+          scales: generalScales,
+          plugins: {
+              ...commonOptions.plugins
+          }
+        }
       });
   }
 
@@ -1780,9 +1769,6 @@
 
       updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', filteredData, mode === 'daily');
 
-      // Labels logic
-      let labels = mode === 'daily' ? generateDailyLabels(filteredData) : filteredData.dates;
-
       const heData = filteredData.hatch_egg_pct || [];
       const heStdData = filteredData.std_hatching_egg_pct || [];
       const jumboData = filteredData.cull_eggs_jumbo_pct || [];
@@ -1795,7 +1781,7 @@
       hatchingEggChart = new Chart(document.getElementById('hatchingEggChart').getContext('2d'), {
           type: 'bar',
           data: {
-              labels: labels,
+              labels: mode === 'daily' ? generateDailyLabels(filteredData) : filteredData.dates,
               datasets: [
                   { label: 'Jumbo %', data: jumboData, backgroundColor: '#70ad47', yAxisID: 'y', clip: true
 },
@@ -1811,176 +1797,16 @@
 }              ]
           },
           options: {
-              ...commonOptions,
-              plugins: {
-                  ...commonOptions.plugins,
-                  weekSeparator: { enabled: mode === 'daily' }
-              },
+              responsive: true,
+              maintainAspectRatio: false,
+              onClick: null,
+              interaction: { mode: 'index', intersect: false },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, ...barMaxCalc },
                   y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
-              }
-          },
-          plugins: [weekSeparatorPlugin]
-      });
-  }
-
-  function renderHatchChart() {
-      const state = chartStates.hatchability;
-
-      // Aggregate hatchRecords by Age Week
-      const weeklyHatch = {};
-      hatchRecords.forEach(r => {
-          const week = "Week " + r.age;
-          if (!weeklyHatch[week]) {
-              weeklyHatch[week] = { egg_set:0, hatched:0, clear:0, rotten:0, male_ratios:[], age: r.age, std_hatch: r.std_hatch };
-          }
-          weeklyHatch[week].egg_set += r.egg_set;
-          weeklyHatch[week].hatched += r.hatched;
-          weeklyHatch[week].clear += r.clear_eggs;
-          weeklyHatch[week].rotten += r.rotten_eggs;
-          if (r.male_ratio !== null) weeklyHatch[week].male_ratios.push(r.male_ratio);
-      });
-
-      // Convert to array
-      let aggregated = [];
-      Object.keys(weeklyHatch).forEach(key => {
-          const d = weeklyHatch[key];
-          if (d.hatched > 0) { // Only valid hatch data
-              const es = d.egg_set || 1;
-              const hatchPct = (d.hatched / es) * 100;
-              const fertilePct = ((d.egg_set - d.clear - d.rotten) / es) * 100;
-              const clearPct = (d.clear / es) * 100;
-              const rottenPct = (d.rotten / es) * 100;
-
-              let avgMale = null;
-              if (d.male_ratios.length > 0) {
-                  avgMale = d.male_ratios.reduce((a,b)=>a+b, 0) / d.male_ratios.length;
-              }
-
-              aggregated.push({
-                  week: key,
-                  age: d.age,
-                  hatch: parseFloat(hatchPct.toFixed(2)),
-                  fertile: parseFloat(fertilePct.toFixed(2)),
-                  clear: parseFloat(clearPct.toFixed(2)),
-                  rotten: parseFloat(rottenPct.toFixed(2)),
-                  male_ratio: avgMale !== null ? parseFloat(avgMale.toFixed(2)) : null,
-                  std_hatch: d.std_hatch
-              });
-          }
-      });
-
-      // Sort by Age
-      aggregated.sort((a,b) => a.age - b.age);
-
-      // --- FILTERING ---
-      let finalData = aggregated;
-      if (state.start && state.end) {
-          const startAge = calculateAgeWeeks(state.start);
-          const endAge = calculateAgeWeeks(state.end);
-          finalData = aggregated.filter(d => d.age >= startAge && d.age <= endAge);
-      } else {
-          let start = aggregated.length - 10;
-          if (start < 0) start = 0;
-          finalData = aggregated.slice(start);
-      }
-
-      // Update Title
-      const hatchTitleData = {
-          dates: finalData.map(r => r.week)
-      };
-      updateChartTitle('hatchChartTitle', 'Hatchability & Fertility', hatchTitleData, false);
-
-      const hLabels = finalData.map(r => r.week);
-      const dHatch = finalData.map(r => r.hatch);
-      const dFertile = finalData.map(r => r.fertile);
-      const dClear = finalData.map(r => r.clear);
-      const dRotten = finalData.map(r => r.rotten);
-      const dMale = finalData.map(r => r.male_ratio);
-      const dStdHatch = finalData.map(r => r.std_hatch);
-
-      if (hatchChart) hatchChart.destroy(); // Fix re-render
-
-      const ctx = document.getElementById('hatchChart').getContext('2d');
-      hatchChart = new Chart(ctx, {
-          type: 'bar',
-          data: {
-              labels: hLabels,
-              datasets: [
-                  {
-                      label: 'Std Hatchability %',
-                      data: dStdHatch,
-                      type: 'line',
-                      borderColor: '#dc3545',
-                      borderDash: [],                      pointRadius: 0,
-                      borderWidth: 2,
-                      yAxisID: 'y1',
-                      order: 0,
-                      clip: true
-},
-                  {
-                      label: 'Fertile %',
-                      data: dFertile,
-                      backgroundColor: '#2fb344',                      stack: 'Stack 0',
-                      order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
-                      clip: true
-},
-                  {
-                      label: 'Clear %',
-                      data: dClear,
-                      backgroundColor: '#f59f00',                      stack: 'Stack 0',
-                      order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
-                      clip: true
-},
-                  {
-                      label: 'Rotten %',
-                      data: dRotten,
-                      backgroundColor: '#d63939',                      stack: 'Stack 0',
-                      order: 2,
-                      datalabels: { anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v + '%' : '' },
-                      clip: true
-},
-                  {
-                      label: 'Hatchability %',
-                      data: dHatch,
-                      type: 'line',
-                      borderColor: 'rgba(54, 162, 235, 1)',
-                      backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                      borderWidth: 3,
-                      yAxisID: 'y1',
-                      order: 1,
-                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
-                      clip: true
-},
-                  {
-                      label: 'Male Ratio %',
-                      data: dMale,
-                      type: 'line',
-                      borderColor: 'rgba(153, 102, 255, 1)',
-                      backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                      borderWidth: 2, borderDash: [],                      pointStyle: 'circle',
-                      yAxisID: 'y1',
-                      order: 0,
-                      datalabels: { anchor: 'start', align: 'bottom', formatter: (v) => v > 0 ? v + '%' : '' },
-                      clip: true
-}
-              ]
-          },
-          options: {
-              ...commonOptions,
-              onClick: null,
-              scales: {
-                  y: {
-                      type: 'linear', position: 'left', stacked: true, title: {display:true, text:'Egg Status %'},
-                      min: 0, max: 100
-                  },
-                  y1: {
-                      type: 'linear', position: 'right', title: {display:true, text:'Hatchability %'},
-                      grid: {drawOnChartArea: false}, min: 0, max: 100
-                  }
+              },
+              plugins: {
+                  ...commonOptions.plugins
               }
           }
       });
@@ -1998,47 +1824,70 @@
       if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
   }
 
+  function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
+      const titleEl = document.getElementById(elementId);
+      if (!titleEl) return;
 
-  function showNoteModal(date, text, photos) {
-      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
-      document.getElementById('noteModalText').innerText = text;
-      document.getElementById('noteModalDate').innerText = date;
+      let startAge = '?', endAge = '?';
+      let startDate = '', endDate = '';
 
-      const carousel = document.getElementById('photoCarousel');
-      const inner = document.getElementById('photoCarouselInner');
-      inner.innerHTML = '';
+      if (dataObj && dataObj.dates && dataObj.dates.length > 0) {
+          const count = dataObj.dates.length;
+          startDate = dataObj.dates[0];
+          endDate = dataObj.dates[count - 1];
 
-      let photoList = [];
-      if (Array.isArray(photos)) {
-          photoList = photos;
-      } else if (typeof photos === 'string' && photos) {
-          photoList = [{url: photos, name: 'Photo'}];
+          if (!isDaily) {
+               startAge = startDate;
+               endAge = endDate;
+          } else {
+               if (dataObj.ages && dataObj.ages.length > 0) {
+                   startAge = dataObj.ages[0];
+                   endAge = dataObj.ages[dataObj.ages.length - 1];
+               } else {
+                   startAge = "W" + calculateAgeWeeks(new Date(startDate));
+                   endAge = "W" + calculateAgeWeeks(new Date(endDate));
+               }
+          }
       }
 
-      if (photoList.length > 0) {
-          carousel.style.display = 'block';
-          photoList.forEach((p, index) => {
-              const div = document.createElement('div');
-              div.className = 'carousel-item' + (index === 0 ? ' active' : '');
-              div.innerHTML = `
-                <div class="d-flex flex-column align-items-center justify-content-center" style="height: 500px; background-color: #f8f9fa;">
-                    <img src="${p.url}" class="d-block" style="max-height: 100%; max-width: 100%; width: auto; height: auto;" alt="${p.name}">
-                    <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-1 mb-0" style="bottom: 10px;">
-                        <small>${p.name}</small>
-                    </div>
-                </div>
-              `;
-              inner.appendChild(div);
-          });
-      } else {
-          carousel.style.display = 'none';
+      function formatToDDMMYY(dateStr) {
+          if (!dateStr || !dateStr.includes('-')) return dateStr;
+          const parts = dateStr.split('-');
+          if (parts.length === 3) {
+             return `${parts[2]}-${parts[1]}-${parts[0].slice(2)}`;
+          }
+          return dateStr;
       }
 
-      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
-      modal.show();
+      let dynamicText = `${baseTitle} - [${flockHouseName}`;
+      if (startAge !== '?' && endAge !== '?') {
+          dynamicText += ` (${startAge} to ${endAge}`;
+          if (isDaily && startDate && endDate) {
+              dynamicText += ` - ${formatToDDMMYY(startDate)} to ${formatToDDMMYY(endDate)}`;
+          }
+          dynamicText += `)`;
+      }
+      dynamicText += `]`;
+
+      titleEl.innerText = dynamicText;
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function toggleFullScreenWrapper(targetCardId) {
+      const wrapper = document.getElementById('chartsWrapper');
+      if (!document.fullscreenElement) {
+          wrapper.requestFullscreen().then(() => {
+             const target = document.getElementById(targetCardId);
+             if (target) target.scrollIntoView({behavior: "smooth", inline: "start"});
+          }).catch(err => {
+             console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+          });
+      } else {
+          document.exitFullscreen();
+      }
+  }
+
+  // Initial Render
+  document.addEventListener('DOMContentLoaded', function() {
       // Handle URL hash for tabs
       if (window.location.hash) {
           const targetTab = document.querySelector(`button[data-bs-target="${window.location.hash}"]`);
@@ -2058,21 +1907,21 @@
           });
       });
 
-      document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(el => {
-          el.addEventListener('shown.bs.tab', (e) => {
-              // Update URL hash when tab changes
-              history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
+      const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('shown.bs.tab', function (event) {
+          // Update URL hash when tab changes
+          history.replaceState(null, null, event.target.getAttribute('data-bs-target'));
 
-              if (e.target.id === 'charts-tab') {
-                  if(maleChart) maleChart.resize();
-                  if(femaleChart) femaleChart.resize();
-                  if(generalChart) generalChart.resize();
-                  if(hatchChart) hatchChart.resize();
-                  if(hatchingEggChart) hatchingEggChart.resize();
-                  if(waterChart) waterChart.resize();
-                  if(feedChart) feedChart.resize();
-              }
-          });
+          if (event.target.id === 'charts-tab') {
+            if (maleChart) maleChart.resize();
+            if (femaleChart) femaleChart.resize();
+            if (generalChart) generalChart.resize();
+            if (hatchingEggChart) hatchingEggChart.resize();
+            if (waterChart) waterChart.resize();
+            if (feedChart) feedChart.resize();
+          }
+        });
       });
 
             // Flatpickr Init
@@ -2099,42 +1948,56 @@
       globalPickerStart = startDateDefault;
       globalPickerEnd = endDateDefault;
 
-      // 2. Helper to set individual pickers
+      // Helper function to format Date object to YYYY-MM-DD
+      function formatDate(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        let month = '' + (d.getMonth() + 1),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+
+        return [year, month, day].join('-');
+      }
+
+      // 2. Helper to set individual pickers (Now Native)
       function initChartPickers(key, renderFunc) {
           // Defaults
           chartStates[key].start = globalPickerStart;
           chartStates[key].end = globalPickerEnd;
 
-          const config = {
-              dateFormat: "Y-m-d",
-              // disableMobile: "true", // Removed to enable native mobile picker
-              onChange: function(selectedDates, dateStr, instance) {
-                   const startInst = chartStates[key].pickerStart;
-                   const endInst = chartStates[key].pickerEnd;
+          const startEl = document.getElementById(`start_${key}`);
+          const endEl = document.getElementById(`end_${key}`);
 
-                   const sDate = startInst.selectedDates[0];
-                   const eDate = endInst.selectedDates[0];
+          // Set Initial Values
+          if (startEl) startEl.value = formatDate(globalPickerStart);
+          if (endEl) endEl.value = formatDate(globalPickerEnd);
 
-                   if (sDate && eDate) {
-                       chartStates[key].start = sDate;
-                       chartStates[key].end = eDate;
-                       renderFunc();
-                   }
-              }
+          // Add Change Listeners
+          const updateFunc = function() {
+               const sVal = startEl.value;
+               const eVal = endEl.value;
+
+               if (sVal && eVal) {
+                   // Append time to force local time parsing or ensure consistency
+                   // Native input returns YYYY-MM-DD. new Date("YYYY-MM-DD") is UTC.
+                   // We want start of day in local time or consistent with how data is filtered.
+                   // Adding T00:00:00 often forces local time parsing in browsers.
+                   chartStates[key].start = new Date(sVal + 'T00:00:00');
+                   chartStates[key].end = new Date(eVal + 'T00:00:00');
+                   renderFunc();
+               }
           };
 
-          chartStates[key].pickerStart = flatpickr(`#start_${key}`, {
-              ...config, defaultDate: globalPickerStart
-          });
-          chartStates[key].pickerEnd = flatpickr(`#end_${key}`, {
-              ...config, defaultDate: globalPickerEnd
-          });
+          if (startEl) startEl.addEventListener('change', updateFunc);
+          if (endEl) endEl.addEventListener('change', updateFunc);
       }
 
       // 3. Initialize Specific Pickers
       initChartPickers('general', renderGeneralChart);
       initChartPickers('hatching', renderHatchingChart);
-      initChartPickers('hatchability', renderHatchChart);
       initChartPickers('water', renderWaterChart);
       initChartPickers('feed', renderFeedChart);
       initChartPickers('male', renderMaleChart);
@@ -2143,7 +2006,7 @@
       // 4. Initialize Global Picker
       const commonFlatpickrConfig = {
           dateFormat: "Y-m-d",
-          // disableMobile: "true", // Removed to enable native mobile picker
+          // disableMobile: "true", // Removed to allow native mobile picker
           onChange: function(selectedDates, dateStr, instance) {
               updateGlobalDateRange();
           }
@@ -2177,14 +2040,15 @@
                   chartStates[key].start = globalPickerStart;
                   chartStates[key].end = globalPickerEnd;
 
-                  // Update UI
-                  if (chartStates[key].pickerStart) chartStates[key].pickerStart.setDate(globalPickerStart);
-                  if (chartStates[key].pickerEnd) chartStates[key].pickerEnd.setDate(globalPickerEnd);
+                  // Update UI (Native Inputs)
+                  const startEl = document.getElementById(`start_${key}`);
+                  const endEl = document.getElementById(`end_${key}`);
+                  if (startEl) startEl.value = formatDate(globalPickerStart);
+                  if (endEl) endEl.value = formatDate(globalPickerEnd);
               });
 
               renderGeneralChart();
               renderHatchingChart();
-              renderHatchChart();
               renderWaterChart();
               renderFeedChart();
               renderMaleChart();
@@ -2199,13 +2063,121 @@
 
       renderGeneralChart();
       renderHatchingChart();
-      renderHatchChart();
       renderWaterChart();
       renderFeedChart();
       renderMaleChart();
       renderFemaleChart();
   });
 
+  // Listen for Fullscreen Changes to Resize Charts
+  function onFullScreenChange() {
+      // Small delay to allow CSS transitions to finish before resizing
+      setTimeout(() => {
+          if (maleChart) maleChart.resize();
+          if (femaleChart) femaleChart.resize();
+          if (generalChart) generalChart.resize();
+          if (hatchingEggChart) hatchingEggChart.resize();
+          if (waterChart) waterChart.resize();
+          if (feedChart) feedChart.resize();
+      }, 100);
+  }
+
+  document.addEventListener("fullscreenchange", onFullScreenChange);
+  document.addEventListener("webkitfullscreenchange", onFullScreenChange);
+  document.addEventListener("mozfullscreenchange", onFullScreenChange);
+  document.addEventListener("msfullscreenchange", onFullScreenChange);
+
+
+  function showNoteModal(pt) {
+      // Support legacy signature or object
+      let date, text, photos, main_photos, extra_notes;
+      if (typeof pt === 'string') {
+          // Legacy call protection (if any)
+          date = arguments[0];
+          text = arguments[1];
+          photos = arguments[2];
+      } else {
+          date = pt.date;
+          text = pt.main_note || pt.note; // Fallback
+          main_photos = pt.main_photos || pt.photos || [];
+          if(!Array.isArray(main_photos) && main_photos) main_photos = [{url: main_photos, name:'Photo'}];
+          extra_notes = pt.extra_notes || [];
+      }
+
+      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
+      // We will hide the static text/date elements and move everything into carousel slides
+      document.getElementById('noteModalText').style.display = 'none';
+      document.getElementById('noteModalDate').style.display = 'none';
+
+      const carousel = document.getElementById('photoCarousel');
+      const inner = document.getElementById('photoCarouselInner');
+      inner.innerHTML = '';
+      carousel.style.display = 'block';
+
+      let slides = [];
+
+      // 1. Main Slide
+      if (text || (main_photos && main_photos.length > 0)) {
+          slides.push({
+              title: "Main Clinical Note",
+              caption: text || "No text.",
+              photos: main_photos || []
+          });
+      }
+
+      // 2. Extra Slides
+      if (extra_notes) {
+          extra_notes.forEach((note, idx) => {
+              slides.push({
+                  title: `Detailed Note ${idx + 1}`,
+                  caption: note.caption || "No caption.",
+                  photos: note.photos || []
+              });
+          });
+      }
+
+      if (slides.length === 0) {
+          // Fallback if empty
+          slides.push({title: "Info", caption: "No data.", photos: []});
+      }
+
+      slides.forEach((slide, index) => {
+          const div = document.createElement('div');
+          div.className = 'carousel-item' + (index === 0 ? ' active' : '');
+
+          let photosHtml = '';
+          if (slide.photos.length > 0) {
+              photosHtml = `<div class="d-flex flex-wrap justify-content-center gap-2 mb-3" style="max-height: 400px; overflow-y: auto;">`;
+              slide.photos.forEach(p => {
+                  photosHtml += `
+                    <div class="text-center">
+                        <a href="${p.url}" target="_blank">
+                            <img src="${p.url}" class="img-thumbnail" style="max-height: 180px; object-fit: contain;" alt="${p.name}">
+                        </a>
+                        <div class="small text-muted mt-1" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
+                    </div>
+                  `;
+              });
+              photosHtml += `</div>`;
+          } else {
+              photosHtml = `<div class="d-flex align-items-center justify-content-center text-muted" style="height: 100px;">No Photos</div>`;
+          }
+
+          div.innerHTML = `
+            <div class="p-4 bg-white">
+                <h5 class="text-primary border-bottom pb-2">${slide.title}</h5>
+                ${photosHtml}
+                <div class="alert alert-light border mt-3">
+                    <strong>Note:</strong> ${slide.caption}
+                </div>
+            </div>
+          `;
+          inner.appendChild(div);
+      });
+
+      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
+      modal.show();
+  }
 
 // --- Floating Notes Logic ---
 let activeAddNoteChart = null;
@@ -2238,10 +2210,6 @@ const floatingNotePlugin = {
     afterEvent(chart, args) {
         if (args.event.type === 'click') {
             const chartId = chart.canvas.id;
-
-            // Check if clicking existing note (handled by plugin click instead)
-            // But just in case, don't trigger add note if they clicked near an annotation?
-            // Chartjs-plugin-annotation click triggers before chart click if element is clicked.
 
             if (activeAddNoteChart === chartId) {
                 const xVal = chart.scales.x.getValueForPixel(args.event.x);
@@ -2301,7 +2269,6 @@ function updateChartAnnotations(chart) {
     const currentAnns = chart.options.plugins.annotation.annotations;
     const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
 
-    // Remove existing notes
     for (const key of Object.keys(newAnnotations)) {
         if (key.startsWith('note_')) {
             delete newAnnotations[key];
@@ -2320,10 +2287,8 @@ function updateChartAnnotations(chart) {
             borderRadius: 4,
             padding: 4,
             font: { size: 12 },
-            callout: {
-                display: false
-            },
-            click: function({chart, element}) {
+            callout: { display: false },
+            click: function(ctx) {
                 if (activeAddNoteChart) return;
                 if (confirm('Delete this note: "' + note.content + '"?')) {
                     fetch('/api/floating_notes/' + note.id, { method: 'DELETE' })
