@@ -1,10 +1,29 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
-from app import app, db, House, Flock, DailyLog, SamplingEvent
+
+import importlib.util
+import sys
+import os
+spec = importlib.util.spec_from_file_location("main_app", os.path.join(os.path.dirname(__file__), '..', 'app.py'))
+main_app = importlib.util.module_from_spec(spec)
+sys.modules["main_app"] = main_app
+spec.loader.exec_module(main_app)
+
+app = main_app.app
+db = main_app.db
+House = main_app.House
+Flock = main_app.Flock
+DailyLog = main_app.DailyLog
+SamplingEvent = main_app.SamplingEvent
+
 import os
 
 class FarmTestCase(unittest.TestCase):
     def setUp(self):
         app.config['TESTING'] = True
+        app.template_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app', 'templates'))
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         app.config['WTF_CSRF_ENABLED'] = False
         self.app = app.test_client()
@@ -23,7 +42,7 @@ class FarmTestCase(unittest.TestCase):
 
 
         # Login as Farm Admin for tests
-        from app import User
+        from main_app import User
         u = User(username='admin_test', dept='Farm', role='Admin')
         u.set_password('pass')
         db.session.add(u)
