@@ -66,7 +66,7 @@
     </button>
     <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="z-index: 1050;">
       {% for f in active_flocks %}
-      <li><a class="dropdown-item switch-house-link" href="{{ url_for('executive_flock_detail', id=f.id) }}">{{ f.house.name }}</a></li>
+      <li><a class="dropdown-item switch-house-link" href="{{ url_for('view_flock', id=f.id) }}">{{ f.house.name }}</a></li>
       {% endfor %}
     </ul>
   </div>
@@ -122,11 +122,9 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 mt-3">
     <h4>Flock Details</h4>
     <div class="d-flex flex-wrap gap-2">
-        <!--
-<button id="btnConsultAI" class="btn btn-primary" onclick="consultAI({{ flock.id }})">
+        <button id="btnConsultAI" class="btn btn-primary" onclick="consultAI({{ flock.id }})">
             <i class="fas fa-robot me-1"></i> Consult AI
         </button>
--->
         <a href="{{ url_for('export_flock_csv', flock_id=flock.id) }}" class="btn btn-outline-success">
             <i class="fas fa-file-csv"></i> Export CSV
         </a>
@@ -309,6 +307,12 @@
               <a href="{{ url_for('static', filename='reports/' + item.log.date.strftime('%Y-%m-%d') + '_' + flock.house.name|replace(' ', '_') + '_W' + item.age_weeks|string + '.jpg') }}" target="_blank" class="btn btn-sm btn-outline-info py-0 mb-1 d-block" style="font-size: 0.75rem;" title="View Report">
                   <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin: 0;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"></path><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6"></path></svg>
               </a>
+              {% endif %}
+              <a href="{{ url_for('edit_daily_log', id=item.log.id) }}" class="btn btn-sm btn-outline-primary py-0 mb-1 d-block" style="font-size: 0.75rem;">Edit</a>
+              {% if is_admin %}
+              <form action="{{ url_for('delete_daily_log', id=item.log.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this daily log? Metrics will be removed.');">
+                  <button class="btn btn-sm btn-outline-danger py-0 d-block w-100" style="font-size: 0.75rem;">Del</button>
+              </form>
               {% endif %}
             </td>
           </tr>
@@ -694,7 +698,7 @@
         {% if not flock.start_of_lay_date %}
         <p class="mb-0 fw-bold text-danger mt-2">
             Missing 'Start of Lay Date' (First Egg).
-            Contact farm admin to set it to enable Production Weeks.
+            <a href="{{ url_for('edit_flock', id=flock.id) }}" class="alert-link">Click here to set it</a> to enable Production Weeks.
         </p>
         {% endif %}
     </div>

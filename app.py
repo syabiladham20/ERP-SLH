@@ -19,9 +19,8 @@ try:
 except ImportError:
     pass
 try:
-#     from gemini_engine import GeminiEngine
-    pass
-    # gemini_engine_instance = None
+    from gemini_engine import GeminiEngine
+    gemini_engine_instance = None
 except ImportError:
     pass
 import time
@@ -7117,72 +7116,72 @@ def get_gemini_response(user_prompt):
             app.logger.error(f"Gemini API Response: {e.response.text}")
         return f"AI Connection Error: {str(e)}"
 
-# @app.route('/api/ai_insight/<int:flock_id>', methods=['GET'])
-# @login_required
-# def ai_insight(flock_id):
-#     flock = Flock.query.get_or_404(flock_id)
-#
-#     # Needs to be available to both Farm and Executive
-#     if current_user.role not in ADMIN_FARM_MGMT_ROLES:
-#         flash('Unauthorized Access.', 'error')
-#         return redirect(url_for('dashboard'))
-#
-#     # Get the last 14 days of logs
-#     recent_logs = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date.desc()).limit(14).all()
-#     # Reverse to process chronologically
-#     recent_logs.reverse()
-#
-#     log_data = []
-#     for log in recent_logs:
-#         log_entry = {
-#             "Date": log.date.isoformat(),
-#             "Mortality (Male)": log.male_dead,
-#             "Mortality (Female)": log.female_dead,
-#             "Feed (Male)": log.male_feed,
-#             "Feed (Female)": log.female_feed,
-#             "Egg Production (Total)": log.total_eggs,
-#             "Egg Production (Hatching)": log.hatching_eggs,
-#             "Water Intake": log.water,
-#             "Clinical Notes": log.clinical_notes
-#         }
-#         # Clean null values
-#         log_entry = {k: v for k, v in log_entry.items() if v is not None}
-#         log_data.append(log_entry)
-#
-#     try:
-        # global gemini_engine_instance
-#         if gemini_engine_instance is None:
-#             # Initialize it dynamically if not created yet to capture env vars
-#             from gemini_engine import GeminiEngine
-            # gemini_engine_instance = GeminiEngine()
-#
-#         ai_response = gemini_engine_instance.analyze_flock_data(
-#             house_name=flock.house.name if flock.house else "Unknown House",
-#             log_data=log_data
-#         )
-#         return jsonify({"success": True, "insight": ai_response})
-#     except Exception as e:
-#         app.logger.error(f"AI Insight Route Error: {str(e)}")
-#         # Provide the branded error message
-#         return jsonify({"success": False, "error": "The AI Consultant is currently offline. Please try again in an hour."}), 503
-#
-# @app.route('/api/chat', methods=['POST'])
-# @login_required
-# def chat():
-#     user_input = request.json.get('message')
-#
-#     gemini_api_key = os.getenv('GEMINI_API_KEY')
-#
-#     if gemini_api_key:
-#         ai_reply = get_gemini_response(user_input)
-#     else:
-#         app.logger.warning("Attempted to use AI chat but GEMINI_API_KEY is missing.")
-#         return jsonify({"response": "The AI assistant is in maintenance mode. Please contact the Technical Director."})
-#
-#     return jsonify({"response": ai_reply})
-#
-# # --- Inventory Routes ---
-#
+@app.route('/api/ai_insight/<int:flock_id>', methods=['GET'])
+@login_required
+def ai_insight(flock_id):
+    flock = Flock.query.get_or_404(flock_id)
+
+    # Needs to be available to both Farm and Executive
+    if current_user.role not in ADMIN_FARM_MGMT_ROLES:
+        flash('Unauthorized Access.', 'error')
+        return redirect(url_for('dashboard'))
+
+    # Get the last 14 days of logs
+    recent_logs = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date.desc()).limit(14).all()
+    # Reverse to process chronologically
+    recent_logs.reverse()
+
+    log_data = []
+    for log in recent_logs:
+        log_entry = {
+            "Date": log.date.isoformat(),
+            "Mortality (Male)": log.male_dead,
+            "Mortality (Female)": log.female_dead,
+            "Feed (Male)": log.male_feed,
+            "Feed (Female)": log.female_feed,
+            "Egg Production (Total)": log.total_eggs,
+            "Egg Production (Hatching)": log.hatching_eggs,
+            "Water Intake": log.water,
+            "Clinical Notes": log.clinical_notes
+        }
+        # Clean null values
+        log_entry = {k: v for k, v in log_entry.items() if v is not None}
+        log_data.append(log_entry)
+
+    try:
+        global gemini_engine_instance
+        if gemini_engine_instance is None:
+            # Initialize it dynamically if not created yet to capture env vars
+            from gemini_engine import GeminiEngine
+            gemini_engine_instance = GeminiEngine()
+
+        ai_response = gemini_engine_instance.analyze_flock_data(
+            house_name=flock.house.name if flock.house else "Unknown House",
+            log_data=log_data
+        )
+        return jsonify({"success": True, "insight": ai_response})
+    except Exception as e:
+        app.logger.error(f"AI Insight Route Error: {str(e)}")
+        # Provide the branded error message
+        return jsonify({"success": False, "error": "The AI Consultant is currently offline. Please try again in an hour."}), 503
+
+@app.route('/api/chat', methods=['POST'])
+@login_required
+def chat():
+    user_input = request.json.get('message')
+
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+
+    if gemini_api_key:
+        ai_reply = get_gemini_response(user_input)
+    else:
+        app.logger.warning("Attempted to use AI chat but GEMINI_API_KEY is missing.")
+        return jsonify({"response": "The AI assistant is in maintenance mode. Please contact the Technical Director."})
+
+    return jsonify({"response": ai_reply})
+
+# --- Inventory Routes ---
+
 @app.route('/inventory')
 @login_required
 @dept_required('Farm')
