@@ -1,4 +1,6 @@
-from app import app, db, House, init_ui_elements, initialize_users
+from app import app, init_ui_elements, initialize_users
+from app.database import db
+from app.models.models import House
 
 def init_db():
     with app.app_context():
