@@ -119,7 +119,7 @@ def dept_required(required_dept):
     return decorator
 
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
 
 login_manager = LoginManager()
 login_manager.init_app(app)

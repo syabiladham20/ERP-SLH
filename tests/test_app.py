@@ -1,5 +1,18 @@
-import datetime
-from metrics import aggregate_weekly_metrics, aggregate_monthly_metrics
+import sys
+import os
+import importlib.util
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Load app.py dynamically since we can't 'import app' when 'app' is also a directory name in the same root
+spec = importlib.util.spec_from_file_location('main_app', os.path.join(os.path.dirname(__file__), '..', 'app.py'))
+main_app = importlib.util.module_from_spec(spec)
+sys.modules['main_app'] = main_app
+spec.loader.exec_module(main_app)
+
+import metrics
+aggregate_weekly_metrics = metrics.aggregate_weekly_metrics
+aggregate_monthly_metrics = metrics.aggregate_monthly_metrics
 
 def format_iso_data(all_enriched_data):
     weekly_agg = aggregate_weekly_metrics(all_enriched_data)
