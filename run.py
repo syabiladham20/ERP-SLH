@@ -1,38 +1,15 @@
-from flask import Flask
-from flask import render_template, request, redirect, url_for, flash, send_from_directory, session, g, jsonify
-from flask_login import current_user, LoginManager, login_user, logout_user, login_required, UserMixin
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from sqlalchemy.orm import joinedload
-from sqlalchemy import or_, and_, func, event
-from werkzeug.utils import secure_filename
-import pytz
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, date, timedelta
 import os
 import sys
-
-# Ensure local modules can be imported
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-try:
-    from privacy_filter import privacy_filter
-except ImportError:
-    pass
-try:
-    from gemini_engine import GeminiEngine
-    gemini_engine_instance = None
-except ImportError:
-    pass
-import time
-import requests
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import json
-import pandas as pd
-import calendar
-import re
-from functools import wraps
-from metrics import METRICS_REGISTRY, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
-from pywebpush import webpush, WebPushException
+
+from flask import Flask
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from sqlalchemy import event
+
+# Add local directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Auto-version based on current timestamp
 BUILD_TIME = datetime.now()
@@ -64,7 +41,6 @@ INITIAL_USERS = [
 ]
 
 # Pre-compile regex for natural sorting
-_ns_re = re.compile('([0-9]+)')
 
 
 
@@ -143,45 +119,6 @@ from app.models.models import (
 
 
 
-def get_flock_stock_history_bulk(flocks):
-    """
-    Returns a dictionary mapping flock_id -> {date -> live_stock (start of day)}.
-    Optimized for bulk processing.
-    """
-    if not flocks: return {}
-
-    flock_ids = [f.id for f in flocks]
-
-    # Fetch all logs in one query
-    logs = DailyLog.query.filter(DailyLog.flock_id.in_(flock_ids)).order_by(DailyLog.flock_id, DailyLog.date.asc()).all()
-
-    # Group logs by flock
-    logs_by_flock = {}
-    for log in logs:
-        if log.flock_id not in logs_by_flock:
-            logs_by_flock[log.flock_id] = []
-        logs_by_flock[log.flock_id].append(log)
-
-    result_map = {}
-
-    for f in flocks:
-        f_id = f.id
-        stock_map = {}
-        cum_loss = 0
-
-        # Get logs for this flock
-        f_logs = logs_by_flock.get(f_id, [])
-
-        # Calculate stock history
-        for log in f_logs:
-            stock_map[log.date] = max(0, (f.intake_male + f.intake_female) - cum_loss)
-            cum_loss += (log.mortality_male + log.mortality_female + log.culls_male + log.culls_female)
-
-        # Add "latest" entry
-        stock_map['latest'] = max(0, (f.intake_male + f.intake_female) - cum_loss)
-        result_map[f_id] = stock_map
-
-    return result_map
 
 
 # --- Initialization Helpers ---
