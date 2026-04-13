@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from config import Config
 from app.database import db
-from app.extensions import login_manager, migrate, csrf
+from app.extensions import login_manager, migrate, csrf, limiter
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -13,6 +13,7 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
+    limiter.init_app(app)
 
     # Ensure upload and instance folders exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -41,5 +42,19 @@ def create_app(config_class=Config):
     register_health_routes(app)
     register_admin_routes(app)
     register_api_routes(app)
+
+
+    import logging
+    from logging.handlers import RotatingFileHandler
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    file_handler = RotatingFileHandler('logs/erp_slh.log', maxBytes=102400, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('ERP SLH startup')
 
     return app

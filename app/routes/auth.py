@@ -1,3 +1,4 @@
+from app.extensions import limiter
 from flask import render_template, request, redirect, flash, url_for, session
 from flask_login import login_required, current_user, login_user, logout_user
 from app.database import db
@@ -57,6 +58,7 @@ def register_auth_routes(app):
         return response
 
     @app.route('/login', methods=['GET', 'POST'])
+    @limiter.limit("5 per minute")
     def login():
         if current_user.is_authenticated:
             return redirect(url_for('index'))
