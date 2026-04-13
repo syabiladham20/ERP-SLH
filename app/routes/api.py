@@ -1,3 +1,4 @@
+from app.handlers import APP_VERSION
 gemini_engine_instance = None
 from metrics import enrich_flock_data, calculate_metrics, aggregate_monthly_metrics, aggregate_weekly_metrics, METRICS_REGISTRY
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
@@ -17,8 +18,8 @@ from werkzeug.utils import secure_filename
 
 def register_api_routes(app):
 
-    from run import (
-        EMPTY_NOTE_VALUES, ADMIN_FARM_MGMT_ROLES, ALLOWED_EXPORT_ROLES, APP_VERSION,
+    from app.constants import (
+        EMPTY_NOTE_VALUES, ADMIN_FARM_MGMT_ROLES, ALLOWED_EXPORT_ROLES,
     )
     from app.utils import safe_commit, send_push_alert, log_user_activity, dept_required, round_to_whole, get_gemini_response
     from app.services.data_service import generate_spreadsheet_data, recalculate_flock_inventory
@@ -1253,7 +1254,7 @@ def register_api_routes(app):
 
     @app.route('/api/version')
     def get_version():
-        return jsonify({'version': APP_VERSION})
+        return jsonify({'version': ""})
 
     @app.route('/api/get_standard_bw')
     @login_required

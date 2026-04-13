@@ -10,7 +10,7 @@ import calendar
 
 def register_hatchery_routes(app):
 
-    from run import (
+    from app.constants import (
         FARM_HATCHERY_ADMIN_MGMT_DEPTS, FARM_HATCHERY_ADMIN_DEPTS,
     )
     from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key
