@@ -16,12 +16,19 @@ class Config:
     SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+
     PERMANENT_SESSION_LIFETIME = timedelta(days=31)
+
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
 
     UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SESSION_COOKIE_SECURE = False
 
 class ProductionConfig(Config):
     DEBUG = False
