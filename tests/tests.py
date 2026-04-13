@@ -11,12 +11,12 @@ main_app = importlib.util.module_from_spec(spec)
 sys.modules['main_app'] = main_app
 spec.loader.exec_module(main_app)
 
-app = main_app.app
-db = main_app.db
-House = main_app.House
-Flock = main_app.Flock
-DailyLog = main_app.DailyLog
-SamplingEvent = main_app.SamplingEvent
+app = main_app.create_app()
+from app.database import db
+from app.models.models import House
+from app.models.models import Flock
+from app.models.models import DailyLog
+from app.models.models import SamplingEvent
 
 class FarmTestCase(unittest.TestCase):
     def setUp(self):
@@ -39,7 +39,7 @@ class FarmTestCase(unittest.TestCase):
 
 
         # Login as Farm Admin for tests
-        User = main_app.User
+        from app.models.models import User
         u = User(username='admin_test', dept='Farm', role='Admin')
         u.set_password('pass')
         db.session.add(u)

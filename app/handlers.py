@@ -45,6 +45,21 @@ def register_template_filters(app):
             return value.strftime('%d-%b-%Y')
         return value
 
+
+import os
+from datetime import datetime
+
+BUILD_TIME_FILE = os.path.join(os.path.dirname(__file__), '..', '.build_time')
+if os.path.exists(BUILD_TIME_FILE):
+    with open(BUILD_TIME_FILE, 'r') as f:
+        ts = float(f.read().strip())
+        BUILD_TIME = datetime.fromtimestamp(ts)
+else:
+    BUILD_TIME = datetime.now()
+
+APP_VERSION = BUILD_TIME.strftime("%Y%m%d%H%M")
+DISPLAY_DATE = BUILD_TIME.strftime("%B %d, %Y")
+
 def register_context_processors(app):
     @app.context_processor
     def inject_metadata():
@@ -137,16 +152,3 @@ def register_request_hooks(app):
                 session['user_role'] = admin.role
                 session['is_admin'] = (admin.role == 'Admin')
 
-# Version config
-import os
-from datetime import datetime
-BUILD_TIME_FILE = os.path.join(os.path.dirname(__file__), '..', '.build_time')
-if os.path.exists(BUILD_TIME_FILE):
-    with open(BUILD_TIME_FILE, 'r') as f:
-        ts = float(f.read().strip())
-        BUILD_TIME = datetime.fromtimestamp(ts)
-else:
-    BUILD_TIME = datetime.now()
-
-APP_VERSION = BUILD_TIME.strftime("%Y%m%d%H%M")
-DISPLAY_DATE = BUILD_TIME.strftime("%B %d, %Y")

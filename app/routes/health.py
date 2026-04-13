@@ -16,7 +16,7 @@ import pytz
 
 def register_health_routes(app):
 
-    from run import (
+    from app.constants import (
         EMPTY_NOTE_VALUES,
     )
     from app.utils import safe_commit, send_push_alert, dept_required, natural_sort_key, round_to_whole

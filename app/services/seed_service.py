@@ -1,3 +1,4 @@
+from app.constants import INITIAL_USERS
 import os
 import pandas as pd
 from datetime import date, timedelta

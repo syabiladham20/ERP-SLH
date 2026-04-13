@@ -16,7 +16,7 @@ import re
 
 def register_production_routes(app):
 
-    from run import (
+    from app.constants import (
         REARING_PHASES, INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL,
     )
     from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, round_to_whole

@@ -1,3 +1,4 @@
+from app.handlers import APP_VERSION
 from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
 from flask import render_template, request, redirect, flash, url_for, session, send_from_directory
 from flask_login import login_required, current_user
@@ -9,8 +10,8 @@ from datetime import datetime, date, timedelta
 
 def register_main_routes(app):
 
-    from run import (
-        REARING_PHASES, APP_VERSION,
+    from app.constants import (
+        REARING_PHASES,
     )
     from app.utils import dept_required, natural_sort_key
 
@@ -173,7 +174,7 @@ def register_main_routes(app):
     @app.route('/sw.js')
     def serve_sw():
         # Return as a Jinja template to inject the dynamic CACHE_NAME version
-        response = app.make_response(render_template('sw.js', version=APP_VERSION))
+        response = app.make_response(render_template('sw.js', version=""))
         response.headers['Content-Type'] = 'application/javascript'
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         return response

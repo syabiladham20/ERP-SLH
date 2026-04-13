@@ -1,0 +1,44 @@
+import os
+from flask import Flask
+from config import Config
+from app.database import db
+from app.extensions import login_manager, migrate
+
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    # Initialize extensions
+    db.init_app(app)
+    login_manager.init_app(app)
+    migrate.init_app(app, db)
+
+    # Ensure upload and instance folders exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(os.path.join(app.root_path, '..', 'instance'), exist_ok=True)
+
+    # Register handlers
+    from app.handlers import register_error_handlers, register_template_filters, register_context_processors, register_request_hooks
+    register_error_handlers(app)
+    register_template_filters(app)
+    register_context_processors(app)
+    register_request_hooks(app)
+
+    # Register Routes
+    from app.routes.auth import register_auth_routes
+    from app.routes.main import register_main_routes
+    from app.routes.production import register_production_routes
+    from app.routes.hatchery import register_hatchery_routes
+    from app.routes.health import register_health_routes
+    from app.routes.admin import register_admin_routes
+    from app.routes.api import register_api_routes
+
+    register_auth_routes(app)
+    register_main_routes(app)
+    register_production_routes(app)
+    register_hatchery_routes(app)
+    register_health_routes(app)
+    register_admin_routes(app)
+    register_api_routes(app)
+
+    return app
