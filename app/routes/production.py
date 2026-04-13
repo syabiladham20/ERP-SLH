@@ -7,6 +7,7 @@ from app.models.models import *
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_, and_
 import os
+import json
 from datetime import datetime, date, timedelta
 import calendar
 from werkzeug.utils import secure_filename
@@ -16,14 +17,11 @@ import re
 def register_production_routes(app):
 
     from run import (
-        initialize_sampling_schedule, initialize_vaccine_schedule, safe_commit,
-        log_user_activity, dept_required, natural_sort_key, REARING_PHASES,
-        INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL, round_to_whole,
-        get_projected_start_of_lay, get_weekly_data_aggregated,
-        get_hatchery_analytics, calculate_flock_summary,
-        generate_spreadsheet_data, recalculate_flock_inventory,
-        update_log_from_request, check_daily_log_completion,
+        REARING_PHASES, INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL,
     )
+    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, round_to_whole
+    from app.services.data_service import get_projected_start_of_lay, get_weekly_data_aggregated, get_hatchery_analytics, calculate_flock_summary, generate_spreadsheet_data, recalculate_flock_inventory, update_log_from_request, check_daily_log_completion
+    from app.services.seed_service import initialize_sampling_schedule, initialize_vaccine_schedule
 
     @app.route('/executive/flock/<int:id>')
     @login_required

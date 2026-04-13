@@ -8,9 +8,7 @@ from werkzeug.security import check_password_hash
 
 def register_auth_routes(app):
 
-    from run import (
-        safe_commit,
-    )
+    from app.utils import safe_commit
 
     @app.route('/change_password', methods=['GET', 'POST'])
     @login_required

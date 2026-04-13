@@ -18,11 +18,10 @@ from werkzeug.utils import secure_filename
 def register_api_routes(app):
 
     from run import (
-        safe_commit, send_push_alert, log_user_activity, dept_required,
-        EMPTY_NOTE_VALUES, ADMIN_FARM_MGMT_ROLES, ALLOWED_EXPORT_ROLES,
-        round_to_whole, APP_VERSION, generate_spreadsheet_data,
-        recalculate_flock_inventory, get_gemini_response,
+        EMPTY_NOTE_VALUES, ADMIN_FARM_MGMT_ROLES, ALLOWED_EXPORT_ROLES, APP_VERSION,
     )
+    from app.utils import safe_commit, send_push_alert, log_user_activity, dept_required, round_to_whole, get_gemini_response
+    from app.services.data_service import generate_spreadsheet_data, recalculate_flock_inventory
 
     @app.route('/api/offline_snapshot')
     @login_required

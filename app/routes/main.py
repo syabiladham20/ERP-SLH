@@ -10,8 +10,9 @@ from datetime import datetime, date, timedelta
 def register_main_routes(app):
 
     from run import (
-        dept_required, natural_sort_key, REARING_PHASES, APP_VERSION,
+        REARING_PHASES, APP_VERSION,
     )
+    from app.utils import dept_required, natural_sort_key
 
     @app.route('/')
     @login_required
