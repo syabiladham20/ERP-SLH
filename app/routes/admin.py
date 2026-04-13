@@ -11,10 +11,9 @@ import json
 
 def register_admin_routes(app):
 
-    from run import (
-        safe_commit, send_push_alert, dept_required, round_to_whole,
-        process_import, seed_standards_from_file, seed_arbor_acres_standards,
-    )
+    from app.utils import safe_commit, send_push_alert, dept_required, round_to_whole
+    from app.services.data_service import process_import
+    from app.services.seed_service import seed_standards_from_file, seed_arbor_acres_standards
 
     @app.route('/import', methods=['GET', 'POST'])
     @login_required
