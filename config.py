@@ -23,6 +23,9 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 
+    CACHE_TYPE = 'SimpleCache'
+    CACHE_DEFAULT_TIMEOUT = 300
+
 
     UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
 
