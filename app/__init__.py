@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from config import Config
 from app.database import db
-from app.extensions import login_manager, migrate, csrf, limiter
+from app.extensions import login_manager, migrate, csrf, limiter, cache
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -14,6 +14,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     csrf.init_app(app)
     limiter.init_app(app)
+    cache.init_app(app)
 
     # Ensure upload and instance folders exist
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

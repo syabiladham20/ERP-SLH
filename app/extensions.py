@@ -1,3 +1,4 @@
+from flask_caching import Cache
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
@@ -12,3 +13,5 @@ login_manager.login_message_category = "info"
 migrate = Migrate()
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
+
+cache = Cache()
