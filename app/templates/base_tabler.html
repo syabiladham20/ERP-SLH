@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>SLH-OP Dashboard</title>
@@ -190,6 +191,47 @@
         }
     </style>
     {% block extra_head %}{% endblock %}
+
+    <script>
+        const originalFetch = window.fetch;
+        window.fetch = async function() {
+            let [resource, config] = arguments;
+            if(config === undefined) {
+                config = {};
+            }
+            if(config.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method.toUpperCase())) {
+                let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                let csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+                if(csrfToken) {
+                    if(!config.headers) {
+                        config.headers = {};
+                    }
+                    if(config.headers instanceof Headers) {
+                        config.headers.append('X-CSRFToken', csrfToken);
+                    } else {
+                        config.headers['X-CSRFToken'] = csrfToken;
+                    }
+                }
+            }
+            return originalFetch(resource, config);
+        };
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+
   </head>
   <body>
     <div id="loading-overlay" class="loader-overlay" style="display:none;">
@@ -567,7 +609,22 @@
     </div>
 
     <!-- Tabler Core JS & Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}">
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
     <script>
         function showToast(message, type = "success") {
           const container = document.getElementById("dynamic-toast-container");
@@ -735,6 +792,21 @@
                 overlay.style.display = 'none';
             });
         });
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
     <script>
       if ('serviceWorker' in navigator) {
@@ -744,8 +816,38 @@
             .catch(err => console.log('Service Worker Registration Failed', err));
         });
       }
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
-    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}">
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         // Custom Pull-to-Refresh for iOS
@@ -955,6 +1057,21 @@
             });
         }
       });
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
     {% block extra_scripts %}{% endblock %}
 
@@ -969,5 +1086,20 @@
           document.body.appendChild(modal);
         });
       });
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
 </body></html>
