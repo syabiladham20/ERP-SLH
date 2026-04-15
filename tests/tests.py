@@ -43,10 +43,11 @@ class FarmTestCase(unittest.TestCase):
 
         # Login as Farm Admin for tests
         from app.models.models import User
-        u = User(username='admin_test', dept='Farm', role='Admin')
-        u.set_password('pass')
-        db.session.add(u)
-        db.session.commit()
+        if not User.query.filter_by(username='admin_test').first():
+            u = User(username='admin_test', dept='Farm', role='Admin')
+            u.set_password('pass')
+            db.session.add(u)
+            db.session.commit()
         self.app.post('/login', data={'username': 'admin_test', 'password': 'pass'})
 
 
