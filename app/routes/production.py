@@ -1,18 +1,14 @@
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
-from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
-from flask import render_template, request, redirect, flash, url_for, session, jsonify
+from metrics import  enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics
+from flask import render_template, request, redirect, flash, url_for,  jsonify
 from flask_login import login_required, current_user
 from app.database import db
 from app.models.models import *
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func
 import os
 import json
 from datetime import datetime, date, timedelta
-import calendar
-from werkzeug.utils import secure_filename
-import pandas as pd
-import re
 
 def register_production_routes(app):
 
@@ -1740,7 +1736,6 @@ def register_production_routes(app):
         weekly_data = []
         for ws in weekly_stats:
             # Notes formatting
-            note_str = " | ".join(ws['notes'])
 
             w_item = {
                 'week': ws['week'],
@@ -1907,8 +1902,6 @@ def register_production_routes(app):
 
         # 4. Chart Data (Weekly)
         # Calculate Cumulative Mortality for Weekly points manually as metrics.py aggregates per week (independent sums)
-        cum_mort_m_agg = 0
-        cum_mort_f_agg = 0
         start_m = flock.intake_male or 1
         start_f = flock.intake_female or 1
 

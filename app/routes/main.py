@@ -1,12 +1,10 @@
-from app.handlers import APP_VERSION
-from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
-from flask import render_template, request, redirect, flash, url_for, session, send_from_directory
-from flask_login import login_required, current_user
-from app.database import db
+from metrics import  enrich_flock_data
+from flask import render_template,      send_from_directory
+from flask_login import login_required
+from datetime import datetime, date, timedelta
 from app.models.models import *
 from sqlalchemy.orm import joinedload
-import os
-from datetime import datetime, date, timedelta
+
 
 def register_main_routes(app):
 

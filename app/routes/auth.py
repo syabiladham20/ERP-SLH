@@ -1,11 +1,7 @@
 from app.extensions import limiter
 from flask import render_template, request, redirect, flash, url_for, session
 from flask_login import login_required, current_user, login_user, logout_user
-from app.database import db
 from app.models.models import *
-import os
-from datetime import datetime
-from werkzeug.security import check_password_hash
 
 def register_auth_routes(app):
 
