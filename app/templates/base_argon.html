@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>SLH-OP Dashboard</title>
@@ -347,5 +348,21 @@
         });
     </script>
     {% block extra_scripts %}{% endblock %}
-  </body>
+  <script>
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
 </html>

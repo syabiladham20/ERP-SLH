@@ -1,3 +1,5 @@
+from flask_wtf.csrf import CSRFError
+from flask import jsonify
 import os
 import json
 from datetime import datetime, date
@@ -14,6 +16,13 @@ def register_error_handlers(app):
         import traceback
         error_details = traceback.format_exc() if app.debug else "An unexpected error occurred."
         return render_template('errors/500.html', error=error_details), 500
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        if request.accept_mimetypes.accept_json or request.is_json or request.path.startswith('/api/'):
+            return jsonify({'error': 'CSRF token missing or invalid', 'message': e.description}), 400
+        return render_template('errors/400.html', error=e.description), 400
+
     @app.errorhandler(404)
     def not_found_error(error):
         return render_template('errors/404.html'), 404
