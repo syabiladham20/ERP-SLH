@@ -27,7 +27,11 @@ async function syncSnapshot(userId) {
     if (!navigator.onLine) return; // Only sync when online
 
     try {
-        const response = await fetch('/api/offline_snapshot');
+        const url = (window.SLHConfig && window.SLHConfig.endpoints && window.SLHConfig.endpoints.offlineSnapshot)
+            ? window.SLHConfig.endpoints.offlineSnapshot
+            : '/api/offline_snapshot';
+
+        const response = await fetch(url);
         if (!response.ok) return;
 
         const data = await response.json();

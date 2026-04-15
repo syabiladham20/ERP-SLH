@@ -16,7 +16,7 @@ def init_db():
             for name in houses:
                 db.session.add(House(name=name))
                 print(f"Added House: {name}")
-        
+       
         init_ui_elements(commit=False)
 
         db.session.commit()
