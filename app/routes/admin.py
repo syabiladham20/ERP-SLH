@@ -557,8 +557,12 @@ def register_admin_routes(app):
 
         unique_user_ids = list(set([sub.user_id for sub in subscriptions]))
 
+        # Optimize N+1 Query: Bulk fetch instead of individual gets
+        users = User.query.filter(User.id.in_(unique_user_ids)).all()
+        user_dict = {u.id: u for u in users}
+
         for uid in unique_user_ids:
-            user = User.query.get(uid)
+            user = user_dict.get(uid)
             if user:
                 # send_push_alert returns boolean indicating if at least one sub succeeded
                 success = send_push_alert(uid, title, body, transient=True)
