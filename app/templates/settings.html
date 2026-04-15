@@ -216,7 +216,7 @@
                             applicationServerKey: convertedVapidKey
                         });
 
-                        await fetch('/api/subscribe', {
+                        await fetch('{{ url_for("subscribe") }}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ subscription: newSubscription })
@@ -261,7 +261,7 @@
                     });
 
                     // Send to backend
-                    const response = await fetch('/api/subscribe', {
+                    const response = await fetch('{{ url_for("subscribe") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -281,7 +281,7 @@
                 } else {
                     const existingSubscription = await registration.pushManager.getSubscription();
                     if (existingSubscription) {
-                        await fetch('/api/unsubscribe', {
+                        await fetch('{{ url_for("unsubscribe") }}', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ subscription: existingSubscription })
@@ -323,7 +323,7 @@
                 const existingSubscription = await registration.pushManager.getSubscription();
 
                 if (existingSubscription) {
-                    await fetch('/api/unsubscribe', {
+                    await fetch('{{ url_for("unsubscribe") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subscription: existingSubscription })
@@ -344,7 +344,7 @@
                         applicationServerKey: convertedVapidKey
                     });
 
-                    const response = await fetch('/api/subscribe', {
+                    const response = await fetch('{{ url_for("subscribe") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ subscription: newSubscription })
@@ -380,7 +380,7 @@
              testBtn.disabled = true;
 
              try {
-                 const response = await fetch('/api/test_notification', {
+                 const response = await fetch('{{ url_for("test_notification") }}', {
                      method: 'POST'
                  });
                  if (response.ok) {

@@ -2192,7 +2192,7 @@ const floatingNotePlugin = {
                         content: noteText.trim()
                     };
 
-                    fetch('/api/floating_notes', {
+                    fetch('{{ url_for("add_floating_note") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -2251,7 +2251,7 @@ function updateChartAnnotations(chart) {
             click: function(ctx) {
                 if (activeAddNoteChart) return;
                 if (confirm('Delete this note: "' + note.content + '"?')) {
-                    fetch('/api/floating_notes/' + note.id, { method: 'DELETE' })
+                    fetch('{{ url_for("delete_floating_note", note_id=0) }}'.replace('0', note.id), { method: 'DELETE' })
                     .then(r => r.json())
                     .then(res => {
                         if (res.success) {
@@ -2271,7 +2271,7 @@ function updateChartAnnotations(chart) {
 }
 
 function fetchAndApplyFloatingNotes() {
-    fetch('/api/floating_notes/{{ flock.id }}')
+    fetch('{{ url_for("get_floating_notes", flock_id=flock.id) }}')
     .then(r => {
         if (!r.ok || r.redirected) {
             console.error("Failed to fetch floating notes");

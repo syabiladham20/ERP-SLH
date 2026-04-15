@@ -1,13 +1,18 @@
+from app.handlers import APP_VERSION
 gemini_engine_instance = None
 from metrics import enrich_flock_data, calculate_metrics, aggregate_monthly_metrics, aggregate_weekly_metrics, METRICS_REGISTRY
-from flask import  request, redirect, flash, url_for,  jsonify
+from analytics import analyze_health_events, calculate_feed_cleanup_duration
+from flask import render_template, request, redirect, flash, url_for, session, jsonify, Response
 from flask_login import login_required, current_user
 from app.database import db
 from app.models.models import *
 from sqlalchemy.orm import joinedload
+from sqlalchemy import func, or_, and_
 import os
-from datetime import datetime,  timedelta
+from datetime import datetime, date, timedelta
 import json
+import requests
+from pywebpush import webpush, WebPushException
 import base64
 from werkzeug.utils import secure_filename
 
@@ -279,6 +284,7 @@ def register_api_routes(app):
 
         for w in weekly_stats[-10:]: # Get up to the last 10 weeks
             week_num = w.get('week', 0)
+            w_log = w.get('log')
             w_item = {
                 'week': week_num,
                 'bw_male': w.get('body_weight_male', 0.0) or None,
@@ -858,6 +864,11 @@ def register_api_routes(app):
                 start_m = log.males_at_start or 0
                 start_f = log.females_at_start or 0
 
+                multiplier = 1.0
+                if log.feed_program == 'Skip-a-day':
+                    multiplier = 2.0
+                elif log.feed_program == '2/1':
+                    multiplier = 1.5
 
                 # Handle Feed Code mapping for Male
                 fc_m_code = row.get('feed_code_male')
@@ -1179,6 +1190,8 @@ def register_api_routes(app):
                 # Avg g/bird = (Total Kg * 1000) / (Avg Stock * Days)
 
                 days_count = (a['date_end'] - a['date_start']).days + 1
+                avg_stock_m = a['stock_male_start'] # Approx
+                avg_stock_f = a['stock_female_start']
 
                 # This is hard because metrics.py didn't separate feed male/female kg in aggregation.
                 # It only has 'feed_total_kg'.

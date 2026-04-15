@@ -1,10 +1,13 @@
 from app.constants import METRIC_LABELS
 import os
+import csv
+import io
 import json
 import math
+import warnings
 import pandas as pd
 from datetime import datetime, date, timedelta
-from sqlalchemy import func,  and_
+from sqlalchemy import func, case, and_, or_
 from sqlalchemy.orm import joinedload
 from flask import current_app as app, flash, url_for
 from flask_login import current_user
@@ -12,8 +15,8 @@ from flask_login import current_user
 from werkzeug.utils import secure_filename
 
 from app.database import db
-from app.models.models import Flock, DailyLog, Standard, Hatchability, ClinicalNote,  User, House, ImportedWeeklyBenchmark, PartitionWeight, NotificationRule, GlobalStandard, Hatchability, DailyLogPhoto
-from app.utils import round_to_whole, safe_commit,  log_user_activity, save_note_photos, send_push_alert
+from app.models.models import Flock, DailyLog, Standard, Hatchability, ClinicalNote, UserActivityLog, User, House, ImportedWeeklyBenchmark, PartitionWeight, NotificationRule, GlobalStandard, Hatchability, DailyLogPhoto
+from app.utils import round_to_whole, safe_commit, natural_sort_key, log_user_activity, save_note_photos, send_push_alert
 from metrics import enrich_flock_data
 
 def get_flock_stock_history(flock_id):
@@ -909,6 +912,11 @@ def process_import(file, commit=True, preview=False):
                 try: return int(float(val))
                 except (ValueError, TypeError): return 0
 
+            def get_str(r, idx):
+                if idx is None or idx >= len(r): return None
+                val = r.iloc[idx]
+                return str(val) if pd.notna(val) else None
+
             def get_time(r, idx):
                 if idx is None or idx >= len(r): return None
                 val = r.iloc[idx]
@@ -1145,6 +1153,12 @@ def recalculate_flock_inventory(flock_id):
 
         prev_log = log
 
+        # Feed Multiplier Logic
+        multiplier = 1.0
+        if log.feed_program == 'Skip-a-day':
+            multiplier = 2.0
+        elif log.feed_program == '2/1':
+            multiplier = 1.5
 
 
         # Update stock for the next day
@@ -1367,6 +1381,12 @@ def update_log_from_request(log, req):
             if y_fed and d2_fed:
                 raise ValueError("Invalid Entry: The last 2 days were ON-days. Today must be a Fasting Day (0g) for 2/1 program.")
 
+    # Feed Multiplier Logic
+    multiplier = 1.0
+    if log.feed_program == 'Skip-a-day':
+        multiplier = 2.0
+    elif log.feed_program == '2/1':
+        multiplier = 1.5
 
     # Calculate Total Kg
     # Formula: (g/bird * multiplier * stock) / 1000
@@ -1898,6 +1918,405 @@ def calculate_grading_stats(weights):
         'highest_weight': highest,
         'grading_bins': json.dumps(bins)
     }
+
+def get_iso_aggregated_data_sql(flock_ids, target_year):
+    """
+    Aggregates data by ISO week using raw SQL for performance.
+    Handles stock calculation (Intake - Cumulative Loss) dynamically.
+    Returns:
+    {
+        'weekly': [...],
+        'monthly': [...],
+        'yearly': [...]
+    }
+    """
+    if not flock_ids:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
+
+    ids_tuple = tuple(flock_ids)
+    if len(ids_tuple) == 1:
+        ids_tuple = f"({ids_tuple[0]})"
+    else:
+        ids_tuple = str(ids_tuple)
+
+    # Common CTE for calculating daily metrics
+    # Determine the database dialect
+    dialect = db.engine.name
+
+    if dialect == 'sqlite':
+        week_fmt = "strftime('%Y-%W', l.date)"
+        month_fmt = "strftime('%Y-%m', l.date)"
+        year_fmt = "strftime('%Y', l.date)"
+    else:  # postgresql
+        week_fmt = "to_char(l.date, 'IYYY-IW')"
+        month_fmt = "to_char(l.date, 'YYYY-MM')"
+        year_fmt = "to_char(l.date, 'YYYY')"
+
+    cte_sql = f"""
+    WITH DailyStock AS (
+        SELECT
+            l.date,
+            l.flock_id,
+            {week_fmt} as iso_week,
+            {month_fmt} as iso_month,
+            {year_fmt} as iso_year,
+            l.mortality_male + l.mortality_female + l.culls_male + l.culls_female as daily_loss,
+            l.mortality_female as mort_f,
+            l.eggs_collected,
+            0 as total_feed,
+            f.intake_female + f.intake_male as intake_total,
+            f.intake_female,
+            f.start_of_lay_date,
+            SUM(l.mortality_male + l.mortality_female + l.culls_male + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss,
+            SUM(l.mortality_female + l.culls_female)
+                OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss_f
+        FROM daily_log l
+        JOIN flock f ON l.flock_id = f.id
+        WHERE l.flock_id IN {ids_tuple}
+    ),
+    EnrichedDaily AS (
+        SELECT
+            *,
+            (intake_female - cum_loss_f) as stock_f_end,
+            -- Stock Start of Day is End of Prev Day (approx by adding back daily loss? No, simpler: Intake - (Cum - Daily))
+            (intake_female - (cum_loss_f - (mort_f + 0))) as stock_f_start
+        FROM DailyStock
+    )
+    """
+
+    results = {}
+
+    # Define aggregation queries with UNION ALL to reduce db calls from 6 to 2
+    # Filter by Year AND Start of Lay in the Final Step to allow cum_loss to be accurate
+    combined_cte_sql = f"""
+        {cte_sql},
+        WeeklyLogs AS (
+            SELECT
+                'weekly' as type,
+                iso_week as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_week
+        ),
+        MonthlyLogs AS (
+            SELECT
+                'monthly' as type,
+                iso_month as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_month
+        ),
+        YearlyLogs AS (
+            SELECT
+                'yearly' as type,
+                iso_year as period,
+                SUM(eggs_collected) as total_eggs,
+                SUM(mort_f) as total_mort_f,
+                SUM(stock_f_start) as total_hen_days,
+                COUNT(DISTINCT date) as days_in_period
+            FROM EnrichedDaily
+            WHERE iso_year = :year
+              AND start_of_lay_date IS NOT NULL
+              AND date >= start_of_lay_date
+            GROUP BY iso_year
+        )
+        SELECT * FROM WeeklyLogs
+        UNION ALL
+        SELECT * FROM MonthlyLogs
+        UNION ALL
+        SELECT * FROM YearlyLogs
+    """
+
+    # Define Hatchery Queries based on dialect
+    if dialect == 'sqlite':
+        hatch_week_fmt = "strftime('%Y-%W', hatching_date)"
+        hatch_month_fmt = "strftime('%Y-%m', hatching_date)"
+        hatch_year_fmt = "strftime('%Y', hatching_date)"
+    else: # postgresql
+        hatch_week_fmt = "to_char(hatching_date, 'IYYY-IW')"
+        hatch_month_fmt = "to_char(hatching_date, 'YYYY-MM')"
+        hatch_year_fmt = "to_char(hatching_date, 'YYYY')"
+
+    combined_hatch_sql = f"""
+        WITH WeeklyHatch AS (
+            SELECT
+                'weekly' as type,
+                {hatch_week_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        ),
+        MonthlyHatch AS (
+            SELECT
+                'monthly' as type,
+                {hatch_month_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        ),
+        YearlyHatch AS (
+            SELECT
+                'yearly' as type,
+                {hatch_year_fmt} as period,
+                SUM(hatched_chicks) as hatched,
+                SUM(egg_set) as egg_set
+            FROM hatchability
+            WHERE flock_id IN {ids_tuple} AND {hatch_year_fmt} = :year
+            GROUP BY period
+        )
+        SELECT * FROM WeeklyHatch
+        UNION ALL
+        SELECT * FROM MonthlyHatch
+        UNION ALL
+        SELECT * FROM YearlyHatch
+    """
+
+    # Fetch all data at once to avoid multiple db calls
+    all_logs = db.session.execute(text(combined_cte_sql), {'year': str(target_year)}).fetchall()
+    all_hatch = db.session.execute(text(combined_hatch_sql), {'year': str(target_year)}).fetchall()
+
+    # Process results into typed dictionaries
+    hatch_map = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    for row in all_hatch:
+        # Expected tuple: (type, period, hatched, egg_set)
+        type_key = row[0]
+        period = row[1]
+        hatched = row[2]
+        egg_set = row[3]
+        if period:
+            hatch_map[type_key][period] = (hatched, egg_set)
+
+    logs_by_type = {'weekly': [], 'monthly': [], 'yearly': []}
+    for row in all_logs:
+        # Expected tuple: (type, period, total_eggs, total_mort_f, total_hen_days, days_in_period)
+        type_key = row[0]
+        period = row[1]
+        if period:
+            logs_by_type[type_key].append({
+                'period': period,
+                'total_eggs': row[2] or 0,
+                'total_mort_f': row[3] or 0,
+                'total_hen_days': row[4] or 0,
+                'days_in_period': row[5] or 0
+            })
+
+    for key in ['weekly', 'monthly', 'yearly']:
+        # The frontend expects periods to be descending ordered, which is not guaranteed by UNION ALL
+        sorted_logs = sorted(logs_by_type[key], key=lambda x: x['period'], reverse=True)
+
+        processed_list = []
+        for log in sorted_logs:
+            period = log['period']
+            total_eggs = log['total_eggs']
+            total_mort = log['total_mort_f']
+            total_hen_days = log['total_hen_days']
+            days_in_period = log['days_in_period']
+
+            # Hatchery
+            h_data = hatch_map[key].get(period)
+            hatched = h_data[0] if h_data else 0
+            set_cnt = h_data[1] if h_data else 0
+
+            # Avg Prod Females = Total Hen Days / Days in Period
+            # This represents the average number of birds present on any given day in the period
+            avg_stock = (total_hen_days / days_in_period) if days_in_period > 0 else 0
+
+            # Metrics
+            mort_pct = (total_mort / avg_stock * 100) if avg_stock > 0 else 0
+
+            # Egg Prod % = Total Eggs / Total Hen Days * 100
+            egg_prod_pct = (total_eggs / total_hen_days * 100) if total_hen_days > 0 else 0
+
+            hatch_pct = (hatched / set_cnt * 100) if set_cnt > 0 else 0
+
+            processed_list.append({
+                'period': period,
+                'avg_prod_females': int(avg_stock), # Renamed for clarity in template usage, but legacy template uses avg_female_stock
+                'avg_female_stock': int(avg_stock), # Legacy support
+                'total_eggs': total_eggs,
+                'total_chicks': hatched,
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'overall_egg_prod_pct': round(egg_prod_pct, 2), # Explicit Key
+                'egg_production_pct': round(egg_prod_pct, 2) # Legacy Key
+            })
+
+        results[key] = processed_list
+
+    return results
+
+def get_iso_aggregated_data(flocks, target_year=None):
+    """
+    Aggregates data across all given flocks into Weekly, Monthly, and Yearly ISO buckets.
+    Returns:
+    {
+        'weekly': [{period, avg_female_stock, total_eggs, total_chicks, mortality_pct, hatchability_pct, egg_prod_pct}, ...],
+        'monthly': [...],
+        'yearly': [...]
+    }
+    """
+    if not flocks:
+        return {'weekly': [], 'monthly': [], 'yearly': []}
+
+    global_daily = {}
+
+    # Default to current year if None, or handle differently?
+    # Requirement: Filter by year.
+    filter_year = target_year if target_year else date.today().year
+
+    # Optimization: Bulk fetch Logs and Hatchability to avoid N+1 queries
+    flock_ids = [f.id for f in flocks]
+
+    # 1. Bulk Fetch Hatchability
+    all_hatch_records = Hatchability.query.filter(Hatchability.flock_id.in_(flock_ids)).all()
+    hatch_by_flock = {}
+    for h in all_hatch_records:
+        if h.flock_id not in hatch_by_flock:
+            hatch_by_flock[h.flock_id] = []
+        hatch_by_flock[h.flock_id].append(h)
+
+    # 2. Bulk Fetch Logs (Optimized to use existing relationships if available)
+    logs_by_flock = {}
+
+    # Check if flocks already have logs loaded (e.g. from joinedload)
+    # If the first flock has logs loaded, assume all do to avoid N+1 checks or partial loads
+    has_eager_logs = len(flocks) > 0 and 'logs' in db.inspect(flocks[0]).attrs and db.inspect(flocks[0]).attrs.logs.history.has_changes() is False
+
+    # Actually, we can just check if f.logs is populated without triggering lazy load?
+    # But accessing f.logs triggers it if not loaded.
+    # We can rely on the caller ensuring efficient loading.
+
+    # Logic: If we rely on passed flocks having logs, we skip the query.
+    # But get_iso_aggregated_data is a utility.
+    # Let's check if we should query.
+
+    # For now, let's optimize specifically for when we know we have logs (from executive_dashboard)
+    # We can iterate and see.
+
+    # Safe approach: Collect logs from flocks. If empty, query DB?
+    # But querying DB is what we want to avoid if they ARE loaded.
+
+    # Let's assume for this specific performance task that we want to avoid the redundant query.
+    # We will build logs_by_flock from flock.logs.
+
+    for f in flocks:
+        # We access f.logs. If it was eager loaded, good. If not, it triggers a query (N+1).
+        # But since we optimized executive_dashboard to use joinedload, this is fast.
+        logs_by_flock[f.id] = f.logs
+
+    for flock in flocks:
+        logs = logs_by_flock.get(flock.id, [])
+        hatch_records = hatch_by_flock.get(flock.id, [])
+
+        daily_stats = enrich_flock_data(flock, logs, hatch_records)
+
+        for d in daily_stats:
+            d_date = d['date']
+            # Strict Year Filter
+            if d_date.year != filter_year:
+                continue
+
+            if d_date not in global_daily:
+                global_daily[d_date] = {
+                    'stock_f': 0, 'eggs': 0, 'mort_f': 0,
+                    'chicks': 0, 'egg_set': 0,
+                    'active_flocks': 0
+                }
+
+            # Check for Production Phase Logic
+            is_prod = False
+            if flock.production_start_date and d_date >= flock.production_start_date:
+                is_prod = True
+            elif flock.phase == 'Production':
+                # Fallback: if no date set, assume phase is valid for all fetched logs?
+                # No, historical logs might be rearing.
+                # If eggs collected > 0, assume prod.
+                if d['eggs_collected'] > 0: is_prod = True
+
+            # Stock summation (Only if in production)
+            if is_prod:
+                global_daily[d_date]['stock_f'] += d['stock_female_start']
+                global_daily[d_date]['mort_f'] += d['mortality_female']
+
+            global_daily[d_date]['eggs'] += d['eggs_collected']
+
+            if d.get('hatched_chicks'):
+                global_daily[d_date]['chicks'] += d['hatched_chicks']
+            if d.get('egg_set'):
+                global_daily[d_date]['egg_set'] += d['egg_set']
+
+            global_daily[d_date]['active_flocks'] += 1
+
+    buckets = {'weekly': {}, 'monthly': {}, 'yearly': {}}
+    sorted_dates = sorted(global_daily.keys())
+
+    for d_date in sorted_dates:
+        day_data = global_daily[d_date]
+
+        isocal = d_date.isocalendar()
+        week_key = f"{isocal[0]}-W{isocal[1]:02d}"
+        month_key = d_date.strftime('%Y-%m')
+        year_key = str(d_date.year)
+
+        for p_type, p_key in [('weekly', week_key), ('monthly', month_key), ('yearly', year_key)]:
+            if p_key not in buckets[p_type]:
+                buckets[p_type][p_key] = {
+                    'period': p_key,
+                    'sum_stock_f': 0, 'days_with_stock': 0,
+                    'total_eggs': 0, 'total_mort_f': 0,
+                    'total_chicks': 0, 'total_set': 0,
+                    'data_days': 0
+                }
+
+            b = buckets[p_type][p_key]
+            b['total_eggs'] += day_data['eggs']
+            b['total_mort_f'] += day_data['mort_f']
+            b['total_chicks'] += day_data['chicks']
+            b['total_set'] += day_data['egg_set']
+            b['data_days'] += 1
+            b['sum_stock_f'] += day_data['stock_f']
+
+    results = {'weekly': [], 'monthly': [], 'yearly': []}
+
+    for p_type in ['weekly', 'monthly', 'yearly']:
+        sorted_keys = sorted(buckets[p_type].keys(), reverse=True)
+
+        for k in sorted_keys:
+            b = buckets[p_type][k]
+
+            avg_stock = b['sum_stock_f'] / b['data_days'] if b['data_days'] > 0 else 0
+            egg_prod_pct = (b['total_eggs'] / b['sum_stock_f'] * 100) if b['sum_stock_f'] > 0 else 0
+            mort_pct = (b['total_mort_f'] / avg_stock * 100) if avg_stock > 0 else 0
+            hatch_pct = (b['total_chicks'] / b['total_set'] * 100) if b['total_set'] > 0 else 0
+
+            results[p_type].append({
+                'period': b['period'],
+                'avg_female_stock': int(avg_stock),
+                'total_eggs': b['total_eggs'],
+                'total_chicks': b['total_chicks'],
+                'mortality_pct': round(mort_pct, 2),
+                'hatchability_pct': round(hatch_pct, 2),
+                'egg_production_pct': round(egg_prod_pct, 2)
+            })
+
+    return results
 
 def get_hatchery_analytics():
     today = date.today()

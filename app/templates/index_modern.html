@@ -1023,7 +1023,7 @@
 
                     // Send backup to server
                     statusText.innerText = `Saving backup for ${houseName}...`;
-                    await fetch('/api/reports/backup', {
+                    await fetch('{{ url_for("backup_report_image") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

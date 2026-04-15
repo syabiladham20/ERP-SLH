@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 payload.push(rowObj);
             }
 
-            fetch('/api/flock/' + flockId + '/spreadsheet_save', {
+            fetch('{{ url_for("flock_spreadsheet_save", flock_id=0) }}'.replace('0', flockId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

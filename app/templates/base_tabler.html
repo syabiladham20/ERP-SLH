@@ -10,12 +10,20 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css?v={{ version }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css?v={{ version }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css?v={{ version }}">
-    <link rel="manifest" href="/static/manifest.json?v={{ version }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json', v=version) }}">
     <meta name="theme-color" content="#005eb8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="SLH-OP">
-    <link rel="apple-touch-icon" href="/static/icon-192.png?v={{ version }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png', v=version) }}">
+    <script>
+        // Global application configuration
+        window.SLHConfig = {
+            endpoints: {
+                offlineSnapshot: "{{ url_for('offline_snapshot') }}"
+            }
+        };
+    </script>
     <style>
         :root {
             --tblr-primary: #005eb8; /* Arbor Acres Blue */
@@ -717,7 +725,7 @@
                     aiChatSpinner.style.display = 'block';
                     aiChatBody.scrollTop = aiChatBody.scrollHeight;
 
-                    fetch('/api/chat', {
+                    fetch('{{ url_for("chat") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ message: text })
@@ -994,7 +1002,7 @@
       let currentAppVersion = "{{ version }}";
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          fetch('/api/version')
+          fetch('{{ url_for("get_version") }}')
             .then(res => res.json())
             .then(data => {
               if (data.version && data.version > currentAppVersion) {

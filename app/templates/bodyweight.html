@@ -1126,7 +1126,7 @@
         const form = document.getElementById(`form-${logId}`);
         const formData = new FormData(form);
 
-        fetch('/api/health_log/bodyweight_edit', {
+        fetch('{{ url_for("api_bodyweight_edit") }}', {
             method: 'POST',
             body: formData
         })
