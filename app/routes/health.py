@@ -558,8 +558,15 @@ def register_health_routes(app):
         flock_tasks = {}
         target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
 
+        target_flock_ids = [f.id for f in target_flocks]
+        all_medications = Medication.query.filter(Medication.flock_id.in_(target_flock_ids)).order_by(Medication.start_date.desc()).all()
+
+        medications_by_flock = {f_id: [] for f_id in target_flock_ids}
+        for med in all_medications:
+            medications_by_flock[med.flock_id].append(med)
+
         for f in target_flocks:
-            flock_tasks[f] = {'medications': Medication.query.filter_by(flock_id=f.id).order_by(Medication.start_date.desc()).all()}
+            flock_tasks[f] = {'medications': medications_by_flock[f.id]}
 
         medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
 
@@ -683,8 +690,15 @@ def register_health_routes(app):
         flock_tasks = {}
         target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
 
+        target_flock_ids = [f.id for f in target_flocks]
+        all_samplings = SamplingEvent.query.filter(SamplingEvent.flock_id.in_(target_flock_ids)).order_by(SamplingEvent.age_week).all()
+
+        samplings_by_flock = {f_id: [] for f_id in target_flock_ids}
+        for s in all_samplings:
+            samplings_by_flock[s.flock_id].append(s)
+
         for f in target_flocks:
-            flock_tasks[f] = {'sampling': SamplingEvent.query.filter_by(flock_id=f.id).order_by(SamplingEvent.age_week).all()}
+            flock_tasks[f] = {'sampling': samplings_by_flock[f.id]}
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return render_template('partials/health_log_calendar.html',
