@@ -163,9 +163,14 @@ def register_admin_routes(app):
             return redirect(url_for('index'))
 
         houses = House.query.order_by(House.name).all()
+
+        # Optimize N+1 Query: Bulk fetch houses that have flocks
+        # We query for distinct house_ids from the Flock table
+        houses_with_flocks = set(f[0] for f in db.session.query(Flock.house_id).distinct().all())
+
         # Check if houses can be deleted (no flocks)
         for h in houses:
-            h.can_delete = (Flock.query.filter_by(house_id=h.id).count() == 0)
+            h.can_delete = h.id not in houses_with_flocks
 
         return render_template('admin/houses.html', houses=houses)
 

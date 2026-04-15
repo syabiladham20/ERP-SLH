@@ -120,9 +120,17 @@ body {
     }
 }
 
-/* Fix for flatpickr calendar z-index to be below navbar (1030) but above sticky headers (1020) */
+/* Fix for flatpickr calendar z-index to float above modals (1055) */
 .flatpickr-calendar {
-    z-index: 1029 !important;
+    z-index: 1060 !important;
+}
+
+/* Modal Stacking Context Fix to ensure modals don't clip under backdrops */
+.modal {
+    z-index: 1055 !important;
+}
+.modal-backdrop {
+    z-index: 1050 !important;
 }
 
 /* --- Back to Top Button --- */
@@ -139,4 +147,26 @@ body {
     font-size: 1.5rem;
     line-height: 1;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+/* --- Contrast Fixes --- */
+/* Darken muted and secondary text for better WCAG AA readability on white backgrounds */
+.text-muted, .text-secondary {
+    color: #495057 !important;
+}
+
+/* Ensure warning badges have high contrast text (dark gray/black instead of white) */
+.badge.bg-warning, .bg-warning {
+    color: #212529 !important;
+}
+.badge-warning {
+    color: #212529 !important;
+    background-color: #ffc107;
+}
+
+/* Ensure disabled buttons have legible contrast */
+.btn:disabled, .btn.disabled {
+    color: #495057 !important;
+    background-color: #e9ecef !important;
+    border-color: #dee2e6 !important;
 }
