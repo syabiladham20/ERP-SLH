@@ -277,21 +277,27 @@ def register_api_routes(app):
 
         # Prepare weekly BW data
         weekly_trend = []
+        # Fix N+1 Query: Extract weeks and bulk fetch Standards
+        target_weeks = [w.get('week', 0) for w in weekly_stats[-10:]]
+        standards = Standard.query.filter(Standard.week.in_(target_weeks)).all()
+        std_map = {s.week: s for s in standards}
+
         for w in weekly_stats[-10:]: # Get up to the last 10 weeks
+            week_num = w.get('week', 0)
             w_log = w.get('log')
             w_item = {
-                'week': w.get('week', 0),
+                'week': week_num,
                 'bw_male': w.get('body_weight_male', 0.0) or None,
                 'bw_female': w.get('body_weight_female', 0.0) or None,
                 'uniformity_male': w.get('uniformity_male', 0.0) or None,
                 'uniformity_female': w.get('uniformity_female', 0.0) or None,
                 'std_bw_male': None,
                 'std_bw_female': None,
-                'selection_done': any(e['log'].selection_done for e in enriched if e.get('week') == w.get('week')),
-                'spiking': any(e['log'].spiking for e in enriched if e.get('week') == w.get('week'))
+                'selection_done': any(e['log'].selection_done for e in enriched if e.get('week') == week_num),
+                'spiking': any(e['log'].spiking for e in enriched if e.get('week') == week_num)
             }
-            # Add std
-            std_w = Standard.query.filter_by(week=w.get('week', 0)).first()
+            # Add std using map
+            std_w = std_map.get(week_num)
             if std_w:
                 w_item['std_bw_male'] = std_w.std_bw_male or None
                 w_item['std_bw_female'] = std_w.std_bw_female or None

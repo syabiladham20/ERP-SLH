@@ -820,9 +820,9 @@
       Chart.defaults.datasets.bar.datalabels = { align: 'top', anchor: 'end' };
   }
   // Fix for zoom clipping
-  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = true;
-  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = true;
-  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = true;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.line) Chart.defaults.datasets.line.clip = false;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.bar) Chart.defaults.datasets.bar.clip = false;
+  if (Chart.defaults && Chart.defaults.datasets && Chart.defaults.datasets.scatter) Chart.defaults.datasets.scatter.clip = false;
 
   const isMobile = window.innerWidth <= 768;
 

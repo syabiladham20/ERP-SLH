@@ -351,8 +351,13 @@ def calculate_flock_summary(flock, daily_stats):
 def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week):
     spreadsheet_data = []
     from metrics import enrich_flock_data
+    from app.models.models import FeedCode
     flock_logs = [l for l in logs]
     enriched = enrich_flock_data(flock, flock_logs)
+
+    # Pre-fetch FeedCodes to avoid N+1 inside the loop
+    feed_codes = FeedCode.query.all()
+    feed_code_map = {fc.id: fc.code for fc in feed_codes}
 
     for item in enriched:
         log = item['log']
@@ -394,8 +399,8 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
             log.males_moved_to_prod,
             log.females_moved_to_prod,
             log.feed_program,
-            log.feed_code_male.code if log.feed_code_male else '',
-            log.feed_code_female.code if log.feed_code_female else '',
+            feed_code_map.get(log.feed_code_male_id, ''),
+            feed_code_map.get(log.feed_code_female_id, ''),
             log.feed_male_gp_bird,
             log.feed_female_gp_bird,
             log.feed_cleanup_start,
@@ -1591,21 +1596,22 @@ def verify_import_data(flock, logs=None):
 
     return warnings
 
+_PROJECTED_LAY_STD_CACHE = None
+
 def get_projected_start_of_lay(flock):
     """
     Calculates the projected date when the flock will reach 5% egg production.
     """
+    global _PROJECTED_LAY_STD_CACHE
     if not flock or not flock.intake_date:
         return None, 0
 
-    # Find standard week where egg prod >= 5%
-    target_std = Standard.query.filter(Standard.std_egg_prod >= 5).order_by(Standard.week.asc()).first()
+    # Find standard week where egg prod >= 5% (Cached globally per process to avoid redundant DB lookups)
+    if _PROJECTED_LAY_STD_CACHE is None:
+        target_std = Standard.query.filter(Standard.std_egg_prod >= 5).order_by(Standard.week.asc()).first()
+        _PROJECTED_LAY_STD_CACHE = target_std.week if target_std else 24
 
-    if not target_std:
-        # Default fallback if standard not found (e.g. 24 weeks)
-        target_week = 24
-    else:
-        target_week = target_std.week
+    target_week = _PROJECTED_LAY_STD_CACHE
 
     days_to_add = (target_week * 7)
     projected_date = flock.intake_date + timedelta(days=days_to_add)

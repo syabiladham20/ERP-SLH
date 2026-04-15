@@ -432,28 +432,37 @@ def aggregate_weekly_metrics(daily_stats):
         ws['stock_sum_male'] += d['stock_male_start']
         ws['stock_sum_female'] += d['stock_female_start']
 
-        if d['body_weight_male'] and d['body_weight_male'] > 0:
-            ws['bw_male_sum'] += d['body_weight_male']
+        # Optimize dict lookups
+        bw_m = d['body_weight_male']
+        bw_f = d['body_weight_female']
+        unif_m = d['uniformity_male']
+        unif_f = d['uniformity_female']
+        egg_set = d['egg_set']
+        hatched = d['hatched_chicks']
+        log = d['log']
+
+        if bw_m and bw_m > 0:
+            ws['bw_male_sum'] += bw_m
             ws['bw_male_count'] += 1
 
-        if d['body_weight_female'] and d['body_weight_female'] > 0:
-            ws['bw_female_sum'] += d['body_weight_female']
+        if bw_f and bw_f > 0:
+            ws['bw_female_sum'] += bw_f
             ws['bw_female_count'] += 1
 
-        if d['uniformity_male'] and d['uniformity_male'] > 0:
-            ws['unif_male_sum'] += d['uniformity_male']
+        if unif_m and unif_m > 0:
+            ws['unif_male_sum'] += unif_m
             ws['unif_male_count'] += 1
 
-        if d['uniformity_female'] and d['uniformity_female'] > 0:
-            ws['unif_female_sum'] += d['uniformity_female']
+        if unif_f and unif_f > 0:
+            ws['unif_female_sum'] += unif_f
             ws['unif_female_count'] += 1
 
-        if d['egg_set']: ws['egg_set'] += d['egg_set']
-        if d['hatched_chicks']: ws['hatched_chicks'] += d['hatched_chicks']
+        if egg_set: ws['egg_set'] += egg_set
+        if hatched: ws['hatched_chicks'] += hatched
 
-        if d['log'].clinical_notes:
-            ws['notes'].append(d['log'].clinical_notes)
-        for p in d['log'].photos:
+        if log.clinical_notes:
+            ws['notes'].append(log.clinical_notes)
+        for p in log.photos:
             ws['photos'].append(p.file_path)
 
     # Finalize Averages
@@ -559,28 +568,37 @@ def aggregate_monthly_metrics(daily_stats):
         ms['stock_sum_male'] += d['stock_male_start']
         ms['stock_sum_female'] += d['stock_female_start']
 
-        if d['body_weight_male'] and d['body_weight_male'] > 0:
-            ms['bw_male_sum'] += d['body_weight_male']
+        # Optimize dict lookups
+        bw_m = d['body_weight_male']
+        bw_f = d['body_weight_female']
+        unif_m = d['uniformity_male']
+        unif_f = d['uniformity_female']
+        egg_set = d['egg_set']
+        hatched = d['hatched_chicks']
+        log = d['log']
+
+        if bw_m and bw_m > 0:
+            ms['bw_male_sum'] += bw_m
             ms['bw_male_count'] += 1
 
-        if d['body_weight_female'] and d['body_weight_female'] > 0:
-            ms['bw_female_sum'] += d['body_weight_female']
+        if bw_f and bw_f > 0:
+            ms['bw_female_sum'] += bw_f
             ms['bw_female_count'] += 1
 
-        if d['uniformity_male'] and d['uniformity_male'] > 0:
-            ms['unif_male_sum'] += d['uniformity_male']
+        if unif_m and unif_m > 0:
+            ms['unif_male_sum'] += unif_m
             ms['unif_male_count'] += 1
 
-        if d['uniformity_female'] and d['uniformity_female'] > 0:
-            ms['unif_female_sum'] += d['uniformity_female']
+        if unif_f and unif_f > 0:
+            ms['unif_female_sum'] += unif_f
             ms['unif_female_count'] += 1
 
-        if d['egg_set']: ms['egg_set'] += d['egg_set']
-        if d['hatched_chicks']: ms['hatched_chicks'] += d['hatched_chicks']
+        if egg_set: ms['egg_set'] += egg_set
+        if hatched: ms['hatched_chicks'] += hatched
 
-        if d['log'].clinical_notes:
-            ms['notes'].append(d['log'].clinical_notes)
-        for p in d['log'].photos:
+        if log.clinical_notes:
+            ms['notes'].append(log.clinical_notes)
+        for p in log.photos:
             ms['photos'].append(p.file_path)
 
     # Finalize Averages
