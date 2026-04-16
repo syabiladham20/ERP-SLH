@@ -170,3 +170,38 @@ body {
     background-color: #e9ecef !important;
     border-color: #dee2e6 !important;
 }
+
+/* --- Global Skeleton Loader Utility --- */
+@keyframes skeleton-pulse {
+    0% {
+        background-color: #e2e5e8;
+    }
+    50% {
+        background-color: #f1f3f5;
+    }
+    100% {
+        background-color: #e2e5e8;
+    }
+}
+
+.skeleton-loader {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-row {
+    height: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-row:last-child {
+    margin-bottom: 0;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
