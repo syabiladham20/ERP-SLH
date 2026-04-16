@@ -9,6 +9,7 @@
       <div class="card-header">Create New Flock</div>
       <div class="card-body">
         <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <div class="mb-3">
             <label for="farm_name" class="form-label required">Farm Name</label>
             <input class="form-control" list="farmOptions" id="farm_name" name="farm_name" placeholder="Type to search or add new..." required>
@@ -99,6 +100,7 @@
                 <td>
                   {% if flock.status == 'Inactive' %}
                   <form action="{{ url_for('delete_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('DELETE flock? This cannot be undone.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-danger btn-sm py-0">Delete</button>
                   </form>
                   {% endif %}

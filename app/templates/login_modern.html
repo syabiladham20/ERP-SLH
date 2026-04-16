@@ -21,6 +21,7 @@
             {# Flash messages are already handled by base_tabler.html #}
 
             <form action="{{ url_for('login') }}" method="POST" autocomplete="off" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <div class="mb-3">
                 <label class="form-label">Username</label>
                 <input type="text" name="username" class="form-control" placeholder="Enter username" required autofocus>

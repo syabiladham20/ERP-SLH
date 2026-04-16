@@ -9,6 +9,7 @@
 </div>
 
 <form method="POST" id="vaccineForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Schedule</h5>

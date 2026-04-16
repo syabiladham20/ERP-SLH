@@ -71,6 +71,7 @@
                             <p class="mb-0 text-muted">Select a custom layout for your account. This is applied globally for your specific login.</p>
                         </div>
                         <form action="{{ url_for('change_theme') }}" method="POST" class="d-flex align-items-center">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <select name="theme" class="form-select me-2" onchange="this.form.submit()">
                                 <option value="base_tabler.html" {% if user_theme == 'base_tabler.html' %}selected{% endif %}>Tabler (Clean Professional)</option>
                                 <option value="base_argon.html" {% if user_theme == 'base_argon.html' %}selected{% endif %}>Argon (Modern Web)</option>
@@ -97,6 +98,7 @@
                             </p>
                         </div>
                         <form action="{{ url_for('toggle_login') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" class="btn btn-{{ 'danger' if login_required else 'success' }}">
                                 {{ 'Disable Login Page' if login_required else 'Enable Login Page' }}
                             </button>

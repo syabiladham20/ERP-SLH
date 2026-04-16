@@ -26,6 +26,7 @@
                 <!-- Insert Tab -->
                 <div class="tab-pane active show" id="tab-insert">
                     <form method="post" action="{{ url_for('health_log_medication') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label required">House</label>
@@ -103,6 +104,7 @@
                     {% for flock, tasks in flock_tasks.items() %}
                         {% set is_editing = (edit_flock_id == flock.id) %}
                         <form method="POST" action="{{ url_for('health_log_medication', flock_id=flock.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="card mb-4 border-primary">
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0 text-primary">{{ flock.house.name }}</h5>

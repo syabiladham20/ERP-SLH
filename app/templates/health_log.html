@@ -23,6 +23,7 @@
 <!-- Detailed Lists (Editable) -->
     {% for flock, tasks in flock_tasks.items() %}
     <form method="POST" action="{{ url_for('health_log', year=year, month=month) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <input type="hidden" name="flock_id" value="{{ flock.id }}">
     <div class="card mb-4 border-primary">
         <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">

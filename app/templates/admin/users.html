@@ -51,6 +51,7 @@
                                 <div class="modal fade" id="editUserModal{{ user.id }}" tabindex="-1">
                                     <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_edit', user_id=user.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Edit User: {{ user.username }}</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -87,6 +88,7 @@
                                 <div class="modal fade" id="resetPassModal{{ user.id }}" tabindex="-1">
                                     <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_reset_password', user_id=user.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Reset Password: {{ user.username }}</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -110,6 +112,7 @@
                                 <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1">
                                     <div class="modal-dialog">                                        <div class="modal-content">
                                             <form action="{{ url_for('admin_user_delete', user_id=user.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">Delete User: {{ user.username }}</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -140,6 +143,7 @@
 <div class="modal fade" id="addUserModal" tabindex="-1">
     <div class="modal-dialog">        <div class="modal-content">
             <form action="{{ url_for('admin_user_add') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-header">
                     <h5 class="modal-title">Add New User</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

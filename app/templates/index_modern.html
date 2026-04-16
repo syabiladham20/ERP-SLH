@@ -264,6 +264,7 @@
             <div class="modal modal-blur fade" id="mixMaleModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-scrollable">
                 <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-content">
                     <div class="modal-header">
                     <h5 class="modal-title">Mix Male (Start Production)</h5>

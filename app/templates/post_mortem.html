@@ -27,6 +27,7 @@
                 <div class="tab-pane active show" id="tab-insert">
                     {% if active_flocks %}
                         <form method="post" action="{{ url_for('health_log_post_mortem') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label required">House</label>

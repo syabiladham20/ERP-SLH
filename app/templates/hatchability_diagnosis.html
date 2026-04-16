@@ -21,6 +21,7 @@
             <div class="card-body">
                 {% for r in records %}
                 <form method="POST" action="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=setting_date.strftime('%Y-%m-%d')) }}" class="mb-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="hatchability_id" value="{{ r.id }}">
                     <div class="d-flex align-items-center flex-wrap gap-3">
                         <div class="fw-bold text-nowrap">
