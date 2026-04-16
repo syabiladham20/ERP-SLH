@@ -404,3 +404,55 @@ window.initOfflineSync = async function(userId) {
         await syncSnapshot(userId);
     });
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    const offlineBanner = document.getElementById('offline-banner');
+
+    function updateOnlineStatus() {
+        if (!navigator.onLine) {
+            // Offline
+            if (offlineBanner) {
+                offlineBanner.classList.remove('d-none');
+            }
+
+            // Disable forms
+            document.querySelectorAll('form').forEach(form => {
+                form.classList.add('opacity-75');
+                form.addEventListener('submit', preventSubmit);
+            });
+
+            // Disable submit buttons
+            document.querySelectorAll('button[type="submit"]').forEach(btn => {
+                btn.disabled = true;
+            });
+        } else {
+            // Online
+            if (offlineBanner) {
+                offlineBanner.classList.add('d-none');
+            }
+
+            // Re-enable forms
+            document.querySelectorAll('form').forEach(form => {
+                form.classList.remove('opacity-75');
+                form.removeEventListener('submit', preventSubmit);
+            });
+
+            // Re-enable submit buttons
+            document.querySelectorAll('button[type="submit"]').forEach(btn => {
+                btn.disabled = false;
+            });
+        }
+    }
+
+    function preventSubmit(e) {
+        e.preventDefault();
+        alert('You are currently offline. Changes cannot be saved.');
+    }
+
+    // Event listeners
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    // Initial check on page load
+    updateOnlineStatus();
+});
