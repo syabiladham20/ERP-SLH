@@ -2239,7 +2239,7 @@ const floatingNotePlugin = {
                         content: noteText.trim()
                     };
 
-                    fetch('{{ url_for("add_floating_note") }}', {
+                    fetch('{{ url_for("create_floating_note") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
