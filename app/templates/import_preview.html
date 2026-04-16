@@ -23,6 +23,7 @@
     </div>
 
     <form method="POST" action="{{ url_for('import_data') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         {% for filename in filenames %}
         <input type="hidden" name="confirm_files" value="{{ filename }}">
         {% endfor %}
@@ -72,6 +73,7 @@
     </div>
 
     <form method="POST" action="{{ url_for('import_data') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         {% for filename in filenames %}
         <input type="hidden" name="confirm_files" value="{{ filename }}">
         {% endfor %}

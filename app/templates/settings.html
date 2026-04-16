@@ -70,6 +70,7 @@
 
           <div class="tab-pane" id="tabs-profile">
             <form action="{{ url_for('profile_update') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               <div class="mb-3">
                 <label class="form-label">Name (Display Name)</label>
                 <input type="text" class="form-control" name="name" value="{{ current_user.name or '' }}" placeholder="Enter your display name">

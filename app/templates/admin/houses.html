@@ -12,6 +12,7 @@
         <div class="card-header">Add New House</div>
         <div class="card-body">
             <form action="{{ url_for('admin_house_add') }}" method="POST" class="row g-3 align-items-center">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="col-auto">
                     <label for="name" class="visually-hidden">House Name</label>
                     <input type="text" class="form-control" id="name" name="name" placeholder="Enter House Name (e.g. VA1)" required>
@@ -62,6 +63,7 @@
                             <!-- Delete Form -->
                             {% if house.can_delete %}
                             <form action="{{ url_for('admin_house_delete', id=house.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete {{ house.name }}?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
                             {% else %}
@@ -85,6 +87,7 @@
 <div class="modal fade" id="renameModal{{ house.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">        <div class="modal-content">
             <form action="{{ url_for('admin_house_edit', id=house.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-header">
                     <h5 class="modal-title">Rename House {{ house.name }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

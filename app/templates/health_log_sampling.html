@@ -25,6 +25,7 @@
     {% set is_editing = (edit_flock_id == flock.id) %}
 
     <form method="POST" action="{{ url_for('health_log_sampling', year=year, month=month, flock_id=flock.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="card mb-4 border-primary">
         <div class="card-header sticky-header bg-light d-flex justify-content-between align-items-center">
             <h5 class="mb-0 text-primary">{{ flock.house.name }} - Age: {{ flock.current_week }} Weeks</h5>

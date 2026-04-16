@@ -9,6 +9,7 @@
   </div>
 {% else %}
   <form id="dailyLogForm" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <input type="hidden" name="override_validation" id="override_validation" value="false">
     <div class="card mb-3">
       <div class="card-header sticky-header bg-primary text-white">General Info</div>
@@ -457,6 +458,7 @@
                           <div class="col">
                               {% if log %}
                               <form action="{{ url_for('delete_daily_log', id=log.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                   <button type="submit" class="btn btn-danger w-100">Delete Log</button>
                               </form>
                               {% endif %}

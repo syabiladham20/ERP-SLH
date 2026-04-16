@@ -7,6 +7,7 @@
         <p class="text-muted">Define feed codes available for selection in Daily Logs.</p>
 
         <form method="POST" class="mb-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="input-group">
                 <input type="text" name="code" class="form-control" placeholder="Enter new code (e.g., 173P)" required>
                 <button type="submit" class="btn btn-primary">Add Code</button>
@@ -18,6 +19,7 @@
             <li class="list-group-item d-flex justify-content-between align-items-center">
                 {{ c.code }}
                 <form action="{{ url_for('delete_feed_code', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                 </form>
             </li>

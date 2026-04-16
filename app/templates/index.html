@@ -117,6 +117,7 @@
                                 <!-- Modal (kept inline for functionality) -->
                                 <div class="modal fade" id="startProdModal{{ flock.id }}" tabindex="-1" aria-hidden="true">
                                   <div class="modal-dialog">                                    <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <div class="modal-content">
                                       <div class="modal-header">
                                         <h5 class="modal-title">Start Production Phase</h5>
@@ -168,6 +169,7 @@
                         {% if flock.calculated_phase == 'Production' %}
                              {% if is_admin %}
                              <form action="{{ url_for('toggle_phase', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Revert to Brooding? Production Start Date will be cleared.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                <button type="submit" class="btn btn-sm btn-outline-warning">
                                  Revert Brooding
                                </button>
@@ -181,6 +183,7 @@
                     {% if is_admin %}
                     <div>
                         <form action="{{ url_for('close_flock', id=flock.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Close this flock?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                           <button type="submit" class="btn btn-warning btn-sm">Close</button>
                         </form>
                     </div>

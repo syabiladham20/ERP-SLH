@@ -90,6 +90,7 @@
         </ul>
 
         <form method="POST" action="{{ url_for('import_hatchability') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
           <div class="mb-3">
             <label for="file_hatch" class="form-label">Hatchability Excel File</label>
             <input class="form-control" type="file" id="file_hatch" name="file" accept=".xlsx" required>

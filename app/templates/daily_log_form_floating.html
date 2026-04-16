@@ -9,6 +9,7 @@
   </div>
 {% else %}
   <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <div class="card mb-3">
       <div class="card-header sticky-header bg-primary text-white">General Info</div>
       <div class="card-body">

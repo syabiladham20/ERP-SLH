@@ -17,6 +17,7 @@
     </div>
     <div class="card-body">
         <form method="POST" action="{{ url_for('flock_hatchability', id=flock.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="action" value="add">
             <div class="row g-3">
                 <div class="col-md-3">
@@ -94,6 +95,7 @@
                     </a>
                     {% if user_dept == 'Hatchery' or is_admin %}
                     <form method="POST" action="{{ url_for('delete_hatchability', id=flock.id, record_id=r.id) }}" style="display:inline;" onsubmit="return confirm('Delete this record?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
                     </form>
                     {% endif %}

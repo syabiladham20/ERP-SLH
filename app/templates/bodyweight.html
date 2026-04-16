@@ -55,6 +55,7 @@
                     </div>
                     {% else %}
                     <form method="post" action="{{ url_for('health_log_bodyweight') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label required">House</label>
@@ -492,6 +493,7 @@
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <form action="{{ url_for('upload_weights') }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="modal-header">
           <h5 class="modal-title">Upload Raw Weights</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

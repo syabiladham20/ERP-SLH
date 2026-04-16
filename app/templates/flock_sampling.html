@@ -46,6 +46,7 @@
                     </td>
                     <td>
                         <form action="{{ url_for('upload_sampling_result', id=flock.id, event_id=event.id) }}" method="POST" enctype="multipart/form-data" class="d-flex flex-column">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <div class="input-group input-group-sm mb-1">
                                 <input type="text" name="remarks" class="form-control" placeholder="Remarks" value="{{ event.remarks or '' }}">
                             </div>
