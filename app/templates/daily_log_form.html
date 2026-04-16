@@ -362,6 +362,10 @@
                   <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
                       ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
                   </div>
+
+                  <div id="previewSummaryContainer" class="mt-3 text-start small border rounded p-2 bg-light" style="max-height: 250px; overflow-y: auto;">
+                      <!-- Dynamically populated -->
+                  </div>
               </div>
               <div class="modal-footer">
                   <div class="w-100">
@@ -497,6 +501,9 @@
                 yesterdayFeedF = data.yesterday_feed_f || 0;
                 dayMinus2FeedM = data.day_minus_2_feed_m || 0;
                 dayMinus2FeedF = data.day_minus_2_feed_f || 0;
+
+                if (data.std_mortality_daily !== undefined) stdMortalityDaily = data.std_mortality_daily;
+                if (data.yesterday_egg_prod_pct !== undefined) yesterdayEggProdPct = data.yesterday_egg_prod_pct;
                 calculateLiveFeed();
                 if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
                 if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
@@ -566,6 +573,8 @@
     let yesterdayFeedF = 0;
     let dayMinus2FeedM = 0;
     let dayMinus2FeedF = 0;
+    let stdMortalityDaily = 0.05; // Default threshold
+    let yesterdayEggProdPct = 0.0;
 
     function getMultiplier() {
         let program = document.querySelector('[name="feed_program"]').value;
@@ -647,8 +656,100 @@
             document.getElementById('override_validation').value = 'false';
         }
 
+        // Generate Preview Summary
+        generatePreviewSummary();
+
         let myModal = new bootstrap.Modal(document.getElementById('updateConfirmModal'));
         myModal.show();
+    }
+
+    function generatePreviewSummary() {
+        let container = document.getElementById('previewSummaryContainer');
+        container.innerHTML = ''; // Clear old
+
+        // 1. Gather core values
+        let mortM = parseFloat(document.querySelector('[name="mortality_male"]').value) || 0;
+        let mortF = parseFloat(document.querySelector('[name="mortality_female"]').value) || 0;
+        let eggsCol = parseFloat(document.querySelector('[name="eggs_collected"]').value) || 0;
+        let feedMaleText = document.getElementById('live-feed-calc-male').innerText;
+        let feedFemaleText = document.getElementById('live-feed-calc-female').innerText;
+        let water12h = document.getElementById('water_12h').innerText;
+
+        // Calculations
+        let mortMPct = currentStockM > 0 ? ((mortM / currentStockM) * 100).toFixed(2) : '0.00';
+        let mortFPct = currentStockF > 0 ? ((mortF / currentStockF) * 100).toFixed(2) : '0.00';
+        let eggProdPct = currentStockF > 0 ? ((eggsCol / currentStockF) * 100).toFixed(2) : '0.00';
+
+        let html = '<h6 class="border-bottom pb-1 mb-2 fw-bold text-dark">Key Metrics</h6>';
+        html += '<table class="table table-sm table-borderless mb-2">';
+
+        // Mortality Male
+        let mortMBadge = '';
+        if (mortMPct > stdMortalityDaily) {
+            mortMBadge = ` <span class="badge bg-danger ms-1">Alert: High Mortality</span>`;
+        }
+        html += `<tr><td class="text-muted p-0 pb-1 w-50">Male Mortality</td><td class="p-0 pb-1"><strong>${mortM}</strong> (${mortMPct}%)${mortMBadge}</td></tr>`;
+
+        // Mortality Female
+        let mortFBadge = '';
+        if (mortFPct > stdMortalityDaily) {
+            mortFBadge = ` <span class="badge bg-danger ms-1">Alert: High Mortality</span>`;
+        }
+        html += `<tr><td class="text-muted p-0 pb-1">Female Mortality</td><td class="p-0 pb-1"><strong>${mortF}</strong> (${mortFPct}%)${mortFBadge}</td></tr>`;
+
+        // Egg Production
+        let eggBadge = '';
+        if (yesterdayEggProdPct > 0) {
+            let drop = yesterdayEggProdPct - eggProdPct;
+            if (drop > 1.5) {
+                eggBadge = ` <span class="badge bg-warning text-dark ms-1">Alert: Dropped ${drop.toFixed(1)}%</span>`;
+            }
+        }
+        html += `<tr><td class="text-muted p-0 pb-1">Egg Production</td><td class="p-0 pb-1"><strong>${eggsCol}</strong> (${eggProdPct}%)${eggBadge}</td></tr>`;
+
+        // Feed & Water
+        html += `<tr><td class="text-muted p-0 pb-1">Feed (Calc)</td><td class="p-0 pb-1">M: <strong>${feedMaleText}</strong>, F: <strong>${feedFemaleText}</strong></td></tr>`;
+        if (parseFloat(water12h) > 0) {
+            html += `<tr><td class="text-muted p-0 pb-1">Water Cons.</td><td class="p-0 pb-1"><strong>${water12h} L</strong></td></tr>`;
+        }
+
+        html += '</table>';
+
+        // 2. Gather secondary non-zero values dynamically
+        let secondaryFields = [];
+
+        let checkFields = [
+            { selector: '[name="culls_male"]', label: 'Culls Male' },
+            { selector: '[name="culls_female"]', label: 'Culls Female' },
+            { selector: '[name="mortality_male_hosp"]', label: 'Mort. Male (Hosp)' },
+            { selector: '[name="mortality_female_hosp"]', label: 'Mort. Female (Hosp)' },
+            { selector: '[name="males_moved_to_hosp"]', label: 'Males to Hosp' },
+            { selector: '[name="females_moved_to_hosp"]', label: 'Females to Hosp' },
+            { selector: '[name="egg_weight"]', label: 'Avg Egg Wt' }
+        ];
+
+        checkFields.forEach(f => {
+            let el = document.querySelector(f.selector);
+            if (el && parseFloat(el.value) > 0) {
+                secondaryFields.push({ label: f.label, value: el.value });
+            }
+        });
+
+        let remarksEl = document.querySelector('[name="remarks"]');
+        if (remarksEl && remarksEl.value.trim() !== '') {
+            secondaryFields.push({ label: 'Remarks', value: '<em>Included</em>' });
+        }
+
+        if (secondaryFields.length > 0) {
+            html += '<h6 class="border-bottom pb-1 mt-3 mb-2 fw-bold text-dark">Other Data Present</h6>';
+            html += '<table class="table table-sm table-borderless mb-0">';
+            secondaryFields.forEach(sf => {
+                html += `<tr><td class="text-muted p-0 pb-1 w-50">${sf.label}</td><td class="p-0 pb-1"><strong>${sf.value}</strong></td></tr>`;
+            });
+            html += '</table>';
+        }
+
+        container.innerHTML = html;
     }
 
     function confirmUpdateSubmit() {
