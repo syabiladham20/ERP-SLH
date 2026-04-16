@@ -27,6 +27,7 @@
               </option>
             {% endfor %}
           </select>
+          <small id="lastFilledDateText" class="text-muted mt-1 d-block"></small>
           {% if log %}
              <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% endif %}
@@ -541,6 +542,9 @@
                 let lightOffInput = document.querySelector('[name="light_off_time"]');
                 if (data.light_off_time && lightOffInput.value === '') lightOffInput.value = data.light_off_time;
                 {% endif %}
+
+                // Calculate live feed again after prefilling feed amounts
+                calculateLiveFeed();
             })
             .catch(error => {
                 console.log(error);

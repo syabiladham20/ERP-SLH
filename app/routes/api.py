@@ -739,7 +739,8 @@ def register_api_routes(app):
                 'feed_cleanup_start': previous_log.feed_cleanup_start,
                 'feed_cleanup_end': previous_log.feed_cleanup_end,
                 'light_on_time': previous_log.light_on_time,
-                'light_off_time': previous_log.light_off_time
+                'light_off_time': previous_log.light_off_time,
+                'previous_log_date': previous_log.date.strftime('%Y-%m-%d') if previous_log.date else None
             })
 
         return jsonify(data), 200
