@@ -707,13 +707,26 @@ def register_api_routes(app):
         current_stock_m = (flock.intake_male or 0) - cum_mort_m
         current_stock_f = (flock.intake_female or 0) - cum_mort_f
 
+        gs = GlobalStandard.query.first()
+        std_mortality_daily = gs.std_mortality_daily if gs and gs.std_mortality_daily is not None else 0.05
+
+        yesterday_egg_prod_pct = 0.0
+        if yesterday_log and yesterday_log.eggs_collected:
+            # We use current_stock_f for yesterday's denominator as an approximation,
+            # or calculate exactly: yesterday_stock_f = current_stock_f + (yesterday_log.mortality_female or 0) + (yesterday_log.culls_female or 0)
+            yesterday_stock_f = current_stock_f + (yesterday_log.mortality_female or 0) + (yesterday_log.culls_female or 0)
+            if yesterday_stock_f > 0:
+                yesterday_egg_prod_pct = (yesterday_log.eggs_collected / yesterday_stock_f) * 100.0
+
         data = {
             'current_stock_m': current_stock_m,
             'current_stock_f': current_stock_f,
             'yesterday_feed_m': yesterday_log.feed_male_gp_bird if yesterday_log else 0,
             'yesterday_feed_f': yesterday_log.feed_female_gp_bird if yesterday_log else 0,
             'day_minus_2_feed_m': day_minus_2_log.feed_male_gp_bird if day_minus_2_log else 0,
-            'day_minus_2_feed_f': day_minus_2_log.feed_female_gp_bird if day_minus_2_log else 0
+            'day_minus_2_feed_f': day_minus_2_log.feed_female_gp_bird if day_minus_2_log else 0,
+            'std_mortality_daily': std_mortality_daily, # Pass as percentage for easier frontend comparison
+            'yesterday_egg_prod_pct': yesterday_egg_prod_pct
         }
 
         if previous_log:

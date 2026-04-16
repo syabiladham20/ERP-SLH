@@ -362,6 +362,10 @@
                   <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
                       ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
                   </div>
+
+                  <div id="previewSummaryContainer" class="mt-3 text-start small border rounded p-2 bg-light" style="max-height: 250px; overflow-y: auto;">
+                      <!-- Dynamically populated -->
+                  </div>
               </div>
               <div class="modal-footer">
                   <div class="w-100">
@@ -476,7 +480,7 @@
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
 
-    function prefillPreviousData() {
+    function fetchBackgroundData() {
         let houseId = document.getElementById('house_id').value;
         let dateVal = document.getElementById('date').value;
 
@@ -490,14 +494,31 @@
                 throw new Error('No previous data found or error fetching.');
             })
             .then(data => {
-                // Update global state for Live Calc and Guardian Validation
+                // ALWAYS update global state for Live Calc and Validation
                 currentStockM = data.current_stock_m || 0;
                 currentStockF = data.current_stock_f || 0;
                 yesterdayFeedM = data.yesterday_feed_m || 0;
                 yesterdayFeedF = data.yesterday_feed_f || 0;
                 dayMinus2FeedM = data.day_minus_2_feed_m || 0;
                 dayMinus2FeedF = data.day_minus_2_feed_f || 0;
+
+                if (data.previous_log_date) {
+                    let lastDateEl = document.getElementById('lastFilledDateText');
+                    if(lastDateEl) lastDateEl.innerHTML = `Last log submitted: <span class="fw-bold">${data.previous_log_date}</span>`;
+                } else {
+                    let lastDateEl = document.getElementById('lastFilledDateText');
+                    if(lastDateEl) lastDateEl.innerHTML = `Last log submitted: <span class="fst-italic text-secondary">None</span>`;
+                }
+
+                if (data.std_mortality_daily !== undefined) stdMortalityDaily = data.std_mortality_daily;
+                if (data.yesterday_egg_prod_pct !== undefined) yesterdayEggProdPct = data.yesterday_egg_prod_pct;
+
+                // Immediately calculate live feed using the newly fetched stock variables,
+                // this fixes the 0.00kg bug in edit mode.
                 calculateLiveFeed();
+
+                {% if not log %}
+                // Only prefill form inputs if creating a brand new log
                 if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
                 if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
                 if (data.feed_code_female_id) document.querySelector('[name="feed_code_female_id"]').value = data.feed_code_female_id;
@@ -519,8 +540,13 @@
 
                 let lightOffInput = document.querySelector('[name="light_off_time"]');
                 if (data.light_off_time && lightOffInput.value === '') lightOffInput.value = data.light_off_time;
+                {% endif %}
             })
-            .catch(error => console.log(error));
+            .catch(error => {
+                console.log(error);
+                // If API fails, still calculate to display 0.00 properly instead of NaN
+                calculateLiveFeed();
+            });
     }
 
     function onSelectionChange() {
@@ -555,8 +581,11 @@
 
     // Initialize
     window.onload = function() {
-        {% if not log %}
-        prefillPreviousData();
+        // Always fetch background data (stock, thresholds) regardless of mode
+        fetchBackgroundData();
+
+        {% if log %}
+        captureOriginalData();
         {% endif %}
     };
 
@@ -566,6 +595,24 @@
     let yesterdayFeedF = 0;
     let dayMinus2FeedM = 0;
     let dayMinus2FeedF = 0;
+    let stdMortalityDaily = 0.05; // Default threshold
+    let yesterdayEggProdPct = 0.0;
+
+    // Store original values for diff generation
+    let originalData = {};
+
+    function captureOriginalData() {
+        let inputs = document.querySelectorAll('#dailyLogForm input, #dailyLogForm select, #dailyLogForm textarea');
+        inputs.forEach(el => {
+            if (el.name) {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    originalData[el.name] = el.checked;
+                } else {
+                    originalData[el.name] = el.value;
+                }
+            }
+        });
+    }
 
     function getMultiplier() {
         let program = document.querySelector('[name="feed_program"]').value;
@@ -582,8 +629,11 @@
         let maleTotalKg = (maleGpBird * multiplier * currentStockM) / 1000.0;
         let femaleTotalKg = (femaleGpBird * multiplier * currentStockF) / 1000.0;
 
-        document.getElementById('live-feed-calc-male').innerText = maleTotalKg.toFixed(2) + ' kg';
-        document.getElementById('live-feed-calc-female').innerText = femaleTotalKg.toFixed(2) + ' kg';
+        let maleEl = document.getElementById('live-feed-calc-male');
+        if (maleEl) maleEl.innerText = (maleTotalKg > 0 ? maleTotalKg.toFixed(2) : '0.00') + ' kg';
+
+        let femaleEl = document.getElementById('live-feed-calc-female');
+        if (femaleEl) femaleEl.innerText = (femaleTotalKg > 0 ? femaleTotalKg.toFixed(2) : '0.00') + ' kg';
     }
 
     document.getElementById('feed_male_gp_bird').addEventListener('input', calculateLiveFeed);
@@ -647,8 +697,175 @@
             document.getElementById('override_validation').value = 'false';
         }
 
+        // Generate Preview Summary
+        generatePreviewSummary();
+
         let myModal = new bootstrap.Modal(document.getElementById('updateConfirmModal'));
         myModal.show();
+    }
+
+    function generatePreviewSummary() {
+        let container = document.getElementById('previewSummaryContainer');
+        container.innerHTML = ''; // Clear old
+
+        let isUpdateMode = Object.keys(originalData).length > 0;
+
+        if (isUpdateMode) {
+            generateUpdateDiff(container);
+            return;
+        }
+
+        // 1. Gather core values
+        let mortM = parseFloat(document.querySelector('[name="mortality_male"]').value) || 0;
+        let mortF = parseFloat(document.querySelector('[name="mortality_female"]').value) || 0;
+        let eggsCol = parseFloat(document.querySelector('[name="eggs_collected"]').value) || 0;
+        let feedMaleText = document.getElementById('live-feed-calc-male').innerText;
+        let feedFemaleText = document.getElementById('live-feed-calc-female').innerText;
+        let water12h = document.getElementById('water_12h').innerText;
+
+        // Calculations
+        let mortMPct = currentStockM > 0 ? ((mortM / currentStockM) * 100).toFixed(2) : '0.00';
+        let mortFPct = currentStockF > 0 ? ((mortF / currentStockF) * 100).toFixed(2) : '0.00';
+        let eggProdPct = currentStockF > 0 ? ((eggsCol / currentStockF) * 100).toFixed(2) : '0.00';
+
+        let html = '<h6 class="border-bottom pb-1 mb-2 fw-bold text-dark">Key Metrics</h6>';
+        html += '<table class="table table-sm table-borderless mb-2">';
+
+        // Mortality Male
+        let mortMBadge = '';
+        if (mortMPct > stdMortalityDaily) {
+            mortMBadge = ` <span class="badge bg-danger ms-1">Alert: High Mortality</span>`;
+        }
+        html += `<tr><td class="text-muted p-0 pb-1 w-50">Male Mortality</td><td class="p-0 pb-1"><strong>${mortM}</strong> (${mortMPct}%)${mortMBadge}</td></tr>`;
+
+        // Mortality Female
+        let mortFBadge = '';
+        if (mortFPct > stdMortalityDaily) {
+            mortFBadge = ` <span class="badge bg-danger ms-1">Alert: High Mortality</span>`;
+        }
+        html += `<tr><td class="text-muted p-0 pb-1">Female Mortality</td><td class="p-0 pb-1"><strong>${mortF}</strong> (${mortFPct}%)${mortFBadge}</td></tr>`;
+
+        // Egg Production
+        let eggBadge = '';
+        if (yesterdayEggProdPct > 0) {
+            let drop = yesterdayEggProdPct - eggProdPct;
+            if (drop > 1.5) {
+                eggBadge = ` <span class="badge bg-warning text-dark ms-1">Alert: Dropped ${drop.toFixed(1)}%</span>`;
+            }
+        }
+        html += `<tr><td class="text-muted p-0 pb-1">Egg Production</td><td class="p-0 pb-1"><strong>${eggsCol}</strong> (${eggProdPct}%)${eggBadge}</td></tr>`;
+
+        // Feed & Water
+        html += `<tr><td class="text-muted p-0 pb-1">Feed (Calc)</td><td class="p-0 pb-1">M: <strong>${feedMaleText}</strong>, F: <strong>${feedFemaleText}</strong></td></tr>`;
+        if (parseFloat(water12h) > 0) {
+            html += `<tr><td class="text-muted p-0 pb-1">Water Cons.</td><td class="p-0 pb-1"><strong>${water12h} L</strong></td></tr>`;
+        }
+
+        html += '</table>';
+
+        // 2. Gather secondary non-zero values dynamically
+        let secondaryFields = [];
+
+        let checkFields = [
+            { selector: '[name="culls_male"]', label: 'Culls Male' },
+            { selector: '[name="culls_female"]', label: 'Culls Female' },
+            { selector: '[name="mortality_male_hosp"]', label: 'Mort. Male (Hosp)' },
+            { selector: '[name="mortality_female_hosp"]', label: 'Mort. Female (Hosp)' },
+            { selector: '[name="males_moved_to_hosp"]', label: 'Males to Hosp' },
+            { selector: '[name="females_moved_to_hosp"]', label: 'Females to Hosp' },
+            { selector: '[name="egg_weight"]', label: 'Avg Egg Wt' }
+        ];
+
+        checkFields.forEach(f => {
+            let el = document.querySelector(f.selector);
+            if (el && parseFloat(el.value) > 0) {
+                secondaryFields.push({ label: f.label, value: el.value });
+            }
+        });
+
+        let remarksEl = document.querySelector('[name="remarks"]');
+        if (remarksEl && remarksEl.value.trim() !== '') {
+            secondaryFields.push({ label: 'Remarks', value: '<em>Included</em>' });
+        }
+
+        if (secondaryFields.length > 0) {
+            html += '<h6 class="border-bottom pb-1 mt-3 mb-2 fw-bold text-dark">Other Data Present</h6>';
+            html += '<table class="table table-sm table-borderless mb-0">';
+            secondaryFields.forEach(sf => {
+                html += `<tr><td class="text-muted p-0 pb-1 w-50">${sf.label}</td><td class="p-0 pb-1"><strong>${sf.value}</strong></td></tr>`;
+            });
+            html += '</table>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function generateUpdateDiff(container) {
+        let changes = [];
+
+        let inputs = document.querySelectorAll('#dailyLogForm input, #dailyLogForm select, #dailyLogForm textarea');
+        inputs.forEach(el => {
+            if (el.name && originalData.hasOwnProperty(el.name) && el.type !== 'hidden' && el.name !== 'csrf_token') {
+                let currentVal = (el.type === 'checkbox' || el.type === 'radio') ? el.checked : el.value;
+                let originalVal = originalData[el.name];
+
+                if (String(currentVal) !== String(originalVal)) {
+                    // Try to get a friendly label
+                    let label = el.name;
+                    let labelEl = document.querySelector(`label[for="${el.id}"]`);
+                    if (labelEl) {
+                        label = labelEl.innerText;
+                    } else if (el.placeholder) {
+                        label = el.placeholder;
+                    } else {
+                        // Format the name property nicely if no label is found
+                        label = el.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    }
+
+                    changes.push({
+                        label: label,
+                        old: originalVal === '' ? 'Empty' : originalVal,
+                        new: currentVal === '' ? 'Empty' : currentVal
+                    });
+                }
+            }
+        });
+
+        let html = '<h6 class="border-bottom pb-1 mb-2 fw-bold text-dark">Detected Changes</h6>';
+
+        if (changes.length === 0) {
+            html += '<div class="text-muted small fst-italic">No modifications detected.</div>';
+        } else {
+            html += '<table class="table table-sm table-borderless mb-0">';
+            html += '<thead><tr><th class="text-muted small fw-normal">Field</th><th class="text-muted small fw-normal text-end">Update</th></tr></thead><tbody>';
+            changes.forEach(c => {
+                let oldValFmt = c.old === true ? 'Yes' : (c.old === false ? 'No' : c.old);
+                let newValFmt = c.new === true ? 'Yes' : (c.new === false ? 'No' : c.new);
+                html += `<tr>
+                            <td class="p-0 pb-2 w-50 pe-2 text-truncate" title="${c.label}">${c.label}</td>
+                            <td class="p-0 pb-2 text-end">
+                                <span class="text-secondary text-decoration-line-through me-1 small">${oldValFmt}</span>
+                                <strong>${newValFmt}</strong>
+                            </td>
+                         </tr>`;
+            });
+            html += '</tbody></table>';
+
+            // Add a brief alert recalculation since mortality/egg changes might happen
+            let mortM = parseFloat(document.querySelector('[name="mortality_male"]').value) || 0;
+            let mortF = parseFloat(document.querySelector('[name="mortality_female"]').value) || 0;
+
+            let mortMPct = currentStockM > 0 ? ((mortM / currentStockM) * 100) : 0;
+            let mortFPct = currentStockF > 0 ? ((mortF / currentStockF) * 100) : 0;
+
+            if (mortMPct > stdMortalityDaily || mortFPct > stdMortalityDaily) {
+                html += `<div class="alert alert-danger mt-2 mb-0 py-1 px-2 small">
+                            ⚠️ Alert: The updated mortality exceeds the daily standard.
+                         </div>`;
+            }
+        }
+
+        container.innerHTML = html;
     }
 
     function confirmUpdateSubmit() {

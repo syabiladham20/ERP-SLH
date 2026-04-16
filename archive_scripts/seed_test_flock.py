@@ -1,4 +1,5 @@
-from app import app, db, House, Farm, Flock
+from run import app, db
+from app.models.models import House, Farm, Flock, GlobalStandard, User
 import datetime
 
 with app.app_context():
