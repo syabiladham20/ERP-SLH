@@ -1,4 +1,5 @@
 const CACHE_NAME = 'slh-erp-v{{ version }}';
+const DYNAMIC_CACHE_NAME = 'slh-erp-dynamic-v{{ version }}';
 const ASSETS_TO_CACHE = [
   '/',
   '/offline',
@@ -27,29 +28,42 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Fetch Event: Network-First Strategy
+// Fetch Event: Network-First Strategy for HTML, Cache-First for Assets
 self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate' || (event.request.method === 'GET' && event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'))) {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        // Redirect to offline mirror for dashboard-like navigations
-        return caches.match('/offline_mirror').then(response => {
-           return response || new Response('Offline. Please check your connection.', {
-               status: 503,
-               statusText: 'Service Unavailable',
-               headers: new Headers({ 'Content-Type': 'text/plain' })
-           });
+      fetch(event.request).then((networkResponse) => {
+        // Successful network request -> store clone in dynamic cache
+        return caches.open(DYNAMIC_CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        // Network failed -> return from dynamic cache, fallback to offline_mirror if not found
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return caches.match('/offline_mirror').then(fallbackResponse => {
+            return fallbackResponse || new Response('Offline. Please check your connection.', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: new Headers({ 'Content-Type': 'text/plain' })
+            });
+          });
         });
       })
     );
   } else {
+    // Cache-First strategy for static assets
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(event.request).then(response => {
-           // Return a generic fallback if not found in cache
-           if (response) return response;
-           // If it's an image or something else, we could return a placeholder or 404
-           return new Response('', { status: 404, statusText: 'Not Found' });
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).catch(() => {
+          // If it's an image or something else, we could return a placeholder or 404
+          return new Response('', { status: 404, statusText: 'Not Found' });
         });
       })
     );

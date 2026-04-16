@@ -260,6 +260,11 @@
         </div>
       </nav>
 
+      <!-- Offline Banner -->
+      <div id="offline-banner" class="alert alert-warning d-none text-center sticky-top mb-0 rounded-0 border-0" style="z-index: 9999;">
+        You are currently in Offline Mode (Read-Only). Changes cannot be saved.
+      </div>
+
       <main class="main-content position-relative border-radius-lg">
         <!-- System Health Widget Injection -->
         {% if system_health_logs and request.endpoint == 'index' %}
@@ -424,5 +429,6 @@
         }
 
     </script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
 </body>
 </html>
