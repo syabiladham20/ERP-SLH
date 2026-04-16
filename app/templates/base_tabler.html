@@ -488,21 +488,29 @@
         </div>
         {% endif %}
 
-        <!-- Flash Messages -->
-        <div class="container-fluid mt-3">
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-              {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible" role="alert">
-                  <div class="d-flex">
-                    <div>{{ message }}</div>
-                  </div>
-                  <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
-                </div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-        </div>
+        <!-- Flash Messages (Replaced by Toasts) -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            // Map flash categories to toast types (success, error, info)
+                            let type = 'info';
+                            if ('{{ category }}' === 'success') type = 'success';
+                            if ('{{ category }}' === 'danger' || '{{ category }}' === 'error') type = 'error';
+                            if ('{{ category }}' === 'warning') type = 'error';
+
+                            // Delay slightly to ensure toast container and function are ready
+                            setTimeout(() => {
+                                if(typeof showToast === 'function') {
+                                    showToast({{ message | tojson }}, type);
+                                }
+                            }, 100);
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            });
+        </script>
 
         <!-- Content -->
         <div class="page-body">
