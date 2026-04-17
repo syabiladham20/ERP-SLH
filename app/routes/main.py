@@ -154,6 +154,8 @@ def register_main_routes(app):
             elif next_week_start <= v.est_date <= next_week_end:
                 next_week_vaccines.append(v)
 
+        breadcrumbs = [{'name': 'Dashboard', 'url': None}]
+
         return render_template('index_modern.html',
                                active_flocks=active_flocks,
                                today=today,
@@ -161,7 +163,8 @@ def register_main_routes(app):
                                low_stock_count=low_stock_count,
                                normal_stock_items=normal_stock_items,
                                this_week_vaccines=this_week_vaccines,
-                               next_week_vaccines=next_week_vaccines)
+                               next_week_vaccines=next_week_vaccines,
+                               breadcrumbs=breadcrumbs)
 
     @app.route('/offline_mirror')
     def offline_mirror():
