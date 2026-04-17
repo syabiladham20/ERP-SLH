@@ -1134,6 +1134,7 @@ def register_production_routes(app):
     @dept_required('Farm')
     def edit_daily_log(id):
         log = DailyLog.query.get_or_404(id)
+        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {log.flock.name}', 'url': url_for('view_flock', id=log.flock.id)}, {'name': 'Edit Daily Log', 'url': None}]
 
         if request.method == 'POST':
             # Handle Vaccines
@@ -1292,7 +1293,7 @@ def register_production_routes(app):
 
         medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
 
-        return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory)
+        return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory, breadcrumbs=breadcrumbs)
 
     @app.route('/daily_log', methods=['GET', 'POST'])
     @login_required
@@ -1561,6 +1562,8 @@ def register_production_routes(app):
         # Fetch Inventory Items (Medications)
         medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
 
+        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': 'Daily Log', 'url': None}]
+
         return render_template('daily_log_form.html',
                                houses=active_houses,
                                flock_phases_json=json.dumps(flock_phases),
@@ -1569,7 +1572,8 @@ def register_production_routes(app):
                                selected_house_id=int(selected_house_id) if selected_house_id and selected_house_id.isdigit() else None,
                                selected_date=selected_date_str,
                                vaccines_due=vaccines_due,
-                               medication_inventory=medication_inventory)
+                               medication_inventory=medication_inventory,
+                               breadcrumbs=breadcrumbs)
 
     @app.route('/flock/<int:id>/charts')
     @login_required
@@ -2124,7 +2128,9 @@ def register_production_routes(app):
                     date_str = f.split("_")[0]
                     available_reports.add(date_str)
 
-        return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
+        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {flock.name}', 'url': None}]
+
+        return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports, breadcrumbs=breadcrumbs)
 
     @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
     @login_required
