@@ -16,6 +16,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///' + os.path.join(basedir, 'instance', 'farm.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    WTF_CSRF_TIME_LIMIT = 86400
 
     PERMANENT_SESSION_LIFETIME = timedelta(days=31)
 
