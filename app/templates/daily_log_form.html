@@ -481,6 +481,26 @@
     document.getElementById('date').valueAsDate = new Date();
     {% endif %}
 
+    const lastLogDates = {{ last_dates_map | default({}) | tojson }};
+
+    function updateLastLogText() {
+        let houseId = document.getElementById('house_id').value;
+        if (houseId) {
+            let lastDate = lastLogDates[houseId];
+            let lastDateEl = document.getElementById('lastFilledDateText');
+            if (lastDateEl) {
+                if (lastDate) {
+                    lastDateEl.innerHTML = `Last log submitted: <span class="fw-bold">${lastDate}</span>`;
+                } else {
+                    lastDateEl.innerHTML = `Last log submitted: <span class="fst-italic text-secondary">None</span>`;
+                }
+            }
+        }
+    }
+
+    // Call once to set initial text
+    updateLastLogText();
+
     function fetchBackgroundData() {
         let houseId = document.getElementById('house_id').value;
         let dateVal = document.getElementById('date').value;
@@ -503,13 +523,7 @@
                 dayMinus2FeedM = data.day_minus_2_feed_m || 0;
                 dayMinus2FeedF = data.day_minus_2_feed_f || 0;
 
-                if (data.previous_log_date) {
-                    let lastDateEl = document.getElementById('lastFilledDateText');
-                    if(lastDateEl) lastDateEl.innerHTML = `Last log submitted: <span class="fw-bold">${data.previous_log_date}</span>`;
-                } else {
-                    let lastDateEl = document.getElementById('lastFilledDateText');
-                    if(lastDateEl) lastDateEl.innerHTML = `Last log submitted: <span class="fst-italic text-secondary">None</span>`;
-                }
+
 
                 if (data.std_mortality_daily !== undefined) stdMortalityDaily = data.std_mortality_daily;
                 if (data.yesterday_egg_prod_pct !== undefined) yesterdayEggProdPct = data.yesterday_egg_prod_pct;
@@ -554,6 +568,7 @@
     }
 
     function onSelectionChange() {
+        updateLastLogText();
         {% if request.endpoint == 'daily_log' %}
         let houseId = document.getElementById('house_id').value;
         let dateVal = document.getElementById('date').value;
@@ -725,6 +740,8 @@
         let eggsCol = parseFloat(document.querySelector('[name="eggs_collected"]').value) || 0;
         let feedMaleText = document.getElementById('live-feed-calc-male').innerText;
         let feedFemaleText = document.getElementById('live-feed-calc-female').innerText;
+        let maleGpBird = document.getElementById('feed_male_gp_bird').value || 0;
+        let femaleGpBird = document.getElementById('feed_female_gp_bird').value || 0;
         let water12h = document.getElementById('water_12h').innerText;
 
         // Calculations
@@ -760,7 +777,10 @@
         html += `<tr><td class="text-muted p-0 pb-1">Egg Production</td><td class="p-0 pb-1"><strong>${eggsCol}</strong> (${eggProdPct}%)${eggBadge}</td></tr>`;
 
         // Feed & Water
-        html += `<tr><td class="text-muted p-0 pb-1">Feed (Calc)</td><td class="p-0 pb-1">M: <strong>${feedMaleText}</strong>, F: <strong>${feedFemaleText}</strong></td></tr>`;
+        // Remove ' kg' suffix from feedMaleText and feedFemaleText for correct formatting
+        let feedMaleNum = feedMaleText.replace(' kg', '');
+        let feedFemaleNum = feedFemaleText.replace(' kg', '');
+        html += `<tr><td class="text-muted p-0 pb-1">Feed (Calc)</td><td class="p-0 pb-1">M: <strong>${maleGpBird}g (${feedMaleNum}kg)</strong>, F: <strong>${femaleGpBird}g (${feedFemaleNum}kg)</strong></td></tr>`;
         if (parseFloat(water12h) > 0) {
             html += `<tr><td class="text-muted p-0 pb-1">Water Cons.</td><td class="p-0 pb-1"><strong>${water12h} L</strong></td></tr>`;
         }

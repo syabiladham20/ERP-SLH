@@ -1293,7 +1293,11 @@ def register_production_routes(app):
 
         medication_inventory = InventoryItem.query.filter_by(type='Medication').order_by(InventoryItem.name).all()
 
-        return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory, breadcrumbs=breadcrumbs)
+        # Last logs mapping
+        last_dates_raw = db.session.query(Flock.house_id, func.max(DailyLog.date)).join(DailyLog).filter(Flock.status == 'Active').group_by(Flock.house_id).all()
+        last_dates_map = {row[0]: row[1].strftime('%Y-%m-%d') for row in last_dates_raw if row[1]}
+
+        return render_template('daily_log_form.html', log=log, houses=[log.flock.house], feed_codes=feed_codes, vaccines_due=vaccines_due, medication_inventory=medication_inventory, breadcrumbs=breadcrumbs, last_dates_map=last_dates_map)
 
     @app.route('/daily_log', methods=['GET', 'POST'])
     @login_required
@@ -1564,6 +1568,10 @@ def register_production_routes(app):
 
         breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': 'Daily Log', 'url': None}]
 
+        # Last logs mapping
+        last_dates_raw = db.session.query(Flock.house_id, func.max(DailyLog.date)).join(DailyLog).filter(Flock.status == 'Active').group_by(Flock.house_id).all()
+        last_dates_map = {row[0]: row[1].strftime('%Y-%m-%d') for row in last_dates_raw if row[1]}
+
         return render_template('daily_log_form.html',
                                houses=active_houses,
                                flock_phases_json=json.dumps(flock_phases),
@@ -1573,7 +1581,8 @@ def register_production_routes(app):
                                selected_date=selected_date_str,
                                vaccines_due=vaccines_due,
                                medication_inventory=medication_inventory,
-                               breadcrumbs=breadcrumbs)
+                               breadcrumbs=breadcrumbs,
+                               last_dates_map=last_dates_map)
 
     @app.route('/flock/<int:id>/charts')
     @login_required
