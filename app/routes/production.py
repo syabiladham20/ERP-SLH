@@ -1134,7 +1134,7 @@ def register_production_routes(app):
     @dept_required('Farm')
     def edit_daily_log(id):
         log = DailyLog.query.get_or_404(id)
-        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {log.flock.name}', 'url': url_for('view_flock', id=log.flock.id)}, {'name': 'Edit Daily Log', 'url': None}]
+        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {log.flock.flock_id}', 'url': url_for('view_flock', id=log.flock.id)}, {'name': 'Edit Daily Log', 'url': None}]
 
         if request.method == 'POST':
             # Handle Vaccines
@@ -2128,7 +2128,7 @@ def register_production_routes(app):
                     date_str = f.split("_")[0]
                     available_reports.add(date_str)
 
-        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {flock.name}', 'url': None}]
+        breadcrumbs = [{'name': 'Dashboard', 'url': url_for('index')}, {'name': f'Flock {flock.flock_id}', 'url': None}]
 
         return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports, breadcrumbs=breadcrumbs)
 
