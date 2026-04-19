@@ -200,7 +200,45 @@
     </style>
     {% block extra_head %}{% endblock %}
 
-    <script></script>
+    <script>
+        const originalFetch = window.fetch;
+        window.fetch = async function() {
+            let [resource, config] = arguments;
+            if(config === undefined) {
+                config = {};
+            }
+            if(config.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method.toUpperCase())) {
+                let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                let csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
+                if(csrfToken) {
+                    if(!config.headers) {
+                        config.headers = {};
+                    }
+                    if(config.headers instanceof Headers) {
+                        config.headers.append('X-CSRFToken', csrfToken);
+                    } else {
+                        config.headers['X-CSRFToken'] = csrfToken;
+                    }
+                }
+            }
+            return originalFetch(resource, config);
+        };
+
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
 
   </head>
   <body>
@@ -482,7 +520,6 @@
         <!-- Content -->
         <div class="page-body">
           <div class="container-fluid">
-            {% include 'partials/_breadcrumbs.html' %}
             {% block content %}{% endblock %}
           </div>
         </div>
@@ -594,6 +631,19 @@
 
     <!-- Tabler Core JS & Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js?v={{ version }}">
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
 
     </script>
     <script>
@@ -764,6 +814,20 @@
             });
         });
 
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
     <script>
       if ('serviceWorker' in navigator) {
@@ -774,8 +838,35 @@
         });
       }
 
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
     <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}">
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
 
     </script>
     <script>
@@ -988,6 +1079,20 @@
         }
       });
 
+        // jQuery global CSRF handler
+        if (typeof jQuery !== 'undefined') {
+            jQuery.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                        let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+                        if (csrfTokenMeta) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
+                        }
+                    }
+                }
+            });
+        }
+
     </script>
     {% block extra_scripts %}{% endblock %}
 
@@ -1003,53 +1108,6 @@
         });
       });
 
-    </script>
-    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
-    <script>
-        const originalFetch = window.fetch;
-        window.fetch = async function() {
-            let [resource, config] = arguments;
-            if(config === undefined) {
-                config = {};
-            }
-            if(config.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method.toUpperCase())) {
-                let csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-                let csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
-                if(csrfToken) {
-                    if(!config.headers) {
-                        config.headers = {};
-                    }
-                    if(config.headers instanceof Headers) {
-                        config.headers.append('X-CSRFToken', csrfToken);
-                    } else {
-                        config.headers['X-CSRFToken'] = csrfToken;
-                    }
-                }
-            }
-            try {
-                const response = await originalFetch(resource, config);
-                if (response.status === 400) {
-                    const clonedResponse = response.clone();
-                    try {
-                        const text = await clonedResponse.text();
-                        if (text.includes('CSRF')) {
-                            if (typeof showToast === 'function') {
-                                showToast('Secure session expired. Refreshing page in 3 seconds...', 'error');
-                            }
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 3000);
-                        }
-                    } catch (e) {
-                        // ignore text reading errors
-                    }
-                }
-                return response;
-            } catch (err) {
-                throw err;
-            }
-        };
-
         // jQuery global CSRF handler
         if (typeof jQuery !== 'undefined') {
             jQuery.ajaxSetup({
@@ -1060,18 +1118,10 @@
                             xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
                         }
                     }
-                },
-                error: function(xhr, textStatus, errorThrown) {
-                    if (xhr.status === 400 && xhr.responseText && xhr.responseText.includes('CSRF')) {
-                        if (typeof showToast === 'function') {
-                            showToast('Secure session expired. Refreshing page in 3 seconds...', 'error');
-                        }
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 3000);
-                    }
                 }
             });
         }
+
     </script>
+    <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
 </body></html>

@@ -113,21 +113,16 @@ def initialize_sampling_schedule(flock_id, commit=True):
 
 def initialize_users():
     # Helper to seed users if table is empty or missing specific users
-    target_usernames = [u['username'] for u in INITIAL_USERS]
-    existing_usernames = {u.username for u in User.query.filter(User.username.in_(target_usernames)).all()}
-
     for u_data in INITIAL_USERS:
-        username = u_data['username']
-        if username not in existing_usernames:
+        user = User.query.filter_by(username=u_data['username']).first()
+        if not user:
             user = User(
-                username=username,
+                username=u_data['username'],
                 dept=u_data['dept'],
                 role=u_data['role']
             )
             user.set_password(u_data['password'])
             db.session.add(user)
-            # Add to local set to prevent duplicate adds if INITIAL_USERS has duplicates
-            existing_usernames.add(username)
     safe_commit()
 
 def initialize_vaccine_schedule(flock_id, commit=True):
@@ -348,3 +343,9 @@ def seed_standards_from_file():
         return False, f"Error seeding standards: {str(e)}"
 
 
+INITIAL_USERS = [
+    {'name': 'Admin', 'role': 'Admin', 'dept': 'Admin', 'status': 'Active'},
+    {'name': 'Management', 'role': 'Management', 'dept': 'Management', 'status': 'Active'},
+    {'name': 'Hatchery User', 'role': 'User', 'dept': 'Hatchery', 'status': 'Active'},
+    {'name': 'Farm User', 'role': 'User', 'dept': 'Farm', 'status': 'Active'}
+]

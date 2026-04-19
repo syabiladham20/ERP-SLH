@@ -310,7 +310,6 @@
 
         <!-- Content -->
         <div class="container-fluid py-4">
-            {% include 'partials/_breadcrumbs.html' %}
             {% block content %}{% endblock %}
         </div>
 
@@ -413,6 +412,7 @@
           });
         }
     </script>
+
   <script>
         // jQuery global CSRF handler
         if (typeof jQuery !== 'undefined') {
@@ -424,21 +424,11 @@
                             xhr.setRequestHeader("X-CSRFToken", csrfTokenMeta.getAttribute('content'));
                         }
                     }
-                },
-                error: function(xhr, textStatus, errorThrown) {
-                    if (xhr.status === 400 && xhr.responseText && xhr.responseText.includes('CSRF')) {
-                        if (typeof showToast === 'function') {
-                            showToast('Secure session expired. Refreshing page in 3 seconds...', 'error');
-                        }
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 3000);
-                    }
                 }
             });
         }
-    </script>
 
+    </script>
     <script src="{{ url_for('static', filename='js/offline_sync.js') }}?v={{ version }}"></script>
 </body>
 </html>
