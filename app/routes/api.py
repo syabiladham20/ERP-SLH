@@ -372,6 +372,7 @@ def register_api_routes(app):
             'std_egg_weight': std_egg_weight,
             'feed_m': log.feed_male_gp_bird,
             'feed_f': log.feed_female_gp_bird,
+            'feed_program': log.feed_program or 'N/A',
             'total_feed_kg': round(total_feed_kg, 2),
             'medication': meds_str,
             'vaccination': vaccines_str,
