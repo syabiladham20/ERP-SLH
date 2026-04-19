@@ -576,7 +576,7 @@
 
                             <div style="margin-top: 15px; font-size: 16px; line-height: 1.5;">
                                 <div><strong>Egg weight:</strong> ${data.egg_weight}g (Std: ${data.std_egg_weight}g)</div>
-                                <div><strong>Feed g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg &nbsp;&nbsp;&nbsp; <strong>Feed Time:</strong> ${data.feed_cleanup_hours} h</div>
+                                <div><strong>Feed (Prog: ${data.feed_program || 'N/A'}) g/b:</strong> (M: ${data.feed_m}g | F: ${data.feed_f}g) &nbsp;&nbsp;&nbsp; <strong>Total feed:</strong> ${data.total_feed_kg}kg &nbsp;&nbsp;&nbsp; <strong>Feed Time:</strong> ${data.feed_cleanup_hours} h</div>
                                 <div><strong>Medication:</strong> ${data.medication}</div>
                                 ${data.vaccination ? `<div><strong>Vaccination:</strong> ${data.vaccination}</div>` : ''}
                                 <div><strong>Clinical notes:</strong> ${data.notes}</div>
@@ -839,14 +839,7 @@
                                     type: 'linear',
                                     position: 'left',
                                     title: {display: true, text: 'ml/bird'},
-                                    min: (() => {
-                                        const vals = waterTrend.map(t => t.water_per_bird || 0).filter(v => v > 0);
-                                        const maxV = vals.length > 0 ? Math.max(...vals) : 100;
-                                        const minV = vals.length > 0 ? Math.min(...vals) : 0;
-                                        let range = (maxV - minV) / 0.30;
-                                        if (range < 10) range = Math.max(10, maxV * 0.2);
-                                        return maxV - 0.90 * range;
-                                    })(),
+                                    min: 0,
                                     max: (() => {
                                         const vals = waterTrend.map(t => t.water_per_bird || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 100;
@@ -862,15 +855,7 @@
                                     position: 'right',
                                     grid: { drawOnChartArea: false },
                                     title: {display: true, text: 'Ratio'},
-                                    min: (() => {
-                                        const vals = waterTrend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
-                                        const maxV = vals.length > 0 ? Math.max(...vals) : 1;
-                                        const minV = vals.length > 0 ? Math.min(...vals) : 0;
-                                        let range = (maxV - minV) / 0.35;
-                                        if (range < 0.5) range = Math.max(0.5, maxV * 0.5);
-                                        let m = minV - 0.10 * range;
-                                        return m < 0 ? 0 : m;
-                                    })(),
+                                    min: 0,
                                     max: (() => {
                                         const vals = waterTrend.map(t => t.water_feed_ratio || 0).filter(v => v > 0);
                                         const maxV = vals.length > 0 ? Math.max(...vals) : 1;
@@ -910,10 +895,8 @@
                         const maxUnifRaw = Math.max(...data.weekly_trend.map(w => w[unifKey] || 0));
                         const maxUnif = (maxUnifRaw > 0 && maxUnifRaw <= 1) ? maxUnifRaw * 100 : maxUnifRaw;
 
-                        let unifRange = (maxUnif - minUnif) / 0.30;
-                        if (unifRange < 10) unifRange = 30; // Enforce minimum range so line isn't perfectly flat
-                        const yRightMin = maxUnif - 0.90 * unifRange;
-                        const yRightMax = yRightMin + unifRange;
+                        const yRightMin = 0;
+                        const yRightMax = maxUnif + 5;
 
                         // Plugins for Weight Gain and Selections
                         const customAnnotations = data.weekly_trend.map((w, idx, arr) => {
@@ -964,13 +947,13 @@
                                     {
                                         label: 'Uniformity %',
                                         data: data.weekly_trend.map(w => w[unifKey] ? (w[unifKey] <= 1 ? w[unifKey] * 100 : w[unifKey]) : null),
-                                        borderColor: 'yellow',
+                                        borderColor: '#DAA520',
                                         borderDash: [5, 5],
                                         yAxisID: 'yRight',
                                         spanGaps: true,
                                         datalabels: {
                                             align: 'top',
-                                            color: '#b8860b',
+                                            color: '#DAA520',
                                             backgroundColor: 'rgba(255, 255, 255, 0.7)',
                                             font: {weight: 'bold'},
                                             formatter: v => v ? v.toFixed(1) : ''
@@ -983,7 +966,13 @@
                                         backgroundColor: 'blue',
                                         yAxisID: 'yLeft',
                                         spanGaps: true,
-                                        datalabels: { align: 'top', color: 'blue', backgroundColor: 'rgba(255, 255, 255, 0.7)', font: {weight: 'bold'} }
+                                        datalabels: {
+                                            align: 'top',
+                                            color: 'blue',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                            font: {weight: 'bold'},
+                                            formatter: v => v ? v.toFixed(0) : ''
+                                        }
                                     },
                                     {
                                         label: 'Std BW',
