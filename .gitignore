@@ -10,3 +10,10 @@ test-env/
 venv/
 node_modules/
 trash_bin/
+
+# Temporary AI Scripts
+/*test_*.py
+!/tests/
+/*patch_*.py
+/*temp_*.py
+/*fix_*.py
