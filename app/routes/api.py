@@ -354,7 +354,8 @@ def register_api_routes(app):
                 if duration: feed_cleanup_hours = round(duration / 60.0, 1)
             except: pass
 
-        notes_str = log.remarks if log.remarks else "None"
+        notes_str = ", ".join(notes) if notes else "None"
+        remarks_str = log.remarks if log.remarks else "None"
 
         report_info = {
             'empty': False,
@@ -377,6 +378,7 @@ def register_api_routes(app):
             'medication': meds_str,
             'vaccination': vaccines_str,
             'notes': notes_str,
+            'remarks': remarks_str,
             'trend': trend_data,
             'water_trend': water_trend_data,
             'weekly_trend': weekly_trend
