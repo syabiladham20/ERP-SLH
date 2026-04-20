@@ -214,6 +214,7 @@ def register_api_routes(app):
         ).order_by(DailyLog.date.asc()).all()
 
         gs = GlobalStandard.query.first()
+        std_mort = gs.std_mortality_daily if gs and gs.std_mortality_daily is not None else 0.05
         enriched = enrich_flock_data(flock, logs)
 
         cum_mort_m_pct = 0
@@ -233,6 +234,7 @@ def register_api_routes(app):
             std = std_map_by_week.get(week)
             d['std_egg_prod'] = std.std_egg_prod if std and std.std_egg_prod is not None else 0.0
             d['std_hatching_egg_pct'] = std.std_hatching_egg_pct if std and std.std_hatching_egg_pct is not None else 0.0
+            d['std_mortality'] = std_mort
 
         trend_data = []
         water_trend_data = []
@@ -250,6 +252,7 @@ def register_api_routes(app):
                 'mort_f_pct': entry.get('mortality_female_pct', 0.0),
                 'egg_prod_pct': entry.get('egg_prod_pct', 0.0),
                 'std_egg_prod': entry.get('std_egg_prod', 0.0),
+                'std_mortality': entry.get('std_mortality', 0.05),
                 'hatching_eggs': entry.get('hatch_eggs', 0),
                 'hatching_egg_pct': entry.get('hatch_egg_pct', 0.0),
                 'std_hatching_pct': entry.get('std_hatching_egg_pct', 0.0),
