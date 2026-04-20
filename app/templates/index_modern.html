@@ -673,7 +673,7 @@
                                         const maxV = Math.max(...vals);
                                         return maxV > 0 ? maxV / 0.65 : 1; // Limit bars to bottom 65%
                                     })(),
-                                    ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } }
+                                    ticks: { callback: function(value) { return (this.chart.scales.yLeft.max < 1) ? value.toFixed(2) : (Number.isInteger(value) ? value : ''); } }
                                 },
                                 yRight: {
                                     type: 'linear',
@@ -684,21 +684,24 @@
                                         if (vals.length === 0) return 0;
                                         const minV = Math.min(...vals);
                                         const maxV = Math.max(...vals);
-                                        let range = (maxV - minV) / 0.30;
-                                        if (range < 5) range = Math.max(5, maxV * 0.1);
-                                        let m = minV - 0.10 * range;
-                                        return m < 0 ? 0 : m;
+                                        let dataRange = maxV - minV;
+                                        if (dataRange < 5) dataRange = Math.max(5, maxV * 0.1);
+                                        // We want dataRange to be ~25% of total scale, so it sits at top 75-100%
+                                        let totalRange = dataRange / 0.25;
+                                        let minScale = minV - (totalRange * 0.70);
+                                        return minScale < 0 ? 0 : minScale;
                                     })(),
                                     max: (() => {
                                         const vals = [...trend.map(t => t.egg_prod_pct || 0), ...trend.map(t => t.std_egg_prod || 0)].filter(v => v > 0);
                                         if (vals.length === 0) return 100;
                                         const minV = Math.min(...vals);
                                         const maxV = Math.max(...vals);
-                                        let range = (maxV - minV) / 0.30;
-                                        if (range < 5) range = Math.max(5, maxV * 0.1);
-                                        let m = minV - 0.10 * range;
-                                        if (m < 0) m = 0;
-                                        return m + (maxV - m) / 0.30; // Scale top 30% dynamically
+                                        let dataRange = maxV - minV;
+                                        if (dataRange < 5) dataRange = Math.max(5, maxV * 0.1);
+                                        let totalRange = dataRange / 0.25;
+                                        let minScale = minV - (totalRange * 0.70);
+                                        if (minScale < 0) minScale = 0;
+                                        return minScale + totalRange;
                                     })(),
                                     ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } }
                                 }
@@ -797,7 +800,7 @@
                                         const maxV = Math.max(...culls, 0);
                                         return maxV > 0 ? maxV / 0.65 : 10; // Dynamically compress bars to bottom 65%
                                     })(),
-                                    ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } }
+                                    ticks: { callback: function(value) { return (this.chart.scales.yLeft.max < 1) ? value.toFixed(2) : (Number.isInteger(value) ? value : ''); } }
                                 },
                                 yRight: {
                                     type: 'linear',
