@@ -224,7 +224,7 @@ def register_health_routes(app):
                         var_pct = ((cur_m.body_weight - std_m) / std_m) * 100
 
                     m_parts.append({
-                        'name': f'P{i}',
+                        'name': f'M{i}',
                         'bw': cur_m.body_weight,
                         'unif': cur_m.uniformity,
                         'diff_g': diff_g,
@@ -248,7 +248,7 @@ def register_health_routes(app):
                         var_pct = ((cur_f.body_weight - std_f) / std_f) * 100
 
                     f_parts.append({
-                        'name': f'P{i}',
+                        'name': f'F{i}',
                         'bw': cur_f.body_weight,
                         'unif': cur_f.uniformity,
                         'diff_g': diff_g,
