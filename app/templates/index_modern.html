@@ -628,8 +628,8 @@
                                 },
                                 {
                                     type: 'line',
-                                    label: 'Std Mortality 0.05%',
-                                    data: trend.map(() => 0.05),
+                                    label: `Std Mortality ${trend.length > 0 ? trend[0].std_mortality : 0.05}%`,
+                                    data: trend.map(t => t.std_mortality),
                                     borderColor: 'orange',
                                     borderDash: [5, 5],
                                     borderWidth: 2.25,
@@ -686,9 +686,8 @@
                                         const maxV = Math.max(...vals);
                                         let dataRange = maxV - minV;
                                         if (dataRange < 5) dataRange = Math.max(5, maxV * 0.1);
-                                        // We want dataRange to be ~25% of total scale, so it sits at top 75-100%
-                                        let totalRange = dataRange / 0.25;
-                                        let minScale = minV - (totalRange * 0.70);
+                                        let desiredTotalRange = dataRange / 0.30;
+                                        let minScale = minV - (desiredTotalRange * 0.65);
                                         return minScale < 0 ? 0 : minScale;
                                     })(),
                                     max: (() => {
@@ -698,10 +697,12 @@
                                         const maxV = Math.max(...vals);
                                         let dataRange = maxV - minV;
                                         if (dataRange < 5) dataRange = Math.max(5, maxV * 0.1);
-                                        let totalRange = dataRange / 0.25;
-                                        let minScale = minV - (totalRange * 0.70);
-                                        if (minScale < 0) minScale = 0;
-                                        return minScale + totalRange;
+                                        let desiredTotalRange = dataRange / 0.30;
+                                        let minScale = minV - (desiredTotalRange * 0.65);
+                                        if (minScale < 0) {
+                                            return maxV / 0.90; // if clamped to 0, just put maxV at 90%
+                                        }
+                                        return minScale + desiredTotalRange;
                                     })(),
                                     ticks: { callback: function(value) { return Number.isInteger(value) ? value : ''; } }
                                 }
