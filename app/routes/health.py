@@ -165,13 +165,14 @@ def register_health_routes(app):
 
         for log in logs:
             age_days = (log.date - log.flock.intake_date).days
-            age_weeks = age_days // 7
+            age_weeks = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
 
             house_logs = logs_by_house[log.flock.house_id]
 
             prev_log = None
             for hl in house_logs:
-                hl_age_weeks = (hl.date - hl.flock.intake_date).days // 7
+                hl_age_days = (hl.date - hl.flock.intake_date).days
+                hl_age_weeks = 0 if hl_age_days == 0 else ((hl_age_days - 1) // 7) + 1 if hl_age_days > 0 else (hl_age_days // 7)
                 if hl_age_weeks == age_weeks - 1:
                     prev_log = hl
                     break

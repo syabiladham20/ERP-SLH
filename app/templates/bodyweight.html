@@ -333,11 +333,11 @@
                                                 <hr class="my-2">
                                                 {% for i in range(1, 9) %}
                                                 {% set p_data = None %}
-                                                {% for p in log.m_parts %}{% if p.name == 'P' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
+                                                {% for p in log.m_parts %}{% if p.name == 'M' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
                                                 <div class="row mb-2 align-items-center">
                                                     <div class="col-2"><span class="badge bg-light text-dark">M{{i}}</span></div>
-                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-m-{{log.log_id}}" name="bw_M{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
-                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-m-{{log.log_id}}" name="uni_M{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-m-{{log.log_id}}" name="bw_M{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" oninput="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-m-{{log.log_id}}" name="uni_M{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" oninput="recalcEdit({{log.log_id}})"></div>
                                                 </div>
                                                 {% endfor %}
                                             </div>
@@ -351,11 +351,11 @@
                                                 <hr class="my-2">
                                                 {% for i in range(1, 9) %}
                                                 {% set p_data = None %}
-                                                {% for p in log.f_parts %}{% if p.name == 'P' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
+                                                {% for p in log.f_parts %}{% if p.name == 'F' ~ i %}{% set p_data = p %}{% endif %}{% endfor %}
                                                 <div class="row mb-2 align-items-center">
                                                     <div class="col-2"><span class="badge bg-light text-dark">F{{i}}</span></div>
-                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-f-{{log.log_id}}" name="bw_F{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
-                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-f-{{log.log_id}}" name="uni_F{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" onchange="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm bw-f-{{log.log_id}}" name="bw_F{{i}}" placeholder="BW" value="{{ p_data.bw if p_data else '' }}" oninput="recalcEdit({{log.log_id}})"></div>
+                                                    <div class="col-5"><input type="number" step="0.01" class="form-control form-control-sm uni-f-{{log.log_id}}" name="uni_F{{i}}" placeholder="Unif" value="{{ p_data.unif if p_data else '' }}" oninput="recalcEdit({{log.log_id}})"></div>
                                                 </div>
                                                 {% endfor %}
                                             </div>
@@ -1094,9 +1094,14 @@
 
         const avgM = document.getElementById(`edit_avg_m_${logId}`);
         const uniM = document.getElementById(`edit_uni_m_${logId}`);
-        if(mCnt > 0 && avgM && uniM) {
-            avgM.value = (mSum / mCnt).toFixed(2);
-            uniM.value = (muSum / mCnt).toFixed(2);
+        if (avgM && uniM) {
+            if (mCnt > 0) {
+                avgM.value = (mSum / mCnt).toFixed(2);
+                uniM.value = (muSum / mCnt).toFixed(2);
+            } else {
+                avgM.value = '0.00';
+                uniM.value = '0.00';
+            }
         }
 
         let fBwInputs = document.querySelectorAll(`.bw-f-${logId}`);
@@ -1115,9 +1120,14 @@
 
         const avgF = document.getElementById(`edit_avg_f_${logId}`);
         const uniF = document.getElementById(`edit_uni_f_${logId}`);
-        if(fCnt > 0 && avgF && uniF) {
-            avgF.value = (fSum / fCnt).toFixed(2);
-            uniF.value = (fuSum / fCnt).toFixed(2);
+        if (avgF && uniF) {
+            if (fCnt > 0) {
+                avgF.value = (fSum / fCnt).toFixed(2);
+                uniF.value = (fuSum / fCnt).toFixed(2);
+            } else {
+                avgF.value = '0.00';
+                uniF.value = '0.00';
+            }
         }
     }
 
