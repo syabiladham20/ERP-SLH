@@ -580,6 +580,7 @@
                                 <div><strong>Medication:</strong> ${data.medication}</div>
                                 ${data.vaccination ? `<div><strong>Vaccination:</strong> ${data.vaccination}</div>` : ''}
                                 <div><strong>Clinical notes:</strong> ${data.notes}</div>
+                                <div><strong>Remarks:</strong> ${data.remarks || 'None'}</div>
                             </div>
                         </div>
                     `;
@@ -714,12 +715,12 @@
                                     type: 'bar',
                                     label: 'Small (%)',
                                     data: trend.map(t => t.cull_small_pct),
-                                    backgroundColor: 'lightblue',
+                                    backgroundColor: '#1AA37A',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: 'lightblue', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#1AA37A', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 },
                                 {
                                     type: 'bar',
@@ -736,12 +737,12 @@
                                     type: 'bar',
                                     label: 'Crack (%)',
                                     data: trend.map(t => t.cull_crack_pct),
-                                    backgroundColor: 'yellow',
+                                    backgroundColor: '#ff8c00',
                                     borderColor: borderColors,
                                     borderWidth: barBorderWidths,
                                     yAxisID: 'yLeft',
                                     stacked: false,
-                                    datalabels: { align: 'top', anchor: 'end', color: '#b8860b', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
+                                    datalabels: { align: 'top', anchor: 'end', color: '#ff8c00', backgroundColor: 'rgba(255, 255, 255, 0.7)', borderRadius: 3, padding: 2, font: {size: 10}, formatter: v => v > 0 ? v.toFixed(2) : '' }
                                 }
                             ]
                         },
@@ -864,7 +865,7 @@
                                         if (range < 0.5) range = Math.max(0.5, maxV * 0.5);
                                         let m = minV - 0.10 * range;
                                         if (m < 0) m = 0;
-                                        return m + (maxV - m) / 0.45;
+                                        return (m + (maxV - m) / 0.45) * 2;
                                     })()
                                 }
                             }
@@ -896,7 +897,7 @@
                         const maxUnif = (maxUnifRaw > 0 && maxUnifRaw <= 1) ? maxUnifRaw * 100 : maxUnifRaw;
 
                         const yRightMin = 0;
-                        const yRightMax = maxUnif + 5;
+                        const yRightMax = Math.max(100, maxUnif + 5);
 
                         // Plugins for Weight Gain and Selections
                         const customAnnotations = data.weekly_trend.map((w, idx, arr) => {
