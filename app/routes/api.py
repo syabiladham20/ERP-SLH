@@ -229,7 +229,7 @@ def register_api_routes(app):
 
         # Attach Standards
         for d in enriched:
-            week = d['log'].age_week
+            week = d['week']
             std = std_map_by_week.get(week)
             d['std_egg_prod'] = std.std_egg_prod if std and std.std_egg_prod is not None else 0.0
             d['std_hatching_egg_pct'] = std.std_hatching_egg_pct if std and std.std_hatching_egg_pct is not None else 0.0
