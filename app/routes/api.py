@@ -224,17 +224,15 @@ def register_api_routes(app):
             cum_mort_f_pct = enriched[-1].get('mortality_cum_female_pct', 0)
 
         # Fetch Standards
-        all_standards = GlobalStandard.query.all()
-        prod_std_map = {getattr(s, "age_weeks", getattr(s, "production_week", None)): s for s in all_standards if getattr(s, "age_weeks", getattr(s, "production_week", None)) is not None}
+        all_standards = Standard.query.all()
+        std_map_by_week = {s.week: s for s in all_standards}
 
         # Attach Standards
         for d in enriched:
-            prod_std = None
-            if d.get('production_week'):
-                prod_std = prod_std_map.get(d['production_week'])
-
-            d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+            week = d['log'].age_week
+            std = std_map_by_week.get(week)
+            d['std_egg_prod'] = std.std_egg_prod if std and std.std_egg_prod is not None else 0.0
+            d['std_hatching_egg_pct'] = std.std_hatching_egg_pct if std and std.std_hatching_egg_pct is not None else 0.0
 
         trend_data = []
         water_trend_data = []
