@@ -20,11 +20,11 @@ def init_ui_elements(commit=True):
         {'key': 'nav_inventory', 'label': 'Inventory', 'section': 'navbar_main', 'order': 4},
 
         # Navbar Health Dropdown
-        {'key': 'nav_health_vaccine', 'label': 'Vaccine', 'section': 'navbar_health', 'order': 1},
-        {'key': 'nav_health_sampling', 'label': 'Sampling', 'section': 'navbar_health', 'order': 2},
-        {'key': 'nav_health_medication', 'label': 'Medication', 'section': 'navbar_health', 'order': 3},
-        {'key': 'nav_health_notes', 'label': 'Post Mortem', 'section': 'navbar_health', 'order': 4},
-        {'key': 'nav_weight_grading', 'label': 'Bodyweight', 'section': 'navbar_health', 'order': 5},
+        {'key': 'nav_weight_grading', 'label': 'Bodyweight', 'section': 'navbar_health', 'order': 1},
+        {'key': 'nav_health_medication', 'label': 'Medication', 'section': 'navbar_health', 'order': 2},
+        {'key': 'nav_health_vaccine', 'label': 'Vaccine', 'section': 'navbar_health', 'order': 3},
+        {'key': 'nav_health_sampling', 'label': 'Sampling', 'section': 'navbar_health', 'order': 4},
+        {'key': 'nav_health_notes', 'label': 'Post Mortem', 'section': 'navbar_health', 'order': 5},
 
         # Flock Card (Dashboard)
         {'key': 'card_details', 'label': 'See Details', 'section': 'flock_card', 'order': 1},
