@@ -381,11 +381,17 @@
 
     <!-- Filter Control Bar -->
     <div class="bg-light p-2 mb-3 rounded d-flex align-items-center flex-wrap gap-2 shadow-sm border" style="position: relative; z-index: 1;">
-        <div class="input-group" style="max-width: 450px;">
+        <div class="input-group" id="globalDatePickerContainer" style="max-width: 450px;">
             <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> Start</span>
             <input type="text" id="startDateSlicer" class="form-control" placeholder="Start Date">
             <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-event" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /><path d="M16 3l0 4" /><path d="M8 3l0 4" /><path d="M4 11l16 0" /><path d="M8 15h2v2h-2z" /></svg> End</span>
             <input type="text" id="endDateSlicer" class="form-control" placeholder="End Date">
+        </div>
+        <div class="input-group" id="globalWeekPickerContainer" style="max-width: 450px;">
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg> Start Week</span>
+            <select id="startWeekSlicer" class="form-select"></select>
+            <span class="input-group-text bg-white"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg> End Week</span>
+            <select id="endWeekSlicer" class="form-select"></select>
         </div>
         <span id="ageRangeDisplay" class="fw-bold text-primary small ms-2"></span>
     </div>
@@ -403,10 +409,15 @@
                     <input type="radio" class="btn-check" name="chartMode" id="modeWeekly" autocomplete="off" checked onchange="switchMode('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeekly" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
-                <div class="d-flex align-items-center gap-1 ms-2">
+                <div class="d-flex align-items-center gap-1 ms-2" id="datePicker_general">
                     <input type="date" id="start_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
                     <input type="date" id="end_general" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <div class="d-flex align-items-center gap-1 ms-2 d-none" id="weekPicker_general">
+                    <select id="startWeek_general" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
+                    <span class="small">-</span>
+                    <select id="endWeek_general" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('generalChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('generalChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardGeneral')" title="Fullscreen">
@@ -432,10 +443,15 @@
                     <input type="radio" class="btn-check" name="chartModeHatching" id="modeWeeklyHatching" autocomplete="off" checked onchange="switchModeHatching('weekly')">                    <label class="btn btn-outline-secondary" for="modeWeeklyHatching" title="Weekly View"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-calendar-stats" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M11.795 21h-6.795a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M15 22l4 -4" /><path d="M19 22l4 -4" /><path d="M11.5 16h-3.5v-1" /></svg></label>
                 </div>
                 <!-- Per-Chart Date Picker -->
-                <div class="d-flex align-items-center gap-1 ms-2">
+                <div class="d-flex align-items-center gap-1 ms-2" id="datePicker_hatching">
                     <input type="date" id="start_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
                     <span class="small">-</span>
                     <input type="date" id="end_hatching" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                </div>
+                <div class="d-flex align-items-center gap-1 ms-2 d-none" id="weekPicker_hatching">
+                    <select id="startWeek_hatching" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
+                    <span class="small">-</span>
+                    <select id="endWeek_hatching" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <button class="btn btn-sm btn-secondary ms-2" onclick="toggleDataLabels('hatchingEggChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('hatchingEggChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleFullScreenWrapper('cardHatching')" title="Fullscreen">
@@ -502,10 +518,10 @@
             <span id="maleChartTitle" class="fw-bold mb-2 mb-md-0">Male Statistics (BW & Uniformity)</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
-                <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="date" id="start_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                <div class="d-flex align-items-center gap-1 ms-2" id="weekPicker_male">
+                    <select id="startWeek_male" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                     <span class="small">-</span>
-                    <input type="date" id="end_male" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                    <select id="endWeek_male" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
@@ -526,10 +542,10 @@
             <span id="femaleChartTitle" class="fw-bold mb-2 mb-md-0">Female Statistics (BW & Uniformity)</span>
             <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
                 <!-- Per-Chart Date Picker -->
-                <div class="d-flex align-items-center gap-1 ms-2">
-                    <input type="date" id="start_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="Start">
+                <div class="d-flex align-items-center gap-1 ms-2" id="weekPicker_female">
+                    <select id="startWeek_female" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                     <span class="small">-</span>
-                    <input type="date" id="end_female" class="form-control form-control-sm" style="width: auto; font-size: 0.8rem;" placeholder="End">
+                    <select id="endWeek_female" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary ms-1" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
@@ -849,16 +865,79 @@
   let currentModeHatching = 'weekly';
   // State Management for Date Ranges
   const chartStates = {
-      general: { start: null, end: null },
-      hatching: { start: null, end: null },
-      water: { start: null, end: null },
-      feed: { start: null, end: null },
-      male: { start: null, end: null },
-      female: { start: null, end: null }
+      general: { start: null, end: null, startWeek: null, endWeek: null },
+      hatching: { start: null, end: null, startWeek: null, endWeek: null },
+      male: { start: null, end: null, startWeek: null, endWeek: null },
+      female: { start: null, end: null, startWeek: null, endWeek: null }
   };
+
 
   let globalPickerStart = null;
   let globalPickerEnd = null;
+
+      let globalPickerStartWeek = null;
+      let globalPickerEndWeek = null;
+      let availableWeeks = [];
+
+      if (chartDataWeekly && chartDataWeekly.dates) {
+          chartDataWeekly.dates.forEach(label => {
+              const match = label.toString().match(/(\d+)/);
+              if (match) availableWeeks.push(parseInt(match[1]));
+          });
+      }
+
+      if (availableWeeks.length > 0) {
+          const maxW = Math.max(...availableWeeks);
+          const minW = Math.max(1, maxW - 9); // default last 10 weeks
+          globalPickerStartWeek = minW;
+          globalPickerEndWeek = maxW;
+
+          function populateWeekSelect(selectId, startW, endW, selected) {
+              const el = document.getElementById(selectId);
+              if (!el) return;
+              el.innerHTML = '';
+              for (let i = 1; i <= maxW; i++) {
+                  const opt = document.createElement('option');
+                  opt.value = i;
+                  opt.text = 'Week ' + i;
+                  if (i === selected) opt.selected = true;
+                  el.appendChild(opt);
+              }
+          }
+
+          populateWeekSelect('startWeekSlicer', 1, maxW, globalPickerStartWeek);
+          populateWeekSelect('endWeekSlicer', 1, maxW, globalPickerEndWeek);
+      }
+
+
+
+
+
+  window.switchMode = function(mode) {
+      currentMode = mode;
+      const isDaily = mode === 'daily';
+
+      const dp = document.getElementById('datePicker_general');
+      const wp = document.getElementById('weekPicker_general');
+      if(dp) dp.classList.toggle('d-none', !isDaily);
+      if(wp) wp.classList.toggle('d-none', isDaily);
+
+      renderGeneralChart();
+      if (typeof updateChartAnnotations === 'function' && typeof generalChart !== 'undefined') updateChartAnnotations(generalChart);
+  };
+
+  window.switchModeHatching = function(mode) {
+      currentModeHatching = mode;
+      const isDaily = mode === 'daily';
+
+      const dp = document.getElementById('datePicker_hatching');
+      const wp = document.getElementById('weekPicker_hatching');
+      if(dp) dp.classList.toggle('d-none', !isDaily);
+      if(wp) wp.classList.toggle('d-none', isDaily);
+
+      renderHatchingChart();
+      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
+  };
 
   function calculateAgeWeeks(dateObj) {
       if (!intakeDate) return 0;
@@ -876,6 +955,37 @@
           }
       }
       return 0;
+  }
+
+
+  function filterDataByWeek(dataObj, startWeek, endWeek) {
+      if (!startWeek || !endWeek || !dataObj.dates) return dataObj;
+      const filtered = {};
+      const indices = [];
+
+      startWeek = parseInt(startWeek);
+      endWeek = parseInt(endWeek);
+
+      dataObj.dates.forEach((label, idx) => {
+          const match = label.toString().match(/(\d+)/);
+          if (match) {
+              const weekNum = parseInt(match[1]);
+              if (weekNum >= startWeek && weekNum <= endWeek) {
+                  indices.push(idx);
+              }
+          }
+      });
+
+      if (indices.length === 0) return dataObj; // Return original if no match (or empty)
+
+      Object.keys(dataObj).forEach(key => {
+          if (Array.isArray(dataObj[key])) {
+              filtered[key] = indices.map(i => dataObj[key][i]);
+          } else {
+              filtered[key] = dataObj[key];
+          }
+      });
+      return filtered;
   }
 
   function filterDataByDate(dataObj, startDate, endDate, isWeekly) {
@@ -1295,12 +1405,12 @@
       });
   }
 
+
   function renderMaleChart() {
       const mode = currentMode;
       const state = chartStates.male;
-      // Force Weekly Data for Body Weight Charts
       const bwFullData = chartDataWeekly;
-      const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
+      const bwData = filterDataByWeek(bwFullData, state.startWeek, state.endWeek);
 
       // Destroy existing
       if (maleChart) maleChart.destroy();
@@ -1394,11 +1504,12 @@
       });
   }
 
+
   function renderFemaleChart() {
       const mode = currentMode;
       const state = chartStates.female;
       const bwFullData = chartDataWeekly;
-      const bwData = filterDataByDate(bwFullData, state.start, state.end, true);
+      const bwData = filterDataByWeek(bwFullData, state.startWeek, state.endWeek);
 
       if (femaleChart) femaleChart.destroy();
 
@@ -1537,11 +1648,12 @@
       }
   };
 
+
   function renderGeneralChart() {
-      const mode = currentMode; // uses global 'currentMode' toggled by radio
+      const mode = currentMode;
       const state = chartStates.general;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
-      const generalData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
+      const generalData = mode === 'weekly' ? filterDataByWeek(fullData, state.startWeek, state.endWeek) : filterDataByDate(fullData, state.start, state.end, false);
 
       if (generalChart) generalChart.destroy();
 
@@ -1766,11 +1878,12 @@
       });
   }
 
+
   function renderHatchingChart() {
       const mode = currentModeHatching;
       const state = chartStates.hatching;
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
-      const filteredData = filterDataByDate(fullData, state.start, state.end, mode === 'weekly');
+      const filteredData = mode === 'weekly' ? filterDataByWeek(fullData, state.startWeek, state.endWeek) : filterDataByDate(fullData, state.start, state.end, false);
 
       if (hatchingEggChart) hatchingEggChart.destroy();
 
@@ -1819,17 +1932,7 @@
       });
   }
 
-  function switchMode(mode) {
-      currentMode = mode;
-      renderGeneralChart();
-      if (typeof updateChartAnnotations === 'function' && typeof generalChart !== 'undefined') updateChartAnnotations(generalChart);
-  }
 
-  function switchModeHatching(mode) {
-      currentModeHatching = mode;
-      renderHatchingChart();
-      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
-  }
 
   function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
       const titleEl = document.getElementById(elementId);
@@ -1974,24 +2077,21 @@
           // Defaults
           chartStates[key].start = globalPickerStart;
           chartStates[key].end = globalPickerEnd;
+          if (chartStates[key].startWeek !== undefined) chartStates[key].startWeek = globalPickerStartWeek;
+          if (chartStates[key].endWeek !== undefined) chartStates[key].endWeek = globalPickerEndWeek;
 
+          // Date Pickers
           const startEl = document.getElementById(`start_${key}`);
           const endEl = document.getElementById(`end_${key}`);
 
-          // Set Initial Values
           if (startEl) startEl.value = formatDate(globalPickerStart);
           if (endEl) endEl.value = formatDate(globalPickerEnd);
 
-          // Add Change Listeners
           const updateFunc = function() {
                const sVal = startEl.value;
                const eVal = endEl.value;
 
                if (sVal && eVal) {
-                   // Append time to force local time parsing or ensure consistency
-                   // Native input returns YYYY-MM-DD. new Date("YYYY-MM-DD") is UTC.
-                   // We want start of day in local time or consistent with how data is filtered.
-                   // Adding T00:00:00 often forces local time parsing in browsers.
                    chartStates[key].start = new Date(sVal + 'T00:00:00');
                    chartStates[key].end = new Date(eVal + 'T00:00:00');
                    renderFunc();
@@ -2000,6 +2100,31 @@
 
           if (startEl) startEl.addEventListener('change', updateFunc);
           if (endEl) endEl.addEventListener('change', updateFunc);
+
+          // Week Pickers
+          const startWeekEl = document.getElementById(`startWeek_${key}`);
+          const endWeekEl = document.getElementById(`endWeek_${key}`);
+
+          if (startWeekEl && endWeekEl && availableWeeks.length > 0) {
+              const maxW = Math.max(...availableWeeks);
+              for (let i = 1; i <= maxW; i++) {
+                  const opt1 = document.createElement('option'); opt1.value = i; opt1.text = 'Week ' + i;
+                  if (i === globalPickerStartWeek) opt1.selected = true;
+                  startWeekEl.appendChild(opt1);
+
+                  const opt2 = document.createElement('option'); opt2.value = i; opt2.text = 'Week ' + i;
+                  if (i === globalPickerEndWeek) opt2.selected = true;
+                  endWeekEl.appendChild(opt2);
+              }
+
+              const updateWeekFunc = function() {
+                  chartStates[key].startWeek = parseInt(startWeekEl.value);
+                  chartStates[key].endWeek = parseInt(endWeekEl.value);
+                  renderFunc();
+              };
+              startWeekEl.addEventListener('change', updateWeekFunc);
+              endWeekEl.addEventListener('change', updateWeekFunc);
+          }
       }
 
       // 3. Initialize Specific Pickers
@@ -2028,6 +2153,35 @@
           ...commonFlatpickrConfig,
           defaultDate: endDateDefault
       });
+
+
+      document.getElementById('startWeekSlicer')?.addEventListener('change', function() {
+          globalPickerStartWeek = parseInt(this.value);
+          updateGlobalWeekRange();
+      });
+      document.getElementById('endWeekSlicer')?.addEventListener('change', function() {
+          globalPickerEndWeek = parseInt(this.value);
+          updateGlobalWeekRange();
+      });
+
+      function updateGlobalWeekRange() {
+          Object.keys(chartStates).forEach(key => {
+              if (chartStates[key].startWeek !== undefined) {
+                  chartStates[key].startWeek = globalPickerStartWeek;
+                  chartStates[key].endWeek = globalPickerEndWeek;
+
+                  const startEl = document.getElementById(`startWeek_${key}`);
+                  const endEl = document.getElementById(`endWeek_${key}`);
+                  if (startEl) startEl.value = globalPickerStartWeek;
+                  if (endEl) endEl.value = globalPickerEndWeek;
+              }
+          });
+
+          renderGeneralChart();
+          renderHatchingChart();
+          renderMaleChart();
+          renderFemaleChart();
+      }
 
       function updateGlobalDateRange() {
           const startDates = fpStart.selectedDates;
