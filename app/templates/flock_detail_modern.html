@@ -332,20 +332,18 @@
         <thead class="table-light text-dark sticky-table-header text-dark">
           <tr>
             <th>Week</th>
-            <th>Mortality (M/F)</th>
-            <th>Mortality % (M/F)</th>
-            <th>Culls (M/F)</th>
-            <th>Culls % (M/F)</th>
-            <th>Eggs</th>
-            <th>Egg Prod %</th>
+            <th>Male Mort</th>
+            <th>Female Mort</th>
+            <th>Male Cull</th>
+            <th>Female Cull</th>
+            <th>Egg Production</th>
             <th>Avg Egg Wt (g)</th>
             <th>Total Cull Eggs</th>
-            <th>Jumbo (%)</th>
-            <th>Small (%)</th>
-            <th>Abnormal (%)</th>
-            <th>Crack (%)</th>
+            <th>Jumbo</th>
+            <th>Small</th>
+            <th>Abnormal</th>
+            <th>Crack</th>
             <th>Hatching Eggs</th>
-            <th>Hatching Egg %</th>
             <th>BW (M/F)</th>
           </tr>
         </thead>
@@ -353,21 +351,41 @@
           {% for w in weekly_data %}
           <tr>
             <td>{{ w.week }}</td>
-            <td>{{ w.mortality_male }} / {{ w.mortality_female }}</td>
-            <td>{{ "%.2f"|format(w.mort_pct_m) }}% / {{ "%.2f"|format(w.mort_pct_f) }}%</td>
-            <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
-            <td>{{ "%.2f"|format(w.cull_pct_m) }}% / {{ "%.2f"|format(w.cull_pct_f) }}%</td>
-            <td>{{ w.eggs }}</td>
-            <td class="{{ 'text-success fw-bold' if w.egg_prod_pct >= 85 else '' }}">{{ "%.2f"|format(w.egg_prod_pct) }}%</td>
+            <td class="{{ 'text-danger fw-bold' if w.mort_pct_m >= global_std.std_mortality_daily * 7 * 100 else '' }}">
+                {{ w.mortality_male }}<br><span class="text-muted small">({{ "%.2f"|format(w.mort_pct_m) }}%)</span>
+            </td>
+            <td class="{{ 'text-danger fw-bold' if w.mort_pct_f >= global_std.std_mortality_daily * 7 * 100 else '' }}">
+                {{ w.mortality_female }}<br><span class="text-muted small">({{ "%.2f"|format(w.mort_pct_f) }}%)</span>
+            </td>
+            <td class="{{ 'text-danger fw-bold' if w.cull_pct_m >= global_std.std_mortality_daily * 7 * 100 else '' }}">
+                {{ w.culls_male }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_pct_m) }}%)</span>
+            </td>
+            <td class="{{ 'text-danger fw-bold' if w.cull_pct_f >= global_std.std_mortality_daily * 7 * 100 else '' }}">
+                {{ w.culls_female }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_pct_f) }}%)</span>
+            </td>
+            <td class="{{ 'text-success fw-bold' if w.egg_prod_pct >= 85 else '' }}">
+                {{ w.eggs }}<br><span class="text-muted small">({{ "%.2f"|format(w.egg_prod_pct) }}%)</span>
+            </td>
             <td>{{ "%.1f"|format(w.avg_egg_weight) }}</td>
-            <td class="text-danger">{{ w.cull_eggs_total }}</td>
-            <td>{{ "%.2f"|format(w.cull_eggs_jumbo_pct) }}%</td>
-            <td>{{ "%.2f"|format(w.cull_eggs_small_pct) }}%</td>
-            <td>{{ "%.2f"|format(w.cull_eggs_abnormal_pct) }}%</td>
-            <td>{{ "%.2f"|format(w.cull_eggs_crack_pct) }}%</td>
-            <td>{{ w.hatch_eggs_sum }}</td>
-            <td>{{ "%.2f"|format(w.hatching_egg_pct) }}%</td>
-            <td>{{ w.avg_bw_male }} / {{ w.avg_bw_female }}</td>
+            <td class="{{ 'text-danger fw-bold' if w.cull_eggs_total > 0 else '' }}">
+                {{ w.cull_eggs_total }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_eggs_pct) }}%)</span>
+            </td>
+            <td class="{{ 'text-warning fw-bold' if w.cull_eggs_jumbo_pct >= 5 else '' }}">
+                {{ w.cull_eggs_jumbo }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_eggs_jumbo_pct) }}%)</span>
+            </td>
+            <td class="{{ 'text-warning fw-bold' if w.cull_eggs_small_pct >= 5 else '' }}">
+                {{ w.cull_eggs_small }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_eggs_small_pct) }}%)</span>
+            </td>
+            <td class="{{ 'text-warning fw-bold' if w.cull_eggs_abnormal_pct >= 5 else '' }}">
+                {{ w.cull_eggs_abnormal }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_eggs_abnormal_pct) }}%)</span>
+            </td>
+            <td class="{{ 'text-warning fw-bold' if w.cull_eggs_crack_pct >= 5 else '' }}">
+                {{ w.cull_eggs_crack }}<br><span class="text-muted small">({{ "%.2f"|format(w.cull_eggs_crack_pct) }}%)</span>
+            </td>
+            <td class="{{ 'text-success fw-bold' if w.hatching_egg_pct >= 95 else '' }}">
+                {{ w.hatch_eggs_sum }}<br><span class="text-muted small">({{ "%.2f"|format(w.hatching_egg_pct) }}%)</span>
+            </td>
+            <td>{{ "%.1f"|format(w.avg_bw_male) }} / {{ "%.1f"|format(w.avg_bw_female) }}</td>
           </tr>
           {% endfor %}
         </tbody>

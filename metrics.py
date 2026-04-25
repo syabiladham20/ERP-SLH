@@ -493,6 +493,7 @@ def aggregate_weekly_metrics(daily_stats):
         ws['egg_prod_pct'] = safe_div(ws['eggs_collected'], avg_hen * ws['count'])
 
         ws['cull_eggs_total'] = ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal']
+        ws['cull_eggs_pct'] = safe_div(ws['cull_eggs_total'], ws['eggs_collected'])
 
         ws['hatch_egg_pct'] = safe_div(ws['hatch_eggs'], ws['eggs_collected'])
         ws['cull_eggs_jumbo_pct'] = safe_div(ws['cull_eggs_jumbo'], ws['eggs_collected'])
