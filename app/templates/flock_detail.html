@@ -151,13 +151,13 @@
             <th colspan="2" class="bg-success bg-opacity-10">Feed/Bird<br>(g)</th>
             <th rowspan="2" class="align-middle">Water<br>(ml/bird)</th>
             <th rowspan="2" class="align-middle">Medication</th>
-            <th colspan="3" class="bg-info bg-opacity-10">Production</th>
-            <th colspan="2">Jumbo</th>
-            <th colspan="2">Small</th>
-            <th colspan="2">Crack</th>
-            <th colspan="2">Abnormal</th>
-            <th colspan="2" class="bg-primary bg-opacity-10">Hatching</th>
-            <th colspan="2" class="bg-secondary bg-opacity-10">Reject</th>
+            <th colspan="2" class="bg-info bg-opacity-10">Production</th>
+            <th class="align-middle" rowspan="2">Jumbo</th>
+            <th class="align-middle" rowspan="2">Small</th>
+            <th class="align-middle" rowspan="2">Crack</th>
+            <th class="align-middle" rowspan="2">Abnormal</th>
+            <th class="bg-primary bg-opacity-10 align-middle" rowspan="2">Hatching</th>
+            <th class="bg-secondary bg-opacity-10 align-middle" rowspan="2">Cull Eggs</th>
             <th rowspan="2" class="align-middle">Light<br>(Hr)</th>
             <th rowspan="2" class="align-middle">Actions</th>
           </tr>
@@ -170,23 +170,9 @@
             <th class="bg-warning bg-opacity-10">F</th>
             <th class="bg-success bg-opacity-10">M</th>
             <th class="bg-success bg-opacity-10">F</th>
-            <th class="bg-info bg-opacity-10">%</th>
-            <th class="bg-info bg-opacity-10">Wt(g)</th>
             <th class="bg-info bg-opacity-10">Qty</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th>#</th>
-            <th>%</th>
-            <th class="bg-primary bg-opacity-10">#</th>
-            <th class="bg-primary bg-opacity-10">%</th>
-            <th class="bg-secondary bg-opacity-10">#</th>
-            <th class="bg-secondary bg-opacity-10">%</th>
-          </tr>
-        </thead>
+            <th class="bg-info bg-opacity-10">Wt(g)</th>
+          </tr></thead>
         <tbody>
           {% for item in logs %}
           <tr>
@@ -197,11 +183,19 @@
             <td class="fw-bold">{{ item.stock_male }}</td>
             <td class="fw-bold">{{ item.stock_female }}</td>
 
-            <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">{{ item.log.mortality_male }}</td>
-            <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">{{ item.log.mortality_female }}</td>
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_male > 0 else 'text-muted' }}">
+                <span class="text-muted">{{ item.log.mortality_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format((item.log.mortality_male / item.stock_male * 100) if item.stock_male > 0 else 0) }}%)</span>
+            </td>
+            <td class="{{ 'text-danger fw-bold' if item.log.mortality_female > 0 else 'text-muted' }}">
+                <span class="text-muted">{{ item.log.mortality_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format((item.log.mortality_female / item.stock_female * 100) if item.stock_female > 0 else 0) }}%)</span>
+            </td>
 
-            <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">{{ item.log.culls_male }}</td>
-            <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">{{ item.log.culls_female }}</td>
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_male > 0 else 'text-muted' }}">
+                <span class="text-muted">{{ item.log.culls_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format((item.log.culls_male / item.stock_male * 100) if item.stock_male > 0 else 0) }}%)</span>
+            </td>
+            <td class="{{ 'text-warning fw-bold' if item.log.culls_female > 0 else 'text-muted' }}">
+                <span class="text-muted">{{ item.log.culls_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format((item.log.culls_female / item.stock_female * 100) if item.stock_female > 0 else 0) }}%)</span>
+            </td>
 
             <td class="fw-bold">
                 {{ "%.1f"|format(item.total_feed) }}
@@ -224,30 +218,35 @@
                 {% endif %}
             </td>
 
-            <td class="{{ 'bg-success text-white' if item.egg_prod_pct >= 85 else '' }} fw-bold">
-                {{ "%.2f"|format(item.egg_prod_pct) }}%
+            <td class="{{ 'bg-success text-white fw-bold' if item.egg_prod_pct >= 85 else '' }}">
+                <span class="text-muted">{{ item.log.eggs_collected }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_prod_pct) }}%)</span>
             </td>
             <td>{{ item.log.egg_weight }}</td>
-            <td class="fw-bold">{{ item.log.eggs_collected }}</td>
 
             <!-- Cull Details -->
-            <td class="small">{{ item.egg_data.jumbo }}</td>
-            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.jumbo_pct) }}%</td>
+            <td class="small">
+                <span class="text-muted">{{ item.egg_data.jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.jumbo_pct) }}%)</span>
+            </td>
 
-            <td class="small">{{ item.egg_data.small }}</td>
-            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.small_pct) }}%</td>
+            <td class="small">
+                <span class="text-muted">{{ item.egg_data.small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.small_pct) }}%)</span>
+            </td>
 
-            <td class="small">{{ item.egg_data.crack }}</td>
-            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.crack_pct) }}%</td>
+            <td class="small">
+                <span class="text-muted">{{ item.egg_data.crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.crack_pct) }}%)</span>
+            </td>
 
-            <td class="small">{{ item.egg_data.abnormal }}</td>
-            <td class="text-muted small" style="font-size: 0.75rem;">{{ "%.2f"|format(item.egg_data.abnormal_pct) }}%</td>
+            <td class="small">
+                <span class="text-muted">{{ item.egg_data.abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.abnormal_pct) }}%)</span>
+            </td>
 
-            <td class="fw-bold text-primary">{{ item.egg_data.hatching }}</td>
-            <td class="fw-bold text-primary">{{ "%.2f"|format(item.egg_data.hatching_pct) }}%</td>
+            <td class="fw-bold text-primary">
+                <span class="text-muted">{{ item.egg_data.hatching }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.hatching_pct) }}%)</span>
+            </td>
 
-            <td class="fw-bold text-danger">{{ item.egg_data.total_culls }}</td>
-            <td class="fw-bold text-danger">{{ "%.2f"|format(item.egg_data.total_culls_pct) }}%</td>
+            <td class="fw-bold text-danger">
+                <span class="text-muted">{{ item.egg_data.total_culls }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.total_culls_pct) }}%)</span>
+            </td>
 
             <td>{{ item.lighting_hours }} hour</td>
 
@@ -287,12 +286,12 @@
             <th class="bg-warning text-white">Female Cull</th>
             <th class="bg-info text-white">Egg Production</th>
             <th>Avg Egg Wt (g)</th>
-            <th class="bg-warning text-white">Total Cull Eggs</th>
             <th>Jumbo</th>
             <th>Small</th>
             <th>Abnormal</th>
             <th>Crack</th>
             <th class="bg-primary text-white">Hatching Eggs</th>
+            <th class="bg-secondary text-white">Cull Eggs</th>
             <th>BW (M/F)</th>
           </tr>
         </thead>
@@ -316,10 +315,7 @@
                 <span class="text-muted">{{ w.eggs }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.egg_prod_pct) }}%)</span>
             </td>
             <td>{{ "%.1f"|format(w.avg_egg_weight) }}</td>
-            <td class="{{ 'text-danger fw-bold' if w.cull_eggs_total > 0 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_total }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_pct) }}%)</span>
-            </td>
-            <td class="{{ 'text-warning fw-bold' if w.cull_eggs_jumbo_pct >= 5 else '' }}">
+<td class="{{ 'text-warning fw-bold' if w.cull_eggs_jumbo_pct >= 5 else '' }}">
                 <span class="text-muted">{{ w.cull_eggs_jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_jumbo_pct) }}%)</span>
             </td>
             <td class="{{ 'text-warning fw-bold' if w.cull_eggs_small_pct >= 5 else '' }}">
@@ -333,6 +329,10 @@
             </td>
             <td class="{{ 'text-success fw-bold' if w.hatching_egg_pct >= 95 else '' }}">
                 <span class="text-muted">{{ w.hatch_eggs_sum }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.hatching_egg_pct) }}%)</span>
+            </td>
+
+            <td class="{{ 'text-danger fw-bold' if w.cull_eggs_total > 0 else '' }}">
+                <span class="text-muted">{{ w.cull_eggs_total }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_pct) }}%)</span>
             </td>
             <td>{{ "%.1f"|format(w.avg_bw_male) }} / {{ "%.1f"|format(w.avg_bw_female) }}</td>
           </tr>
@@ -1918,7 +1918,7 @@
               maintainAspectRatio: false,
               interaction: { mode: 'index', intersect: false },
               scales: {
-                  y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Egg %' }, min: 0, ...barMaxCalc },
+                  y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Eggs %' }, min: 0, ...barMaxCalc },
                   y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
               },
               plugins: {
