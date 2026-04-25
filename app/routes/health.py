@@ -365,48 +365,88 @@ def register_health_routes(app):
                 m_weights = []
                 f_weights = []
 
+
                 for sheet_name, df in df_dict.items():
-                    active_sex = None
-                    collecting = False
+                    if df.empty:
+                        continue
 
-                    for index in range(len(df)):
-                        row = df.iloc[index]
+                    # Search for headers dynamically
+                    header_row_idx = -1
+                    file_col_idx = -1
+                    weight_col_idx = -1
 
-                        # 1. The Scanner Phase (Column B is index 1)
-                        if len(row) > 1 and pd.notna(row[1]):
-                            col_b_val = str(row[1]).strip()
-                            if col_b_val:
-                                # Use regex to find (M|F)
-                                match = re.search(r'\b(M|F)\b', col_b_val.upper())
-                                if match:
-                                    active_sex = 'Male' if match.group(1) == 'M' else 'Female'
-                                    collecting = False # Stop collecting previous block
+                    for idx in range(min(10, len(df))):
+                        row = df.iloc[idx]
+                        row_strs = [str(val).strip().lower() for val in row if pd.notna(val)]
 
-                        # 2. The Data Trigger (Column D is index 3)
-                        if len(row) > 3 and pd.notna(row[3]):
-                            col_d_val = str(row[3]).strip()
+                        if any('weight' in val for val in row_strs):
+                            header_row_idx = idx
+                            for c_idx, val in enumerate(row):
+                                if pd.notna(val):
+                                    val_lower = str(val).strip().lower()
+                                    if 'file' in val_lower:
+                                        file_col_idx = c_idx
+                                    elif 'weight' in val_lower:
+                                        if weight_col_idx == -1 or '[g]' in val_lower:
+                                            weight_col_idx = c_idx
+                            if file_col_idx != -1 and weight_col_idx != -1:
+                                break
 
-                            if active_sex and 'weight [g]' in col_d_val.lower():
-                                collecting = True
-                                continue # Skip the header row itself
+                    if header_row_idx == -1 or weight_col_idx == -1 or file_col_idx == -1:
+                        # Fallback to old scanner logic
+                        active_sex = None
+                        collecting = False
+                        for index in range(len(df)):
+                            row = df.iloc[index]
+                            if len(row) > 1 and pd.notna(row[1]):
+                                col_b_val = str(row[1]).strip()
+                                if col_b_val:
+                                    match = re.search(r'\b(M|F)\b', col_b_val.upper())
+                                    if match:
+                                        active_sex = 'Male' if match.group(1) == 'M' else 'Female'
+                                        collecting = False
+                            if len(row) > 3 and pd.notna(row[3]):
+                                col_d_val = str(row[3]).strip()
+                                if active_sex and 'weight [g]' in col_d_val.lower():
+                                    collecting = True
+                                    continue
+                                if collecting:
+                                    try:
+                                        val_str = col_d_val.replace(',', '')
+                                        w = float(val_str)
+                                        if pd.isna(w) or w <= 0: continue
+                                        if active_sex == 'Male': m_weights.append(w)
+                                        elif active_sex == 'Female': f_weights.append(w)
+                                    except ValueError:
+                                        collecting = False
+                            else:
+                                collecting = False
+                    else:
+                        # Process using mapped columns
+                        for index in range(header_row_idx + 1, len(df)):
+                            row = df.iloc[index]
+                            if len(row) <= max(file_col_idx, weight_col_idx): continue
+                            file_val = row[file_col_idx]
+                            weight_val = row[weight_col_idx]
+                            if pd.isna(weight_val): continue
 
-                            # 3. The Aggregation Phase
-                            if collecting:
-                                try:
-                                    w = float(col_d_val)
-                                    if pd.isna(w) or w <= 0:
-                                        continue
+                            try:
+                                val_str = str(weight_val).strip().replace(',', '')
+                                if not val_str: continue
+                                w = float(val_str)
+                                if w <= 0: continue
+                            except ValueError:
+                                continue
 
-                                    if active_sex == 'Male':
-                                        m_weights.append(w)
-                                    elif active_sex == 'Female':
-                                        f_weights.append(w)
-                                except ValueError:
-                                    # Stop collecting on non-numeric value (like footer or new header)
-                                    collecting = False
-                        else:
-                            # Stop collecting if Column D is empty
-                            collecting = False
+                            if pd.notna(file_val):
+                                file_str = str(file_val).strip().upper()
+                                # Grouping logic by sex regex
+                                # E.g., 'VC1-M P2' will match M or M within a block
+                                # Look for M or F
+                                if 'M' in file_str:
+                                    m_weights.append(w)
+                                elif 'F' in file_str:
+                                    f_weights.append(w)
 
                 # Process and save
 
