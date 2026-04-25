@@ -1,6 +1,6 @@
 from app.handlers import APP_VERSION
 gemini_engine_instance = None
-from metrics import enrich_flock_data, calculate_metrics, aggregate_monthly_metrics, aggregate_weekly_metrics, METRICS_REGISTRY
+from metrics import enrich_flock_data, calculate_metrics, aggregate_monthly_metrics, aggregate_weekly_metrics, METRICS_REGISTRY, calculate_bio_week
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
 from flask import render_template, request, redirect, flash, url_for, session, jsonify, Response
 from flask_login import login_required, current_user
@@ -1289,7 +1289,7 @@ def register_api_routes(app):
         if delta < 0:
             return jsonify({'error': 'Date is before intake date'}), 400
 
-        weeks = delta // 7
+        weeks = calculate_bio_week(flock.intake_date, target_date)
 
         # Find standard for this week
         std = Standard.query.filter_by(week=weeks).first()
@@ -1304,7 +1304,7 @@ def register_api_routes(app):
         last_weighing_week = None
         if last_log:
             last_weighing_date = last_log.date.strftime('%Y-%m-%d')
-            last_weighing_week = (last_log.date - flock.intake_date).days // 7
+            last_weighing_week = calculate_bio_week(flock.intake_date, last_log.date)
 
         response_data = {
             'week': weeks,

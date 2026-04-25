@@ -20,6 +20,7 @@ def register_health_routes(app):
         EMPTY_NOTE_VALUES,
     )
     from app.utils import safe_commit, send_push_alert, dept_required, natural_sort_key, round_to_whole
+    from metrics import calculate_bio_week
     from app.services.data_service import get_flock_stock_history, get_flock_stock_history_bulk, calculate_grading_stats
     from app.services.seed_service import initialize_vaccine_schedule
 
@@ -164,15 +165,13 @@ def register_health_routes(app):
         bodyweight_logs = []
 
         for log in logs:
-            age_days = (log.date - log.flock.intake_date).days
-            age_weeks = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            age_weeks = calculate_bio_week(log.flock.intake_date, log.date)
 
             house_logs = logs_by_house[log.flock.house_id]
 
             prev_log = None
             for hl in house_logs:
-                hl_age_days = (hl.date - hl.flock.intake_date).days
-                hl_age_weeks = 0 if hl_age_days == 0 else ((hl_age_days - 1) // 7) + 1 if hl_age_days > 0 else (hl_age_days // 7)
+                hl_age_weeks = calculate_bio_week(hl.flock.intake_date, hl.date)
                 if hl_age_weeks == age_weeks - 1:
                     prev_log = hl
                     break
@@ -314,9 +313,18 @@ def register_health_routes(app):
 
             try:
                 if file.filename.endswith('.csv'):
-                    df_dict = {'Sheet1': pd.read_csv(file, header=None)}
+                    try:
+                        df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='utf-8')}
+                    except UnicodeDecodeError:
+                        file.seek(0)
+                        try:
+                            df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='utf-16')}
+                        except UnicodeDecodeError:
+                            file.seek(0)
+                            df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='cp1252')}
                 else:
                     df_dict = pd.read_excel(file, sheet_name=None, header=None)
+
 
                 m_weights = []
                 f_weights = []
