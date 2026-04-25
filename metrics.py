@@ -1,6 +1,10 @@
 from datetime import datetime, date, timedelta
 import math
 
+def calculate_bio_week(intake_date, target_date):
+    bio_days = (target_date - intake_date).days
+    return 0 if bio_days == 0 else ((bio_days - 1) // 7) + 1 if bio_days > 0 else (bio_days // 7)
+
 METRICS_REGISTRY = {
     # --- Mortality ---
     'mortality_female': {'label': 'Mortality Female (Count)', 'unit': '', 'type': 'raw'},
@@ -216,11 +220,11 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
 
         # Production Week Calculation
         bio_days = (log.date - flock.intake_date).days
-        bio_week = 0 if bio_days == 0 else ((bio_days - 1) // 7) + 1 if bio_days > 0 else (bio_days // 7)
+        bio_week = calculate_bio_week(flock.intake_date, log.date)
         prod_week = None
         if flock.start_of_lay_date:
             start_days = (flock.start_of_lay_date - flock.intake_date).days
-            start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
+            start_bio_week = calculate_bio_week(flock.intake_date, flock.start_of_lay_date)
             if bio_week >= start_bio_week:
                 prod_week = bio_week - start_bio_week + 1
 
