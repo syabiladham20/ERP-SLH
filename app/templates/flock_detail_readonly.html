@@ -331,6 +331,7 @@
             <th>Culls % (M/F)</th>
             <th>Eggs</th>
             <th>Egg Prod %</th>
+            <th>Avg Egg Wt (g)</th>
             <th>Total Cull Eggs</th>
             <th>Jumbo (%)</th>
             <th>Small (%)</th>
@@ -349,9 +350,10 @@
             <td>{{ "%.2f"|format(w.mort_pct_m) }}% / {{ "%.2f"|format(w.mort_pct_f) }}%</td>
             <td>{{ w.culls_male }} / {{ w.culls_female }}</td>
             <td>{{ "%.2f"|format(w.cull_pct_m) }}% / {{ "%.2f"|format(w.cull_pct_f) }}%</td>
-            <td>{{ w.eggs_collected_sum }}</td>
+            <td>{{ w.eggs }}</td>
             <td class="{{ 'text-success fw-bold' if w.egg_prod_pct >= 85 else '' }}">{{ "%.2f"|format(w.egg_prod_pct) }}%</td>
-            <td class="text-danger">{{ w.cull_eggs_sum }}</td>
+            <td>{{ "%.1f"|format(w.avg_egg_weight) }}</td>
+            <td class="text-danger">{{ w.cull_eggs_total }}</td>
             <td>{{ "%.2f"|format(w.cull_eggs_jumbo_pct) }}%</td>
             <td>{{ "%.2f"|format(w.cull_eggs_small_pct) }}%</td>
             <td>{{ "%.2f"|format(w.cull_eggs_abnormal_pct) }}%</td>
