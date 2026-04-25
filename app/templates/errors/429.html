@@ -1,0 +1,28 @@
+{% extends "errors/base_error.html" %}
+
+{% block error_icon %}
+<svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+  <rect x="3" y="3" width="18" height="18" rx="2" />
+  <line x1="8" y1="12" x2="16" y2="12" />
+  <line x1="8" y1="8" x2="16" y2="8" />
+  <line x1="8" y1="16" x2="16" y2="16" />
+</svg>
+{% endblock %}
+
+{% block error_title %}
+Too Many Requests
+{% endblock %}
+
+{% block error_subtitle %}
+Whoa there! You are clicking a bit too fast. Please wait a minute and try again.
+{% endblock %}
+
+{% block error_actions %}
+<a href="{{ url_for('index') }}" class="btn btn-primary">
+  Back to Dashboard
+</a>
+<button type="button" class="btn btn-ghost-secondary ms-2" onclick="window.history.back()">
+  Go Back
+</button>
+{% endblock %}
