@@ -313,17 +313,53 @@ def register_health_routes(app):
 
             try:
                 if file.filename.endswith('.csv'):
-                    try:
-                        df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='utf-8')}
-                    except UnicodeDecodeError:
-                        file.seek(0)
+                    import io
+                    encodings = ['utf-8', 'utf-16', 'cp1252']
+                    df_dict = None
+
+                    for enc in encodings:
                         try:
-                            df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='utf-16')}
-                        except UnicodeDecodeError:
                             file.seek(0)
-                            df_dict = {'Sheet1': pd.read_csv(file, header=None, encoding='cp1252')}
+                            # Use TextIOWrapper to safely decode multi-byte characters like UTF-16
+                            text_stream = io.TextIOWrapper(file, encoding=enc, errors='strict')
+                            first_lines = []
+                            for _ in range(15):
+                                try:
+                                    line = text_stream.readline()
+                                except UnicodeDecodeError:
+                                    raise # Re-raise to catch in outer block
+                                if not line:
+                                    break
+                                first_lines.append(line)
+
+                            # Detach so we don't close the underlying stream
+                            text_stream.detach()
+
+                            skip_index = 0
+                            detected_sep = ','
+                            for i, line in enumerate(first_lines):
+                                if 'weight' in line.lower() and 'date' in line.lower():
+                                    skip_index = i
+                                    if '\t' in line:
+                                        detected_sep = '\t'
+                                    break
+
+                            file.seek(0)
+                            df_dict = {'Sheet1': pd.read_csv(file, encoding=enc, sep=detected_sep, skiprows=skip_index, on_bad_lines='skip', header=None)}
+                            break # Success!
+                        except UnicodeDecodeError:
+                            # Detach to preserve the underlying file if error occurs during readline
+                            if 'text_stream' in locals() and not text_stream.closed:
+                                text_stream.detach()
+                            continue
+
+                    if df_dict is None:
+                         flash("Unable to read the CSV file due to unknown encoding.", "danger")
+                         return redirect(url_for('weight_grading'))
                 else:
                     df_dict = pd.read_excel(file, sheet_name=None, header=None)
+
+
 
 
                 m_weights = []
