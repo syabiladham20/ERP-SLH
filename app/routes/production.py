@@ -167,7 +167,7 @@ def register_production_routes(app):
                 'culls_female': ws['culls_female'],
                 'eggs': ws['eggs_collected'],
                 'hatch_eggs_sum': ws['hatch_eggs'],
-                'cull_eggs_total': ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal'],
+                'cull_eggs_total': ws['cull_eggs_total'],
                 'mort_pct_m': ws['mortality_male_pct'],
                 'mort_pct_f': ws['mortality_female_pct'],
                 'cull_pct_m': ws['culls_male_pct'],
@@ -182,6 +182,7 @@ def register_production_routes(app):
                 'cull_eggs_crack_pct': ws['cull_eggs_crack_pct'] * 100 if ws.get('cull_eggs_crack_pct') else 0,
                 'cull_eggs_abnormal': ws['cull_eggs_abnormal'],
                 'cull_eggs_abnormal_pct': ws['cull_eggs_abnormal_pct'] * 100 if ws.get('cull_eggs_abnormal_pct') else 0,
+                'avg_egg_weight': ws['avg_egg_weight'],
                 'avg_bw_male': round_to_whole(ws['body_weight_male']),
                 'avg_bw_female': round_to_whole(ws['body_weight_female']),
                 'notes': ws['notes'],
@@ -1750,7 +1751,7 @@ def register_production_routes(app):
                 'culls_female': ws['culls_female'],
                 'eggs': ws['eggs_collected'],
                 'hatch_eggs_sum': ws['hatch_eggs'],
-                'cull_eggs_total': ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal'],
+                'cull_eggs_total': ws['cull_eggs_total'],
 
                 # Derived
                 'mort_pct_m': ws['mortality_male_pct'],
@@ -1767,6 +1768,7 @@ def register_production_routes(app):
                 'cull_eggs_crack_pct': ws['cull_eggs_crack_pct'] * 100 if ws.get('cull_eggs_crack_pct') else 0,
                 'cull_eggs_abnormal': ws['cull_eggs_abnormal'],
                 'cull_eggs_abnormal_pct': ws['cull_eggs_abnormal_pct'] * 100 if ws.get('cull_eggs_abnormal_pct') else 0,
+                'avg_egg_weight': ws['avg_egg_weight'],
 
                 'avg_bw_male': round_to_whole(ws['body_weight_male']),
                 'avg_bw_female': round_to_whole(ws['body_weight_female']),

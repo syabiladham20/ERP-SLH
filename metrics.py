@@ -404,6 +404,7 @@ def aggregate_weekly_metrics(daily_stats):
                 'bw_female_sum': 0, 'bw_female_count': 0,
                 'unif_male_sum': 0, 'unif_male_count': 0,
                 'unif_female_sum': 0, 'unif_female_count': 0,
+                'egg_weight_sum': 0, 'egg_weight_count': 0,
 
                 # Hatchery (Sum)
                 'egg_set': 0, 'hatched_chicks': 0,
@@ -437,6 +438,7 @@ def aggregate_weekly_metrics(daily_stats):
         bw_f = d['body_weight_female']
         unif_m = d['uniformity_male']
         unif_f = d['uniformity_female']
+        egg_wt = d.get('egg_weight')
         egg_set = d['egg_set']
         hatched = d['hatched_chicks']
         log = d['log']
@@ -456,6 +458,10 @@ def aggregate_weekly_metrics(daily_stats):
         if unif_f and unif_f > 0:
             ws['unif_female_sum'] += unif_f
             ws['unif_female_count'] += 1
+
+        if egg_wt and egg_wt > 0:
+            ws['egg_weight_sum'] += egg_wt
+            ws['egg_weight_count'] += 1
 
         if egg_set: ws['egg_set'] += egg_set
         if hatched: ws['hatched_chicks'] += hatched
@@ -482,6 +488,8 @@ def aggregate_weekly_metrics(daily_stats):
         avg_hen = ws['stock_female_start'] - ((ws['mortality_female'] + ws['culls_female']) / 2)
         ws['egg_prod_pct'] = safe_div(ws['eggs_collected'], avg_hen * ws['count'])
 
+        ws['cull_eggs_total'] = ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal']
+
         ws['hatch_egg_pct'] = safe_div(ws['hatch_eggs'], ws['eggs_collected'])
         ws['cull_eggs_jumbo_pct'] = safe_div(ws['cull_eggs_jumbo'], ws['eggs_collected'])
         ws['cull_eggs_small_pct'] = safe_div(ws['cull_eggs_small'], ws['eggs_collected'])
@@ -489,6 +497,8 @@ def aggregate_weekly_metrics(daily_stats):
         ws['cull_eggs_abnormal_pct'] = safe_div(ws['cull_eggs_abnormal'], ws['eggs_collected'])
 
         ws['hatchability_pct'] = safe_div(ws['hatched_chicks'], ws['egg_set'])
+
+        ws['avg_egg_weight'] = ws['egg_weight_sum'] / ws['egg_weight_count'] if ws['egg_weight_count'] > 0 else 0
 
         ws['body_weight_male'] = ws['bw_male_sum'] / ws['bw_male_count'] if ws['bw_male_count'] > 0 else 0
         ws['body_weight_female'] = ws['bw_female_sum'] / ws['bw_female_count'] if ws['bw_female_count'] > 0 else 0
