@@ -2128,7 +2128,7 @@ def register_production_routes(app):
                     date_str = f.split("_")[0]
                     available_reports.add(date_str)
 
-        return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports)
+        return render_template('flock_detail_modern.html', flock=flock, logs=list(reversed(enriched_logs)), weekly_data=weekly_data, chart_data=chart_data, chart_data_weekly=chart_data_weekly, current_stats=current_stats, global_std=gs, active_flocks=active_flocks, summary_dashboard=summary_dashboard, summary_table=summary_table, health_events=health_events, available_reports=available_reports, hatch_records=hatch_records, std_hatch_map=std_hatch_map)
 
     @app.route('/flock/<int:id>/toggle_phase', methods=['POST'])
     @login_required
