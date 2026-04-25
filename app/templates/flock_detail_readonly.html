@@ -170,6 +170,9 @@
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab" aria-controls="weekly" aria-selected="false">Weekly Summary</button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="hatchability-tab" data-bs-toggle="tab" data-bs-target="#hatchability" type="button" role="tab" aria-controls="hatchability" aria-selected="false">Hatchability</button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab" aria-controls="charts" aria-selected="false">Performance Charts</button>
   </li>
   <li class="nav-item" role="presentation">
@@ -392,6 +395,52 @@
     {% endif %}
   </div>
 
+
+  <!-- Hatchability Tab -->
+  <div class="tab-pane fade" id="hatchability" role="tabpanel" aria-labelledby="hatchability-tab">
+    <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
+      <h3>Hatchability Records</h3>
+    </div>
+    <div class="table-responsive table-responsive-sticky">
+      <table class="table table-bordered table-striped table-hover text-center align-middle" style="font-size: 0.85rem;">
+        <thead class="sticky-table-header table-light text-dark">
+            <tr>
+                <th>Setting Date</th>
+                <th>Hatching Date</th>
+                <th>Flock Age<br>(Wk)</th>
+                <th>Egg Set</th>
+                <th>Hatched</th>
+                <th>Hatch %</th>
+                <th>Hatchable<br>(Fertile)</th>
+                <th>Fertility %</th>
+                <th>Clear %</th>
+                <th>Rotten %</th>
+                <th>Male Ratio %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in hatch_records %}
+            <tr>
+                <td>{{ r.setting_date | date_fmt }}</td>
+                <td>{{ r.hatching_date | date_fmt }}</td>
+                <td>{{ ((r.setting_date - flock.intake_date).days // 7) + 1 }}</td>
+                <td>{{ "{:,}".format(r.egg_set) }}</td>
+                <td>{{ "{:,}".format(r.hatched_chicks) }}</td>
+                <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
+                <td>{{ "{:,}".format(r.hatchable_eggs) }}</td>
+                <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else '-' }}%</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="11" class="text-center text-muted py-3">No hatchability records found.</td></tr>
+            {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Charts Tab (Pane 3) -->
   <div class="tab-pane fade" id="charts" role="tabpanel" aria-labelledby="charts-tab">
 
@@ -484,6 +533,27 @@
         <div class="card-body" style="overflow-x: auto;">
             <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
             <canvas id="hatchingEggChart"></canvas>
+            </div>
+        </div>
+        </div>
+
+        <!-- Hatchability Chart -->
+        <div class="card mb-4" id="cardHatch">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="hatchChartTitle" class="fw-bold mb-2 mb-md-0">Hatchability Performance</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center justify-content-center gap-1 ms-auto">
+                    <button class="btn btn-sm btn-secondary" onclick="toggleDataLabels('hatchChart', this)" title="Toggle Data Labels"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-eye" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" /><path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" /></svg></button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleAddNoteMode('hatchChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleFullScreenWrapper('cardHatch')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <canvas id="hatchChart"></canvas>
             </div>
         </div>
         </div>
@@ -970,6 +1040,7 @@
       if(wp) wp.classList.toggle('d-none', isDaily);
 
       renderHatchingChart();
+      renderHatchChart();
       if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
   };
 
@@ -1970,6 +2041,193 @@
       });
   }
 
+  // Parse Hatch Records from Python
+  const rawHatchRecords = [
+    {% for r in hatch_records %}
+    {
+      setting_date: "{{ r.setting_date.strftime('%Y-%m-%d') if r.setting_date else '' }}",
+      fertile_egg_pct: {{ r.fertile_egg_pct if r.fertile_egg_pct is not none else 'null' }},
+      clear_egg_pct: {{ r.clear_egg_pct if r.clear_egg_pct is not none else 'null' }},
+      rotten_egg_pct: {{ r.rotten_egg_pct if r.rotten_egg_pct is not none else 'null' }},
+      hatchability_pct: {{ r.hatchability_pct if r.hatchability_pct is not none else 'null' }},
+      male_ratio_pct: {{ r.male_ratio_pct if r.male_ratio_pct is not none else 'null' }}
+    }{{ "," if not loop.last else "" }}
+    {% endfor %}
+  ];
+  const stdHatchMap = {{ std_hatch_map | default({}) | tojson }};
+
+  const hatchChartData = {
+      weeks: [],
+      fertile_pct: [],
+      clear_pct: [],
+      rotten_pct: [],
+      hatch_pct: [],
+      male_ratio_pct: [],
+      std_hatch_pct: []
+  };
+
+  if (rawHatchRecords && rawHatchRecords.length > 0) {
+      // Sort ascending by setting date
+      rawHatchRecords.sort((a, b) => new Date(a.setting_date) - new Date(b.setting_date));
+
+      const intakeDate = new Date("{{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else '' }}");
+
+      rawHatchRecords.forEach(r => {
+          let weekLabel = "Unknown";
+          let stdHatch = 0;
+          if (intakeDate && !isNaN(intakeDate.getTime())) {
+              const rDate = new Date(r.setting_date);
+              const diffTime = Math.abs(rDate - intakeDate);
+              const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+              const w = Math.floor(diffDays / 7) + 1;
+              weekLabel = "Wk " + w;
+              stdHatch = stdHatchMap[w] || 0;
+          }
+
+          hatchChartData.weeks.push(weekLabel);
+          hatchChartData.fertile_pct.push(r.fertile_egg_pct || 0);
+          hatchChartData.clear_pct.push(r.clear_egg_pct || 0);
+          hatchChartData.rotten_pct.push(r.rotten_egg_pct || 0);
+          hatchChartData.hatch_pct.push(r.hatchability_pct || 0);
+          hatchChartData.male_ratio_pct.push(r.male_ratio_pct || 0);
+          hatchChartData.std_hatch_pct.push(stdHatch);
+      });
+  }
+
+  // --- Hatchability Chart Logic ---
+  function renderHatchChart() {
+      if (hatchChartData.weeks.length === 0) return; // No data to render
+
+      if (hatchChart) hatchChart.destroy();
+
+      const ctx = document.getElementById('hatchChart').getContext('2d');
+      hatchChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+              labels: hatchChartData.weeks,
+              datasets: [
+                  {
+                      label: 'Std Hatchability %',
+                      data: hatchChartData.std_hatch_pct,
+                      type: 'line',
+                      borderColor: '#198754',
+                      borderDash: [5, 5],
+                      pointRadius: 0,
+                      borderWidth: 2,
+                      yAxisID: 'y1',
+                      order: 0,
+                      datalabels: { display: false },
+                      clip: true
+                  },
+                  {
+                      label: 'Fertile %',
+                      data: hatchChartData.fertile_pct,
+                      backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: {
+                          anchor: 'center',
+                          align: 'center',
+                          formatter: (value) => value > 0 ? value + '%' : ''
+                      },
+                      clip: true
+                  },
+                  {
+                      label: 'Clear %',
+                      data: hatchChartData.clear_pct,
+                      backgroundColor: 'rgba(255, 205, 86, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: {
+                          anchor: 'center',
+                          align: 'center',
+                          formatter: (value) => value > 0 ? value + '%' : ''
+                      },
+                      clip: true
+                  },
+                  {
+                      label: 'Rotten %',
+                      data: hatchChartData.rotten_pct,
+                      backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                      stack: 'Stack 0',
+                      order: 2,
+                      datalabels: {
+                          anchor: 'center',
+                          align: 'center',
+                          formatter: (value) => value > 0 ? value + '%' : ''
+                      },
+                      clip: true
+                  },
+                  {
+                      label: 'Hatchability %',
+                      data: hatchChartData.hatch_pct,
+                      type: 'line',
+                      borderColor: 'rgba(54, 162, 235, 1)',
+                      backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                      borderWidth: 3,
+                      yAxisID: 'y1',
+                      order: 1,
+                      tension: 0.3,
+                      datalabels: {
+                          anchor: 'start',
+                          align: 'bottom',
+                          formatter: (value) => value > 0 ? value + '%' : ''
+                      },
+                      clip: true
+                  },
+                  {
+                      label: 'Male Ratio %',
+                      data: hatchChartData.male_ratio_pct,
+                      type: 'line',
+                      borderColor: 'rgba(153, 102, 255, 1)',
+                      backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                      borderWidth: 2,
+                      borderDash: [],
+                      pointStyle: 'circle',
+                      pointRadius: 4,
+                      yAxisID: 'y1',
+                      order: 0,
+                      tension: 0.3,
+                      datalabels: {
+                          anchor: 'start',
+                          align: 'bottom',
+                          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                          borderRadius: 4,
+                          formatter: (value) => value > 0 ? value + '%' : ''
+                      },
+                      clip: true
+                  }
+              ]
+          },
+          options: {
+              ...commonOptions,
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                  x: { stacked: true },
+                  y: {
+                      stacked: true,
+                      beginAtZero: true,
+                      max: 100,
+                      title: { display: true, text: 'Egg Breakdown %' },
+                      grid: { drawOnChartArea: true }
+                  },
+                  y1: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      beginAtZero: true,
+                      max: 100,
+                      title: { display: true, text: 'Hatchability %' },
+                      grid: { drawOnChartArea: false }
+                  }
+              }
+          }
+      });
+      if (typeof updateChartAnnotations === 'function') updateChartAnnotations(hatchChart);
+  }
+
+
 
 
   function updateChartTitle(elementId, baseTitle, dataObj, isDaily) {
@@ -2066,6 +2324,7 @@
             if (femaleChart) femaleChart.resize();
             if (generalChart) generalChart.resize();
             if (hatchingEggChart) hatchingEggChart.resize();
+          if (hatchChart) hatchChart.resize();
             if (waterChart) waterChart.resize();
             if (feedChart) feedChart.resize();
           }
@@ -2217,6 +2476,7 @@
 
           renderGeneralChart();
           renderHatchingChart();
+      renderHatchChart();
           renderMaleChart();
           renderFemaleChart();
       }
@@ -2248,6 +2508,7 @@
 
               renderGeneralChart();
               renderHatchingChart();
+      renderHatchChart();
               renderWaterChart();
               renderFeedChart();
               renderMaleChart();
@@ -2262,6 +2523,7 @@
 
       renderGeneralChart();
       renderHatchingChart();
+      renderHatchChart();
       renderWaterChart();
       renderFeedChart();
       renderMaleChart();
@@ -2276,6 +2538,7 @@
           if (femaleChart) femaleChart.resize();
           if (generalChart) generalChart.resize();
           if (hatchingEggChart) hatchingEggChart.resize();
+          if (hatchChart) hatchChart.resize();
           if (waterChart) waterChart.resize();
           if (feedChart) feedChart.resize();
       }, 100);
