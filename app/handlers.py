@@ -27,6 +27,14 @@ def register_error_handlers(app):
     def not_found_error(error):
         return render_template('errors/404.html'), 404
 
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        # We must carefully check accept headers since browsers send */* or text/html
+        best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
+        if request.path.startswith('/api/') or best == 'application/json' or request.is_json:
+            return jsonify({'error': 'Too Many Requests', 'message': 'Please wait a moment.'}), 429
+        return render_template('errors/429.html'), 429
+
 def register_template_filters(app):
     @app.template_filter('basename')
     def basename_filter(s):
