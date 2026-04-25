@@ -443,15 +443,25 @@ def register_health_routes(app):
                                 # Grouping logic by sex regex
                                 # E.g., 'VC1-M P2' will match M or M within a block
                                 # Look for M or F
-                                if 'M' in file_str:
-                                    m_weights.append(w)
-                                elif 'F' in file_str:
-                                    f_weights.append(w)
+                                match = re.search(r'\b(M|F)\b', file_str)
+                                if match:
+                                    if match.group(1) == 'M':
+                                        m_weights.append(w)
+                                    else:
+                                        f_weights.append(w)
 
                 # Process and save
 
 
+
+                # Delete existing reports for this house and week
+                existing_reports = FlockGrading.query.filter_by(house_id=house_id, age_week=age_week).all()
+                for report in existing_reports:
+                    db.session.delete(report)
+                db.session.flush()
+
                 if m_weights:
+
 
                     stats = calculate_grading_stats(m_weights)
                     if stats:

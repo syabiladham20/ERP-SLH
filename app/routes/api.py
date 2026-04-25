@@ -1266,6 +1266,18 @@ def register_api_routes(app):
     def get_version():
         return jsonify({'version': ""})
 
+    @app.route('/api/check_grading_exists')
+    @login_required
+    def check_grading_exists():
+        house_id = request.args.get('house_id', type=int)
+        age_week = request.args.get('age_week', type=int)
+
+        if not house_id or age_week is None:
+            return jsonify({'error': 'Missing parameters'}), 400
+
+        exists = FlockGrading.query.filter_by(house_id=house_id, age_week=age_week).first() is not None
+        return jsonify({'exists': exists})
+
     @app.route('/api/get_standard_bw')
     @login_required
     def get_standard_bw():
