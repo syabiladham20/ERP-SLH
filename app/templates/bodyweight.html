@@ -375,6 +375,42 @@
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+    // Smart Overwrite Check for Upload
+    const uploadForm = document.getElementById('uploadWeightsForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const houseId = uploadForm.querySelector('select[name="house_id"]').value;
+            const ageWeek = uploadForm.querySelector('input[name="age_week"]').value;
+
+            if (houseId && ageWeek) {
+                fetch(`/api/check_grading_exists?house_id=${houseId}&age_week=${ageWeek}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.exists) {
+                        const confirmModal = new bootstrap.Modal(document.getElementById('overwriteConfirmModal'));
+                        confirmModal.show();
+
+                        document.getElementById('confirmOverwriteBtn').onclick = function() {
+                            confirmModal.hide();
+                            uploadForm.submit();
+                        };
+                    } else {
+                        uploadForm.submit();
+                    }
+                })
+                .catch(err => {
+                    console.error('Error checking report:', err);
+                    uploadForm.submit(); // fallback
+                });
+            } else {
+                uploadForm.submit();
+            }
+        });
+    }
+
         const flockIdSelect = document.getElementById('flock_id_select');
         const dateInput = document.getElementById('date_input');
         const stdBwMale = document.getElementById('std_bw_male');
@@ -492,7 +528,7 @@
 <div class="modal modal-blur fade" id="uploadModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
-      <form action="{{ url_for('upload_weights') }}" method="POST" enctype="multipart/form-data">
+      <form id="uploadWeightsForm" action="{{ url_for('upload_weights') }}" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="modal-header">
           <h5 class="modal-title">Upload Raw Weights</h5>
@@ -531,6 +567,30 @@
           <button type="submit" class="btn btn-primary ms-auto">Upload & Process</button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- Overwrite Confirmation Modal -->
+<div class="modal modal-blur fade" id="overwriteConfirmModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-status bg-warning"></div>
+      <div class="modal-body text-center py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-warning icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+        <h3>Overwrite Report?</h3>
+        <div class="text-secondary">A grading report already exists for this House and Age Week. Uploading this new file will replace the existing report. Do you wish to proceed?</div>
+      </div>
+      <div class="modal-footer">
+        <div class="w-100">
+          <div class="row">
+            <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
+            <div class="col"><button type="button" id="confirmOverwriteBtn" class="btn btn-warning w-100">Yes, replace it</button></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
