@@ -377,6 +377,26 @@
     </div>
 
     <script>
+      // Auto-Version Check on Visibility Change
+      let currentAppVersion = "{{ version }}";
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          fetch('{{ url_for("get_version") }}')
+            .then(res => res.json())
+            .then(data => {
+              if (data.version && data.version > currentAppVersion) {
+                currentAppVersion = data.version;
+                const updateToastEl = document.getElementById('updateToast');
+                if (updateToastEl) {
+                  const updateToast = new bootstrap.Toast(updateToastEl, { autohide: false });
+                  updateToast.show();
+                }
+              }
+            })
+            .catch(err => console.log('Version check failed', err));
+        }
+      });
+
         function showToast(message, type = "success") {
           const container = document.getElementById("dynamic-toast-container");
           if (!container) return;

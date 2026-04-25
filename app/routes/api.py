@@ -1264,7 +1264,7 @@ def register_api_routes(app):
 
     @app.route('/api/version')
     def get_version():
-        return jsonify({'version': ""})
+        return jsonify({'version': APP_VERSION})
 
     @app.route('/api/get_standard_bw')
     @login_required
