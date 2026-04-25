@@ -174,7 +174,7 @@ def register_main_routes(app):
     @app.route('/sw.js')
     def serve_sw():
         # Return as a Jinja template to inject the dynamic CACHE_NAME version
-        response = app.make_response(render_template('sw.js', version=""))
+        response = app.make_response(render_template('sw.js', version=APP_VERSION))
         response.headers['Content-Type'] = 'application/javascript'
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         return response
