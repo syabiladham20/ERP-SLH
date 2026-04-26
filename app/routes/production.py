@@ -1,5 +1,5 @@
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
-from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
+from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY, get_std_hatch_map
 from flask import render_template, request, redirect, flash, url_for, session, jsonify
 from flask_login import login_required, current_user
 from app.database import db
@@ -50,7 +50,7 @@ def register_production_routes(app):
         std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')} # Bio Map
         prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')} # Prod Map
 
-        std_hatch_map = {getattr(s, 'week'): (getattr(s, 'std_hatchability', 0.0) or 0.0) for s in all_standards if hasattr(s, 'week')}
+        std_hatch_map = get_std_hatch_map(all_standards)
 
         # --- Fetch Hatch Data ---
         hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
@@ -1640,6 +1640,8 @@ def register_production_routes(app):
         all_standards = Standard.query.all()
         std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')} # Biological Age Map
         prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')} # Production Week Map
+
+        std_hatch_map = get_std_hatch_map(all_standards)
 
         # --- Fetch Hatch Data ---
         hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
