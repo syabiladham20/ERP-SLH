@@ -5,6 +5,9 @@ def calculate_bio_week(intake_date, target_date):
     bio_days = (target_date - intake_date).days
     return 0 if bio_days == 0 else ((bio_days - 1) // 7) + 1 if bio_days > 0 else (bio_days // 7)
 
+def get_std_hatch_map(all_standards):
+    return {getattr(s, 'week'): (getattr(s, 'std_hatchability', 0.0) or 0.0) for s in all_standards if hasattr(s, 'week')}
+
 METRICS_REGISTRY = {
     # --- Mortality ---
     'mortality_female': {'label': 'Mortality Female (Count)', 'unit': '', 'type': 'raw'},
