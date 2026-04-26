@@ -17,6 +17,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="SLH-OP">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png', v=version) }}">
+    {% if real_is_admin %}
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    {% endif %}
     <script>
         // Global application configuration
         window.SLHConfig = {
