@@ -211,10 +211,15 @@ def register_health_routes(app):
                     prev_m = get_p(prev_log, f'M{i}')
                     diff_g = "N/A"
                     diff_u = "N/A"
+
+                    cur_m_unif = (cur_m.uniformity * 100) if (cur_m.uniformity and cur_m.uniformity <= 1.0) else (cur_m.uniformity or 0)
+
                     if prev_m and prev_m.body_weight > 0:
                         dg = cur_m.body_weight - prev_m.body_weight
                         diff_g = f"{'+' if dg > 0 else ''}{dg:.0f}g"
-                        du = cur_m.uniformity - prev_m.uniformity
+
+                        prev_m_unif = (prev_m.uniformity * 100) if (prev_m.uniformity and prev_m.uniformity <= 1.0) else (prev_m.uniformity or 0)
+                        du = cur_m_unif - prev_m_unif
                         diff_u = f"{'+' if du > 0 else ''}{du:.1f}%"
 
                     var_pct = 0
@@ -224,7 +229,7 @@ def register_health_routes(app):
                     m_parts.append({
                         'name': f'M{i}',
                         'bw': cur_m.body_weight,
-                        'unif': cur_m.uniformity,
+                        'unif': cur_m_unif,
                         'diff_g': diff_g,
                         'diff_u': diff_u,
                         'var_pct': var_pct
@@ -235,10 +240,15 @@ def register_health_routes(app):
                     prev_f = get_p(prev_log, f'F{i}')
                     diff_g = "N/A"
                     diff_u = "N/A"
+
+                    cur_f_unif = (cur_f.uniformity * 100) if (cur_f.uniformity and cur_f.uniformity <= 1.0) else (cur_f.uniformity or 0)
+
                     if prev_f and prev_f.body_weight > 0:
                         dg = cur_f.body_weight - prev_f.body_weight
                         diff_g = f"{'+' if dg > 0 else ''}{dg:.0f}g"
-                        du = cur_f.uniformity - prev_f.uniformity
+
+                        prev_f_unif = (prev_f.uniformity * 100) if (prev_f.uniformity and prev_f.uniformity <= 1.0) else (prev_f.uniformity or 0)
+                        du = cur_f_unif - prev_f_unif
                         diff_u = f"{'+' if du > 0 else ''}{du:.1f}%"
 
                     var_pct = 0
@@ -248,7 +258,7 @@ def register_health_routes(app):
                     f_parts.append({
                         'name': f'F{i}',
                         'bw': cur_f.body_weight,
-                        'unif': cur_f.uniformity,
+                        'unif': cur_f_unif,
                         'diff_g': diff_g,
                         'diff_u': diff_u,
                         'var_pct': var_pct
