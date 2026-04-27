@@ -41,7 +41,7 @@
     const fullChartData = {{ data | tojson }};
     const intakeDateStr = "{{ flock.intake_date }}";
     const intakeDate = new Date(intakeDateStr);
-    let hatchChart;
+    let hatchChartInstance;
     let globalStartDate = null;
     let globalEndDate = null;
 
@@ -123,10 +123,12 @@
         const y1Values = [...hatch, ...male, ...stdHatch];
         const y1Options = getOptions(y1Values, true);
 
-        if (hatchChart) hatchChart.destroy();
+        if (hatchChartInstance) hatchChartInstance.destroy();
 
-        const ctx = document.getElementById('hatchChart').getContext('2d');
-        hatchChart = new Chart(ctx, {
+        const hatchChartCanvas = document.getElementById('hatchChart');
+        if (!hatchChartCanvas) return;
+        const ctx = hatchChartCanvas.getContext('2d');
+        hatchChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: data.weeks,

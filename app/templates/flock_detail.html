@@ -959,7 +959,7 @@
   const flockPhase = "{{ flock.phase }}";
   const flockHouseName = "{{ flock.house.name }}";
 
-  let maleChart, femaleChart, generalChart, hatchingEggChart, waterChart, feedChart;
+  let maleChartInstance, femaleChartInstance, generalChartInstance, hatchingEggChartInstance, waterChartInstance, feedChartInstance, hatchChartInstance;
   let currentMode = 'weekly';
   let currentModeHatching = 'weekly';
   // State Management for Date Ranges
@@ -1024,7 +1024,7 @@
       if(wp) wp.classList.toggle('d-none', isDaily);
 
       renderGeneralChart();
-      if (typeof updateChartAnnotations === 'function' && typeof generalChart !== 'undefined') updateChartAnnotations(generalChart);
+      if (typeof updateChartAnnotations === 'function' && typeof generalChartInstance !== 'undefined') updateChartAnnotations(generalChartInstance);
   };
 
   window.switchModeHatching = function(mode) {
@@ -1038,7 +1038,7 @@
 
       renderHatchingChart();
       renderHatchChart();
-      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChart !== 'undefined') updateChartAnnotations(hatchingEggChart);
+      if (typeof updateChartAnnotations === 'function' && typeof hatchingEggChartInstance !== 'undefined') updateChartAnnotations(hatchingEggChartInstance);
   };
 
   function calculateAgeWeeks(dateObj) {
@@ -1176,13 +1176,13 @@
   function toggleDataLabels(chartId, btnElement) {
       let chartInstance;
       switch(chartId) {
-          case 'generalChart': chartInstance = generalChart; break;
-          case 'hatchingEggChart': chartInstance = hatchingEggChart; break;
-          case 'waterChart': chartInstance = waterChart; break;
-          case 'feedChart': chartInstance = feedChart; break;
-          case 'maleChart': chartInstance = maleChart; break;
-          case 'femaleChart': chartInstance = femaleChart; break;
-          case 'hatchChart': chartInstance = hatchChart; break;
+          case 'generalChart': chartInstance = generalChartInstance; break;
+          case 'hatchingEggChart': chartInstance = hatchingEggChartInstance; break;
+          case 'waterChart': chartInstance = waterChartInstance; break;
+          case 'feedChart': chartInstance = feedChartInstance; break;
+          case 'maleChart': chartInstance = maleChartInstance; break;
+          case 'femaleChart': chartInstance = femaleChartInstance; break;
+          case 'hatchChart': chartInstance = hatchChartInstance; break;
       }
 
       if (!chartInstance) return;
@@ -1301,7 +1301,7 @@
 
       updateChartTitle('waterChartTitle', 'Daily Water per Bird (mL)', data, true);
 
-      if (waterChart) waterChart.destroy();
+      if (waterChartInstance) waterChartInstance.destroy();
 
       const waterData = (data.water_per_bird || []).map(v => Math.round(v));
       const flushFlags = data.flushing || [];
@@ -1355,7 +1355,9 @@
       let maxRatio = Math.max(...(data.water_feed_ratio && data.water_feed_ratio.length ? data.water_feed_ratio : [0]));
       let yMaxRatio = maxRatio > 0 ? maxRatio * 1.3 : 3.0;
 
-      waterChart = new Chart(document.getElementById("waterChart").getContext("2d"), {
+      const waterChartCanvas = document.getElementById("waterChart");
+      if (!waterChartCanvas) return;
+      waterChartInstance = new Chart(waterChartCanvas.getContext("2d"), {
           type: "line",
           data: {
               labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
@@ -1411,7 +1413,7 @@
 
       updateChartTitle('feedChartTitle', 'Daily Gram per Bird', data, true);
 
-      if (feedChart) feedChart.destroy();
+      if (feedChartInstance) feedChartInstance.destroy();
 
       const feedM = (data.feed_male || []).map(v => Math.round(v));
       const feedF = (data.feed_female || []).map(v => Math.round(v));
@@ -1456,7 +1458,9 @@
       if (minFeed !== Infinity && minFeed > 0) {
           yMax = Math.max(180, (allFeed.length > 0 ? Math.max(...allFeed) : 0) * 2.5);
       }
-      feedChart = new Chart(document.getElementById('feedChart').getContext('2d'), {
+      const feedChartCanvas = document.getElementById('feedChart');
+      if (!feedChartCanvas) return;
+      feedChartInstance = new Chart(feedChartCanvas.getContext('2d'), {
           type: 'line',
           data: {
               labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
@@ -1495,7 +1499,7 @@
       updateChartTitle('maleChartTitle', 'Male Bodyweight and Uniformity', bwData, false);
 
       // Destroy existing
-      if (maleChart) maleChart.destroy();
+      if (maleChartInstance) maleChartInstance.destroy();
 
       const maleDatasets = [];
       const colorsM = ['#36A2EB', '#0056b3', '#4bc0c0', '#198754', '#0dcaf0', '#6610f2', '#6f42c1', '#d63384'];
@@ -1555,7 +1559,9 @@
       const maleBWScales = getScaleOptions(maleBWValues, false);
       const maleUniScales = getScaleOptions([bwData.unif_male], true);
 
-      maleChart = new Chart(document.getElementById('maleChart').getContext('2d'), {
+      const maleChartCanvas = document.getElementById('maleChart');
+      if (!maleChartCanvas) return;
+      maleChartInstance = new Chart(maleChartCanvas.getContext('2d'), {
         type: 'line',
         data: {
           labels: mode === 'daily' ? generateDailyLabels(bwData) : bwData.dates,
@@ -1594,7 +1600,7 @@
 
       updateChartTitle('femaleChartTitle', 'Female Bodyweight and Uniformity', bwData, false);
 
-      if (femaleChart) femaleChart.destroy();
+      if (femaleChartInstance) femaleChartInstance.destroy();
 
       const femaleDatasets = [];
       const colorsF = ['#FF6384', '#FF9F40', '#FFCD56', '#4BC0C0', '#9966FF', '#C9CBCF', '#fd7e14', '#20c997'];
@@ -1653,7 +1659,9 @@
       const femaleBWScales = getScaleOptions(femaleBWValues, false);
       const femaleUniScales = getScaleOptions([bwData.unif_female], true);
 
-      femaleChart = new Chart(document.getElementById('femaleChart').getContext('2d'), {
+      const femaleChartCanvas = document.getElementById('femaleChart');
+      if (!femaleChartCanvas) return;
+      femaleChartInstance = new Chart(femaleChartCanvas.getContext('2d'), {
         type: 'line',
         data: {
           labels: mode === 'daily' ? generateDailyLabels(bwData) : bwData.dates,
@@ -1736,7 +1744,7 @@
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
       const generalData = mode === 'weekly' ? filterDataByWeek(fullData, state.startWeek, state.endWeek) : filterDataByDate(fullData, state.start, state.end, false);
 
-      if (generalChart) generalChart.destroy();
+      if (generalChartInstance) generalChartInstance.destroy();
 
       const stdVal = mode === 'daily' ? globalStd : globalStdWeekly;
       const mortMKey = mode === 'daily' ? 'mortality_daily_male' : 'mortality_weekly_male';
@@ -1921,7 +1929,9 @@
           };
       }
 
-      generalChart = new Chart(document.getElementById('generalChart').getContext('2d'), {
+      const generalChartCanvas = document.getElementById('generalChart');
+      if (!generalChartCanvas) return;
+      generalChartInstance = new Chart(generalChartCanvas.getContext('2d'), {
         type: 'bar',
         data: {
           labels: labels,
@@ -1933,10 +1943,10 @@
           maintainAspectRatio: false,
           onClick: (e, elements) => {
               if (elements.length) {
-                  const clinicalNotesDatasetIndex = generalChart.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
+                  const clinicalNotesDatasetIndex = generalChartInstance.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
                   const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
                   if (notePoint) {
-                      const rawData = generalChart.data.datasets[notePoint.datasetIndex].data[notePoint.index];
+                      const rawData = generalChartInstance.data.datasets[notePoint.datasetIndex].data[notePoint.index];
                       if (rawData && (rawData.note || rawData.main_note)) {
                           showNoteModal(rawData);
                       }
@@ -1959,7 +1969,7 @@
       const fullData = mode === 'weekly' ? chartDataWeekly : chartDataDaily;
       const filteredData = mode === 'weekly' ? filterDataByWeek(fullData, state.startWeek, state.endWeek) : filterDataByDate(fullData, state.start, state.end, false);
 
-      if (hatchingEggChart) hatchingEggChart.destroy();
+      if (hatchingEggChartInstance) hatchingEggChartInstance.destroy();
 
       updateChartTitle('hatchingEggChartTitle', 'Hatching Egg & Culls', filteredData, mode === 'daily');
 
@@ -1972,7 +1982,9 @@
 
       const barMaxCalc = getScaleOptions([jumboData, smallData, crackData, abnormalData], true);
 
-      hatchingEggChart = new Chart(document.getElementById('hatchingEggChart').getContext('2d'), {
+      const hatchingEggChartCanvas = document.getElementById('hatchingEggChart');
+      if (!hatchingEggChartCanvas) return;
+      hatchingEggChartInstance = new Chart(hatchingEggChartCanvas.getContext('2d'), {
           type: 'bar',
           data: {
               labels: mode === 'daily' ? generateDailyLabels(filteredData) : filteredData.dates,
@@ -2056,10 +2068,12 @@
   function renderHatchChart() {
       if (hatchChartData.weeks.length === 0) return; // No data to render
 
-      if (hatchChart) hatchChart.destroy();
+      if (hatchChartInstance) hatchChartInstance.destroy();
 
-      const ctx = document.getElementById('hatchChart').getContext('2d');
-      hatchChart = new Chart(ctx, {
+      const hatchChartCanvas = document.getElementById('hatchChart');
+      if (!hatchChartCanvas) return;
+      const ctx = hatchChartCanvas.getContext('2d');
+      hatchChartInstance = new Chart(ctx, {
           type: 'bar',
           data: {
               labels: hatchChartData.weeks,
@@ -2182,7 +2196,7 @@
               }
           }
       });
-      if (typeof updateChartAnnotations === 'function') updateChartAnnotations(hatchChart);
+      if (typeof updateChartAnnotations === 'function') updateChartAnnotations(hatchChartInstance);
   }
 
 
@@ -2278,13 +2292,13 @@
           history.replaceState(null, null, event.target.getAttribute('data-bs-target'));
 
           if (event.target.id === 'charts-tab') {
-            if (maleChart) maleChart.resize();
-            if (femaleChart) femaleChart.resize();
-            if (generalChart) generalChart.resize();
-            if (hatchingEggChart) hatchingEggChart.resize();
-          if (hatchChart) hatchChart.resize();
-            if (waterChart) waterChart.resize();
-            if (feedChart) feedChart.resize();
+            if (maleChartInstance) maleChartInstance.resize();
+            if (femaleChartInstance) femaleChartInstance.resize();
+            if (generalChartInstance) generalChartInstance.resize();
+            if (hatchingEggChartInstance) hatchingEggChartInstance.resize();
+          if (hatchChartInstance) hatchChartInstance.resize();
+            if (waterChartInstance) waterChartInstance.resize();
+            if (feedChartInstance) feedChartInstance.resize();
           }
         });
       });
@@ -2492,13 +2506,13 @@
   function onFullScreenChange() {
       // Small delay to allow CSS transitions to finish before resizing
       setTimeout(() => {
-          if (maleChart) maleChart.resize();
-          if (femaleChart) femaleChart.resize();
-          if (generalChart) generalChart.resize();
-          if (hatchingEggChart) hatchingEggChart.resize();
-          if (hatchChart) hatchChart.resize();
-          if (waterChart) waterChart.resize();
-          if (feedChart) feedChart.resize();
+          if (maleChartInstance) maleChartInstance.resize();
+          if (femaleChartInstance) femaleChartInstance.resize();
+          if (generalChartInstance) generalChartInstance.resize();
+          if (hatchingEggChartInstance) hatchingEggChartInstance.resize();
+          if (hatchChartInstance) hatchChartInstance.resize();
+          if (waterChartInstance) waterChartInstance.resize();
+          if (feedChartInstance) feedChartInstance.resize();
       }, 100);
   }
 
@@ -2744,14 +2758,14 @@ function fetchAndApplyFloatingNotes() {
     })    .then(data => {
         allFloatingNotes = data;
         const chartsToUpdate = [];
-        if (typeof generalChart !== 'undefined') chartsToUpdate.push(generalChart);
-        if (typeof waterChart !== 'undefined') chartsToUpdate.push(waterChart);
-        if (typeof feedChart !== 'undefined') chartsToUpdate.push(feedChart);
-        if (typeof maleChart !== 'undefined') chartsToUpdate.push(maleChart);
-        if (typeof femaleChart !== 'undefined') chartsToUpdate.push(femaleChart);
-        if (typeof hatchingEggChart !== 'undefined') chartsToUpdate.push(hatchingEggChart);
+        if (typeof generalChartInstance !== 'undefined') chartsToUpdate.push(generalChartInstance);
+        if (typeof waterChartInstance !== 'undefined') chartsToUpdate.push(waterChartInstance);
+        if (typeof feedChartInstance !== 'undefined') chartsToUpdate.push(feedChartInstance);
+        if (typeof maleChartInstance !== 'undefined') chartsToUpdate.push(maleChartInstance);
+        if (typeof femaleChartInstance !== 'undefined') chartsToUpdate.push(femaleChartInstance);
+        if (typeof hatchingEggChartInstance !== 'undefined') chartsToUpdate.push(hatchingEggChartInstance);
         if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
-        if (typeof hatchChart !== 'undefined') chartsToUpdate.push(hatchChart);
+        if (typeof hatchChartInstance !== 'undefined') chartsToUpdate.push(hatchChartInstance);
 
         chartsToUpdate.forEach(c => {
             if (c) updateChartAnnotations(c);
