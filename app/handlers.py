@@ -7,10 +7,17 @@ from datetime import datetime, date
 from flask import current_app as app, render_template, request, session, flash, redirect, url_for
 from flask_login import current_user, login_user, AnonymousUserMixin
 
+from sqlalchemy.orm.exc import StaleDataError
 from app.database import db
 from app.models.models import User, UIElement, GlobalStandard, SystemAuditLog
 
 def register_error_handlers(app):
+    @app.errorhandler(StaleDataError)
+    def handle_stale_data_error(e):
+        db.session.rollback()
+        flash('Another user just updated this record. Your changes were not saved. Please refresh the page and try again.', 'warning')
+        return redirect(request.referrer or url_for('main.index'))
+
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
