@@ -3,7 +3,7 @@ from flask import jsonify
 import os
 import json
 from datetime import datetime, date
-from flask import current_app as app, render_template, request, session
+from flask import current_app as app, render_template, request, session, flash, redirect, url_for
 from flask_login import current_user, login_user, AnonymousUserMixin
 
 from app.database import db
@@ -33,7 +33,8 @@ def register_error_handlers(app):
         best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
         if request.path.startswith('/api/') or best == 'application/json' or request.is_json:
             return jsonify({'error': 'Too Many Requests', 'message': 'Please wait a moment.'}), 429
-        return render_template('errors/429.html'), 429
+        flash(f"Too many attempts. Please wait before trying again: {e.description}", 'warning')
+        return redirect(request.referrer or url_for('auth.login'))
 
 def register_template_filters(app):
     @app.template_filter('basename')
