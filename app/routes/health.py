@@ -59,7 +59,7 @@ def register_health_routes(app):
                 log.body_weight_male = float(request.form.get('body_weight_male'))
             if request.form.get('uniformity_male'):
                 val = float(request.form.get('uniformity_male'))
-                log.uniformity_male = val if val > 1.0 else (val * 100)
+                log.uniformity_male = val
             if request.form.get('standard_bw_male'):
                 log.standard_bw_male = round_to_whole(request.form.get('standard_bw_male'))
 
@@ -68,7 +68,7 @@ def register_health_routes(app):
                 log.body_weight_female = float(request.form.get('body_weight_female'))
             if request.form.get('uniformity_female'):
                 val = float(request.form.get('uniformity_female'))
-                log.uniformity_female = val if val > 1.0 else (val * 100)
+                log.uniformity_female = val
             if request.form.get('standard_bw_female'):
                 log.standard_bw_female = round_to_whole(request.form.get('standard_bw_female'))
 
@@ -78,7 +78,6 @@ def register_health_routes(app):
             def save_partition(name, bw_str, unif_str):
                 bw = float(bw_str) if bw_str else 0
                 unif = float(unif_str) if unif_str else 0
-                unif = unif if unif > 1.0 else (unif * 100) if unif > 0 else 0
                 if bw > 0:
                     if name in existing_partitions:
                         existing_partitions[name].body_weight = bw
@@ -269,7 +268,7 @@ def register_health_routes(app):
                 'house_name': log.flock.house.name,
                 'house_id': log.flock.house_id,
                 'age_weeks': age_weeks,
-                'date': log.date.strftime('%Y-%m-%d'),
+                'date': log.date,
                 'std_m': std_m or 0,
                 'std_f': std_f or 0,
                 'avg_m': log.body_weight_male or 0,
