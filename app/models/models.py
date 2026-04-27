@@ -1,8 +1,20 @@
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from sqlalchemy.orm import declared_attr
 from app.extensions import login_manager
 from app.database import db
+
+
+class VersionedMixin(object):
+    version = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+
+    @declared_attr
+    def __mapper_args__(cls):
+        return {
+            "version_id_col": cls.version
+        }
+
 
 class PushSubscription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -67,7 +79,7 @@ class House(db.Model):
 
 
 
-class InventoryItem(db.Model):
+class InventoryItem(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False) # 'Vaccine', 'Medication'
@@ -83,12 +95,12 @@ class InventoryItem(db.Model):
     vaccines = db.relationship('Vaccine', backref='inventory_item', lazy=True)
     medications = db.relationship('Medication', backref='inventory_item', lazy=True)
 
-class InventoryTransaction(db.Model):
+class InventoryTransaction(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=False)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=False, index=True)
     transaction_type = db.Column(db.String(20), nullable=False) # 'Purchase', 'Usage', 'Adjustment', 'Waste'
     quantity = db.Column(db.Float, nullable=False)
-    transaction_date = db.Column(db.Date, nullable=False, default=date.today)
+    transaction_date = db.Column(db.Date, nullable=False, default=date.today, index=True)
     notes = db.Column(db.String(255), nullable=True)
 
 class Flock(db.Model):
@@ -138,7 +150,7 @@ class Flock(db.Model):
     logs = db.relationship('DailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
     weekly_benchmarks = db.relationship('ImportedWeeklyBenchmark', backref='flock', lazy=True, cascade="all, delete-orphan")
 
-class DailyLog(db.Model):
+class DailyLog(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     date = db.Column(db.Date, nullable=False, default=date.today, index=True)
@@ -232,8 +244,8 @@ class DailyLog(db.Model):
     clinical_notes_list = db.relationship('ClinicalNote', backref='log', lazy=True, cascade="all, delete-orphan")
 
     # Feed Codes (Main Branch Logic)
-    feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
-    feed_code_female_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True)
+    feed_code_male_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True, index=True)
+    feed_code_female_id = db.Column(db.Integer, db.ForeignKey('feed_code.id'), nullable=True, index=True)
 
     feed_code_male = db.relationship('FeedCode', foreign_keys=[feed_code_male_id], backref='male_logs')
     feed_code_female = db.relationship('FeedCode', foreign_keys=[feed_code_female_id], backref='female_logs')
@@ -252,32 +264,32 @@ class DailyLog(db.Model):
         else:
             return "0.0"
 
-class FloatingNote(db.Model):
+class FloatingNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     chart_id = db.Column(db.String(50), nullable=False) # e.g. 'generalChart', 'waterChart'
-    x_value = db.Column(db.String(50), nullable=False) # X-axis date string or value
+    x_value = db.Column(db.String(50), nullable=False, index=True) # X-axis date string or value
     y_value = db.Column(db.Float, nullable=False) # Y-axis value
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
-class ClinicalNote(db.Model):
+class ClinicalNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)
     caption = db.Column(db.String(255))
     photos = db.relationship('DailyLogPhoto', backref='note', lazy=True)
 
-class DailyLogPhoto(db.Model):
+class DailyLogPhoto(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)
-    note_id = db.Column(db.Integer, db.ForeignKey('clinical_note.id'), nullable=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('clinical_note.id'), nullable=True, index=True)
     file_path = db.Column(db.String(200), nullable=False)
     original_filename = db.Column(db.String(200), nullable=True)
 
-class PartitionWeight(db.Model):
+class PartitionWeight(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False)
+    log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)
     partition_name = db.Column(db.String(10), nullable=False) # F1, F2, F3, F4, M1, M2
     body_weight = db.Column(db.Integer, default=0)
     uniformity = db.Column(db.Float, default=0.0)
@@ -335,48 +347,48 @@ class UIElement(db.Model):
     is_visible = db.Column(db.Boolean, default=True)
     order_index = db.Column(db.Integer, default=0)
 
-class SamplingEvent(db.Model):
+class SamplingEvent(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     flock = db.relationship('Flock', backref=db.backref('sampling_events', cascade="all, delete-orphan"))
-    age_week = db.Column(db.Integer, nullable=False)
+    age_week = db.Column(db.Integer, nullable=False, index=True)
     test_type = db.Column(db.String(50), nullable=False) # 'Serology', 'Salmonella', 'Serology & Salmonella'
-    status = db.Column(db.String(20), default='Pending') # 'Pending', 'Completed'
+    status = db.Column(db.String(20), default='Pending', index=True) # 'Pending', 'Completed'
     result_file = db.Column(db.String(200), nullable=True) # Path to PDF
     upload_date = db.Column(db.Date, nullable=True)
     actual_date = db.Column(db.Date, nullable=True)
     remarks = db.Column(db.String(255), nullable=True)
     scheduled_date = db.Column(db.Date, nullable=True)
 
-class Medication(db.Model):
+class Medication(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     drug_name = db.Column(db.String(100), nullable=False)
     dosage = db.Column(db.String(50), nullable=False)
     amount_used = db.Column(db.String(100), nullable=True)
     amount_used_qty = db.Column(db.Float, nullable=True)
     withdrawal_period_days = db.Column(db.Integer, default=0)
-    start_date = db.Column(db.Date, nullable=False, default=date.today)
-    end_date = db.Column(db.Date, nullable=True)
+    start_date = db.Column(db.Date, nullable=False, default=date.today, index=True)
+    end_date = db.Column(db.Date, nullable=True, index=True)
     remarks = db.Column(db.String(255), nullable=True)
-    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True, index=True)
 
     flock = db.relationship('Flock', backref=db.backref('medications', lazy=True, cascade="all, delete-orphan"))
 
-class Vaccine(db.Model):
+class Vaccine(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     # Age can be defined by Day (for first few weeks) or Week
     age_code = db.Column(db.String(10), nullable=False) # 'D1', 'W6', etc.
     vaccine_name = db.Column(db.String(200), nullable=False)
     route = db.Column(db.String(50), nullable=True)
 
     # Dates
-    est_date = db.Column(db.Date, nullable=True)
-    actual_date = db.Column(db.Date, nullable=True)
+    est_date = db.Column(db.Date, nullable=True, index=True)
+    actual_date = db.Column(db.Date, nullable=True, index=True)
     remarks = db.Column(db.String(255), nullable=True)
     doses_per_unit = db.Column(db.Integer, default=1000)
-    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True)
+    inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=True, index=True)
 
     flock = db.relationship('Flock', backref=db.backref('vaccines', lazy=True, cascade="all, delete-orphan"))
 
@@ -441,10 +453,10 @@ class ImportedWeeklyBenchmark(db.Model):
     bw_male = db.Column(db.Integer, default=0)
     bw_female = db.Column(db.Integer, default=0)
 
-class FlockGrading(db.Model):
+class FlockGrading(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
-    age_week = db.Column(db.Integer, nullable=False)
+    age_week = db.Column(db.Integer, nullable=False, index=True)
     sex = db.Column(db.String(10), nullable=False) # 'Male' or 'Female'
 
     # Statistics
@@ -461,12 +473,12 @@ class FlockGrading(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-class Hatchability(db.Model):
+class Hatchability(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False)
-    setting_date = db.Column(db.Date, nullable=False)
-    candling_date = db.Column(db.Date, nullable=False)
-    hatching_date = db.Column(db.Date, nullable=False)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
+    setting_date = db.Column(db.Date, nullable=False, index=True)
+    candling_date = db.Column(db.Date, nullable=False, index=True)
+    hatching_date = db.Column(db.Date, nullable=False, index=True)
 
     egg_set = db.Column(db.Integer, default=0)
     clear_eggs = db.Column(db.Integer, default=0) # Infertile
