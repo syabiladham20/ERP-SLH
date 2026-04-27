@@ -264,6 +264,17 @@ class DailyLog(VersionedMixin, db.Model):
         else:
             return "0.0"
 
+class ChartNote(VersionedMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
+    chart_identifier = db.Column(db.String(50), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False)
+    pos_x = db.Column(db.Float, nullable=False)
+    pos_y = db.Column(db.Float, nullable=False)
+    width = db.Column(db.Float, nullable=False)
+    height = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class FloatingNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
