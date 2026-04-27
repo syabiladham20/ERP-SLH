@@ -2,6 +2,7 @@ from flask_wtf.csrf import CSRFError
 from flask import jsonify
 import os
 import json
+import time
 from datetime import datetime, date
 from flask import current_app as app, render_template, request, session, flash, redirect, url_for
 from flask_login import current_user, login_user, AnonymousUserMixin
@@ -29,11 +30,23 @@ def register_error_handlers(app):
 
     @app.errorhandler(429)
     def ratelimit_handler(e):
+        # Calculate seconds left
+        seconds_left = 60
+        try:
+            if hasattr(e, 'retry_after') and e.retry_after is not None:
+                seconds_left = int(e.retry_after)
+            elif 'LIMITER_RESET' in request.environ:
+                reset_epoch = float(request.environ['LIMITER_RESET'])
+                seconds_left = max(1, int(reset_epoch - time.time()))
+        except Exception:
+            pass
+
         # We must carefully check accept headers since browsers send */* or text/html
         best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
         if request.path.startswith('/api/') or best == 'application/json' or request.is_json:
-            return jsonify({'error': 'Too Many Requests', 'message': 'Please wait a moment.'}), 429
-        flash(f"Too many attempts. Please wait before trying again: {e.description}", 'warning')
+            return jsonify({'error': 'Too Many Requests', 'message': f'Please wait {seconds_left} seconds before trying again.'}), 429
+
+        flash(f"Too many attempts. Please wait {seconds_left} seconds before trying again.", 'warning')
         return redirect(request.referrer or url_for('auth.login'))
 
 def register_template_filters(app):
