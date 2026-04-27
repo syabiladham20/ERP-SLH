@@ -218,10 +218,18 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div id="chart-bw-male" style="min-height: 300px;"></div>
+                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
+                                        <div class="chart-inner-container" style="position: relative; height: 350px; min-width: 800px;">
+                                            <div id="chart-bw-male" style="min-height: 300px;"></div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div id="chart-bw-female" style="min-height: 300px;"></div>
+                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
+                                        <div class="chart-inner-container" style="position: relative; height: 350px; min-width: 800px;">
+                                            <div id="chart-bw-female" style="min-height: 300px;"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -760,8 +768,10 @@
             // Compute Min/Max for dynamic Y-axis
             let allMaleBw = [];
             let allFemaleBw = [];
+            let allMaleUni = [];
+            let allFemaleUni = [];
 
-            function addMainLines(seriesArr, avgData, stdData, unifData, allBwArr) {
+            function addMainLines(seriesArr, avgData, stdData, unifData, allBwArr, allUniArr) {
                 let bwData = avgData.map(v => v ? parseFloat(v) : null);
                 let stdBwData = stdData.map(v => v ? parseFloat(v) : null);
                 let uData = unifData.map(v => v ? parseFloat(v) : null);
@@ -785,6 +795,7 @@
                     type: 'line',
                     data: uData
                 });
+                allUniArr.push(...uData.filter(v => v !== null));
             }
 
             if (!showPartitions) {
@@ -794,7 +805,8 @@
                     filteredLogs.map(log => log.avg_m || null),
                     filteredLogs.map(log => log.std_m || null),
                     filteredLogs.map(log => log.uni_m || null),
-                    allMaleBw
+                    allMaleBw,
+                    allMaleUni
                 );
 
                 addMainLines(
@@ -802,7 +814,8 @@
                     filteredLogs.map(log => log.avg_f || null),
                     filteredLogs.map(log => log.std_f || null),
                     filteredLogs.map(log => log.uni_f || null),
-                    allFemaleBw
+                    allFemaleBw,
+                    allFemaleUni
                 );
             } else {
                 // Show partitions for BW, but only avg for Uniformity and Standard
@@ -815,11 +828,13 @@
                 });
                 allMaleBw.push(...stdMBw.filter(v => v !== null));
 
+                let uniMData = filteredLogs.map(log => log.uni_m ? parseFloat(log.uni_m) : null);
                 maleSeries.push({
                     name: 'Average Uniformity',
                     type: 'line',
-                    data: filteredLogs.map(log => log.uni_m ? parseFloat(log.uni_m) : null)
+                    data: uniMData
                 });
+                allMaleUni.push(...uniMData.filter(v => v !== null));
 
                 let stdFBw = filteredLogs.map(log => log.std_f ? parseFloat(log.std_f) : null);
                 femaleSeries.push({
@@ -829,11 +844,13 @@
                 });
                 allFemaleBw.push(...stdFBw.filter(v => v !== null));
 
+                let uniFData = filteredLogs.map(log => log.uni_f ? parseFloat(log.uni_f) : null);
                 femaleSeries.push({
                     name: 'Average Uniformity',
                     type: 'line',
-                    data: filteredLogs.map(log => log.uni_f ? parseFloat(log.uni_f) : null)
+                    data: uniFData
                 });
+                allFemaleUni.push(...uniFData.filter(v => v !== null));
 
                 // Partitions for Male
                 let maxMParts = 0;
@@ -902,12 +919,19 @@
             let maleMaxBw = allMaleBw.length > 0 ? Math.max(...allMaleBw) : 1000;
             let femaleMaxBw = allFemaleBw.length > 0 ? Math.max(...allFemaleBw) : 1000;
 
-            // Add a 60% buffer to the max BW to ensure it stays below the uniformity dashed line
-            let maleYMax = Math.ceil(maleMaxBw * 1.6);
-            let femaleYMax = Math.ceil(femaleMaxBw * 1.6);
+            let maleMinUni = allMaleUni.length > 0 ? Math.min(...allMaleUni) : 0;
+            let femaleMinUni = allFemaleUni.length > 0 ? Math.min(...allFemaleUni) : 0;
+
+            // Set BW max to 2.1x of max so it stays in bottom 50%
+            let maleYMax = Math.ceil(maleMaxBw * 2.1);
+            let femaleYMax = Math.ceil(femaleMaxBw * 2.1);
+
+            // Set Uniformity min so it stays in top 50%
+            let maleUMin = Math.floor(maleMinUni - ((100 - maleMinUni) * 1.1));
+            let femaleUMin = Math.floor(femaleMinUni - ((100 - femaleMinUni) * 1.1));
 
             // Common Options
-            const getChartOptions = (series, title, yMax) => {
+            const getChartOptions = (series, title, bwMax, uMin) => {
                 let colors = [];
                 let strokeOptions = {
                     curve: [],
@@ -950,7 +974,7 @@
                             opposite: true,
                             title: { text: 'Uniformity (%)' },
                             max: 100,
-                            min: 0,
+                            min: uMin,
                             labels: { formatter: function (val) { return Math.round(val) + '%'; } }
                         });
                     } else {
@@ -959,7 +983,7 @@
                                 seriesName: s.name,
                                 show: true,
                                 title: { text: 'Grams' },
-                                max: yMax,
+                                max: bwMax,
                                 min: 0,
                                 labels: { formatter: function (val) { return Math.round(val); } }
                             });
@@ -968,7 +992,7 @@
                              yaxisConfig.push({
                                 seriesName: s.name,
                                 show: false,
-                                max: yMax,
+                                max: bwMax,
                                 min: 0
                             });
                         }
@@ -987,6 +1011,16 @@
                     stroke: strokeOptions,
                     dataLabels: {
                         enabled: true,
+                        background: { enabled: false },
+                        style: {
+                            fontSize: '11px',
+                            fontWeight: 'bold'
+                        },
+                        dropShadow: {
+                            enabled: true,
+                            top: 0, left: 0, blur: 2,
+                            color: '#ffffff', opacity: 1
+                        },
                         enabledOnSeries: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // Show on all except standard/target which are usually at the end
                         offsetY: function(opts) {
                             let seriesName = opts.w.globals.seriesNames[opts.seriesIndex];
@@ -1056,14 +1090,14 @@
             if (maleChart) {
                 maleChart.destroy();
             }
-            maleChart = new ApexCharts(document.querySelector("#chart-bw-male"), getChartOptions(maleSeries, 'Male Bodyweight', maleYMax));
+            maleChart = new ApexCharts(document.querySelector("#chart-bw-male"), getChartOptions(maleSeries, 'Male Bodyweight', maleYMax, maleUMin));
             maleChart.render();
 
             // Female Chart
             if (femaleChart) {
                 femaleChart.destroy();
             }
-            femaleChart = new ApexCharts(document.querySelector("#chart-bw-female"), getChartOptions(femaleSeries, 'Female Bodyweight', femaleYMax));
+            femaleChart = new ApexCharts(document.querySelector("#chart-bw-female"), getChartOptions(femaleSeries, 'Female Bodyweight', femaleYMax, femaleUMin));
             femaleChart.render();
         }
 
