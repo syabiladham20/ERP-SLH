@@ -38,6 +38,7 @@ def create_app(config_class=Config):
     from app.routes.health import register_health_routes
     from app.routes.admin import register_admin_routes
     from app.routes.api import register_api_routes
+    from app.routes.presentation import presentation_bp
 
     register_auth_routes(app)
     register_main_routes(app)
@@ -46,6 +47,7 @@ def create_app(config_class=Config):
     register_health_routes(app)
     register_admin_routes(app)
     register_api_routes(app)
+    app.register_blueprint(presentation_bp)
 
 
     import logging
