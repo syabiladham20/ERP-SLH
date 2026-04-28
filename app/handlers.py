@@ -85,17 +85,11 @@ def register_template_filters(app):
 
 
 import os
+import time
 from datetime import datetime
 
-BUILD_TIME_FILE = os.path.join(os.path.dirname(__file__), '..', '.build_time')
-if os.path.exists(BUILD_TIME_FILE):
-    with open(BUILD_TIME_FILE, 'r') as f:
-        ts = float(f.read().strip())
-        BUILD_TIME = datetime.fromtimestamp(ts)
-else:
-    BUILD_TIME = datetime.now()
-
-APP_VERSION = BUILD_TIME.strftime("%Y%m%d%H%M")
+BUILD_TIME = datetime.now()
+APP_VERSION = str(int(time.time()))
 DISPLAY_DATE = BUILD_TIME.strftime("%B %d, %Y")
 
 def register_context_processors(app):
