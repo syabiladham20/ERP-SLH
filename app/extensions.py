@@ -17,9 +17,16 @@ def exempt_admin():
     return False
 
 login_manager = LoginManager()
-login_manager.login_view = 'login'
+login_manager.login_view = 'auth.login'
 login_manager.login_message = "Please log in to continue."
 login_manager.login_message_category = "info"
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    from flask import request, jsonify, redirect, url_for
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Unauthorized"}), 401
+    return redirect(url_for('auth.login', next=request.path))
 
 migrate = Migrate()
 csrf = CSRFProtect()

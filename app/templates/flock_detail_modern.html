@@ -2683,12 +2683,13 @@
         btn.disabled = true;
 
         fetch(`/api/ai_insight/${flockId}`)
-            .then(response => {
-                if (!response.ok) {
+            .then(async response => {
+                if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
                     if (response.status === 503) {
                         throw new Error("The AI Consultant is currently offline. Please try again in an hour.");
                     }
-                    throw new Error("Network response was not ok");
+                    console.error("API returned non-JSON error response.", await response.text());
+                    throw new Error("Network response was not ok or invalid format");
                 }
                 return response.json();
             })

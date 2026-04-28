@@ -138,7 +138,13 @@
         if (end) url += `&end_date=${end}`;
 
         fetch(url)
-            .then(response => response.json())
+            .then(async response => {
+                if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+                    console.error("API returned non-JSON error response.", await response.text());
+                    throw new Error("Invalid response format");
+                }
+                return response.json();
+            })
             .then(data => {
                 currentData = data;
                 renderCharts(data, mode);
@@ -162,7 +168,13 @@
         let url = `/api/chart_data/${flockId}?mode=${mode}`;
 
         fetch(url)
-            .then(response => response.json())
+            .then(async response => {
+                if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+                    console.error("API returned non-JSON error response.", await response.text());
+                    throw new Error("Invalid response format");
+                }
+                return response.json();
+            })
             .then(data => {
                 currentData = data;
                 if (!data.dates || data.dates.length === 0) {

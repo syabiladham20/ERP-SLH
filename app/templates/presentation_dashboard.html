@@ -190,7 +190,13 @@
             const chartsContainer = document.getElementById(`charts-${flockId}`);
 
             fetch(`/api/flock/${flockId}/dashboard_context`)
-                .then(r => r.json())
+                .then(async r => {
+                    if (!r.ok || !r.headers.get('content-type')?.includes('application/json')) {
+                        console.error("API returned non-JSON error response.", await r.text());
+                        throw new Error("Invalid response format");
+                    }
+                    return r.json();
+                })
                 .then(data => {
                     flockDataStore[flockId] = data;
                     spinner.classList.add('d-none');
