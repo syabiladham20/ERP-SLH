@@ -1273,35 +1273,7 @@
               font: { weight: 'bold', size: 10 },
               color: '#333'
           },
-          tooltip: {
-              callbacks: {
-                  label: function(context) {
-                      let label = context.dataset.label || '';
-                      if (label) {
-                          label += ': ';
-                      }
-                      if (context.dataset.label === 'Clinical Notes') {
-                          return context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '');
-                      }
-                      if (context.parsed.y !== null) {
-                          if (context.dataset.label === 'Water:Feed Ratio') {
-                              label += parseFloat(context.parsed.y).toFixed(2);
-                          } else if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
-                              label += parseFloat(context.parsed.y).toFixed(2) + '%';
-                          } else {
-                              label += context.parsed.y;
-                          }
-                      }
-                      return label;
-                  },
-                  afterBody: function(context) {
-                      const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
-                      if (noteItem && noteItem.raw && noteItem.raw.note) {
-                          return '\nNote: ' + noteItem.raw.note;
-                      }
-                      return '';
-                  }
-              }
+          tooltip: { enabled: false }
           }
       }
   };
@@ -1373,7 +1345,7 @@
       waterChartInstance = new Chart(waterChartCanvas.getContext("2d"), {
           type: "line",
           data: {
-              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
+              labels: generateDailyLabels(data),
               datasets: datasets
           },
           options: {
@@ -1398,21 +1370,7 @@
                       grid: { drawOnChartArea: false }
                   }
               },
-              plugins: {
-                  ...commonOptions.plugins,
-                  tooltip: {
-                      ...commonOptions.plugins.tooltip,
-                      callbacks: {
-                          ...commonOptions.plugins.tooltip.callbacks,
-                          afterBody: function(context) {
-                              const idx = context[0].dataIndex;
-                              if (flushFlags && flushFlags[idx]) {
-                                  return "FLUSHING ACTIVE";
-                              }
-                              return commonOptions.plugins.tooltip.callbacks.afterBody ? commonOptions.plugins.tooltip.callbacks.afterBody(context) : '';
-                          }
-                      }
-                  }
+              plugins: { ...commonOptions.plugins }
               }
           }
       });
@@ -1491,7 +1449,7 @@
       feedChartInstance = new Chart(feedChartCanvas.getContext('2d'), {
           type: 'line',
           data: {
-              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
+              labels: generateDailyLabels(data),
               datasets: datasets
           },
           options: {
@@ -1520,6 +1478,19 @@
       });
   }
 
+
+
+  function togglePartitions(gender) {
+      const chart = gender === 'male' ? maleChartInstance : femaleChartInstance;
+      if (!chart) return;
+      const prefix = gender === 'male' ? 'BW M' : 'BW F';
+      chart.data.datasets.forEach(dataset => {
+          if (dataset.label && dataset.label.startsWith(prefix) && !dataset.label.startsWith('BW Male Std') && !dataset.label.startsWith('BW Female Std')) {
+              dataset.hidden = !dataset.hidden;
+          }
+      });
+      chart.update();
+  }
 
   function renderMaleChart() {
       const mode = currentMode;
@@ -2050,7 +2021,7 @@
               interaction: { mode: 'index', intersect: false },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Eggs %' }, min: 0, ...barMaxCalc },
-                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
+                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 110, grid: { drawOnChartArea: false } }
               },
               plugins: {
                   ...commonOptions.plugins
@@ -2233,7 +2204,7 @@
                   y: {
                       stacked: true,
                       beginAtZero: true,
-                      max: 100,
+                      max: 110,
                       title: { display: true, text: 'Egg Breakdown %' },
                       grid: { drawOnChartArea: true }
                   },
