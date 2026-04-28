@@ -96,26 +96,14 @@
                             </div>
                         </div>
 
-                        <!-- Body Weight Chart -->
-                        <div class="col-12 col-lg-6 mb-3">
+                        <!-- Combined Body Weight and Mortality Chart -->
+                        <div class="col-12 mb-3">
                             <div class="card">
                                 <div class="card-header">
-                                    <h3 class="card-title">Body Weight Growth</h3>
+                                    <h3 class="card-title">Mortality (%) and Bodyweight (g)</h3>
                                 </div>
                                 <div class="card-body">
-                                    <canvas id="bwChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Daily Mortality Chart -->
-                        <div class="col-12 col-lg-6 mb-3">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h3 class="card-title">Daily Mortality</h3>
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="mortalityChart"></canvas>
+                                    <canvas id="combinedChart"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -127,7 +115,7 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -135,7 +123,7 @@
         const chartData = {{ chart_data | tojson }};
         const labels = chartData.days;
 
-        let chartFCR, chartBW, chartMortality;
+        let chartFCR, chartCombined;
 
         // FCR Chart
         const ctxFCR = document.getElementById('fcrChart');
@@ -186,65 +174,48 @@
             });
         }
 
-        // Body Weight Chart
-        const ctxBW = document.getElementById('bwChart');
-        if (ctxBW) {
-            chartBW = new Chart(ctxBW, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Body Weight (g)',
-                            data: chartData.body_weights,
-                            borderColor: 'green',
-                            backgroundColor: 'rgba(0, 128, 0, 0.1)',
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Day of Life'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Weight (g)'
-                            },
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-
-        // Daily Mortality Chart
-        const ctxMortality = document.getElementById('mortalityChart');
-        if (ctxMortality) {
-            chartMortality = new Chart(ctxMortality, {
+        // Combined Body Weight & Mortality Chart
+        const ctxCombined = document.getElementById('combinedChart');
+        if (ctxCombined) {
+            chartCombined = new Chart(ctxCombined, {
                 type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Daily Mortality',
-                            data: chartData.mortality,
-                            backgroundColor: 'red',
-                            borderColor: 'darkred',
-                            borderWidth: 1
+                            label: 'Body weight (g)',
+                            data: chartData.body_weights,
+                            backgroundColor: 'rgba(237, 125, 49, 1)',
+                            yAxisID: 'y1',
+                            order: 2
+                        },
+                        {
+                            label: 'Weight Gain (g)',
+                            data: chartData.weight_gains,
+                            backgroundColor: 'rgba(56, 118, 29, 1)',
+                            yAxisID: 'y1',
+                            order: 3
+                        },
+                        {
+                            label: 'Mortality %',
+                            data: chartData.mortality_pct,
+                            type: 'line',
+                            borderColor: 'rgba(21, 96, 130, 1)',
+                            backgroundColor: 'rgba(21, 96, 130, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            yAxisID: 'y2',
+                            order: 1
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     scales: {
                         x: {
                             title: {
@@ -252,12 +223,33 @@
                                 text: 'Day of Life'
                             }
                         },
-                        y: {
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
                             title: {
                                 display: true,
-                                text: 'Death Count'
+                                text: 'Weight (g)'
                             },
-                            beginAtZero: true
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false, // only want the grid lines for one axis to show up
+                            }
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Mortality (%)'
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
                         }
                     }
                 }
@@ -269,8 +261,7 @@
         if (chartTabButton) {
             chartTabButton.addEventListener('shown.bs.tab', function (e) {
                 if (chartFCR) chartFCR.resize();
-                if (chartBW) chartBW.resize();
-                if (chartMortality) chartMortality.resize();
+                if (chartCombined) chartCombined.resize();
             });
         }
     });
