@@ -4,6 +4,17 @@ from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import current_user
+
+def user_id_or_ip():
+    if current_user.is_authenticated:
+        return str(current_user.id)
+    return get_remote_address()
+
+def exempt_admin():
+    if current_user.is_authenticated and current_user.role == 'Admin':
+        return True
+    return False
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -12,6 +23,7 @@ login_manager.login_message_category = "info"
 
 migrate = Migrate()
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address, default_limits=["200 per day", "50 per hour"])
+limiter = Limiter(key_func=user_id_or_ip, default_limits=["200 per day", "50 per hour"])
+limiter.request_filter(exempt_admin)
 
 cache = Cache()

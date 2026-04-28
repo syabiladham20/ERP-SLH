@@ -387,9 +387,12 @@ def register_api_routes(app):
 
         return jsonify(report_info)
 
+    from app.extensions import limiter
+
     @app.route('/api/health_log/bodyweight_edit', methods=['POST'])
     @login_required
     @dept_required(['Farm', 'Management', 'Admin'])
+    @limiter.limit("200 per minute; 2000 per day")
     def health_log_bodyweight_edit():
         log_id = request.form.get('log_id', type=int)
         new_date_str = request.form.get('new_date')
@@ -1234,6 +1237,7 @@ def register_api_routes(app):
 
     @app.route('/api/get_standard_bw')
     @login_required
+    @limiter.limit("200 per minute; 2000 per day")
     def get_standard_bw():
         flock_id = request.args.get('flock_id', type=int)
         date_str = request.args.get('date')
