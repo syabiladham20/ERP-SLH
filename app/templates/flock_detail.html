@@ -873,13 +873,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
 
   // Register plugin
   Chart.register(ChartDataLabels);
-  Chart.register(window['chartjs-plugin-annotation']);
   Chart.defaults.set('plugins.datalabels', {
     display: true,
     font: { size: 10 },
@@ -2625,172 +2623,6 @@
       modal.show();
   }
 
-// --- Floating Notes Logic ---
-let activeAddNoteChart = null;
-let allFloatingNotes = [];
-
-function toggleAddNoteMode(chartId) {
-    if (activeAddNoteChart === chartId) {
-        activeAddNoteChart = null;
-        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-outline-secondary');
-        });
-    } else {
-        if (activeAddNoteChart) {
-            document.querySelectorAll(`button[onclick="toggleAddNoteMode('${activeAddNoteChart}')"]`).forEach(btn => {
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-outline-secondary');
-            });
-        }
-        activeAddNoteChart = chartId;
-        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-primary');
-        });
-    }
-}
-
-const floatingNotePlugin = {
-    id: 'floatingNoteInteraction',
-    afterEvent(chart, args) {
-        if (args.event.type === 'click') {
-            const chartId = chart.canvas.id;
-
-            if (activeAddNoteChart === chartId) {
-                const xVal = chart.scales.x.getValueForPixel(args.event.x);
-                const yVal = chart.scales.y.getValueForPixel(args.event.y);
-
-                let xLabel = xVal;
-                if (chart.data.labels && chart.data.labels[xVal] !== undefined) {
-                    xLabel = chart.data.labels[xVal];
-                }
-
-                toggleAddNoteMode(chartId); // turn off mode
-
-                const noteText = prompt("Enter note text:");
-                if (noteText && noteText.trim() !== '') {
-                    const payload = {
-                        flock_id: {{ flock.id }},
-                        chart_id: chartId,
-                        x_value: String(xLabel),
-                        y_value: yVal,
-                        content: noteText.trim()
-                    };
-
-                    fetch('{{ url_for("create_floating_note") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success) {
-                            payload.id = res.id;
-                            allFloatingNotes.push(payload);
-                            updateChartAnnotations(chart);
-                        } else {
-                            alert("Failed to save note: " + res.error);
-                        }
-                    });
-                }
-            }
-        }
-    }
-};
-
-Chart.register(floatingNotePlugin);
-
-function updateChartAnnotations(chart) {
-    if (!chart) return;
-    const chartId = chart.canvas.id;
-    const chartNotes = allFloatingNotes.filter(n => n.chart_id === chartId);
-
-    if (!chart.options.plugins) chart.options.plugins = {};
-    if (!chart.options.plugins.annotation) chart.options.plugins.annotation = {};
-    if (!chart.options.plugins.annotation.annotations) chart.options.plugins.annotation.annotations = {};
-
-    const currentAnns = chart.options.plugins.annotation.annotations;
-    const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
-
-    for (const key of Object.keys(newAnnotations)) {
-        if (key.startsWith('note_')) {
-            delete newAnnotations[key];
-        }
-    }
-
-    chartNotes.forEach(note => {
-        newAnnotations['note_' + note.id] = {
-            type: 'label',
-            xValue: note.x_value,
-            yValue: note.y_value,
-            content: note.content,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            color: 'black',
-            borderWidth: 0,
-            borderRadius: 4,
-            padding: 4,
-            font: { size: 12 },
-            callout: { display: false },
-            click: function(ctx) {
-                if (activeAddNoteChart) return;
-                if (confirm('Delete this note: "' + note.content + '"?')) {
-                    fetch('{{ url_for("delete_floating_note", note_id=0) }}'.replace('0', note.id), { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success) {
-                            allFloatingNotes = allFloatingNotes.filter(n => n.id !== note.id);
-                            updateChartAnnotations(chart);
-                        } else {
-                            alert("Failed to delete note.");
-                        }
-                    });
-                }
-            }
-        };
-    });
-
-    chart.options.plugins.annotation.annotations = newAnnotations;
-    chart.update();
-}
-
-function fetchAndApplyFloatingNotes() {
-    fetch('{{ url_for("get_floating_notes", flock_id=flock.id) }}')
-    .then(r => {
-        if (!r.ok || r.redirected) {
-            console.error("Failed to fetch floating notes");
-            return [];
-        }
-        return r.json().catch(() => {
-            console.error("Failed to fetch floating notes");
-            return [];
-        });
-    })    .then(data => {
-        allFloatingNotes = data;
-        const chartsToUpdate = [];
-        if (typeof generalChartInstance !== 'undefined') chartsToUpdate.push(generalChartInstance);
-        if (typeof waterChartInstance !== 'undefined') chartsToUpdate.push(waterChartInstance);
-        if (typeof feedChartInstance !== 'undefined') chartsToUpdate.push(feedChartInstance);
-        if (typeof maleChartInstance !== 'undefined') chartsToUpdate.push(maleChartInstance);
-        if (typeof femaleChartInstance !== 'undefined') chartsToUpdate.push(femaleChartInstance);
-        if (typeof hatchingEggChartInstance !== 'undefined') chartsToUpdate.push(hatchingEggChartInstance);
-        if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
-        if (typeof hatchChartInstance !== 'undefined') chartsToUpdate.push(hatchChartInstance);
-
-        chartsToUpdate.forEach(c => {
-            if (c) updateChartAnnotations(c);
-        });
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(fetchAndApplyFloatingNotes, 1500);
-});
-
-</script>
-{% endblock %}
 
 {% block modals %}
 

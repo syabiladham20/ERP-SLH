@@ -1,0 +1,581 @@
+{% extends 'base_tabler.html' %}
+
+{% block title %}Boardroom Presentation - SmartLay Hub{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page title -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          Boardroom Presentation
+        </h2>
+        <div class="text-muted mt-1">Review active flocks performance</div>
+      </div>
+      <!-- Sticky header toggles -->
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-group" role="group">
+          {% for flock in active_flocks %}
+          <input type="checkbox" class="btn-check flock-toggle-btn" id="toggle-{{ flock.id }}" data-target="#accordion-{{ flock.id }}" autocomplete="off" checked>
+          <label class="btn btn-outline-primary" for="toggle-{{ flock.id }}">{{ flock.house.name if flock.house else flock.flock_id }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-body">
+  <div class="container-xl">
+    {% if active_flocks %}
+    <div class="accordion" id="presentationAccordion">
+      {% for flock in active_flocks %}
+      <div class="accordion-item" id="accordion-{{ flock.id }}">
+        <h2 class="accordion-header" id="heading-{{ flock.id }}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-toggle="collapse" data-bs-target="#collapse-{{ flock.id }}" aria-expanded="false" aria-controls="collapse-{{ flock.id }}">
+            House {{ flock.house.name if flock.house else flock.flock_id }} - Batch {{ flock.flock_id }}
+          </button>
+        </h2>
+        <div id="collapse-{{ flock.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ flock.id }}" data-bs-parent="#presentationAccordion" data-flock-id="{{ flock.id }}" data-house-name="{{ flock.house.name if flock.house else flock.flock_id }}">
+          <div class="accordion-body p-3 bg-light">
+            <div id="spinner-{{ flock.id }}" class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-2 text-muted">Loading chart data...</p>
+            </div>
+
+            <div id="charts-{{ flock.id }}" class="d-none">
+                <!-- General Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="generalChartTitle-{{ flock.id }}">Performance Overview</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="generalChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-generalChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Hatching Egg Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="hatchingChartTitle-{{ flock.id }}">Hatching Egg & Culls</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="hatchingChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-hatchingChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Water Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="waterChartTitle-{{ flock.id }}">Daily Water per Bird</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="waterChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-waterChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Feed Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="feedChartTitle-{{ flock.id }}">Daily Feed per Bird</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="feedChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-feedChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Male BW Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="maleChartTitle-{{ flock.id }}">Male Bodyweight & Uniformity</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="maleChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-maleChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Female BW Chart -->
+                <div class="card mb-4">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title" id="femaleChartTitle-{{ flock.id }}">Female Bodyweight & Uniformity</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="presentation-wrapper" style="position: relative;">
+                        <canvas id="femaleChart-{{ flock.id }}" style="max-height: 400px; width: 100%;"></canvas>
+                        <div id="notes-container-femaleChart-{{ flock.id }}" class="notes-layer"></div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info shadow-sm" role="alert">
+      <div class="d-flex">
+        <div>
+          <i class="ti ti-info-circle icon text-info icon-lg me-3"></i>
+        </div>
+        <div>
+          <h4 class="alert-title">No active flocks available</h4>
+          <div class="text-muted">There are currently no active flocks being managed. The presentation dashboard requires at least one active flock to generate metrics.</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- Quill JS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+<script>
+    Chart.register(ChartDataLabels);
+
+    const flockDataStore = {};
+    const chartInstancesStore = {};
+    const quillInstancesStore = {};
+    const chartNotesStore = {};
+
+    document.querySelectorAll('.flock-toggle-btn').forEach(btn => {
+        btn.addEventListener('change', (e) => {
+            const targetId = e.target.getAttribute('data-target');
+            const targetEl = document.querySelector(targetId);
+            if (e.target.checked) {
+                targetEl.style.display = '';
+            } else {
+                targetEl.style.display = 'none';
+            }
+        });
+    });
+
+    const accordion = document.getElementById('presentationAccordion');
+    if (accordion) {
+        accordion.addEventListener('show.bs.collapse', function (e) {
+            const bodyEl = e.target;
+            const flockId = bodyEl.getAttribute('data-flock-id');
+            const houseName = bodyEl.getAttribute('data-house-name');
+
+            if (flockDataStore[flockId]) {
+                return; // Already fetched
+            }
+
+            const spinner = document.getElementById(`spinner-${flockId}`);
+            const chartsContainer = document.getElementById(`charts-${flockId}`);
+
+            fetch(`/api/flock/${flockId}/dashboard_context`)
+                .then(r => r.json())
+                .then(data => {
+                    flockDataStore[flockId] = data;
+                    spinner.classList.add('d-none');
+                    chartsContainer.classList.remove('d-none');
+
+                    initChartsForFlock(flockId, data, houseName);
+                    fetchChartNotesForFlock(flockId);
+                })
+                .catch(err => {
+                    console.error("Error fetching context:", err); console.log("FETCH ERRORED!");
+                    spinner.innerHTML = `<div class="alert alert-danger">Failed to load data.</div>`;
+                });
+        });
+    }
+
+    function initChartsForFlock(flockId, context, houseName) {
+        chartInstancesStore[flockId] = {};
+        const chartDataDaily = context.chart_data;
+        const chartDataWeekly = context.chart_data_weekly;
+        const globalStd = context.global_std;
+
+        // General Chart (Weekly default)
+        const generalCanvas = document.getElementById(`generalChart-${flockId}`);
+        if (generalCanvas) {
+            const ctx = generalCanvas.getContext('2d');
+            const data = chartDataWeekly;
+            const dates = data.dates;
+            const mortM = data.mortality_weekly_male;
+            const mortF = data.mortality_weekly_female;
+            const cullsM = data.culls_weekly_male;
+            const cullsF = data.culls_weekly_female;
+            const ep = data.egg_prod;
+            const hep = data.hatch_egg_pct;
+
+            const stdEggProd = data.std_egg_prod;
+            const stdHatchingEggPct = data.std_hatching_egg_pct;
+            const hasFemaleStock = data.mortality_cum_female.some(v => v > 0);
+
+            const datasets = [];
+            if(ep.some(v => v > 0)) {
+                datasets.push({ label: 'Egg Production %', data: ep, type: 'line', borderColor: '#4299e1', backgroundColor: '#4299e1', yAxisID: 'yRight', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+                datasets.push({ label: 'Std Egg Prod %', data: stdEggProd, type: 'line', borderColor: 'rgba(66, 153, 225, 0.4)', borderDash: [5, 5], fill: false, pointRadius: 0, yAxisID: 'yRight', datalabels: { display: false } });
+            }
+            if(hep.some(v => v > 0)) {
+                datasets.push({ label: 'Hatching Egg %', data: hep, type: 'line', borderColor: '#48bb78', backgroundColor: '#48bb78', yAxisID: 'yRight', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+                datasets.push({ label: 'Std Hatching %', data: stdHatchingEggPct, type: 'line', borderColor: 'rgba(72, 187, 120, 0.4)', borderDash: [5, 5], fill: false, pointRadius: 0, yAxisID: 'yRight', datalabels: { display: false } });
+            }
+
+            if(hasFemaleStock) {
+                datasets.push({ label: 'Mortality F %', data: mortF, type: 'bar', backgroundColor: '#ed8936', yAxisID: 'yLeft', stack: 'Stack 0', datalabels: { display: false } });
+                datasets.push({ label: 'Culls F %', data: cullsF, type: 'bar', backgroundColor: '#ecc94b', yAxisID: 'yLeft', stack: 'Stack 0', datalabels: { display: false } });
+            } else {
+                datasets.push({ label: 'Mortality M %', data: mortM, type: 'bar', backgroundColor: '#e53e3e', yAxisID: 'yLeft', stack: 'Stack 0', datalabels: { display: false } });
+                datasets.push({ label: 'Culls M %', data: cullsM, type: 'bar', backgroundColor: '#fc8181', yAxisID: 'yLeft', stack: 'Stack 0', datalabels: { display: false } });
+            }
+
+            chartInstancesStore[flockId]['generalChart'] = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: dates, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: { stacked: true },
+                        yLeft: { type: 'linear', position: 'left', stacked: true, title: { display: true, text: 'Mortality / Culls (%)' }, max: 2 },
+                        yRight: { type: 'linear', position: 'right', title: { display: true, text: 'Production (%)' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+            initDragNotes(`generalChart-${flockId}`, flockId, 'generalChart');
+        }
+
+        // Hatching Chart (Weekly default)
+        const hatchingCanvas = document.getElementById(`hatchingChart-${flockId}`);
+        if (hatchingCanvas) {
+            const ctx = hatchingCanvas.getContext('2d');
+            const data = chartDataWeekly;
+            const datasets = [];
+            const heData = data.hatch_egg_pct || [];
+
+            if(heData.some(v => v > 0)) {
+                datasets.push({ label: 'Hatching Egg %', data: heData, type: 'line', borderColor: '#48bb78', backgroundColor: '#48bb78', yAxisID: 'yRight', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+                datasets.push({ label: 'Std Hatching %', data: data.std_hatching_egg_pct, type: 'line', borderColor: 'rgba(72, 187, 120, 0.4)', borderDash: [5, 5], pointRadius: 0, yAxisID: 'yRight', datalabels: { display: false } });
+                datasets.push({ label: 'Jumbo %', data: data.cull_eggs_jumbo_pct, type: 'bar', backgroundColor: '#3182ce', yAxisID: 'yLeft', stack: 'Culls', datalabels: { display: false } });
+                datasets.push({ label: 'Small %', data: data.cull_eggs_small_pct, type: 'bar', backgroundColor: '#e53e3e', yAxisID: 'yLeft', stack: 'Culls', datalabels: { display: false } });
+                datasets.push({ label: 'Crack %', data: data.cull_eggs_crack_pct, type: 'bar', backgroundColor: '#dd6b20', yAxisID: 'yLeft', stack: 'Culls', datalabels: { display: false } });
+                datasets.push({ label: 'Abnormal %', data: data.cull_eggs_abnormal_pct, type: 'bar', backgroundColor: '#805ad5', yAxisID: 'yLeft', stack: 'Culls', datalabels: { display: false } });
+
+                chartInstancesStore[flockId]['hatchingChart'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.dates, datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { stacked: true },
+                            yLeft: { type: 'linear', position: 'left', stacked: true, title: { display: true, text: 'Cull Eggs (%)' }, max: 5 },
+                            yRight: { type: 'linear', position: 'right', title: { display: true, text: 'Hatching Egg (%)' }, min: 50, max: 100, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+                initDragNotes(`hatchingChart-${flockId}`, flockId, 'hatchingChart');
+            } else {
+                hatchingCanvas.parentElement.parentElement.innerHTML = '<p class="text-muted text-center py-4">No Hatching data available.</p>';
+            }
+        }
+
+        // Water Chart (Daily default)
+        const waterCanvas = document.getElementById(`waterChart-${flockId}`);
+        if (waterCanvas) {
+            const ctx = waterCanvas.getContext('2d');
+            const data = chartDataDaily;
+            const datasets = [];
+
+            datasets.push({ label: 'Water per Bird (mL)', data: data.water_per_bird, type: 'bar', backgroundColor: '#3182ce', yAxisID: 'yLeft', datalabels: { display: false } });
+            if (data.water_feed_ratio.some(v => v != null)) {
+                datasets.push({ label: 'Water/Feed Ratio', data: data.water_feed_ratio, type: 'line', borderColor: '#805ad5', backgroundColor: '#805ad5', yAxisID: 'yRight', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+            }
+
+            chartInstancesStore[flockId]['waterChart'] = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: data.dates, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        yLeft: { type: 'linear', position: 'left', title: { display: true, text: 'Water (mL)' } },
+                        yRight: { type: 'linear', position: 'right', title: { display: true, text: 'Ratio' }, grid: { drawOnChartArea: false }, min: 1, max: 3 }
+                    }
+                }
+            });
+            initDragNotes(`waterChart-${flockId}`, flockId, 'waterChart');
+        }
+
+        // Feed Chart (Daily default)
+        const feedCanvas = document.getElementById(`feedChart-${flockId}`);
+        if (feedCanvas) {
+            const ctx = feedCanvas.getContext('2d');
+            const data = chartDataDaily;
+            const datasets = [];
+
+            datasets.push({ label: 'Female Feed (g)', data: data.feed_female_gp_bird, type: 'line', borderColor: '#ed8936', backgroundColor: '#ed8936', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+            datasets.push({ label: 'Male Feed (g)', data: data.feed_male_gp_bird, type: 'line', borderColor: '#3182ce', backgroundColor: '#3182ce', borderWidth: 2, pointRadius: 2, datalabels: { display: false } });
+
+            chartInstancesStore[flockId]['feedChart'] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: data.dates, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { type: 'linear', position: 'left', title: { display: true, text: 'Feed (g)' }, min: 100, max: 180 }
+                    }
+                }
+            });
+            initDragNotes(`feedChart-${flockId}`, flockId, 'feedChart');
+        }
+
+        // Male Bodyweight Chart (Weekly)
+        const maleCanvas = document.getElementById(`maleChart-${flockId}`);
+        if (maleCanvas) {
+            const ctx = maleCanvas.getContext('2d');
+            const data = chartDataWeekly;
+            const datasets = [];
+
+            if (data.avg_bw_male.some(v => v > 0)) {
+                datasets.push({ label: 'Actual Avg BW (g)', data: data.avg_bw_male, type: 'line', borderColor: '#3182ce', backgroundColor: '#3182ce', yAxisID: 'yLeft', borderWidth: 2, pointRadius: 4, datalabels: { display: false } });
+                datasets.push({ label: 'Std BW (g)', data: data.bw_male_std, type: 'line', borderColor: 'rgba(49, 130, 206, 0.4)', borderDash: [5, 5], fill: false, pointRadius: 0, yAxisID: 'yLeft', datalabels: { display: false } });
+                datasets.push({ label: 'Uniformity %', data: data.unif_male, type: 'bar', backgroundColor: '#48bb78', yAxisID: 'yRight', datalabels: { display: false } });
+
+                chartInstancesStore[flockId]['maleChart'] = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: data.dates, datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yLeft: { type: 'linear', position: 'left', title: { display: true, text: 'Weight (g)' } },
+                            yRight: { type: 'linear', position: 'right', title: { display: true, text: 'Uniformity (%)' }, grid: { drawOnChartArea: false }, min: 50, max: 100 }
+                        }
+                    }
+                });
+                initDragNotes(`maleChart-${flockId}`, flockId, 'maleChart');
+            } else {
+                 maleCanvas.parentElement.parentElement.innerHTML = '<p class="text-muted text-center py-4">No Male BW data available.</p>';
+            }
+        }
+
+        // Female Bodyweight Chart (Weekly)
+        const femaleCanvas = document.getElementById(`femaleChart-${flockId}`);
+        if (femaleCanvas) {
+            const ctx = femaleCanvas.getContext('2d');
+            const data = chartDataWeekly;
+            const datasets = [];
+
+            if (data.avg_bw_female.some(v => v > 0)) {
+                datasets.push({ label: 'Actual Avg BW (g)', data: data.avg_bw_female, type: 'line', borderColor: '#ed8936', backgroundColor: '#ed8936', yAxisID: 'yLeft', borderWidth: 2, pointRadius: 4, datalabels: { display: false } });
+                datasets.push({ label: 'Std BW (g)', data: data.bw_female_std, type: 'line', borderColor: 'rgba(237, 137, 54, 0.4)', borderDash: [5, 5], fill: false, pointRadius: 0, yAxisID: 'yLeft', datalabels: { display: false } });
+                datasets.push({ label: 'Uniformity %', data: data.unif_female, type: 'bar', backgroundColor: '#48bb78', yAxisID: 'yRight', datalabels: { display: false } });
+
+                chartInstancesStore[flockId]['femaleChart'] = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: data.dates, datasets: datasets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            yLeft: { type: 'linear', position: 'left', title: { display: true, text: 'Weight (g)' } },
+                            yRight: { type: 'linear', position: 'right', title: { display: true, text: 'Uniformity (%)' }, grid: { drawOnChartArea: false }, min: 50, max: 100 }
+                        }
+                    }
+                });
+                initDragNotes(`femaleChart-${flockId}`, flockId, 'femaleChart');
+            } else {
+                 femaleCanvas.parentElement.parentElement.innerHTML = '<p class="text-muted text-center py-4">No Female BW data available.</p>';
+            }
+        }
+    }
+
+    // Draggable Logic
+    function fetchChartNotesForFlock(flockId) {
+        chartNotesStore[flockId] = {};
+        const charts = ['generalChart', 'hatchingChart', 'waterChart', 'feedChart', 'maleChart', 'femaleChart'];
+
+        charts.forEach(chartId => {
+            fetch(`/api/notes/${flockId}/${chartId}`)
+                .then(r => r.json())
+                .then(notes => {
+                    chartNotesStore[flockId][chartId] = notes;
+                    renderNotes(`notes-container-${chartId}-${flockId}`, notes, flockId, chartId);
+                })
+                .catch(err => { console.error("Notes err:", err); });
+        });
+    }
+
+    function renderNotes(containerId, notes, flockId, chartIdentifier) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        notes.forEach(note => {
+            const noteEl = document.createElement('div');
+            noteEl.className = 'draggable-note card shadow-sm';
+            noteEl.style.position = 'absolute';
+            noteEl.style.left = note.pos_x + '%';
+            noteEl.style.top = note.pos_y + '%';
+            noteEl.style.width = note.width + 'px';
+            noteEl.style.minHeight = note.height + 'px';
+            noteEl.style.zIndex = 1000;
+            noteEl.style.cursor = 'move';
+            noteEl.style.resize = 'both';
+            noteEl.style.overflow = 'hidden';
+            noteEl.style.opacity = '0.95';
+
+            noteEl.innerHTML = `
+                <div class="card-header p-1 bg-light d-flex justify-content-between align-items-center note-drag-handle">
+                    <small class="text-muted fw-bold ps-1"><i class="ti ti-grip-horizontal"></i> Note</small>
+                    <button class="btn-close btn-sm p-1" onclick="deleteNote(${note.id}, ${flockId}, '${chartIdentifier}')"></button>
+                </div>
+                <div class="card-body p-2 note-content" id="quill-${note.id}" style="height: calc(100% - 30px);">${note.content}</div>
+            `;
+            container.appendChild(noteEl);
+
+            const quill = new Quill(`#quill-${note.id}`, {
+                theme: 'snow',
+                modules: { toolbar: false }
+            });
+
+            quillInstancesStore[note.id] = quill;
+
+            // Make Draggable
+            let isDragging = false;
+            let startX, startY, initialLeft, initialTop;
+            const handle = noteEl.querySelector('.note-drag-handle');
+
+            handle.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialLeft = noteEl.offsetLeft;
+                initialTop = noteEl.offsetTop;
+                noteEl.style.zIndex = 1001; // Bring to front
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                const newLeft = initialLeft + dx;
+                const newTop = initialTop + dy;
+
+                const wrapper = container.parentElement;
+                const pw = wrapper.offsetWidth;
+                const ph = wrapper.offsetHeight;
+
+                let posX = (newLeft / pw) * 100;
+                let posY = (newTop / ph) * 100;
+
+                // Clamp
+                posX = Math.max(0, Math.min(posX, 100 - (noteEl.offsetWidth/pw)*100));
+                posY = Math.max(0, Math.min(posY, 100 - (noteEl.offsetHeight/ph)*100));
+
+                noteEl.style.left = posX + '%';
+                noteEl.style.top = posY + '%';
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                noteEl.style.zIndex = 1000;
+
+                // Save position
+                saveNotePos(note.id, parseFloat(noteEl.style.left), parseFloat(noteEl.style.top), noteEl.offsetWidth, noteEl.offsetHeight);
+            });
+
+            // Resize Observer
+            const ro = new ResizeObserver(() => {
+                saveNotePos(note.id, parseFloat(noteEl.style.left), parseFloat(noteEl.style.top), noteEl.offsetWidth, noteEl.offsetHeight);
+            });
+            ro.observe(noteEl);
+
+            // Text update debounce
+            quill.on('text-change', function() {
+                clearTimeout(quill.saveTimeout);
+                quill.saveTimeout = setTimeout(() => {
+                    saveNoteContent(note.id, quill.root.innerHTML);
+                }, 1000);
+            });
+        });
+    }
+
+    function initDragNotes(canvasId, flockId, chartIdentifier) {
+        const wrapper = document.getElementById(canvasId).parentElement;
+        const addBtn = document.createElement('button');
+        addBtn.className = 'btn btn-sm btn-icon btn-primary position-absolute';
+        addBtn.style.top = '10px';
+        addBtn.style.left = '10px';
+        addBtn.innerHTML = '<i class="ti ti-plus"></i>';
+        addBtn.title = 'Add Note';
+        addBtn.onclick = () => {
+            fetch(`/api/notes/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    flock_id: flockId,
+                    chart_identifier: chartIdentifier,
+                    content: 'New Note...',
+                    pos_x: 10, pos_y: 10, width: 200, height: 100
+                })
+            }).then(r => r.json()).then(res => {
+                if (res.message) {
+                    fetchChartNotesForFlock(flockId);
+                }
+            });
+        };
+        wrapper.appendChild(addBtn);
+    }
+
+    function saveNotePos(noteId, px, py, w, h) {
+        fetch(`/api/notes/update/${noteId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pos_x: px, pos_y: py, width: w, height: h })
+        });
+    }
+
+    function saveNoteContent(noteId, content) {
+        fetch(`/api/notes/update/${noteId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        });
+    }
+
+    function deleteNote(noteId, flockId, chartIdentifier) {
+        if(confirm('Delete note?')) {
+            fetch(`/api/notes/delete/${noteId}`, { method: 'DELETE' })
+            .then(() => fetchChartNotesForFlock(flockId));
+        }
+    }
+</script>
+<style>
+.notes-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+.draggable-note { pointer-events: auto; }
+.ql-container.ql-snow { border: none !important; font-family: inherit; font-size: 0.85rem; }
+.ql-editor { padding: 4px; }
+.note-drag-handle:hover { background-color: #e2e8f0 !important; }
+</style>
+{% endblock %}

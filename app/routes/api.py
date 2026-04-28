@@ -387,55 +387,6 @@ def register_api_routes(app):
 
         return jsonify(report_info)
 
-    @app.route('/api/floating_notes/<int:note_id>', methods=['DELETE'])
-    @login_required
-    @dept_required(['Farm', 'Admin'])
-    def delete_floating_note(note_id):
-        try:
-            note = FloatingNote.query.get_or_404(note_id)
-            db.session.delete(note)
-            safe_commit()
-            return jsonify({'success': True}), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': str(e)}), 400
-
-    @app.route('/api/floating_notes', methods=['POST'])
-    @login_required
-    @dept_required(['Farm', 'Admin'])
-    def create_floating_note():
-        data = request.json
-        try:
-            new_note = FloatingNote(
-                flock_id=data['flock_id'],
-                chart_id=data['chart_id'],
-                x_value=data['x_value'],
-                y_value=float(data['y_value']),
-                content=data['content']
-            )
-            db.session.add(new_note)
-            safe_commit()
-            return jsonify({'success': True, 'id': new_note.id}), 201
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'success': False, 'error': str(e)}), 400
-
-    @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
-    @login_required
-    @dept_required(['Farm', 'Admin', 'Management'])
-    def get_floating_notes(flock_id):
-        notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
-        result = []
-        for note in notes:
-            result.append({
-                'id': note.id,
-                'chart_id': note.chart_id,
-                'x_value': note.x_value,
-                'y_value': note.y_value,
-                'content': note.content
-            })
-        return jsonify(result)
-
     @app.route('/api/health_log/bodyweight_edit', methods=['POST'])
     @login_required
     @dept_required(['Farm', 'Management', 'Admin'])
