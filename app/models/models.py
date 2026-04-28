@@ -521,6 +521,33 @@ class Hatchability(VersionedMixin, db.Model):
     @property
     def rotten_egg_pct(self):
         return (self.rotten_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+class BroilerFlock(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    farm_name = db.Column(db.String(100), nullable=True)
+    house_name = db.Column(db.String(100), nullable=True)
+    source = db.Column(db.String(100), nullable=True)
+    breed = db.Column(db.String(50), nullable=True)
+    intake_birds = db.Column(db.Integer, default=0, nullable=False)
+    intake_date = db.Column(db.Date, nullable=False, default=date.today)
+    arrival_weight_g = db.Column(db.Float, default=0.0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    logs = db.relationship('BroilerDailyLog', backref='flock', lazy=True, cascade="all, delete-orphan")
+
+class BroilerDailyLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('broiler_flock.id'), nullable=False, index=True)
+    date = db.Column(db.Date, nullable=False, default=date.today, index=True)
+    day_number = db.Column(db.Integer, nullable=False)
+    death_count = db.Column(db.Integer, default=0)
+    feed_receive = db.Column(db.String(100), nullable=True)
+    feed_type = db.Column(db.String(100), nullable=True)
+    feed_daily_use_kg = db.Column(db.Float, default=0.0)
+    body_weight_g = db.Column(db.Float, default=0.0)
+    standard_fcr = db.Column(db.Float, default=0.0)
+    medication_vaccine = db.Column(db.String(200), nullable=True)
+    remarks = db.Column(db.Text, nullable=True)
+
 class AnonymousUser:
     is_authenticated = False
     username = ''

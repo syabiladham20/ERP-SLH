@@ -39,6 +39,7 @@ def create_app(config_class=Config):
     from app.routes.admin import register_admin_routes
     from app.routes.api import register_api_routes
     from app.routes.presentation import presentation_bp
+    from app.routes.broiler import broiler_bp
 
     register_auth_routes(app)
     register_main_routes(app)
@@ -48,6 +49,7 @@ def create_app(config_class=Config):
     register_admin_routes(app)
     register_api_routes(app)
     app.register_blueprint(presentation_bp)
+    app.register_blueprint(broiler_bp)
 
 
     import logging

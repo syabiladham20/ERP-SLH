@@ -422,6 +422,11 @@
                             <a class="dropdown-item" href="{{ url_for('hatchery_dashboard') }}">Dashboard</a>
                         </div>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-success fw-bold" href="{{ url_for('broiler.dashboard') }}">
+                            <span class="nav-link-title">Broilers</span>
+                        </a>
+                    </li>
 
                 {% elif user_role == 'Farm' or session.get('user_dept') not in ['Admin', 'Management', 'Hatchery'] %}
                     {% for item in get_ui_elements('navbar_main') %}
