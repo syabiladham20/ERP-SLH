@@ -275,16 +275,6 @@ class ChartNote(VersionedMixin, db.Model):
     height = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-class FloatingNote(VersionedMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
-    chart_id = db.Column(db.String(50), nullable=False) # e.g. 'generalChart', 'waterChart'
-    x_value = db.Column(db.String(50), nullable=False, index=True) # X-axis date string or value
-    y_value = db.Column(db.Float, nullable=False) # Y-axis value
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
-
 class ClinicalNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     log_id = db.Column(db.Integer, db.ForeignKey('daily_log.id'), nullable=False, index=True)

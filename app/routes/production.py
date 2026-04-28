@@ -23,6 +23,15 @@ def register_production_routes(app):
     from app.services.data_service import get_projected_start_of_lay, get_weekly_data_aggregated, get_hatchery_analytics, calculate_flock_summary, generate_spreadsheet_data, recalculate_flock_inventory, update_log_from_request, check_daily_log_completion
     from app.services.seed_service import initialize_sampling_schedule, initialize_vaccine_schedule
 
+    @app.route('/presentation/dashboard')
+    @login_required
+    @dept_required(['Admin', 'Management'])
+    def presentation_dashboard():
+        active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
+        if active_flocks:
+            active_flocks.sort(key=lambda x: natural_sort_key(x.house.name if x.house else ''))
+        return render_template('presentation_dashboard.html', active_flocks=active_flocks)
+
     @app.route('/executive/flock/<int:id>')
     @login_required
     def executive_flock_detail(id):
