@@ -135,10 +135,12 @@
         const chartData = {{ chart_data | tojson }};
         const labels = chartData.days;
 
+        let chartFCR, chartBW, chartMortality;
+
         // FCR Chart
         const ctxFCR = document.getElementById('fcrChart');
         if (ctxFCR) {
-            new Chart(ctxFCR, {
+            chartFCR = new Chart(ctxFCR, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -187,7 +189,7 @@
         // Body Weight Chart
         const ctxBW = document.getElementById('bwChart');
         if (ctxBW) {
-            new Chart(ctxBW, {
+            chartBW = new Chart(ctxBW, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -227,7 +229,7 @@
         // Daily Mortality Chart
         const ctxMortality = document.getElementById('mortalityChart');
         if (ctxMortality) {
-            new Chart(ctxMortality, {
+            chartMortality = new Chart(ctxMortality, {
                 type: 'bar',
                 data: {
                     labels: labels,
@@ -259,6 +261,16 @@
                         }
                     }
                 }
+            });
+        }
+
+        // Fix blank chart issue by resizing when tab is shown
+        const chartTabButton = document.querySelector('a[href="#tabs-performance-charts"]');
+        if (chartTabButton) {
+            chartTabButton.addEventListener('shown.bs.tab', function (e) {
+                if (chartFCR) chartFCR.resize();
+                if (chartBW) chartBW.resize();
+                if (chartMortality) chartMortality.resize();
             });
         }
     });
