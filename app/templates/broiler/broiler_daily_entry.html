@@ -1,0 +1,127 @@
+{% extends 'base_tabler.html' %}
+
+{% block content %}
+<div class="container-xl">
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h2 class="page-title">Daily Entry: {{ flock.farm_name }} - {{ flock.house_name }}</h2>
+            <div class="text-muted mt-1">Intake Date: {{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else '' }}</div>
+        </div>
+        <div class="col-auto ms-auto d-print-none">
+            <a href="{{ url_for('broiler.dashboard') }}" class="btn btn-outline-secondary">Back</a>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title">Add New Log</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('broiler.daily_entry', flock_id=flock.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="row row-cards">
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label required">Date</label>
+                            <input type="date" class="form-control" name="date" required>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label required">Death Count</label>
+                            <input type="number" class="form-control" name="death_count" value="0" min="0" required>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label required">Feed Daily Use (kg)</label>
+                            <input type="number" step="0.01" class="form-control" name="feed_daily_use_kg" value="0.0" min="0" required>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label required">Body Weight (g)</label>
+                            <input type="number" step="0.01" class="form-control" name="body_weight_g" value="0.0" min="0" required>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Feed Receive</label>
+                            <input type="text" class="form-control" name="feed_receive">
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Feed Type</label>
+                            <input type="text" class="form-control" name="feed_type">
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Medication / Vaccine</label>
+                            <input type="text" class="form-control" name="medication_vaccine">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label class="form-label">Remarks</label>
+                            <textarea class="form-control" name="remarks" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-footer mt-2">
+                    <button type="submit" class="btn btn-primary w-100">Submit Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Historical Logs & Metrics</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Death</th>
+                        <th>Balance</th>
+                        <th>Death %</th>
+                        <th>Feed (kg)</th>
+                        <th>Feed/Bird (g)</th>
+                        <th>BW (g)</th>
+                        <th>Gain (g)</th>
+                        <th>Cum. FCR</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in metrics|reverse %}
+                    <tr>
+                        <td>{{ m.date.strftime('%Y-%m-%d') if m.date else '' }}</td>
+                        <td>{{ m.day_number }}</td>
+                        <td>{{ m.death_count }}</td>
+                        <td>{{ m.balance }}</td>
+                        <td>{{ "%.2f"|format(m.death_percentage) }}%</td>
+                        <td>{{ m.feed_daily_use_kg }}</td>
+                        <td>{{ "%.1f"|format(m.gram_per_bird) }}</td>
+                        <td>{{ "%.1f"|format(m.body_weight_g) }}</td>
+                        <td class="{{ 'text-success' if m.weight_gain > 0 else ('text-danger' if m.weight_gain < 0 else '') }}">{{ "%.1f"|format(m.weight_gain) }}</td>
+                        <td>{{ "%.3f"|format(m.cumulative_fcr) }}</td>
+                        <td class="text-muted small">{{ m.remarks or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="11" class="text-center">No logs found for this flock.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
