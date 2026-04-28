@@ -1,0 +1,266 @@
+{% extends 'base_tabler.html' %}
+
+{% block content %}
+<div class="container-xl">
+    <!-- Header -->
+    <div class="row align-items-center mb-3">
+        <div class="col">
+            <h2 class="page-title">
+                {{ flock.farm_name }} - {{ flock.house_name }}
+            </h2>
+            <div class="text-muted mt-1">
+                Intake Date: {{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else 'N/A' }}
+                &bull; Status:
+                {% if flock.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-secondary">Historical</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-auto ms-auto d-print-none">
+            <a href="{{ url_for('broiler.daily_entry', flock_id=flock.id) }}" class="btn btn-primary">
+                Add Daily Log
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs Layout -->
+    <div class="card">
+        <ul class="nav nav-tabs" data-bs-toggle="tabs">
+            <li class="nav-item">
+                <a href="#tabs-daily-logs" class="nav-link active" data-bs-toggle="tab">Daily Logs</a>
+            </li>
+            <li class="nav-item">
+                <a href="#tabs-performance-charts" class="nav-link" data-bs-toggle="tab">Performance Charts</a>
+            </li>
+        </ul>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Tab 1: Daily Logs -->
+                <div class="tab-pane active show" id="tabs-daily-logs">
+                    <div class="table-responsive">
+                        <table class="table table-vcenter card-table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Day</th>
+                                    <th>Death Count</th>
+                                    <th>Balance</th>
+                                    <th>Feed Daily Use (kg)</th>
+                                    <th>Gram per Bird</th>
+                                    <th>Body Weight (g)</th>
+                                    <th>Weight Gain (g)</th>
+                                    <th>Cumulative FCR</th>
+                                    <th>Standard FCR</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in metrics %}
+                                <tr>
+                                    <td>{{ m.date.strftime('%Y-%m-%d') if m.date else '' }}</td>
+                                    <td>{{ m.day_number }}</td>
+                                    <td>{{ m.death_count }}</td>
+                                    <td>{{ m.balance }}</td>
+                                    <td>{{ '%.2f'|format(m.feed_daily_use_kg) }}</td>
+                                    <td>{{ '%.2f'|format(m.gram_per_bird) }}</td>
+                                    <td>{{ '%.2f'|format(m.body_weight_g) }}</td>
+                                    <td>{{ '%.2f'|format(m.weight_gain) }}</td>
+                                    <td>{{ '%.3f'|format(m.cumulative_fcr) }}</td>
+                                    <td>{{ '%.3f'|format(m.standard_fcr) if m.standard_fcr else '-' }}</td>
+                                    <td>{{ m.remarks or '' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="11" class="text-center">No daily logs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Performance Charts -->
+                <div class="tab-pane" id="tabs-performance-charts">
+                    <div class="row row-cards">
+                        <!-- FCR Chart -->
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">FCR Tracking</h3>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="fcrChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Body Weight Chart -->
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Body Weight Growth</h3>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="bwChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Mortality Chart -->
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Daily Mortality</h3>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="mortalityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Parse chart data from backend
+        const chartData = {{ chart_data | tojson }};
+        const labels = chartData.days;
+
+        // FCR Chart
+        const ctxFCR = document.getElementById('fcrChart');
+        if (ctxFCR) {
+            new Chart(ctxFCR, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Actual FCR',
+                            data: chartData.actual_fcr,
+                            borderColor: 'blue',
+                            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Standard FCR',
+                            data: chartData.standard_fcr,
+                            borderColor: 'gray',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Day of Life'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'FCR'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Body Weight Chart
+        const ctxBW = document.getElementById('bwChart');
+        if (ctxBW) {
+            new Chart(ctxBW, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Body Weight (g)',
+                            data: chartData.body_weights,
+                            borderColor: 'green',
+                            backgroundColor: 'rgba(0, 128, 0, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Day of Life'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Weight (g)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Daily Mortality Chart
+        const ctxMortality = document.getElementById('mortalityChart');
+        if (ctxMortality) {
+            new Chart(ctxMortality, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Daily Mortality',
+                            data: chartData.mortality,
+                            backgroundColor: 'red',
+                            borderColor: 'darkred',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Day of Life'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Death Count'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

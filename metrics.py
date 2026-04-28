@@ -709,6 +709,7 @@ def calculate_broiler_metrics(flock_id):
             'body_weight_g': current_bw,
             'weight_gain': weight_gain,
             'cumulative_fcr': cumulative_fcr,
+            'standard_fcr': log.standard_fcr,
             'remarks': log.remarks
         })
 
