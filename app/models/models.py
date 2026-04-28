@@ -202,6 +202,9 @@ class DailyLog(VersionedMixin, db.Model):
     # Partitions & Weighing Day
     is_weighing_day = db.Column(db.Boolean, default=False)
 
+    # Form submission status
+    is_daily_entry_submitted = db.Column(db.Boolean, default=False)
+
     bw_male_p1 = db.Column(db.Integer, default=0)
     bw_male_p2 = db.Column(db.Integer, default=0)
     unif_male_p1 = db.Column(db.Float, default=0.0)

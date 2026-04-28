@@ -272,6 +272,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'cull_eggs_abnormal': abnormal,
             'cull_eggs_total': total_cull_eggs,
 
+            # Submission Status
+            'is_daily_entry_submitted': log.is_daily_entry_submitted,
+
             # BW (Use 0 if None/0 to keep data consistent, or None for charts?)
             # For data processing, 0 is safer for math, None better for charts.
             # We store raw values here.

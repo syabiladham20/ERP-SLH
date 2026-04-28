@@ -546,7 +546,7 @@ def register_production_routes(app):
             # Stats
             if daily_stats:
                 last = daily_stats[-1]
-                if last['date'] == today:
+                if last['date'] == today and last.get('is_daily_entry_submitted', False):
                     f.has_log_today = True
 
                 if getattr(f, 'calculated_phase', f.phase) in REARING_PHASES:
@@ -574,7 +574,7 @@ def register_production_routes(app):
 
             # Determine Display Data (Today or Latest)
             display_data = None
-            if stats_today:
+            if stats_today and stats_today.get('is_daily_entry_submitted', False):
                 f.daily_stats['has_today'] = True
                 display_data = stats_today
             elif daily_stats:
@@ -1138,6 +1138,8 @@ def register_production_routes(app):
         log = DailyLog.query.get_or_404(id)
 
         if request.method == 'POST':
+            log.is_daily_entry_submitted = True
+
             # Handle Vaccines
             vaccine_present_ids = request.form.getlist('vaccine_present_ids')
             vaccine_completed_ids = request.form.getlist('vaccine_completed_ids')
@@ -1366,6 +1368,7 @@ def register_production_routes(app):
                 db.session.add(log)
                 flash_msg = 'Daily Log submitted successfully!'
 
+            log.is_daily_entry_submitted = True
             log.flock = flock
             db.session.add(log)
 

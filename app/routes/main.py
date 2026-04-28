@@ -52,7 +52,7 @@ def register_main_routes(app):
             # Stats
             if daily_stats:
                 last = daily_stats[-1]
-                if last['date'] == today:
+                if last['date'] == today and last.get('is_daily_entry_submitted', False):
                     f.has_log_today = True
 
                 # Cumulative Pct (Phase specific)
@@ -82,7 +82,7 @@ def register_main_routes(app):
 
             # Determine Display Data (Today or Latest)
             display_data = None
-            if stats_today:
+            if stats_today and stats_today.get('is_daily_entry_submitted', False):
                 f.daily_stats['has_today'] = True
                 display_data = stats_today
             elif daily_stats:
