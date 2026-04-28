@@ -40,6 +40,25 @@ def new_flock():
 
     return render_template('broiler/broiler_new_flock.html')
 
+@broiler_bp.route('/flock/<int:flock_id>')
+def flock_detail(flock_id):
+    flock = BroilerFlock.query.get_or_404(flock_id)
+
+    # Fetch calculated metrics for display
+    metrics = calculate_broiler_metrics(flock.id)
+
+    # Prepare JSON-serializable lists for Chart.js
+    chart_data = {
+        'days': [m['day_number'] for m in metrics],
+        'actual_fcr': [m['cumulative_fcr'] for m in metrics],
+        'standard_fcr': [m.get('standard_fcr') or 0.0 for m in metrics],
+        'body_weights': [m['body_weight_g'] for m in metrics],
+        'mortality': [m['death_count'] for m in metrics]
+    }
+
+    return render_template('broiler/broiler_flock_detail.html', flock=flock, metrics=metrics, chart_data=chart_data)
+
+
 @broiler_bp.route('/daily_entry/<int:flock_id>', methods=['GET', 'POST'])
 def daily_entry(flock_id):
     flock = BroilerFlock.query.get_or_404(flock_id)

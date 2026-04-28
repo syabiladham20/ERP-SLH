@@ -30,8 +30,7 @@
             <table class="table table-vcenter card-table">
                 <thead>
                     <tr>
-                        <th>Farm</th>
-                        <th>House</th>
+                        <th>Farm - House</th>
                         <th>Breed</th>
                         <th>Intake Date</th>
                         <th>Intake Birds</th>
@@ -42,8 +41,11 @@
                 <tbody>
                     {% for flock in flocks %}
                     <tr>
-                        <td>{{ flock.farm_name }}</td>
-                        <td class="text-muted">{{ flock.house_name }}</td>
+                        <td>
+                            <a href="{{ url_for('broiler.flock_detail', flock_id=flock.id) }}">
+                                {{ flock.farm_name }} - {{ flock.house_name }}
+                            </a>
+                        </td>
                         <td class="text-muted">{{ flock.breed }}</td>
                         <td class="text-muted">{{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else '' }}</td>
                         <td class="text-muted">{{ flock.intake_birds }}</td>
