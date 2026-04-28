@@ -1,0 +1,70 @@
+{% extends 'base_tabler.html' %}
+
+{% block title %}Import Broiler Data{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+    <!-- Page title -->
+    <div class="page-header d-print-none">
+        <div class="row align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Import Broiler Data
+                </h2>
+                <div class="text-muted mt-1">Upload a filled Excel template to bulk insert data.</div>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <div class="btn-list">
+                    <a href="{{ url_for('broiler.dashboard') }}" class="btn btn-outline-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="5" y1="12" x2="19" y2="12" /><line x1="5" y1="12" x2="11" y2="18" /><line x1="5" y1="12" x2="11" y2="6" /></svg>
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="row row-cards">
+
+            <div class="col-12 col-md-8 mx-auto">
+                <form action="{{ url_for('broiler.import_data') }}" method="POST" enctype="multipart/form-data" class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Upload Excel File</h3>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="mb-4">
+                            <label class="form-label required">Select file</label>
+                            <input type="file" name="file" class="form-control" accept=".xlsx, .xls" required>
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <h4 class="alert-title">Format Requirements</h4>
+                            <div class="text-secondary">
+                                Ensure your Excel file strictly follows this structure:
+                                <ul class="mt-2 mb-0">
+                                    <li><strong>Metadata</strong> must be in the first 8 rows (Row index 1-7).</li>
+                                    <li><strong>Daily Records</strong> must start on Row 12 (Row index 11).</li>
+                                    <li>Date and Day numbers are expected in the first two columns.</li>
+                                    <li>Accepted formats: <code>.xlsx</code> or <code>.xls</code>.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="card-footer text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><polyline points="7 9 12 4 17 9" /><line x1="12" y1="4" x2="12" y2="16" /></svg>
+                            Upload and Import
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
