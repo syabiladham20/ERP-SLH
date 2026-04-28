@@ -260,12 +260,13 @@
         };
 
         // 1. Female Depletion & Egg Production
+        const femDepletion = metrics.mortality_f_pct.map((m, i) => m + (metrics.culls_f_pct[i] || 0));
         const maxEgg = getMaxRange(metrics.egg_prod_pct, true);
-        const maxDepF = getMaxRange(metrics.mortality_f_pct, true);
+        const maxDepF = getMaxRange(femDepletion, true);
 
         const traceDepF = {
             x: xValues,
-            y: metrics.mortality_f_pct,
+            y: femDepletion,
             name: 'Fem Depletion %',
             type: 'bar',
             yaxis: 'y2',
@@ -320,10 +321,11 @@
         });
 
         // 2. Male Depletion
-        const maxDepM = getMaxRange(metrics.mortality_m_pct, true);
+        const maleDepletion = metrics.mortality_m_pct.map((m, i) => m + (metrics.culls_m_pct[i] || 0));
+        const maxDepM = getMaxRange(maleDepletion, true);
         const traceDepM = {
             x: xValues,
-            y: metrics.mortality_m_pct,
+            y: maleDepletion,
             name: 'Male Depletion %',
             type: 'bar',
             marker: {color: 'blue', opacity: 0.6}
@@ -334,7 +336,7 @@
         });
 
         // 3. Cull & Hatching Egg
-        const cullPct = metrics.hatch_egg_pct ? metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0) : [];
+        const cullPct = metrics.cull_eggs_pct || [];
         const maxCull = getMaxRange(cullPct, true);
         const maxHatch = getMaxRange(metrics.hatch_egg_pct, true);
 
