@@ -519,8 +519,8 @@
 
                 try {
                     const response = await fetch(`/api/daily_log/trend?flock_id=${flockId}&date=${date}`);
-                    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-                        console.error(`Skipping ${houseName}, API returned non-JSON error response.`, await response.text());
+                    if (!response.ok) {
+                        console.error(`Skipping ${houseName}, error fetching data.`);
                         continue;
                     }
                     const data = await response.json();

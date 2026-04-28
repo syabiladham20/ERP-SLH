@@ -23,12 +23,10 @@ def register_health_routes(app):
     from metrics import calculate_bio_week
     from app.services.data_service import get_flock_stock_history, get_flock_stock_history_bulk, calculate_grading_stats
     from app.services.seed_service import initialize_vaccine_schedule
-    from app.extensions import limiter
 
     @app.route('/health_log/bodyweight', methods=['GET', 'POST'])
     @login_required
     @dept_required(['Farm', 'Management', 'Admin'])
-    @limiter.limit("200 per minute; 2000 per day")
     def health_log_bodyweight():
         if request.method == 'POST':
             flock_id = request.form.get('flock_id')

@@ -16,202 +16,6 @@ from pywebpush import webpush, WebPushException
 import base64
 from werkzeug.utils import secure_filename
 
-
-from app.models.models import Flock, DailyLog, GlobalStandard, Standard, Hatchability, Medication, Vaccine
-from analytics import analyze_health_events
-from metrics import enrich_flock_data, aggregate_weekly_metrics
-from app.services.data_service import calculate_flock_summary
-
-def get_std_hatch_map(all_standards):
-    return {getattr(s, 'week'): (getattr(s, 'std_hatchability', 0.0) or 0.0) for s in all_standards if hasattr(s, 'week')}
-
-def build_dashboard_context_data(flock_id):
-    from app.utils import natural_sort_key
-    from app.utils import round_to_whole
-    from sqlalchemy.orm import joinedload
-
-    flock = Flock.query.options(joinedload(Flock.house)).filter_by(id=flock_id).first_or_404()
-    logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
-
-    health_events = analyze_health_events(logs)
-
-    hatch_records = Hatchability.query.filter_by(flock_id=flock_id).order_by(Hatchability.setting_date.desc()).all()
-    daily_stats = enrich_flock_data(flock, logs, hatch_records)
-
-    gs = GlobalStandard.query.first()
-    all_standards = Standard.query.all()
-    std_map = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')}
-    prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
-
-    for d in daily_stats:
-        prod_std = None
-        if d.get('production_week'):
-            prod_std = prod_std_map.get(d['production_week'])
-        d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-        d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-
-    weekly_stats = aggregate_weekly_metrics(daily_stats)
-    for ws in weekly_stats:
-        prod_std = None
-        if ws.get('production_week'):
-            prod_std = prod_std_map.get(ws['production_week'])
-        ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-        ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-
-    def scale_pct(val):
-        if val is None: return None
-        if 0 < val <= 1.0: return val * 100.0
-        return val
-
-    chart_data = {
-        'dates': [d['date'].strftime('%Y-%m-%d') for d in daily_stats],
-        'ages': [d['log'].age_week_day for d in daily_stats],
-        'mortality_cum_male': [round(d['mortality_cum_male_pct'], 2) for d in daily_stats],
-        'mortality_cum_female': [round(d['mortality_cum_female_pct'], 2) for d in daily_stats],
-        'mortality_daily_male': [round(d['mortality_male_pct'], 2) for d in daily_stats],
-        'mortality_daily_female': [round(d['mortality_female_pct'], 2) for d in daily_stats],
-        'std_mortality_male': [round(d['std_mortality_male'], 3) for d in daily_stats],
-        'std_mortality_female': [round(d['std_mortality_female'], 3) for d in daily_stats],
-        'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
-        'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
-        'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
-        'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
-        'hatch_egg_pct': [round(d['hatch_egg_pct'], 2) for d in daily_stats],
-        'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) for d in daily_stats],
-        'cull_eggs_jumbo_pct': [round(d['cull_eggs_jumbo_pct'], 2) for d in daily_stats],
-        'cull_eggs_small_pct': [round(d['cull_eggs_small_pct'], 2) for d in daily_stats],
-        'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
-        'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
-        'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-        'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
-        'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
-        'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
-        'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
-        'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
-        'bw_m': [d['body_weight_male'] if d['body_weight_male'] > 0 else None for d in daily_stats],
-        'water_per_bird': [round(d['water_per_bird'], 1) if d['water_per_bird'] >= 0 else None for d in daily_stats],
-        'water_feed_ratio': [round(d.get('water_feed_ratio'), 2) if d.get('water_feed_ratio') is not None and d.get('water_feed_ratio') >= 0 else None for d in daily_stats],
-        'feed_male_gp_bird': [round(d['feed_male_gp_bird'], 1) for d in daily_stats],
-        'feed_female_gp_bird': [round(d['feed_female_gp_bird'], 1) for d in daily_stats],
-        'flushing': [d['log'].flushing for d in daily_stats],
-        'notes': [],
-        'medication_active': [],
-        'medication_names': []
-    }
-
-    for i in range(1, 9):
-        chart_data[f'bw_M{i}'] = []
-        chart_data[f'bw_F{i}'] = []
-
-    for d in daily_stats:
-        log = d['log']
-        p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
-        for i in range(1, 9):
-            val_m = p_map.get(f'M{i}', 0)
-            if val_m == 0 and i <= 2: val_m = getattr(log, f'bw_male_p{i}', 0)
-            chart_data[f'bw_M{i}'].append(val_m if val_m > 0 else None)
-            val_f = p_map.get(f'F{i}', 0)
-            if val_f == 0 and i <= 4: val_f = getattr(log, f'bw_female_p{i}', 0)
-            chart_data[f'bw_F{i}'].append(val_f if val_f > 0 else None)
-
-    weekly_map = {ws['week']: ws for ws in weekly_stats}
-    chart_data_weekly = {
-        'dates': [], 'ages': [],
-        'mortality_cum_male': [], 'mortality_cum_female': [],
-        'mortality_weekly_male': [], 'mortality_weekly_female': [],
-        'std_mortality_male': [], 'std_mortality_female': [],
-        'culls_weekly_male': [], 'culls_weekly_female': [],
-        'avg_bw_male': [], 'avg_bw_female': [],
-        'egg_prod': [], 'bw_male_std': [], 'bw_female_std': [],
-        'unif_male': [], 'unif_female': [], 'notes': []
-    }
-    for i in range(1, 9):
-        chart_data_weekly[f'bw_M{i}'] = []
-        chart_data_weekly[f'bw_F{i}'] = []
-
-    daily_by_week = {}
-    for d in daily_stats:
-        if d['week'] not in daily_by_week: daily_by_week[d['week']] = []
-        daily_by_week[d['week']].append(d)
-
-    for w in sorted(weekly_map.keys()):
-        ws = weekly_map[w]
-        last_day = daily_by_week[w][-1]
-        chart_data_weekly['dates'].append(f"Week {w}")
-        chart_data_weekly['mortality_cum_male'].append(round(last_day['mortality_cum_male_pct'], 2))
-        chart_data_weekly['mortality_cum_female'].append(round(last_day['mortality_cum_female_pct'], 2))
-        chart_data_weekly['mortality_weekly_male'].append(round(ws['mortality_male_pct'], 2))
-        chart_data_weekly['mortality_weekly_female'].append(round(ws['mortality_female_pct'], 2))
-        chart_data_weekly['culls_weekly_male'].append(round(ws['culls_male_pct'], 2))
-        chart_data_weekly['culls_weekly_female'].append(round(ws['culls_female_pct'], 2))
-        chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] > 0 else None)
-        chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] > 0 else None)
-        chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
-        chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
-        chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
-        chart_data_weekly['hatch_egg_pct'] = chart_data_weekly.get('hatch_egg_pct', [])
-        chart_data_weekly['hatch_egg_pct'].append(round(ws['hatch_egg_pct'], 2))
-        chart_data_weekly['std_hatching_egg_pct'] = chart_data_weekly.get('std_hatching_egg_pct', [])
-        chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2))
-        chart_data_weekly['cull_eggs_jumbo_pct'] = chart_data_weekly.get('cull_eggs_jumbo_pct', [])
-        chart_data_weekly['cull_eggs_jumbo_pct'].append(round(ws['cull_eggs_jumbo_pct'], 2))
-        chart_data_weekly['cull_eggs_small_pct'] = chart_data_weekly.get('cull_eggs_small_pct', [])
-        chart_data_weekly['cull_eggs_small_pct'].append(round(ws['cull_eggs_small_pct'], 2))
-        chart_data_weekly['cull_eggs_crack_pct'] = chart_data_weekly.get('cull_eggs_crack_pct', [])
-        chart_data_weekly['cull_eggs_crack_pct'].append(round(ws['cull_eggs_crack_pct'], 2))
-        chart_data_weekly['cull_eggs_abnormal_pct'] = chart_data_weekly.get('cull_eggs_abnormal_pct', [])
-        chart_data_weekly['cull_eggs_abnormal_pct'].append(round(ws['cull_eggs_abnormal_pct'], 2))
-
-        std_bio = std_map.get(w)
-        chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
-        chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
-        chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
-        chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
-
-        chart_data_weekly['water_per_bird'] = chart_data_weekly.get('water_per_bird', [])
-        chart_data_weekly['water_per_bird'].append(round(ws['water_per_bird'], 1) if ws.get('water_per_bird', 0) >= 0 else None)
-        chart_data_weekly['water_feed_ratio'] = chart_data_weekly.get('water_feed_ratio', [])
-        chart_data_weekly['water_feed_ratio'].append(round(ws.get('water_feed_ratio'), 2) if ws.get('water_feed_ratio') is not None and ws.get('water_feed_ratio') >= 0 else None)
-        chart_data_weekly['feed_male_gp_bird'] = chart_data_weekly.get('feed_male_gp_bird', [])
-        chart_data_weekly['feed_male_gp_bird'].append(round(ws['feed_male_gp_bird'], 1))
-        chart_data_weekly['feed_female_gp_bird'] = chart_data_weekly.get('feed_female_gp_bird', [])
-        chart_data_weekly['feed_female_gp_bird'].append(round(ws['feed_female_gp_bird'], 1))
-
-        def get_p_val(log, p_name, is_male, index):
-            p_map = {pw.partition_name: pw.body_weight for pw in log.partition_weights}
-            val = p_map.get(p_name, 0)
-            if val == 0:
-                attr = f'bw_male_p{index}' if is_male else f'bw_female_p{index}'
-                if hasattr(log, attr):
-                    val = getattr(log, attr, 0)
-            return val
-
-        for i in range(1, 9):
-            m_key = f'M{i}'
-            f_key = f'F{i}'
-            m_vals = []
-            f_vals = []
-            for d in daily_by_week[w]:
-                log = d['log']
-                vm = get_p_val(log, m_key, True, i)
-                if vm and vm > 0: m_vals.append(vm)
-                vf = get_p_val(log, f_key, False, i)
-                if vf and vf > 0: f_vals.append(vf)
-            val_m = round(sum(m_vals)/len(m_vals)) if m_vals else None
-            val_f = round(sum(f_vals)/len(f_vals)) if f_vals else None
-            chart_data_weekly[f'bw_M{i}'].append(val_m)
-            chart_data_weekly[f'bw_F{i}'].append(val_f)
-
-    chart_data_weekly['bw_male_p1'] = chart_data_weekly['bw_M1']
-    chart_data_weekly['bw_male_p2'] = chart_data_weekly['bw_M2']
-    chart_data_weekly['bw_female_p1'] = chart_data_weekly['bw_F1']
-    chart_data_weekly['bw_female_p2'] = chart_data_weekly['bw_F2']
-    chart_data_weekly['bw_female_p3'] = chart_data_weekly['bw_F3']
-    chart_data_weekly['bw_female_p4'] = chart_data_weekly['bw_F4']
-
-    return {"chart_data": chart_data, "chart_data_weekly": chart_data_weekly}
-
-
 def register_api_routes(app):
 
     from app.constants import (
@@ -583,12 +387,58 @@ def register_api_routes(app):
 
         return jsonify(report_info)
 
-    from app.extensions import limiter
+    @app.route('/api/floating_notes/<int:note_id>', methods=['DELETE'])
+    @login_required
+    @dept_required(['Farm', 'Admin'])
+    def delete_floating_note(note_id):
+        try:
+            note = FloatingNote.query.get_or_404(note_id)
+            db.session.delete(note)
+            safe_commit()
+            return jsonify({'success': True}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 400
+
+    @app.route('/api/floating_notes', methods=['POST'])
+    @login_required
+    @dept_required(['Farm', 'Admin'])
+    def create_floating_note():
+        data = request.json
+        try:
+            new_note = FloatingNote(
+                flock_id=data['flock_id'],
+                chart_id=data['chart_id'],
+                x_value=data['x_value'],
+                y_value=float(data['y_value']),
+                content=data['content']
+            )
+            db.session.add(new_note)
+            safe_commit()
+            return jsonify({'success': True, 'id': new_note.id}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)}), 400
+
+    @app.route('/api/floating_notes/<int:flock_id>', methods=['GET'])
+    @login_required
+    @dept_required(['Farm', 'Admin', 'Management'])
+    def get_floating_notes(flock_id):
+        notes = FloatingNote.query.filter_by(flock_id=flock_id).all()
+        result = []
+        for note in notes:
+            result.append({
+                'id': note.id,
+                'chart_id': note.chart_id,
+                'x_value': note.x_value,
+                'y_value': note.y_value,
+                'content': note.content
+            })
+        return jsonify(result)
 
     @app.route('/api/health_log/bodyweight_edit', methods=['POST'])
     @login_required
     @dept_required(['Farm', 'Management', 'Admin'])
-    @limiter.limit("200 per minute; 2000 per day")
     def health_log_bodyweight_edit():
         log_id = request.form.get('log_id', type=int)
         new_date_str = request.form.get('new_date')
@@ -1185,14 +1035,6 @@ def register_api_routes(app):
         response.headers["Content-Disposition"] = f"attachment; filename=flock_{flock_id}_raw_data.csv"
         return response
 
-
-    @app.route('/api/flock/<int:flock_id>/dashboard_context')
-    @login_required
-    @dept_required('Farm')
-    def get_dashboard_context(flock_id):
-        data = build_dashboard_context_data(flock_id)
-        return jsonify(data)
-
     @app.route('/api/chart_data/<int:flock_id>')
     @login_required
     @dept_required('Farm')
@@ -1227,7 +1069,7 @@ def register_api_routes(app):
             'metrics': {
                 'mortality_f_pct': [], 'mortality_m_pct': [],
                 'culls_f_pct': [], 'culls_m_pct': [],
-                'egg_prod_pct': [], 'hatch_egg_pct': [], 'cull_eggs_pct': [],
+                'egg_prod_pct': [], 'hatch_egg_pct': [],
                 'bw_f': [], 'bw_m': [],
                 'uni_f': [], 'uni_m': [],
                 'feed_f': [], 'feed_m': [],
@@ -1246,13 +1088,13 @@ def register_api_routes(app):
                 # But the chart keys are: 'mortality_f_pct'.
                 # I should combine them to match legacy chart behavior: "Depletion %"
 
-                data['metrics']['mortality_f_pct'].append(round(d['mortality_female_pct'], 2))
-                data['metrics']['mortality_m_pct'].append(round(d['mortality_male_pct'], 2))
-                data['metrics']['culls_f_pct'].append(round(d['culls_female_pct'], 2))
-                data['metrics']['culls_m_pct'].append(round(d['culls_male_pct'], 2))
+                mort_f = d['mortality_female_pct'] + d['culls_female_pct']
+                mort_m = d['mortality_male_pct'] + d['culls_male_pct']
+
+                data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
+                data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
                 data['metrics']['egg_prod_pct'].append(round(d['egg_prod_pct'], 2))
                 data['metrics']['hatch_egg_pct'].append(round(d['hatch_egg_pct'], 2))
-                data['metrics']['cull_eggs_pct'].append(round(d['cull_eggs_pct'], 2))
                 data['metrics']['bw_f'].append(d['body_weight_female'])
                 data['metrics']['bw_m'].append(d['body_weight_male'])
                 data['metrics']['uni_f'].append(d['uniformity_female'])
@@ -1333,13 +1175,14 @@ def register_api_routes(app):
                 data['dates'].append(lbl)
                 data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
 
-                data['metrics']['mortality_f_pct'].append(round(a['mortality_female_pct'], 2))
-                data['metrics']['mortality_m_pct'].append(round(a['mortality_male_pct'], 2))
-                data['metrics']['culls_f_pct'].append(round(a['culls_female_pct'], 2))
-                data['metrics']['culls_m_pct'].append(round(a['culls_male_pct'], 2))
+                # Combine Mort + Cull for Depletion
+                mort_f = a['mortality_female_pct'] + a['culls_female_pct']
+                mort_m = a['mortality_male_pct'] + a['culls_male_pct']
+
+                data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
+                data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
                 data['metrics']['egg_prod_pct'].append(round(a['egg_prod_pct'], 2))
                 data['metrics']['hatch_egg_pct'].append(round(a['hatch_egg_pct'], 2))
-                data['metrics']['cull_eggs_pct'].append(round(a['cull_eggs_pct'], 2))
                 data['metrics']['bw_f'].append(round(a['body_weight_female'], 0))
                 data['metrics']['bw_m'].append(round(a['body_weight_male'], 0))
                 data['metrics']['uni_f'].append(round(a['uniformity_female'], 2))
@@ -1440,7 +1283,6 @@ def register_api_routes(app):
 
     @app.route('/api/get_standard_bw')
     @login_required
-    @limiter.limit("200 per minute; 2000 per day")
     def get_standard_bw():
         flock_id = request.args.get('flock_id', type=int)
         date_str = request.args.get('date')

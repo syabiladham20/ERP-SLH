@@ -202,6 +202,9 @@ class DailyLog(VersionedMixin, db.Model):
     # Partitions & Weighing Day
     is_weighing_day = db.Column(db.Boolean, default=False)
 
+    # Form submission status
+    is_daily_entry_submitted = db.Column(db.Boolean, default=False)
+
     bw_male_p1 = db.Column(db.Integer, default=0)
     bw_male_p2 = db.Column(db.Integer, default=0)
     unif_male_p1 = db.Column(db.Float, default=0.0)
@@ -274,6 +277,16 @@ class ChartNote(VersionedMixin, db.Model):
     width = db.Column(db.Float, nullable=False)
     height = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class FloatingNote(VersionedMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
+    chart_id = db.Column(db.String(50), nullable=False) # e.g. 'generalChart', 'waterChart'
+    x_value = db.Column(db.String(50), nullable=False, index=True) # X-axis date string or value
+    y_value = db.Column(db.Float, nullable=False) # Y-axis value
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
 
 class ClinicalNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

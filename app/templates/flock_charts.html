@@ -138,13 +138,7 @@
         if (end) url += `&end_date=${end}`;
 
         fetch(url)
-            .then(async response => {
-                if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-                    console.error("API returned non-JSON error response.", await response.text());
-                    throw new Error("Invalid response format");
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 currentData = data;
                 renderCharts(data, mode);
@@ -168,13 +162,7 @@
         let url = `/api/chart_data/${flockId}?mode=${mode}`;
 
         fetch(url)
-            .then(async response => {
-                if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-                    console.error("API returned non-JSON error response.", await response.text());
-                    throw new Error("Invalid response format");
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 currentData = data;
                 if (!data.dates || data.dates.length === 0) {
@@ -272,13 +260,12 @@
         };
 
         // 1. Female Depletion & Egg Production
-        const femDepletion = metrics.mortality_f_pct.map((m, i) => m + (metrics.culls_f_pct[i] || 0));
         const maxEgg = getMaxRange(metrics.egg_prod_pct, true);
-        const maxDepF = getMaxRange(femDepletion, true);
+        const maxDepF = getMaxRange(metrics.mortality_f_pct, true);
 
         const traceDepF = {
             x: xValues,
-            y: femDepletion,
+            y: metrics.mortality_f_pct,
             name: 'Fem Depletion %',
             type: 'bar',
             yaxis: 'y2',
@@ -333,11 +320,10 @@
         });
 
         // 2. Male Depletion
-        const maleDepletion = metrics.mortality_m_pct.map((m, i) => m + (metrics.culls_m_pct[i] || 0));
-        const maxDepM = getMaxRange(maleDepletion, true);
+        const maxDepM = getMaxRange(metrics.mortality_m_pct, true);
         const traceDepM = {
             x: xValues,
-            y: maleDepletion,
+            y: metrics.mortality_m_pct,
             name: 'Male Depletion %',
             type: 'bar',
             marker: {color: 'blue', opacity: 0.6}
@@ -348,7 +334,7 @@
         });
 
         // 3. Cull & Hatching Egg
-        const cullPct = metrics.cull_eggs_pct || [];
+        const cullPct = metrics.hatch_egg_pct ? metrics.hatch_egg_pct.map(v => v > 0 ? (100 - v) : 0) : [];
         const maxCull = getMaxRange(cullPct, true);
         const maxHatch = getMaxRange(metrics.hatch_egg_pct, true);
 

@@ -1194,7 +1194,8 @@ def check_daily_log_completion(farm_id, selected_date):
 
     status_list = []
     for f in active_flocks:
-        is_done = f.id in logs_map
+        log_today = logs_map.get(f.id)
+        is_done = log_today is not None and log_today.is_daily_entry_submitted
         status_list.append({
             'id': f.house_id,
             'name': f.house.name,
