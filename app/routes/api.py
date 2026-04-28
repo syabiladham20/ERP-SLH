@@ -83,8 +83,8 @@ def build_dashboard_context_data(flock_id):
         'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
         'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
         'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-        'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
-        'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
+        'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
+        'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
         'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
         'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
         'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
@@ -163,8 +163,8 @@ def build_dashboard_context_data(flock_id):
         chart_data_weekly['cull_eggs_abnormal_pct'].append(round(ws['cull_eggs_abnormal_pct'], 2))
 
         std_bio = std_map.get(w)
-        chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
-        chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+        chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
+        chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
         chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
         chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
 

@@ -221,8 +221,8 @@ def register_production_routes(app):
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
             'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
             'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
-            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
+            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
+            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
             'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
             'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
             'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
@@ -348,8 +348,8 @@ def register_production_routes(app):
 
             # Standard BW - Use Biological Age (w)
             std_bio = std_map.get(w)
-            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
-            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
+            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
 
             chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
             chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
@@ -1817,8 +1817,8 @@ def register_production_routes(app):
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
             'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
             'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
-            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
+            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
+            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
             'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
             'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
 
@@ -1833,12 +1833,12 @@ def register_production_routes(app):
             'flushing': [d['log'].flushing for d in daily_stats],
 
             # Legacy Partitions from Log
-            'bw_male_p1': [d['log'].bw_male_p1 if d['log'].bw_male_p1 > 0 else None for d in daily_stats],
-            'bw_male_p2': [d['log'].bw_male_p2 if d['log'].bw_male_p2 > 0 else None for d in daily_stats],
-            'bw_female_p1': [d['log'].bw_female_p1 if d['log'].bw_female_p1 > 0 else None for d in daily_stats],
-            'bw_female_p2': [d['log'].bw_female_p2 if d['log'].bw_female_p2 > 0 else None for d in daily_stats],
-            'bw_female_p3': [d['log'].bw_female_p3 if d['log'].bw_female_p3 > 0 else None for d in daily_stats],
-            'bw_female_p4': [d['log'].bw_female_p4 if d['log'].bw_female_p4 > 0 else None for d in daily_stats],
+            'bw_male_p1': [d['log'].bw_male_p1 if d['log'].bw_male_p1 is not None and d['log'].bw_male_p1 > 0 else None for d in daily_stats],
+            'bw_male_p2': [d['log'].bw_male_p2 if d['log'].bw_male_p2 is not None and d['log'].bw_male_p2 > 0 else None for d in daily_stats],
+            'bw_female_p1': [d['log'].bw_female_p1 if d['log'].bw_female_p1 is not None and d['log'].bw_female_p1 > 0 else None for d in daily_stats],
+            'bw_female_p2': [d['log'].bw_female_p2 if d['log'].bw_female_p2 is not None and d['log'].bw_female_p2 > 0 else None for d in daily_stats],
+            'bw_female_p3': [d['log'].bw_female_p3 if d['log'].bw_female_p3 is not None and d['log'].bw_female_p3 > 0 else None for d in daily_stats],
+            'bw_female_p4': [d['log'].bw_female_p4 if d['log'].bw_female_p4 is not None and d['log'].bw_female_p4 > 0 else None for d in daily_stats],
 
             'notes': [],
             'medication_active': [],
@@ -2007,8 +2007,8 @@ def register_production_routes(app):
 
             # Standard BW - Use Biological Age (w)
             std_bio = std_map.get(w)
-            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
-            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
+            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
 
             chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
             chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
