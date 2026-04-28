@@ -1069,7 +1069,7 @@ def register_api_routes(app):
             'metrics': {
                 'mortality_f_pct': [], 'mortality_m_pct': [],
                 'culls_f_pct': [], 'culls_m_pct': [],
-                'egg_prod_pct': [], 'hatch_egg_pct': [],
+                'egg_prod_pct': [], 'hatch_egg_pct': [], 'cull_eggs_pct': [],
                 'bw_f': [], 'bw_m': [],
                 'uni_f': [], 'uni_m': [],
                 'feed_f': [], 'feed_m': [],
@@ -1088,13 +1088,13 @@ def register_api_routes(app):
                 # But the chart keys are: 'mortality_f_pct'.
                 # I should combine them to match legacy chart behavior: "Depletion %"
 
-                mort_f = d['mortality_female_pct'] + d['culls_female_pct']
-                mort_m = d['mortality_male_pct'] + d['culls_male_pct']
-
-                data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
-                data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
+                data['metrics']['mortality_f_pct'].append(round(d['mortality_female_pct'], 2))
+                data['metrics']['mortality_m_pct'].append(round(d['mortality_male_pct'], 2))
+                data['metrics']['culls_f_pct'].append(round(d['culls_female_pct'], 2))
+                data['metrics']['culls_m_pct'].append(round(d['culls_male_pct'], 2))
                 data['metrics']['egg_prod_pct'].append(round(d['egg_prod_pct'], 2))
                 data['metrics']['hatch_egg_pct'].append(round(d['hatch_egg_pct'], 2))
+                data['metrics']['cull_eggs_pct'].append(round(d['cull_eggs_pct'], 2))
                 data['metrics']['bw_f'].append(d['body_weight_female'])
                 data['metrics']['bw_m'].append(d['body_weight_male'])
                 data['metrics']['uni_f'].append(d['uniformity_female'])
@@ -1175,14 +1175,13 @@ def register_api_routes(app):
                 data['dates'].append(lbl)
                 data['ranges'].append({'start': a['date_start'].isoformat(), 'end': a['date_end'].isoformat()})
 
-                # Combine Mort + Cull for Depletion
-                mort_f = a['mortality_female_pct'] + a['culls_female_pct']
-                mort_m = a['mortality_male_pct'] + a['culls_male_pct']
-
-                data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
-                data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
+                data['metrics']['mortality_f_pct'].append(round(a['mortality_female_pct'], 2))
+                data['metrics']['mortality_m_pct'].append(round(a['mortality_male_pct'], 2))
+                data['metrics']['culls_f_pct'].append(round(a['culls_female_pct'], 2))
+                data['metrics']['culls_m_pct'].append(round(a['culls_male_pct'], 2))
                 data['metrics']['egg_prod_pct'].append(round(a['egg_prod_pct'], 2))
                 data['metrics']['hatch_egg_pct'].append(round(a['hatch_egg_pct'], 2))
+                data['metrics']['cull_eggs_pct'].append(round(a['cull_eggs_pct'], 2))
                 data['metrics']['bw_f'].append(round(a['body_weight_female'], 0))
                 data['metrics']['bw_m'].append(round(a['body_weight_male'], 0))
                 data['metrics']['uni_f'].append(round(a['uniformity_female'], 2))
