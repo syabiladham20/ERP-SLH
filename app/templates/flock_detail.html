@@ -580,6 +580,7 @@
                     <select id="endWeek_male" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <div class="d-flex align-items-center justify-content-center gap-1 ms-auto">
+                    <button class="btn btn-lg btn-outline-secondary" onclick="togglePartitions('male')" title="Toggle Partitions"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-layers-subtract" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 4m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" /><path d="M16 16v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2h2" /></svg></button>
                     <button class="btn btn-lg btn-outline-secondary" onclick="toggleAddNoteMode('maleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                     <button class="btn btn-lg btn-outline-secondary" onclick="toggleFullScreenWrapper('cardMale')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
@@ -606,6 +607,7 @@
                     <select id="endWeek_female" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
                 </div>
                 <div class="d-flex align-items-center justify-content-center gap-1 ms-auto">
+                    <button class="btn btn-lg btn-outline-secondary" onclick="togglePartitions('female')" title="Toggle Partitions"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-layers-subtract" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M8 4m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" /><path d="M16 16v2a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2h2" /></svg></button>
                     <button class="btn btn-lg btn-outline-secondary" onclick="toggleAddNoteMode('femaleChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
                     <button class="btn btn-lg btn-outline-secondary" onclick="toggleFullScreenWrapper('cardFemale')" title="Fullscreen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
@@ -1266,35 +1268,7 @@
               font: { weight: 'bold', size: 10 },
               color: '#333'
           },
-          tooltip: {
-              callbacks: {
-                  label: function(context) {
-                      let label = context.dataset.label || '';
-                      if (label) {
-                          label += ': ';
-                      }
-                      if (context.dataset.label === 'Clinical Notes') {
-                          return context.raw.note.substring(0, 50) + (context.raw.note.length > 50 ? '...' : '');
-                      }
-                      if (context.parsed.y !== null) {
-                          if (context.dataset.label === 'Water:Feed Ratio') {
-                              label += parseFloat(context.parsed.y).toFixed(2);
-                          } else if (context.dataset.yAxisID === 'y1' || context.dataset.label.includes('%')) {
-                              label += parseFloat(context.parsed.y).toFixed(2) + '%';
-                          } else {
-                              label += context.parsed.y;
-                          }
-                      }
-                      return label;
-                  },
-                  afterBody: function(context) {
-                      const noteItem = context.find(i => i.dataset.label === 'Clinical Notes');
-                      if (noteItem && noteItem.raw && noteItem.raw.note) {
-                          return '\nNote: ' + noteItem.raw.note;
-                      }
-                      return '';
-                  }
-              }
+          tooltip: { enabled: false }
           }
       }
   };
@@ -1366,7 +1340,7 @@
       waterChartInstance = new Chart(waterChartCanvas.getContext("2d"), {
           type: "line",
           data: {
-              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
+              labels: generateDailyLabels(data),
               datasets: datasets
           },
           options: {
@@ -1391,21 +1365,7 @@
                       grid: { drawOnChartArea: false }
                   }
               },
-              plugins: {
-                  ...commonOptions.plugins,
-                  tooltip: {
-                      ...commonOptions.plugins.tooltip,
-                      callbacks: {
-                          ...commonOptions.plugins.tooltip.callbacks,
-                          afterBody: function(context) {
-                              const idx = context[0].dataIndex;
-                              if (flushFlags && flushFlags[idx]) {
-                                  return "FLUSHING ACTIVE";
-                              }
-                              return commonOptions.plugins.tooltip.callbacks.afterBody ? commonOptions.plugins.tooltip.callbacks.afterBody(context) : '';
-                          }
-                      }
-                  }
+              plugins: { ...commonOptions.plugins }
               }
           }
       });
@@ -1469,7 +1429,7 @@
       feedChartInstance = new Chart(feedChartCanvas.getContext('2d'), {
           type: 'line',
           data: {
-              labels: mode === 'daily' ? generateDailyLabels(data) : data.dates,
+              labels: generateDailyLabels(data),
               datasets: datasets
           },
           options: {
@@ -1495,6 +1455,19 @@
       });
   }
 
+
+
+  function togglePartitions(gender) {
+      const chart = gender === 'male' ? maleChartInstance : femaleChartInstance;
+      if (!chart) return;
+      const prefix = gender === 'male' ? 'BW M' : 'BW F';
+      chart.data.datasets.forEach(dataset => {
+          if (dataset.label && dataset.label.startsWith(prefix) && !dataset.label.startsWith('BW Male Std') && !dataset.label.startsWith('BW Female Std')) {
+              dataset.hidden = !dataset.hidden;
+          }
+      });
+      chart.update();
+  }
 
   function renderMaleChart() {
       const mode = currentMode;
@@ -2008,7 +1981,7 @@
               interaction: { mode: 'index', intersect: false },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Eggs %' }, min: 0, ...barMaxCalc },
-                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 100, grid: { drawOnChartArea: false } }
+                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 110, grid: { drawOnChartArea: false } }
               },
               plugins: {
                   ...commonOptions.plugins
@@ -2191,7 +2164,7 @@
                   y: {
                       stacked: true,
                       beginAtZero: true,
-                      max: 100,
+                      max: 110,
                       title: { display: true, text: 'Egg Breakdown %' },
                       grid: { drawOnChartArea: true }
                   },
