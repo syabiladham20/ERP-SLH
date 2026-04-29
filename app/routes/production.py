@@ -212,12 +212,12 @@ def register_production_routes(app):
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
             'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
             'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
-            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
-            'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
-            'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
-            'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
-            'bw_m': [d['body_weight_male'] if d['body_weight_male'] > 0 else None for d in daily_stats],
+            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
+            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
+            'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] is not None and d['uniformity_male'] > 0 else None for d in daily_stats],
+            'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] is not None and d['uniformity_female'] > 0 else None for d in daily_stats],
+            'bw_f': [d['body_weight_female'] if d['body_weight_female'] is not None and d['body_weight_female'] > 0 else None for d in daily_stats],
+            'bw_m': [d['body_weight_male'] if d['body_weight_male'] is not None and d['body_weight_male'] > 0 else None for d in daily_stats],
             'water_per_bird': [round(d['water_per_bird'], 1) if d['water_per_bird'] >= 0 else None for d in daily_stats],
             'water_feed_ratio': [round(d.get('water_feed_ratio'), 2) if d.get('water_feed_ratio') is not None and d.get('water_feed_ratio') >= 0 else None for d in daily_stats],
             'feed_male_gp_bird': [round(d['feed_male_gp_bird'], 1) for d in daily_stats],
@@ -238,10 +238,10 @@ def register_production_routes(app):
             for i in range(1, 9):
                 val_m = p_map.get(f'M{i}', 0)
                 if val_m == 0 and i <= 2: val_m = getattr(log, f'bw_male_p{i}', 0)
-                chart_data[f'bw_M{i}'].append(val_m if val_m > 0 else None)
+                chart_data[f'bw_M{i}'].append(val_m if val_m is not None and val_m > 0 else None)
                 val_f = p_map.get(f'F{i}', 0)
                 if val_f == 0 and i <= 4: val_f = getattr(log, f'bw_female_p{i}', 0)
-                chart_data[f'bw_F{i}'].append(val_f if val_f > 0 else None)
+                chart_data[f'bw_F{i}'].append(val_f if val_f is not None and val_f > 0 else None)
 
             note_obj = None
 
@@ -313,8 +313,8 @@ def register_production_routes(app):
             chart_data_weekly['mortality_weekly_female'].append(round(ws['mortality_female_pct'], 2))
             chart_data_weekly['culls_weekly_male'].append(round(ws['culls_male_pct'], 2))
             chart_data_weekly['culls_weekly_female'].append(round(ws['culls_female_pct'], 2))
-            chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] > 0 else None)
-            chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] > 0 else None)
+            chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] is not None and ws['body_weight_male'] > 0 else None)
+            chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] is not None and ws['body_weight_female'] > 0 else None)
             chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
             chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
@@ -339,11 +339,11 @@ def register_production_routes(app):
 
             # Standard BW - Use Biological Age (w)
             std_bio = std_map.get(w)
-            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
-            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
+            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
 
-            chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
-            chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
+            chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] is not None and ws['uniformity_male'] > 0 else None)
+            chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] is not None and ws['uniformity_female'] > 0 else None)
 
             chart_data_weekly['water_per_bird'] = chart_data_weekly.get('water_per_bird', [])
             chart_data_weekly['water_per_bird'].append(round(ws['water_per_bird'], 1) if ws.get('water_per_bird', 0) >= 0 else None)
@@ -1817,14 +1817,14 @@ def register_production_routes(app):
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
             'cull_eggs_abnormal_pct': [round(d['cull_eggs_abnormal_pct'], 2) for d in daily_stats],
             'male_ratio': [round(d['male_ratio_stock'], 2) if d['male_ratio_stock'] else 0 for d in daily_stats],
-            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male > 0 else None for d in daily_stats],
-            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female > 0 else None for d in daily_stats],
-            'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] > 0 else None for d in daily_stats],
-            'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] > 0 else None for d in daily_stats],
+            'bw_male_std': [d['log'].standard_bw_male if d['log'].standard_bw_male is not None and d['log'].standard_bw_male > 0 else None for d in daily_stats],
+            'bw_female_std': [d['log'].standard_bw_female if d['log'].standard_bw_female is not None and d['log'].standard_bw_female > 0 else None for d in daily_stats],
+            'unif_male': [scale_pct(d['uniformity_male']) if d['uniformity_male'] is not None and d['uniformity_male'] > 0 else None for d in daily_stats],
+            'unif_female': [scale_pct(d['uniformity_female']) if d['uniformity_female'] is not None and d['uniformity_female'] > 0 else None for d in daily_stats],
 
             # Raw BW for charts (None if 0)
-            'bw_f': [d['body_weight_female'] if d['body_weight_female'] > 0 else None for d in daily_stats],
-            'bw_m': [d['body_weight_male'] if d['body_weight_male'] > 0 else None for d in daily_stats],
+            'bw_f': [d['body_weight_female'] if d['body_weight_female'] is not None and d['body_weight_female'] > 0 else None for d in daily_stats],
+            'bw_m': [d['body_weight_male'] if d['body_weight_male'] is not None and d['body_weight_male'] > 0 else None for d in daily_stats],
 
             'water_per_bird': [round(d['water_per_bird'], 1) if d['water_per_bird'] >= 0 else None for d in daily_stats],
             'water_feed_ratio': [round(d.get('water_feed_ratio'), 2) if d.get('water_feed_ratio') is not None and d.get('water_feed_ratio') >= 0 else None for d in daily_stats],
@@ -1833,12 +1833,12 @@ def register_production_routes(app):
             'flushing': [d['log'].flushing for d in daily_stats],
 
             # Legacy Partitions from Log
-            'bw_male_p1': [d['log'].bw_male_p1 if d['log'].bw_male_p1 > 0 else None for d in daily_stats],
-            'bw_male_p2': [d['log'].bw_male_p2 if d['log'].bw_male_p2 > 0 else None for d in daily_stats],
-            'bw_female_p1': [d['log'].bw_female_p1 if d['log'].bw_female_p1 > 0 else None for d in daily_stats],
-            'bw_female_p2': [d['log'].bw_female_p2 if d['log'].bw_female_p2 > 0 else None for d in daily_stats],
-            'bw_female_p3': [d['log'].bw_female_p3 if d['log'].bw_female_p3 > 0 else None for d in daily_stats],
-            'bw_female_p4': [d['log'].bw_female_p4 if d['log'].bw_female_p4 > 0 else None for d in daily_stats],
+            'bw_male_p1': [d['log'].bw_male_p1 if d['log'].bw_male_p1 is not None and d['log'].bw_male_p1 > 0 else None for d in daily_stats],
+            'bw_male_p2': [d['log'].bw_male_p2 if d['log'].bw_male_p2 is not None and d['log'].bw_male_p2 > 0 else None for d in daily_stats],
+            'bw_female_p1': [d['log'].bw_female_p1 if d['log'].bw_female_p1 is not None and d['log'].bw_female_p1 > 0 else None for d in daily_stats],
+            'bw_female_p2': [d['log'].bw_female_p2 if d['log'].bw_female_p2 is not None and d['log'].bw_female_p2 > 0 else None for d in daily_stats],
+            'bw_female_p3': [d['log'].bw_female_p3 if d['log'].bw_female_p3 is not None and d['log'].bw_female_p3 > 0 else None for d in daily_stats],
+            'bw_female_p4': [d['log'].bw_female_p4 if d['log'].bw_female_p4 is not None and d['log'].bw_female_p4 > 0 else None for d in daily_stats],
 
             'notes': [],
             'medication_active': [],
@@ -1857,11 +1857,11 @@ def register_production_routes(app):
             for i in range(1, 9):
                 val_m = p_map.get(f'M{i}', 0)
                 if val_m == 0 and i <= 2: val_m = getattr(log, f'bw_male_p{i}', 0)
-                chart_data[f'bw_M{i}'].append(val_m if val_m > 0 else None)
+                chart_data[f'bw_M{i}'].append(val_m if val_m is not None and val_m > 0 else None)
 
                 val_f = p_map.get(f'F{i}', 0)
                 if val_f == 0 and i <= 4: val_f = getattr(log, f'bw_female_p{i}', 0)
-                chart_data[f'bw_F{i}'].append(val_f if val_f > 0 else None)
+                chart_data[f'bw_F{i}'].append(val_f if val_f is not None and val_f > 0 else None)
 
             note_obj = None
 
@@ -1980,8 +1980,8 @@ def register_production_routes(app):
             chart_data_weekly['culls_weekly_male'].append(round(ws['culls_male_pct'], 2))
             chart_data_weekly['culls_weekly_female'].append(round(ws['culls_female_pct'], 2))
 
-            chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] > 0 else None)
-            chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] > 0 else None)
+            chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] is not None and ws['body_weight_male'] > 0 else None)
+            chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] is not None and ws['body_weight_female'] > 0 else None)
 
             chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
@@ -2007,11 +2007,11 @@ def register_production_routes(app):
 
             # Standard BW - Use Biological Age (w)
             std_bio = std_map.get(w)
-            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male > 0 else None)
-            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female > 0 else None)
+            chart_data_weekly['bw_male_std'].append(std_bio.std_bw_male if std_bio and std_bio.std_bw_male is not None and std_bio.std_bw_male > 0 else None)
+            chart_data_weekly['bw_female_std'].append(std_bio.std_bw_female if std_bio and std_bio.std_bw_female is not None and std_bio.std_bw_female > 0 else None)
 
-            chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] > 0 else None)
-            chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] > 0 else None)
+            chart_data_weekly['unif_male'].append(scale_pct(ws['uniformity_male']) if ws['uniformity_male'] is not None and ws['uniformity_male'] > 0 else None)
+            chart_data_weekly['unif_female'].append(scale_pct(ws['uniformity_female']) if ws['uniformity_female'] is not None and ws['uniformity_female'] > 0 else None)
 
             chart_data_weekly['water_per_bird'] = chart_data_weekly.get('water_per_bird', [])
             chart_data_weekly['water_per_bird'].append(round(ws['water_per_bird'], 1) if ws.get('water_per_bird', 0) >= 0 else None)
