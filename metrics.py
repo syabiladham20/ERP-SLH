@@ -702,6 +702,7 @@ def calculate_broiler_metrics(flock_id):
         cumulative_fcr = cumulative_feed_per_bird / bw_diff if bw_diff > 0 else 0.0
 
         daily_stats.append({
+            'log': log,
             'date': log.date,
             'day_number': log.day_number,
             'death_count': death,

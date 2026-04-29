@@ -8,7 +8,17 @@
             <h2 class="page-title">
                 {{ flock.farm_name }} - {{ flock.house_name }}
             </h2>
-            <div class="text-muted mt-1">
+            <div class="dropdown mt-2">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
+                    Switch Flock
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton1" style="z-index: 1050;">
+                    {% for f in active_flocks %}
+                    <li><a class="dropdown-item switch-house-link" href="{{ url_for('broiler.flock_detail', flock_id=f.id) }}">{{ f.farm_name }} - {{ f.house_name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="text-muted mt-2">
                 Intake Date: {{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else 'N/A' }}
                 &bull; Status:
                 {% if flock.is_active %}
@@ -54,6 +64,9 @@
                                     <th>Cumulative FCR</th>
                                     <th>Standard FCR</th>
                                     <th>Remarks</th>
+                                    {% if real_is_admin %}
+                                    <th>Actions</th>
+                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -70,10 +83,18 @@
                                     <td>{{ '%.3f'|format(m.cumulative_fcr) }}</td>
                                     <td>{{ '%.3f'|format(m.standard_fcr) if m.standard_fcr else '-' }}</td>
                                     <td>{{ m.remarks or '' }}</td>
+                                    {% if real_is_admin %}
+                                    <td>
+                                        <form action="{{ url_for('broiler.delete_daily_log', log_id=m.log.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this daily log? Metrics will be removed.');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button class="btn btn-sm btn-outline-danger py-0 d-block w-100" style="font-size: 0.75rem;">Del</button>
+                                        </form>
+                                    </td>
+                                    {% endif %}
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="11" class="text-center">No daily logs found.</td>
+                                    <td colspan="12" class="text-center">No daily logs found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -83,9 +104,19 @@
 
                 <!-- Tab 2: Performance Charts -->
                 <div class="tab-pane" id="tabs-performance-charts">
+                    <!-- Day Picker -->
+                    <div class="d-flex align-items-center mb-3">
+                        <label class="me-2">Start Day:</label>
+                        <input type="number" id="startDay" class="form-control form-control-sm w-auto d-inline-block" min="1" value="1">
+                        <label class="ms-3 me-2">End Day:</label>
+                        <input type="number" id="endDay" class="form-control form-control-sm w-auto d-inline-block" min="1">
+                        <button class="btn btn-sm btn-outline-primary ms-3" onclick="filterCharts()">Apply Filter</button>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="resetCharts()">Reset</button>
+                    </div>
+
                     <div class="row row-cards">
                         <!-- FCR Chart -->
-                        <div class="col-12 col-lg-6 mb-3">
+                        <div class="col-12 mb-3">
                             <div class="card">
                                 <div class="card-header">
                                     <h3 class="card-title">FCR Tracking</h3>
@@ -117,7 +148,9 @@
 
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
+    Chart.register(ChartDataLabels);
     document.addEventListener("DOMContentLoaded", function() {
         // Parse chart data from backend
         const chartData = {{ chart_data | tojson }};
@@ -140,7 +173,13 @@
                             backgroundColor: 'rgba(0, 0, 255, 0.1)',
                             borderWidth: 2,
                             fill: false,
-                            tension: 0.1
+                            tension: 0.1,
+                            datalabels: {
+                                display: true,
+                                color: 'blue',
+                                align: 'top',
+                                anchor: 'end'
+                            }
                         },
                         {
                             label: 'Standard FCR',
@@ -149,12 +188,28 @@
                             borderDash: [5, 5],
                             borderWidth: 2,
                             fill: false,
-                            tension: 0.1
+                            tension: 0.1,
+                            datalabels: {
+                                display: false
+                            }
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    plugins: {
+                        tooltip: {
+                            enabled: false
+                        },
+                        datalabels: {
+                            font: {
+                                size: 10
+                            },
+                            formatter: function(value, context) {
+                                return value;
+                            }
+                        }
+                    },
                     scales: {
                         x: {
                             title: {
@@ -187,14 +242,23 @@
                             data: chartData.body_weights,
                             backgroundColor: 'rgba(237, 125, 49, 1)',
                             yAxisID: 'y1',
-                            order: 2
+                            order: 2,
+                            datalabels: {
+                                display: true,
+                                color: 'rgba(237, 125, 49, 1)',
+                                align: 'top',
+                                anchor: 'end'
+                            }
                         },
                         {
                             label: 'Weight Gain (g)',
                             data: chartData.weight_gains,
                             backgroundColor: 'rgba(56, 118, 29, 1)',
                             yAxisID: 'y1',
-                            order: 3
+                            order: 3,
+                            datalabels: {
+                                display: false
+                            }
                         },
                         {
                             label: 'Mortality %',
@@ -206,12 +270,31 @@
                             fill: false,
                             tension: 0.1,
                             yAxisID: 'y2',
-                            order: 1
+                            order: 1,
+                            datalabels: {
+                                display: true,
+                                color: 'rgba(21, 96, 130, 1)',
+                                align: 'bottom',
+                                anchor: 'start',
+                                formatter: function(value) {
+                                    return value.toFixed(2) + '%';
+                                }
+                            }
                         }
                     ]
                 },
                 options: {
                     responsive: true,
+                    plugins: {
+                        tooltip: {
+                            enabled: false
+                        },
+                        datalabels: {
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
                     interaction: {
                         mode: 'index',
                         intersect: false,
@@ -264,6 +347,63 @@
                 if (chartCombined) chartCombined.resize();
             });
         }
+
+        // Setup filter defaults
+        if (labels.length > 0) {
+            document.getElementById('endDay').value = labels[labels.length - 1];
+        }
+
+        window.filterCharts = function() {
+            let start = parseInt(document.getElementById('startDay').value);
+            let end = parseInt(document.getElementById('endDay').value);
+
+            if (isNaN(start)) start = 1;
+            if (isNaN(end)) end = labels[labels.length - 1] || 1;
+
+            let startIndex = labels.findIndex(day => day >= start);
+            let endIndex = labels.findIndex(day => day > end);
+            if (startIndex === -1) startIndex = 0;
+            if (endIndex === -1) endIndex = labels.length;
+
+            const filteredLabels = labels.slice(startIndex, endIndex);
+
+            // Filter FCR Chart
+            if (chartFCR) {
+                chartFCR.data.labels = filteredLabels;
+                chartFCR.data.datasets[0].data = chartData.actual_fcr.slice(startIndex, endIndex);
+                chartFCR.data.datasets[1].data = chartData.standard_fcr.slice(startIndex, endIndex);
+                chartFCR.update();
+            }
+
+            // Filter Combined Chart
+            if (chartCombined) {
+                chartCombined.data.labels = filteredLabels;
+                chartCombined.data.datasets[0].data = chartData.body_weights.slice(startIndex, endIndex);
+                chartCombined.data.datasets[1].data = chartData.weight_gains.slice(startIndex, endIndex);
+                chartCombined.data.datasets[2].data = chartData.mortality_pct.slice(startIndex, endIndex);
+                chartCombined.update();
+            }
+        };
+
+        window.resetCharts = function() {
+            document.getElementById('startDay').value = 1;
+            document.getElementById('endDay').value = labels.length > 0 ? labels[labels.length - 1] : '';
+
+            if (chartFCR) {
+                chartFCR.data.labels = labels;
+                chartFCR.data.datasets[0].data = chartData.actual_fcr;
+                chartFCR.data.datasets[1].data = chartData.standard_fcr;
+                chartFCR.update();
+            }
+
+            if (chartCombined) {
+                chartCombined.data.labels = labels;
+                chartCombined.data.datasets[0].data = chartData.body_weights;
+                chartCombined.data.datasets[1].data = chartData.weight_gains;
+                chartCombined.data.datasets[2].data = chartData.mortality_pct;
+                chartCombined.update();
+            }
+        };
     });
 </script>
 {% endblock %}
