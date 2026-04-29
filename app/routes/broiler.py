@@ -44,6 +44,11 @@ def new_flock():
 def flock_detail(flock_id):
     flock = BroilerFlock.query.get_or_404(flock_id)
 
+    active_flocks = BroilerFlock.query.filter_by(is_active=True).all()
+    from app.utils import natural_sort_key
+    if active_flocks:
+        active_flocks.sort(key=lambda x: natural_sort_key(f"{x.farm_name} - {x.house_name}"))
+
     # Fetch calculated metrics for display
     metrics = calculate_broiler_metrics(flock.id)
 
@@ -59,7 +64,30 @@ def flock_detail(flock_id):
         'mortality_pct': [(m['death_count'] / intake_birds * 100) if intake_birds > 0 else 0 for m in metrics]
     }
 
-    return render_template('broiler/broiler_flock_detail.html', flock=flock, metrics=metrics, chart_data=chart_data)
+    return render_template('broiler/broiler_flock_detail.html', flock=flock, metrics=metrics, chart_data=chart_data, active_flocks=active_flocks)
+
+
+from app.utils import log_user_activity, dept_required
+from flask_login import login_required, current_user
+
+@broiler_bp.route('/daily_log/<int:log_id>/delete', methods=['POST'])
+@login_required
+@dept_required('Farm')
+def delete_daily_log(log_id):
+    if not current_user.role == 'Admin':
+        flash('Access Denied: Admins only.', 'danger')
+        return redirect(url_for('broiler.dashboard'))
+
+    log = BroilerDailyLog.query.get_or_404(log_id)
+    flock_id = log.flock_id
+    date_str = log.date.strftime('%Y-%m-%d') if log.date else 'N/A'
+
+    log_user_activity(current_user.id, 'Delete', 'BroilerDailyLog', log.id, details={'date': date_str, 'flock_id': flock_id})
+
+    db.session.delete(log)
+    db.session.commit()
+    flash("Daily Log deleted.", "info")
+    return redirect(url_for('broiler.flock_detail', flock_id=flock_id))
 
 
 @broiler_bp.route('/daily_entry/<int:flock_id>', methods=['GET', 'POST'])
