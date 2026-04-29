@@ -92,6 +92,12 @@ def register_main_routes(app):
                 f.daily_stats['show_data'] = True
                 f.daily_stats['data_date'] = display_data['date']
 
+                f.daily_stats['mort_m'] = display_data['mortality_male']
+                f.daily_stats['mort_f'] = display_data['mortality_female']
+                f.daily_stats['eggs'] = display_data['eggs_collected']
+                f.daily_stats['stock_m_end'] = display_data['stock_male_prod_end'] + display_data.get('stock_male_hosp_end', 0)
+                f.daily_stats['stock_f_end'] = display_data['stock_female_prod_end'] + display_data.get('stock_female_hosp_end', 0)
+
                 f.daily_stats['mort_m_pct'] = display_data['mortality_male_pct']
                 f.daily_stats['mort_f_pct'] = display_data['mortality_female_pct']
                 f.daily_stats['egg_pct'] = display_data['egg_prod_pct']
