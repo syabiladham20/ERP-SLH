@@ -203,13 +203,11 @@ def register_api_routes(app):
         except ValueError:
             return jsonify({'error': 'Invalid date format'}), 400
 
-        start_date = end_date - timedelta(days=70) # Fetch up to 10 weeks
-
         flock = Flock.query.get_or_404(flock_id)
 
+        # Fetch ALL logs up to the end_date to ensure cumulative math and stocks calculate correctly from Intake
         logs = DailyLog.query.filter(
             DailyLog.flock_id == flock_id,
-            DailyLog.date >= start_date,
             DailyLog.date <= end_date
         ).order_by(DailyLog.date.asc()).all()
 
@@ -267,10 +265,10 @@ def register_api_routes(app):
             }
 
             days_diff = (end_date - log.date).days
-            if days_diff <= 7 and days_diff >= 0: # Last 7 days including today
+            if days_diff <= 70 and days_diff >= 0: # Last 10 weeks including today
                 trend_data.append(item)
 
-            if days_diff <= 8 and days_diff >= 1: # Last 7 days ending yesterday
+            if days_diff <= 70 and days_diff >= 1: # Last 10 weeks ending yesterday
                 water_trend_data.append(item)
 
             if log.date == end_date:
@@ -330,7 +328,7 @@ def register_api_routes(app):
 
         stock_m = end_day_log.get('stock_male_prod_end', 0) + end_day_log.get('stock_male_hosp_end', 0)
         stock_f = end_day_log.get('stock_female_prod_end', 0) + end_day_log.get('stock_female_hosp_end', 0)
-        total_feed_kg = ((log.feed_male_gp_bird * stock_m) + (log.feed_female_gp_bird * stock_f)) / 1000
+        total_feed_kg = end_day_log.get('feed_total_kg', 0.0)
 
         # Get proper standard egg weight for the current week
         std_obj = Standard.query.filter_by(week=end_day_log.get('week', 0)).first()
