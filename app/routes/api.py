@@ -265,10 +265,10 @@ def register_api_routes(app):
             }
 
             days_diff = (end_date - log.date).days
-            if days_diff <= 70 and days_diff >= 0: # Last 10 weeks including today
+            if days_diff <= 7 and days_diff >= 0: # Last 7 days including today
                 trend_data.append(item)
 
-            if days_diff <= 70 and days_diff >= 1: # Last 10 weeks ending yesterday
+            if days_diff <= 8 and days_diff >= 1: # Last 7 days ending yesterday
                 water_trend_data.append(item)
 
             if log.date == end_date:
