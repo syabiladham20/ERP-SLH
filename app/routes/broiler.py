@@ -128,8 +128,9 @@ def daily_entry(flock_id):
 
     # Fetch calculated metrics for display
     metrics = calculate_broiler_metrics(flock.id)
+    today = datetime.now().date()
 
-    return render_template('broiler/broiler_daily_entry.html', flock=flock, metrics=metrics)
+    return render_template('broiler/broiler_daily_entry.html', flock=flock, metrics=metrics, today=today)
 
 
 import pandas as pd
