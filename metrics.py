@@ -415,6 +415,7 @@ def aggregate_weekly_metrics(daily_stats):
                 'unif_male_sum': 0, 'unif_male_count': 0,
                 'unif_female_sum': 0, 'unif_female_count': 0,
                 'egg_weight_sum': 0, 'egg_weight_count': 0,
+                'feed_female_raw_list': [],
 
                 # Hatchery (Sum)
                 'egg_set': 0, 'hatched_chicks': 0,
@@ -439,6 +440,8 @@ def aggregate_weekly_metrics(daily_stats):
         ws['feed_total_kg'] += d['feed_total_kg']
         ws['feed_sum_m_kg'] += d['feed_m_kg']
         ws['feed_sum_f_kg'] += d['feed_f_kg']
+        if d.get('feed_female_gp_bird') is not None and d.get('feed_female_gp_bird') > 0:
+            ws['feed_female_raw_list'].append(d['feed_female_gp_bird'])
         ws['water_total_vol'] += (d['water_total'] or 0)
         ws['stock_sum_male'] += d['stock_male_start']
         ws['stock_sum_female'] += d['stock_female_start']
@@ -517,7 +520,29 @@ def aggregate_weekly_metrics(daily_stats):
         ws['uniformity_male'] = ws['unif_male_sum'] / ws['unif_male_count'] if ws['unif_male_count'] > 0 else 0
         ws['uniformity_female'] = ws['unif_female_sum'] / ws['unif_female_count'] if ws['unif_female_count'] > 0 else 0
 
+
         # Feed/Water per bird (Weighted Avg)
+
+        # Calculate Majority Female Feed (Mode)
+        if ws.get('feed_female_raw_list'):
+            # Rounding to 1 decimal place to group similar values like 156.0 and 156.04
+            rounded_feeds = [round(val, 1) for val in ws['feed_female_raw_list']]
+            from collections import Counter
+            counts = Counter(rounded_feeds)
+            # Find the most common value
+            most_common = counts.most_common()
+            if most_common:
+                # Get max count
+                max_count = most_common[0][1]
+                # Filter all items that have max_count
+                modes = [item[0] for item in most_common if item[1] == max_count]
+                # If there's a tie, take the max value as majority
+                ws['feed_female_gp_bird_majority'] = max(modes)
+            else:
+                ws['feed_female_gp_bird_majority'] = 0.0
+        else:
+            ws['feed_female_gp_bird_majority'] = 0.0
+
         # Note: Feed Kg includes both M+F? No, usually separate lines.
         # But here 'feed_total_kg' is combined.
         # However, for charts we usually want 'g/bird'.

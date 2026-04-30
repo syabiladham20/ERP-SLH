@@ -498,7 +498,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px; background-color: white;">
+            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%; background-color: white;">
             <canvas id="generalChart"></canvas>
             </div>
         </div>
@@ -535,7 +535,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%;">
             <canvas id="hatchingEggChart"></canvas>
             </div>
         </div>
@@ -561,7 +561,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 60vh; min-height: 500px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%;">
             <canvas id="hatchChart"></canvas>
             </div>
         </div>
@@ -587,7 +587,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
             <canvas id="waterChart"></canvas>
             </div>
         </div>
@@ -613,7 +613,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
             <canvas id="feedChart"></canvas>
             </div>
         </div>
@@ -639,7 +639,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
             <canvas id="maleChart"></canvas>
             </div>
         </div>
@@ -665,11 +665,38 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 50vh; min-height: 400px; width: 100%; min-width: 800px;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
             <canvas id="femaleChart"></canvas>
             </div>
         </div>
         </div>
+
+
+        <!-- Weekly Performance Chart -->
+        <div class="card mb-4" id="cardWeeklyPerformance">
+        <div class="card-header sticky-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span id="weeklyPerformanceChartTitle" class="fw-bold mb-2 mb-md-0">Weekly Performance</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center ms-auto">
+                <div class="d-flex align-items-center gap-1 ms-2" id="weekPicker_weeklyPerformance">
+                    <select id="startWeek_weeklyPerformance" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
+                    <span class="small">-</span>
+                    <select id="endWeek_weeklyPerformance" class="form-select form-select-sm" style="width: auto; font-size: 0.8rem;"></select>
+                </div>
+                <div class="d-flex align-items-center justify-content-center gap-1 ms-auto">
+                    <button class="btn btn-lg btn-outline-secondary" onclick="toggleAddNoteMode('weeklyPerformanceChart')" title="Add Note"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-message-circle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 20l1.3 -3.9c-2.324 -3.437 -1.426 -7.872 2.1 -10.374c3.526 -2.501 8.59 -2.296 11.845 .48c3.255 2.777 3.695 7.266 1.029 10.501c-2.666 3.235 -7.615 4.215 -11.574 2.293l-4.7 1z" /></svg></button>
+                    <button class="btn btn-lg btn-outline-secondary" onclick="toggleFullScreenWrapper('cardWeeklyPerformance')" title="Fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-maximize" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 8v-2a2 2 0 0 1 2 -2h2" /><path d="M4 16v2a2 2 0 0 0 2 2h2" /><path d="M16 4h2a2 2 0 0 1 2 2v2" /><path d="M16 20h2a2 2 0 0 0 2 -2v-2" /></svg>
+                </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <canvas id="weeklyPerformanceChart"></canvas>
+            </div>
+        </div>
+        </div>
+
 
 
         </div>
@@ -971,7 +998,7 @@
   const flockPhase = "{{ flock.calculated_phase }}";
   const flockHouseName = "{{ flock.house.name }}";
 
-  let maleChartInstance, femaleChartInstance, generalChartInstance, hatchingEggChartInstance, waterChartInstance, feedChartInstance, hatchChartInstance;
+  let maleChartInstance, weeklyPerformanceChartInstance, femaleChartInstance, generalChartInstance, hatchingEggChartInstance, waterChartInstance, feedChartInstance, hatchChartInstance;
   let currentMode = 'weekly';
   let currentModeHatching = 'weekly';
   // State Management for Date Ranges
@@ -980,6 +1007,7 @@
       hatching: { start: null, end: null, startWeek: null, endWeek: null },
       male: { start: null, end: null, startWeek: null, endWeek: null },
       female: { start: null, end: null, startWeek: null, endWeek: null },
+      weeklyPerformance: { startWeek: null, endWeek: null },
       water: { start: null, end: null, startWeek: null, endWeek: null },
       feed: { start: null, end: null, startWeek: null, endWeek: null },
       hatch: { start: null, end: null, startWeek: null, endWeek: null }
@@ -1593,6 +1621,133 @@
                 }
             }
         }
+      });
+  }
+
+
+
+
+  function renderWeeklyPerformanceChart() {
+      const mode = currentMode;
+      const state = chartStates.weeklyPerformance || { startWeek: null, endWeek: null };
+      const fullData = chartDataWeekly;
+      const data = filterDataByWeek(fullData, state.startWeek, state.endWeek);
+
+      updateChartTitle('weeklyPerformanceChartTitle', 'Weekly Performance', data, false);
+
+      if (weeklyPerformanceChartInstance) weeklyPerformanceChartInstance.destroy();
+
+      const datasets = [];
+      const hasEggProd = data.egg_prod && data.egg_prod.some(v => v !== null);
+      const hasBw = data.avg_bw_female && data.avg_bw_female.some(v => v !== null);
+      const hasFeed = data.feed_female_gp_bird_majority && data.feed_female_gp_bird_majority.some(v => v !== null);
+      const hasEggWt = data.avg_egg_weight && data.avg_egg_weight.some(v => v !== null && v > 0);
+
+      if (hasEggProd) {
+          datasets.push({
+              label: 'Egg Production %',
+              data: data.egg_prod,
+              borderColor: '#fd7e14',
+              backgroundColor: '#fd7e14',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y_prod',
+              clip: true
+          });
+      }
+
+      if (hasBw) {
+          datasets.push({
+              label: 'Female BW (g)',
+              data: data.avg_bw_female,
+              borderColor: '#0d6efd',
+              backgroundColor: '#0d6efd',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y_bw',
+              clip: true
+          });
+      }
+
+      if (hasFeed) {
+          datasets.push({
+              label: 'Female Feed (g/bird)',
+              data: data.feed_female_gp_bird_majority,
+              borderColor: '#198754',
+              backgroundColor: '#198754',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y_feed',
+              clip: true
+          });
+      }
+
+      if (hasEggWt) {
+          datasets.push({
+              label: 'Egg Weight (g)',
+              data: data.avg_egg_weight,
+              borderColor: '#9966FF',
+              backgroundColor: '#9966FF',
+              borderWidth: 2,
+              tension: 0.1,
+              yAxisID: 'y_eggwt',
+              clip: true
+          });
+      }
+
+      const canvas = document.getElementById('weeklyPerformanceChart');
+      if (!canvas) return;
+
+      weeklyPerformanceChartInstance = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: {
+              labels: data.dates,
+              datasets: datasets
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  x: {
+                      display: true,
+                      grid: { drawOnChartArea: false }
+                  },
+                  y_prod: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Egg Production %' },
+                      min: -300,
+                      max: 120
+                  },
+                  y_eggwt: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      title: { display: true, text: 'Egg Weight (g)' },
+                      grid: { drawOnChartArea: false },
+                      min: -150,
+                      max: 150
+                  },
+                  y_feed: {
+                      type: 'linear',
+                      display: true,
+                      position: 'left',
+                      title: { display: true, text: 'Feed (g/bird)' },
+                      grid: { drawOnChartArea: false },
+                      min: 0,
+                      max: 600
+                  },
+                  y_bw: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      title: { display: true, text: 'Body Weight (g)' },
+                      grid: { drawOnChartArea: false },
+                      min: 0,
+                      suggestedMax: 20000
+                  }
+              }
+          }
       });
   }
 
@@ -2320,6 +2475,7 @@
           if (event.target.id === 'charts-tab') {
             if (maleChartInstance) maleChartInstance.resize();
             if (femaleChartInstance) femaleChartInstance.resize();
+            if (weeklyPerformanceChartInstance) weeklyPerformanceChartInstance.resize();
             if (generalChartInstance) generalChartInstance.resize();
             if (hatchingEggChartInstance) hatchingEggChartInstance.resize();
           if (hatchChartInstance) hatchChartInstance.resize();
@@ -2429,6 +2585,7 @@
       initChartPickers('feed', renderFeedChart);
       initChartPickers('male', renderMaleChart);
       initChartPickers('female', renderFemaleChart);
+          initChartPickers('weeklyPerformance', renderWeeklyPerformanceChart);
       initChartPickers('hatch', renderHatchChart);
 
       // 4. Initialize Global Picker
@@ -2477,6 +2634,7 @@
           renderHatchingChart();
           renderMaleChart();
           renderFemaleChart();
+      renderWeeklyPerformanceChart();
           renderHatchChart();
       }
 
@@ -2511,6 +2669,7 @@
               renderFeedChart();
               renderMaleChart();
               renderFemaleChart();
+      renderWeeklyPerformanceChart();
               renderHatchChart();
           }
       }
@@ -2526,6 +2685,7 @@
       renderFeedChart();
       renderMaleChart();
       renderFemaleChart();
+      renderWeeklyPerformanceChart();
       renderHatchChart();
   });
 
@@ -2535,6 +2695,7 @@
       setTimeout(() => {
           if (maleChartInstance) maleChartInstance.resize();
           if (femaleChartInstance) femaleChartInstance.resize();
+            if (weeklyPerformanceChartInstance) weeklyPerformanceChartInstance.resize();
           if (generalChartInstance) generalChartInstance.resize();
           if (hatchingEggChartInstance) hatchingEggChartInstance.resize();
           if (hatchChartInstance) hatchChartInstance.resize();
@@ -2790,6 +2951,7 @@ function fetchAndApplyFloatingNotes() {
         if (typeof feedChartInstance !== 'undefined') chartsToUpdate.push(feedChartInstance);
         if (typeof maleChartInstance !== 'undefined') chartsToUpdate.push(maleChartInstance);
         if (typeof femaleChartInstance !== 'undefined') chartsToUpdate.push(femaleChartInstance);
+        if (typeof weeklyPerformanceChartInstance !== 'undefined') chartsToUpdate.push(weeklyPerformanceChartInstance);
         if (typeof hatchingEggChartInstance !== 'undefined') chartsToUpdate.push(hatchingEggChartInstance);
         if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
         if (typeof hatchChartInstance !== 'undefined') chartsToUpdate.push(hatchChartInstance);
