@@ -348,7 +348,7 @@ def register_api_routes(app):
         feed_cleanup_hours = 0.0
         if log.feed_cleanup_start and log.feed_cleanup_end:
             try:
-                from app import calculate_feed_cleanup_duration
+                from analytics import calculate_feed_cleanup_duration
                 duration = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
                 if duration: feed_cleanup_hours = round(duration / 60.0, 1)
             except: pass
