@@ -176,8 +176,10 @@ def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last
         cull_m_hosp = log.culls_male_hosp or 0
         moved_to_hosp_m = log.males_moved_to_hosp or 0
         moved_to_prod_m = log.males_moved_to_prod or 0
+        in_flock_m = getattr(log, 'males_in_flock', 0) or 0
+        out_flock_m = getattr(log, 'males_out_flock', 0) or 0
 
-        curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp_m + moved_to_prod_m
+        curr_m_prod = curr_m_prod - mort_m_prod - cull_m_prod - moved_to_hosp_m + moved_to_prod_m + in_flock_m - out_flock_m
         curr_m_hosp = curr_m_hosp - mort_m_hosp - cull_m_hosp + moved_to_hosp_m - moved_to_prod_m
 
         # Female
@@ -187,8 +189,10 @@ def calculate_male_ratio(flock_id, setting_date, flock_obj=None, logs=None, last
         cull_f_hosp = log.culls_female_hosp or 0
         moved_to_hosp_f = log.females_moved_to_hosp or 0
         moved_to_prod_f = log.females_moved_to_prod or 0
+        in_flock_f = getattr(log, 'females_in_flock', 0) or 0
+        out_flock_f = getattr(log, 'females_out_flock', 0) or 0
 
-        curr_f_prod = curr_f_prod - mort_f_prod - cull_f_prod - moved_to_hosp_f + moved_to_prod_f
+        curr_f_prod = curr_f_prod - mort_f_prod - cull_f_prod - moved_to_hosp_f + moved_to_prod_f + in_flock_f - out_flock_f
         curr_f_hosp = curr_f_hosp - mort_f_hosp - cull_f_hosp + moved_to_hosp_f - moved_to_prod_f
 
         if curr_m_prod < 0: curr_m_prod = 0
@@ -398,6 +402,10 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
             log.females_moved_to_hosp,
             log.males_moved_to_prod,
             log.females_moved_to_prod,
+            getattr(log, 'males_in_flock', 0),
+            getattr(log, 'males_out_flock', 0),
+            getattr(log, 'females_in_flock', 0),
+            getattr(log, 'females_out_flock', 0),
             log.feed_program,
             feed_code_map.get(log.feed_code_male_id, ''),
             feed_code_map.get(log.feed_code_female_id, ''),
@@ -1232,6 +1240,11 @@ def update_log_from_request(log, req):
     log.males_moved_to_hosp = int(req.form.get('males_moved_to_hosp') or 0)
     log.females_moved_to_prod = int(req.form.get('females_moved_to_prod') or 0)
     log.females_moved_to_hosp = int(req.form.get('females_moved_to_hosp') or 0)
+
+    log.males_in_flock = int(req.form.get('males_in_flock') or 0)
+    log.males_out_flock = int(req.form.get('males_out_flock') or 0)
+    log.females_in_flock = int(req.form.get('females_in_flock') or 0)
+    log.females_out_flock = int(req.form.get('females_out_flock') or 0)
 
     log.feed_program = req.form.get('feed_program')
 

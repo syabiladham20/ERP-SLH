@@ -341,6 +341,10 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         curr_f_prod += (log.females_moved_to_prod or 0) - (log.females_moved_to_hosp or 0)
         curr_f_hosp += (log.females_moved_to_hosp or 0) - (log.females_moved_to_prod or 0)
 
+        # Apply In/Out Flock
+        curr_m_prod += (getattr(log, 'males_in_flock', 0) or 0) - (getattr(log, 'males_out_flock', 0) or 0)
+        curr_f_prod += (getattr(log, 'females_in_flock', 0) or 0) - (getattr(log, 'females_out_flock', 0) or 0)
+
         # Safety clamp
         if curr_m_prod < 0: curr_m_prod = 0
         if curr_f_prod < 0: curr_f_prod = 0
