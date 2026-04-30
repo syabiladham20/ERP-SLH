@@ -668,6 +668,23 @@ def register_api_routes(app):
     def get_metrics_list():
         return json.dumps(METRICS_REGISTRY)
 
+    @app.route('/api/latest_log_date')
+    def get_latest_log_date():
+        house_id = request.args.get('house_id')
+        if not house_id:
+            return jsonify({}), 400
+
+        flock = Flock.query.filter_by(house_id=house_id, status='Active').first()
+        if not flock:
+            return jsonify({}), 404
+
+        latest_log = DailyLog.query.filter_by(flock_id=flock.id).order_by(DailyLog.date.desc()).first()
+
+        if latest_log:
+            return jsonify({'latest_date': latest_log.date.strftime('%Y-%m-%d')}), 200
+        else:
+            return jsonify({'latest_date': None}), 200
+
     @app.route('/api/daily_log/previous')
     def get_previous_daily_log_data():
         house_id = request.args.get('house_id')
@@ -709,13 +726,41 @@ def register_api_routes(app):
         current_stock_m = (flock.intake_male or 0) - cum_mort_m
         current_stock_f = (flock.intake_female or 0) - cum_mort_f
 
+        # Enhance with new values for Smart Summary validation
+        yesterday_mortality_m = yesterday_log.mortality_male if yesterday_log else 0
+        yesterday_mortality_f = yesterday_log.mortality_female if yesterday_log else 0
+        yesterday_eggs = yesterday_log.eggs_collected if yesterday_log else 0
+        yesterday_water = yesterday_log.water_intake_calculated if yesterday_log else 0
+
+        # Calculate yesterday's stock for accurate percentage
+        y_cum_mort_m = sum((l.mortality_male or 0) + (l.culls_male or 0) for l in all_prev_logs if l.date < (log_date - timedelta(days=1)))
+        y_cum_mort_f = sum((l.mortality_female or 0) + (l.culls_female or 0) for l in all_prev_logs if l.date < (log_date - timedelta(days=1)))
+        y_stock_m = (flock.intake_male or 0) - y_cum_mort_m
+        y_stock_f = (flock.intake_female or 0) - y_cum_mort_f
+
+        yesterday_egg_pct = (yesterday_eggs / y_stock_f * 100) if y_stock_f > 0 else 0
+        yesterday_mort_m_pct = (yesterday_mortality_m / y_stock_m * 100) if y_stock_m > 0 else 0
+        yesterday_mort_f_pct = (yesterday_mortality_f / y_stock_f * 100) if y_stock_f > 0 else 0
+
+        # Current flock age in weeks
+        flock_age_days = (log_date - flock.intake_date).days + 1
+        flock_age_weeks = flock_age_days / 7.0
+
         data = {
             'current_stock_m': current_stock_m,
             'current_stock_f': current_stock_f,
             'yesterday_feed_m': yesterday_log.feed_male_gp_bird if yesterday_log else 0,
             'yesterday_feed_f': yesterday_log.feed_female_gp_bird if yesterday_log else 0,
             'day_minus_2_feed_m': day_minus_2_log.feed_male_gp_bird if day_minus_2_log else 0,
-            'day_minus_2_feed_f': day_minus_2_log.feed_female_gp_bird if day_minus_2_log else 0
+            'day_minus_2_feed_f': day_minus_2_log.feed_female_gp_bird if day_minus_2_log else 0,
+            'yesterday_eggs': yesterday_eggs,
+            'yesterday_egg_pct': yesterday_egg_pct,
+            'yesterday_water': yesterday_water,
+            'flock_age_weeks': flock_age_weeks,
+            'yesterday_mortality_m': yesterday_mortality_m,
+            'yesterday_mortality_f': yesterday_mortality_f,
+            'yesterday_mort_m_pct': yesterday_mort_m_pct,
+            'yesterday_mort_f_pct': yesterday_mort_f_pct
         }
 
         if previous_log:
