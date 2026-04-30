@@ -293,7 +293,7 @@ def register_production_routes(app):
             'std_mortality_male': [], 'std_mortality_female': [],
             'culls_weekly_male': [], 'culls_weekly_female': [],
             'avg_bw_male': [], 'avg_bw_female': [],
-            'egg_prod': [],
+            'egg_prod': [], 'avg_egg_weight': [],
             'bw_male_std': [], 'bw_female_std': [],
             'unif_male': [], 'unif_female': [],
             'notes': []
@@ -316,6 +316,8 @@ def register_production_routes(app):
             chart_data_weekly['avg_bw_male'].append(round_to_whole(ws['body_weight_male']) if ws['body_weight_male'] is not None and ws['body_weight_male'] > 0 else None)
             chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] is not None and ws['body_weight_female'] > 0 else None)
             chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
+            chart_data_weekly['avg_egg_weight'] = chart_data_weekly.get('avg_egg_weight', [])
+            chart_data_weekly['avg_egg_weight'].append(round(ws.get('avg_egg_weight', 0.0), 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
             chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
 
@@ -352,6 +354,9 @@ def register_production_routes(app):
 
             chart_data_weekly['feed_male_gp_bird'] = chart_data_weekly.get('feed_male_gp_bird', [])
             chart_data_weekly['feed_male_gp_bird'].append(round(ws['feed_male_gp_bird'], 1))
+
+            chart_data_weekly['feed_female_gp_bird_majority'] = chart_data_weekly.get('feed_female_gp_bird_majority', [])
+            chart_data_weekly['feed_female_gp_bird_majority'].append(round(ws.get('feed_female_gp_bird_majority', 0.0), 1))
 
             chart_data_weekly['feed_female_gp_bird'] = chart_data_weekly.get('feed_female_gp_bird', [])
             chart_data_weekly['feed_female_gp_bird'].append(round(ws['feed_female_gp_bird'], 1))
@@ -1952,7 +1957,7 @@ def register_production_routes(app):
             'mortality_weekly_male': [], 'mortality_weekly_female': [],
             'culls_weekly_male': [], 'culls_weekly_female': [],
             'avg_bw_male': [], 'avg_bw_female': [],
-            'egg_prod': [],
+            'egg_prod': [], 'avg_egg_weight': [],
             'bw_male_std': [], 'bw_female_std': [],
             'unif_male': [], 'unif_female': [],
             'notes': []
@@ -1984,6 +1989,8 @@ def register_production_routes(app):
             chart_data_weekly['avg_bw_female'].append(round_to_whole(ws['body_weight_female']) if ws['body_weight_female'] is not None and ws['body_weight_female'] > 0 else None)
 
             chart_data_weekly['egg_prod'].append(round(ws['egg_prod_pct'], 2))
+            chart_data_weekly['avg_egg_weight'] = chart_data_weekly.get('avg_egg_weight', [])
+            chart_data_weekly['avg_egg_weight'].append(round(ws.get('avg_egg_weight', 0.0), 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
             chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
 
@@ -2020,6 +2027,9 @@ def register_production_routes(app):
 
             chart_data_weekly['feed_male_gp_bird'] = chart_data_weekly.get('feed_male_gp_bird', [])
             chart_data_weekly['feed_male_gp_bird'].append(round(ws['feed_male_gp_bird'], 1))
+
+            chart_data_weekly['feed_female_gp_bird_majority'] = chart_data_weekly.get('feed_female_gp_bird_majority', [])
+            chart_data_weekly['feed_female_gp_bird_majority'].append(round(ws.get('feed_female_gp_bird_majority', 0.0), 1))
 
             chart_data_weekly['feed_female_gp_bird'] = chart_data_weekly.get('feed_female_gp_bird', [])
             chart_data_weekly['feed_female_gp_bird'].append(round(ws['feed_female_gp_bird'], 1))
