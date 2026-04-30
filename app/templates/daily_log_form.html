@@ -27,6 +27,9 @@
               </option>
             {% endfor %}
           </select>
+          <div id="last_fill_date_display" class="form-text text-muted mt-1 small" style="display: none;">
+             Last log entry: <span id="last_fill_date_val" class="fw-bold"></span>
+          </div>
           {% if log %}
              <input type="hidden" id="phase_val" value="{{ log.flock.phase }}">
           {% endif %}
@@ -362,12 +365,17 @@
                   <div id="fastingWarningDiv" class="alert alert-danger mt-3 d-none text-start small">
                       ⚠️ Alert: Today is a scheduled Fasting Day for this House based on the selected program. This will affect flock uniformity.
                   </div>
+
+                  <div id="smartSummaryContainer" class="mt-3">
+                     <!-- Smart Summary content will be injected here via JS -->
+                  </div>
+
               </div>
               <div class="modal-footer">
                   <div class="w-100">
                       <div class="row">
                           <div class="col"><a href="#" class="btn w-100" data-bs-dismiss="modal">Cancel</a></div>
-                          <div class="col"><button type="button" class="btn btn-primary w-100" onclick="confirmUpdateSubmit()">Yes, {{ 'Update' if log else 'Submit' }}</button></div>
+                          <div class="col"><button type="button" class="btn btn-primary w-100 fw-bold" onclick="confirmUpdateSubmit()">Confirm & Save</button></div>
                       </div>
                   </div>
               </div>
@@ -497,6 +505,12 @@
                 yesterdayFeedF = data.yesterday_feed_f || 0;
                 dayMinus2FeedM = data.day_minus_2_feed_m || 0;
                 dayMinus2FeedF = data.day_minus_2_feed_f || 0;
+
+                yesterdayEggPct = data.yesterday_egg_pct || 0;
+                yesterdayMortPctF = data.yesterday_mort_f_pct || 0;
+                yesterdayMortPctM = data.yesterday_mort_m_pct || 0;
+                yesterdayWater = data.yesterday_water || 0;
+                flockAgeWeeks = data.flock_age_weeks || 0;
                 calculateLiveFeed();
                 if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
                 if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
@@ -523,7 +537,38 @@
             .catch(error => console.log(error));
     }
 
+
+    function fetchLatestLogDate() {
+        let houseId = document.getElementById('house_id').value;
+        if (!houseId) {
+             document.getElementById('last_fill_date_display').style.display = 'none';
+             return;
+        }
+
+        fetch(`{{ url_for('get_latest_log_date') }}?house_id=${houseId}`)
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error('Error fetching latest log date.');
+            })
+            .then(data => {
+                if (data.latest_date) {
+                    // format date from yyyy-mm-dd to dd-mm-yyyy
+                    let dateParts = data.latest_date.split('-');
+                    let formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+                    document.getElementById('last_fill_date_val').textContent = formattedDate;
+                    document.getElementById('last_fill_date_display').style.display = 'block';
+                } else {
+                    document.getElementById('last_fill_date_display').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.log(error);
+                document.getElementById('last_fill_date_display').style.display = 'none';
+            });
+    }
+
     function onSelectionChange() {
+        fetchLatestLogDate();
         {% if request.endpoint == 'daily_log' %}
         let houseId = document.getElementById('house_id').value;
         let dateVal = document.getElementById('date').value;
@@ -557,8 +602,10 @@
     window.onload = function() {
         {% if not log %}
         prefillPreviousData();
+        fetchLatestLogDate();
         {% endif %}
     };
+
 
     let currentStockM = 0;
     let currentStockF = 0;
@@ -567,16 +614,25 @@
     let dayMinus2FeedM = 0;
     let dayMinus2FeedF = 0;
 
+    // Smart Summary Globals
+    let yesterdayEggPct = 0;
+    let yesterdayMortPctF = 0;
+    let yesterdayMortPctM = 0;
+    let yesterdayWater = 0;
+    let flockAgeWeeks = 0;
+
+
     function getMultiplier() {
-        let program = document.querySelector('[name="feed_program"]').value;
+        let progElem = document.querySelector('[name="feed_program"]');
+        let program = progElem ? progElem.value : '';
         if (program === 'Skip-a-day') return 2.0;
         if (program === '2/1') return 1.5;
         return 1.0;
     }
 
     function calculateLiveFeed() {
-        let maleGpBird = parseFloat(document.getElementById('feed_male_gp_bird').value) || 0;
-        let femaleGpBird = parseFloat(document.getElementById('feed_female_gp_bird').value) || 0;
+        let maleGpBird = parseFloat(document.getElementById('feed_male_gp_bird') ? document.getElementById('feed_male_gp_bird').value : 0) || 0;
+        let femaleGpBird = parseFloat(document.getElementById('feed_female_gp_bird') ? document.getElementById('feed_female_gp_bird').value : 0) || 0;
         let multiplier = getMultiplier();
 
         let maleTotalKg = (maleGpBird * multiplier * currentStockM) / 1000.0;
@@ -590,10 +646,11 @@
     document.getElementById('feed_female_gp_bird').addEventListener('input', calculateLiveFeed);
     document.querySelector('[name="feed_program"]').addEventListener('change', calculateLiveFeed);
 
-    function checkFastingDay() {
-        let program = document.querySelector('[name="feed_program"]').value;
-        let maleGpBird = parseFloat(document.getElementById('feed_male_gp_bird').value) || 0;
-        let femaleGpBird = parseFloat(document.getElementById('feed_female_gp_bird').value) || 0;
+    window.checkFastingDay = function() {
+        let progElem = document.querySelector('[name="feed_program"]');
+        let program = progElem ? progElem.value : '';
+        let maleGpBird = parseFloat(document.getElementById('feed_male_gp_bird') ? document.getElementById('feed_male_gp_bird').value : 0) || 0;
+        let femaleGpBird = parseFloat(document.getElementById('feed_female_gp_bird') ? document.getElementById('feed_female_gp_bird').value : 0) || 0;
         let isFeedingAttempt = (maleGpBird > 0 || femaleGpBird > 0);
 
         if (!isFeedingAttempt) return false;
@@ -613,7 +670,7 @@
         return isFastingDay;
     }
 
-    function triggerUpdateModal() {
+    window.triggerUpdateModal = function() {
         // Trigger default HTML5 validation first
         if (!document.getElementById('dailyLogForm').checkValidity()) {
             document.getElementById('dailyLogForm').reportValidity();
@@ -621,7 +678,7 @@
         }
 
         // Populate house name and date
-        let houseSelect = document.getElementById('house_id');
+        let houseSelect = document.getElementById('house_id'); if (!houseSelect) return;
         let selectedHouseName = houseSelect.options[houseSelect.selectedIndex].text.trim();
         let selectedDate = document.getElementById('date').value;
 
@@ -646,6 +703,122 @@
             fastingWarningDiv.classList.add('d-none');
             document.getElementById('override_validation').value = 'false';
         }
+
+        // --- SMART SUMMARY LOGIC ---
+        let smartSummaryContainer = document.getElementById('smartSummaryContainer');
+
+        let elemMortM = document.getElementById('mortality_male');
+        let inMortMale = elemMortM ? parseInt(elemMortM.value) || 0 : 0;
+        let elemMortF = document.getElementById('mortality_female');
+        let inMortFemale = elemMortF ? parseInt(elemMortF.value) || 0 : 0;
+        let elemMortMHosp = document.querySelector('[name="mortality_male_hosp"]');
+        let inMortMaleHosp = elemMortMHosp ? parseInt(elemMortMHosp.value) || 0 : 0;
+        let elemMortFHosp = document.querySelector('[name="mortality_female_hosp"]');
+        let inMortFemaleHosp = elemMortFHosp ? parseInt(elemMortFHosp.value) || 0 : 0;
+        let totalMortF = inMortFemale + inMortFemaleHosp;
+        let totalMortM = inMortMale + inMortMaleHosp;
+
+        let elemFeedM = document.getElementById('feed_male_gp_bird');
+        let inFeedM = elemFeedM ? parseFloat(elemFeedM.value) || 0 : 0;
+        let elemFeedF = document.getElementById('feed_female_gp_bird');
+        let inFeedF = elemFeedF ? parseFloat(elemFeedF.value) || 0 : 0;
+
+        let inEggs = parseInt(document.getElementById('eggs_collected') ? document.getElementById('eggs_collected').value : 0) || 0;
+
+        // Water is calculated on the fly, grab it from UI element
+        let elemWater = document.getElementById('water_12h');
+        let waterVal = elemWater ? elemWater.innerText : '0';
+
+        // Calculations
+        let mortPctF = currentStockF > 0 ? (totalMortF / currentStockF) * 100 : 0;
+        let mortPctM = currentStockM > 0 ? (totalMortM / currentStockM) * 100 : 0;
+
+        let eggPct = currentStockF > 0 ? (inEggs / currentStockF) * 100 : 0;
+
+        // Validations
+        let mortFWarning = '';
+        if (mortPctF > 1.0) {
+            mortFWarning = '<span class="badge bg-danger ms-2">CRITICAL: Abnormal data (possible wrong input)</span>';
+        } else if (mortPctF > 0.05) {
+            mortFWarning = '<span class="badge bg-warning text-dark ms-2">Warning: High mortality</span>';
+        }
+
+        let mortMWarning = '';
+        // Assuming we apply the same for males? Requirement only mentioned Female explicitly,
+        // but we'll add basic check for > 1.0%
+        if (mortPctM > 1.0) {
+             mortMWarning = '<span class="badge bg-danger ms-2">CRITICAL: Abnormal data</span>';
+        }
+
+        let eggWarning = '';
+        let eggDiff = eggPct - yesterdayEggPct;
+        if (eggDiff < -2.0) {
+             eggWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 2%</span>';
+        } else if (eggDiff > 2.0) {
+             // Exception: Week 25-33
+             if (flockAgeWeeks >= 25 && flockAgeWeeks <= 33) {
+                 // Do not warn
+             } else {
+                 eggWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Increase > 2%</span>';
+             }
+        }
+
+        let feedFWarning = '';
+        if ((yesterdayFeedF - inFeedF) > 3) {
+             feedFWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 3g</span>';
+        }
+
+        let feedMWarning = '';
+        if ((yesterdayFeedM - inFeedM) > 3) {
+             feedMWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 3g</span>';
+        }
+
+        // Build HTML
+        let html = `
+            <div class="card border-0 shadow-none text-start">
+                <div class="card-header bg-light py-2">
+                    <h5 class="card-title mb-0 text-muted">Smart Summary</h5>
+                </div>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Female Mortality:</span> ${totalMortF} (${mortPctF.toFixed(2)}%)
+                        </div>
+                        <div>${mortFWarning}</div>
+                    </li>
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Male Mortality:</span> ${totalMortM} (${mortPctM.toFixed(2)}%)
+                        </div>
+                        <div>${mortMWarning}</div>
+                    </li>
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Female Feed:</span> ${inFeedF} g/bird
+                        </div>
+                        <div>${feedFWarning}</div>
+                    </li>
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Male Feed:</span> ${inFeedM} g/bird
+                        </div>
+                        <div>${feedMWarning}</div>
+                    </li>
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Egg Production:</span> ${inEggs} (${eggPct.toFixed(2)}%)
+                        </div>
+                        <div>${eggWarning}</div>
+                    </li>
+                    <li class="list-group-item px-3 py-2">
+                        <span class="fw-bold">Water Consumption:</span> ${waterVal} L (12h)
+                    </li>
+                </ul>
+            </div>
+        `;
+
+        smartSummaryContainer.innerHTML = html;
+        // --- END SMART SUMMARY LOGIC ---
 
         let myModal = new bootstrap.Modal(document.getElementById('updateConfirmModal'));
         myModal.show();
