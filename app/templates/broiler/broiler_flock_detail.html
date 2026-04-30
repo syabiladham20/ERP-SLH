@@ -112,9 +112,17 @@
                     <!-- Day Picker -->
                     <div class="d-flex align-items-center mb-3">
                         <label class="me-2">Start Day:</label>
-                        <input type="number" id="startDay" class="form-control form-control-sm w-auto d-inline-block" min="1" value="1">
+                        <select id="startDay" class="form-select form-select-sm w-auto d-inline-block">
+                            {% for day in chart_data.days %}
+                            <option value="{{ day }}">{{ day }}</option>
+                            {% endfor %}
+                        </select>
                         <label class="ms-3 me-2">End Day:</label>
-                        <input type="number" id="endDay" class="form-control form-control-sm w-auto d-inline-block" min="1">
+                        <select id="endDay" class="form-select form-select-sm w-auto d-inline-block">
+                            {% for day in chart_data.days %}
+                            <option value="{{ day }}" {% if loop.last %}selected{% endif %}>{{ day }}</option>
+                            {% endfor %}
+                        </select>
                         <button class="btn btn-sm btn-outline-primary ms-3" onclick="filterCharts()">Apply Filter</button>
                         <button class="btn btn-sm btn-outline-secondary ms-2" onclick="resetCharts()">Reset</button>
                     </div>
@@ -124,7 +132,7 @@
                         <div class="col-12 mb-3">
                             <div class="card">
                                 <div class="card-header">
-                                    <h3 class="card-title">FCR Tracking</h3>
+                                    <h3 class="card-title">FCR Tracking - {{ flock.farm_name }} {{ flock.house_name }}</h3>
                                 </div>
                                 <div class="card-body">
                                     <canvas id="fcrChart"></canvas>
@@ -136,7 +144,7 @@
                         <div class="col-12 mb-3">
                             <div class="card">
                                 <div class="card-header">
-                                    <h3 class="card-title">Mortality (%) and Bodyweight (g)</h3>
+                                    <h3 class="card-title">Mortality (%) and Bodyweight (g) - {{ flock.farm_name }} {{ flock.house_name }}</h3>
                                 </div>
                                 <div class="card-body">
                                     <canvas id="combinedChart"></canvas>
