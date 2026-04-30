@@ -141,6 +141,26 @@
                         </div>
                     </div>
                 </div>
+                    <hr>
+                    <h6 class="text-dark">In/Out of Flock (Overall Stock)</h6>
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-2">
+                            <label class="form-label small">Males -> In Flock</label>
+                            <input type="number" class="form-control form-control-sm" name="males_in_flock" value="{{ log.males_in_flock if log else 0 }}">
+                        </div>
+                        <div class="col-12 col-md-6 mb-2">
+                            <label class="form-label small">Males -> Out of Flock</label>
+                            <input type="number" class="form-control form-control-sm" name="males_out_flock" value="{{ log.males_out_flock if log else 0 }}">
+                        </div>
+                        <div class="col-12 col-md-6 mb-2">
+                            <label class="form-label small">Females -> In Flock</label>
+                            <input type="number" class="form-control form-control-sm" name="females_in_flock" value="{{ log.females_in_flock if log else 0 }}">
+                        </div>
+                        <div class="col-12 col-md-6 mb-2">
+                            <label class="form-label small">Females -> Out of Flock</label>
+                            <input type="number" class="form-control form-control-sm" name="females_out_flock" value="{{ log.females_out_flock if log else 0 }}">
+                        </div>
+                    </div>
             </div>
         </div>
 

@@ -854,6 +854,7 @@ def register_api_routes(app):
                     'mortality_male', 'mortality_female', 'mortality_male_hosp', 'mortality_female_hosp',
                     'culls_male', 'culls_female', 'culls_male_hosp', 'culls_female_hosp',
                     'males_moved_to_hosp', 'females_moved_to_hosp', 'males_moved_to_prod', 'females_moved_to_prod',
+                    'males_in_flock', 'males_out_flock', 'females_in_flock', 'females_out_flock',
                     'water_reading_1', 'water_reading_2', 'water_reading_3',
                     'eggs_collected', 'cull_eggs_jumbo', 'cull_eggs_small', 'cull_eggs_abnormal', 'cull_eggs_crack'
                 ]

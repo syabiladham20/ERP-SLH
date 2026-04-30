@@ -177,6 +177,12 @@ class DailyLog(VersionedMixin, db.Model):
     females_moved_to_prod = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     females_moved_to_hosp = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
+    # In/Out of Flock
+    males_in_flock = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    males_out_flock = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    females_in_flock = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    females_out_flock = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+
     feed_program = db.Column(db.String(50)) # 'Full Feed', 'Skip-a-day'
     # Feed (Grams per Bird)
     feed_male_gp_bird = db.Column(db.Float, default=0.0, nullable=False, server_default='0')
