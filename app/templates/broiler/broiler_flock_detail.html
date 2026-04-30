@@ -29,6 +29,11 @@
             </div>
         </div>
         <div class="col-auto ms-auto d-print-none">
+            {% if real_is_admin %}
+            <a href="#" class="btn btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteFlockModal">
+                Delete Flock
+            </a>
+            {% endif %}
             <a href="{{ url_for('broiler.daily_entry', flock_id=flock.id) }}" class="btn btn-primary">
                 Add Daily Log
             </a>
@@ -143,6 +148,29 @@
             </div>
         </div>
     </div>
+
+<!-- Delete Flock Modal -->
+<div class="modal fade" id="deleteFlockModal" tabindex="-1" aria-labelledby="deleteFlockModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteFlockModalLabel">Delete Flock</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete this flock? This action cannot be undone and will delete all associated daily logs.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary me-auto" data-bs-dismiss="modal">Cancel</button>
+        <form action="{{ url_for('broiler.delete_flock', flock_id=flock.id) }}" method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <button type="submit" class="btn btn-danger">Yes, Delete Flock</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
 {% endblock %}
 
@@ -178,7 +206,10 @@
                                 display: true,
                                 color: 'blue',
                                 align: 'top',
-                                anchor: 'end'
+                                anchor: 'end',
+                                formatter: function(value) {
+                                    return value.toFixed(2);
+                                }
                             }
                         },
                         {
@@ -206,7 +237,7 @@
                                 size: 10
                             },
                             formatter: function(value, context) {
-                                return value;
+                                return value.toFixed(2);
                             }
                         }
                     },
@@ -247,7 +278,10 @@
                                 display: true,
                                 color: 'rgba(237, 125, 49, 1)',
                                 align: 'top',
-                                anchor: 'end'
+                                anchor: 'end',
+                                formatter: function(value) {
+                                    return Math.round(value);
+                                }
                             }
                         },
                         {
@@ -279,6 +313,21 @@
                                 formatter: function(value) {
                                     return value.toFixed(2) + '%';
                                 }
+                            }
+                        },
+                        {
+                            label: 'Standard Mortality %',
+                            data: labels.map(day => day <= 7 ? 0.5 : 0.05),
+                            type: 'line',
+                            borderColor: 'red',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0,
+                            yAxisID: 'y2',
+                            order: 0,
+                            datalabels: {
+                                display: false
                             }
                         }
                     ]
@@ -381,6 +430,7 @@
                 chartCombined.data.datasets[0].data = chartData.body_weights.slice(startIndex, endIndex);
                 chartCombined.data.datasets[1].data = chartData.weight_gains.slice(startIndex, endIndex);
                 chartCombined.data.datasets[2].data = chartData.mortality_pct.slice(startIndex, endIndex);
+                chartCombined.data.datasets[3].data = filteredLabels.map(day => day <= 7 ? 0.5 : 0.05);
                 chartCombined.update();
             }
         };
@@ -401,6 +451,7 @@
                 chartCombined.data.datasets[0].data = chartData.body_weights;
                 chartCombined.data.datasets[1].data = chartData.weight_gains;
                 chartCombined.data.datasets[2].data = chartData.mortality_pct;
+                chartCombined.data.datasets[3].data = labels.map(day => day <= 7 ? 0.5 : 0.05);
                 chartCombined.update();
             }
         };

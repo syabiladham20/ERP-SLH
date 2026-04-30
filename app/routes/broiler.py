@@ -70,6 +70,31 @@ def flock_detail(flock_id):
 from app.utils import log_user_activity, dept_required
 from flask_login import login_required, current_user
 
+
+@broiler_bp.route('/flock/<int:flock_id>/delete', methods=['POST'])
+@login_required
+@dept_required('Farm')
+def delete_flock(flock_id):
+    if not current_user.role == 'Admin':
+        flash('Access Denied: Admins only.', 'danger')
+        return redirect(url_for('broiler.dashboard'))
+
+    flock = BroilerFlock.query.get_or_404(flock_id)
+
+    # Delete all associated daily logs
+    BroilerDailyLog.query.filter_by(flock_id=flock.id).delete()
+
+    # Log user activity
+    flock_name = f"{flock.farm_name} - {flock.house_name}"
+    log_user_activity(current_user.id, 'Delete', 'BroilerFlock', flock.id, details={'flock_name': flock_name})
+
+    # Delete flock
+    db.session.delete(flock)
+    db.session.commit()
+
+    flash("Broiler flock deleted.", "info")
+    return redirect(url_for('broiler.dashboard'))
+
 @broiler_bp.route('/daily_log/<int:log_id>/delete', methods=['POST'])
 @login_required
 @dept_required('Farm')
