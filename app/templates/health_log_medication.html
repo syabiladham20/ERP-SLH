@@ -25,62 +25,72 @@
             <div class="tab-content">
                 <!-- Insert Tab -->
                 <div class="tab-pane active show" id="tab-insert">
-                    <form method="post" action="{{ url_for('health_log_medication') }}">
+                    <form id="insert-medication-form" method="post" action="{{ url_for('health_log_medication') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label required">House</label>
-                                <select name="flock_id" class="form-select" required>
+                                <select name="flock_id" id="flock_id" class="form-select" required>
                                     <option value="">Select House</option>
                                     {% for f in active_flocks %}
                                         <option value="{{ f.id }}">{{ f.house.name }} ({{ f.flock_id }})</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label required">Start Date</label>
-                                <input type="date" name="start_date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ today.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label required">End Date</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control" required>
                             </div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Inventory Item</label>
-                                <select name="inventory_item_id" class="form-select" onchange="if(this.value){this.form.drug_name.value=this.options[this.selectedIndex].text.split(' (')[0];}">
-                                    <option value="">-- Select Inventory Item --</option>
-                                    {% for item in medication_inventory %}
-                                        <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.current_stock }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label required">Drug Name</label>
-                                <input type="text" name="drug_name" class="form-control" placeholder="Or Type Drug Name" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">End Date (Optional)</label>
-                                <input type="date" name="end_date" class="form-control">
+                        <div id="medications-container">
+                            <div class="medication-row border p-3 mb-3 rounded position-relative bg-light">
+                                <div class="row mb-3">
+                                    <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                        <label class="form-label required">Drug Name</label>
+                                        <input type="text" name="drug_name[]" class="form-control drug-name-input" placeholder="Or Type Drug Name" required pattern="[A-Za-z0-9 ]+" title="Only letters, numbers, and spaces are allowed">
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label">Inventory Item</label>
+                                        <select name="inventory_item_id[]" class="form-select inventory-select" onchange="if(this.value){this.closest('.medication-row').querySelector('.drug-name-input').value=this.options[this.selectedIndex].text.split(' (')[0];}">
+                                            <option value="">-- Select Inventory Item --</option>
+                                            {% for item in medication_inventory %}
+                                                <option value="{{ item.id }}">{{ item.name }} (Stock: {{ item.current_stock }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Dosage</label>
+                                        <input type="text" name="dosage[]" class="form-control" placeholder="Dosage">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Amount Used (Qty Deduct)</label>
+                                        <input type="number" step="0.01" name="amount_used_qty[]" class="form-control" placeholder="Qty">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Amount Text</label>
+                                        <input type="text" name="amount_used[]" class="form-control" placeholder="e.g. 1 Bottle">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Remarks / Withdrawal Period</label>
+                                    <input type="text" name="remarks[]" class="form-control" placeholder="Remarks...">
+                                </div>
+                                <button type="button" class="btn-close position-absolute top-0 end-0 m-2 remove-medication-btn" aria-label="Close" style="display: none;"></button>
                             </div>
                         </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Dosage</label>
-                                <input type="text" name="dosage" class="form-control" placeholder="Dosage">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Amount Used (Qty Deduct)</label>
-                                <input type="number" step="0.01" name="amount_used_qty" class="form-control" placeholder="Qty">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Amount Text</label>
-                                <input type="text" name="amount_used" class="form-control" placeholder="e.g. 1 Bottle">
-                            </div>
-                        </div>
-
                         <div class="mb-3">
-                            <label class="form-label">Remarks / Withdrawal Period</label>
-                            <input type="text" name="remarks" class="form-control" placeholder="Remarks...">
+                            <button type="button" id="add-medication-btn" class="btn btn-outline-secondary">
+                                <i class="ti ti-plus"></i> Add Another Medication
+                            </button>
                         </div>
 
                         <div class="text-end">
@@ -206,9 +216,115 @@
 
 
 
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        const existingMedications = [
+          {% for flock, tasks in flock_tasks.items() %}
+            {% for m in tasks.medications %}
+            {
+              flock_id: "{{ m.flock_id }}",
+              drug_name: {{ m.drug_name | tojson | safe }}.toUpperCase(),
+              start_date: "{{ m.start_date }}"
+            },
+            {% endfor %}
+          {% endfor %}
+        ];
+
+        const container = document.getElementById('medications-container');
+        const addBtn = document.getElementById('add-medication-btn');
+
+        if (addBtn) {
+            addBtn.addEventListener('click', function() {
+                const firstRow = container.querySelector('.medication-row');
+                const newRow = firstRow.cloneNode(true);
+
+                // Clear inputs
+                newRow.querySelectorAll('input, select').forEach(input => {
+                    input.value = '';
+                });
+
+                // Show remove button
+                newRow.querySelector('.remove-medication-btn').style.display = 'block';
+
+                // Add event listener to remove button
+                newRow.querySelector('.remove-medication-btn').addEventListener('click', function() {
+                    newRow.remove();
+                    updateRemoveButtons();
+                });
+
+                container.appendChild(newRow);
+                updateRemoveButtons();
+            });
+        }
+
+        function updateRemoveButtons() {
+            const rows = container.querySelectorAll('.medication-row');
+            if (rows.length > 1) {
+                rows.forEach(row => {
+                    row.querySelector('.remove-medication-btn').style.display = 'block';
+                });
+            } else {
+                if(rows[0]) rows[0].querySelector('.remove-medication-btn').style.display = 'none';
+            }
+        }
+
+        // Add event listeners to initial remove buttons if any
+        container.querySelectorAll('.remove-medication-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.medication-row').remove();
+                updateRemoveButtons();
+            });
+        });
+        updateRemoveButtons();
+
+        const form = document.getElementById('insert-medication-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const flockId = document.getElementById('flock_id').value;
+                const startDate = document.getElementById('start_date').value;
+
+                const drugInputs = document.querySelectorAll('.drug-name-input');
+                const seenDrugs = new Set();
+                const regex = /^[A-Za-z0-9 ]+$/;
+
+                for (let input of drugInputs) {
+                    const drugName = input.value.trim().toUpperCase();
+
+                    if (!regex.test(drugName)) {
+                        e.preventDefault();
+                        alert("Only letters, numbers, and spaces are allowed in the drug name.");
+                        input.focus();
+                        return;
+                    }
+
+                    if (seenDrugs.has(drugName)) {
+                        e.preventDefault();
+                        alert("Please fill in one medication only");
+                        input.focus();
+                        return;
+                    }
+                    seenDrugs.add(drugName);
+
+                    // Check against existing medications in DB
+                    const isDuplicate = existingMedications.some(m =>
+                        m.flock_id === flockId &&
+                        m.start_date === startDate &&
+                        m.drug_name === drugName
+                    );
+
+                    if (isDuplicate) {
+                        e.preventDefault();
+                        alert("Please fill in one medication only");
+                        input.focus();
+                        return;
+                    }
+                }
+            });
+        }
+
         // Read the 'tab' URL parameter
+
         const urlParams = new URLSearchParams(window.location.search);
         const activeTab = urlParams.get('tab');
 

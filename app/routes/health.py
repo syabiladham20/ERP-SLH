@@ -560,49 +560,97 @@ def register_health_routes(app):
                          if request.form.get('end_date'):
                              e_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
 
-                         inv_id = request.form.get('inventory_item_id')
-                         drug_name = request.form.get('drug_name')
+                         drug_names = request.form.getlist('drug_name[]')
+                         inv_ids = request.form.getlist('inventory_item_id[]')
+                         dosages = request.form.getlist('dosage[]')
+                         amount_used_qtys = request.form.getlist('amount_used_qty[]')
+                         amount_useds = request.form.getlist('amount_used[]')
+                         remarks = request.form.getlist('remarks[]')
 
-                         item = None
-                         if inv_id and inv_id.isdigit():
-                             inv_id = int(inv_id)
-                             item = db.session.get(InventoryItem, inv_id)
-                             if item: drug_name = item.name
-                         else:
-                             inv_id = None
+                         # Backend check for duplicates
+                         seen_drugs = set()
 
-                         qty = 0.0
-                         if request.form.get('amount_used_qty'):
-                             try: qty = float(request.form.get('amount_used_qty'))
-                             except: pass
-
-                         m = Medication(
+                         # Check existing database records
+                         existing_meds = Medication.query.filter_by(
                              flock_id=flock_id_param,
-                             drug_name=drug_name,
-                             inventory_item_id=inv_id,
-                             dosage=request.form.get('dosage'),
-                             amount_used=request.form.get('amount_used'),
-                             amount_used_qty=qty,
-                             start_date=s_date,
-                             end_date=e_date,
-                             remarks=request.form.get('remarks')
-                         )
-                         db.session.add(m)
+                             start_date=s_date
+                         ).all()
+                         existing_drug_names = [m.drug_name.upper() for m in existing_meds]
+                         seen_drugs.update(existing_drug_names)
 
-                         if inv_id and qty > 0 and item:
-                             item.current_stock -= qty
-                             t = InventoryTransaction(
-                                 inventory_item_id=inv_id,
-                                 transaction_type='Usage',
-                                 quantity=qty,
-                                 transaction_date=s_date,
-                                 notes=f'Used in Health Log'
+                         # Backend regex check
+                         import re
+                         valid_name_regex = re.compile(r"^[A-Za-z0-9 ]+$")
+
+                         added_count = 0
+
+                         for i in range(len(drug_names)):
+                             d_name = drug_names[i].strip()
+                             if not d_name:
+                                 continue
+
+                             if not valid_name_regex.match(d_name):
+                                 flash(f"Invalid drug name '{d_name}'. Only letters, numbers, and spaces are allowed.", 'danger')
+                                 continue
+
+                             if d_name.upper() in seen_drugs:
+                                 flash(f"Duplicate medication '{d_name}' found for this house and date. Please fill in one medication only.", 'danger')
+                                 continue
+
+                             seen_drugs.add(d_name.upper())
+
+                             i_id = inv_ids[i] if i < len(inv_ids) else None
+                             dosage = dosages[i] if i < len(dosages) else ''
+                             amount_used_qty_str = amount_used_qtys[i] if i < len(amount_used_qtys) else ''
+                             amount_used = amount_useds[i] if i < len(amount_useds) else ''
+                             remark = remarks[i] if i < len(remarks) else ''
+
+                             item = None
+                             if i_id and i_id.isdigit():
+                                 i_id = int(i_id)
+                                 item = db.session.get(InventoryItem, i_id)
+                                 if item: d_name = item.name
+                             else:
+                                 i_id = None
+
+                             qty = 0.0
+                             if amount_used_qty_str:
+                                 try: qty = float(amount_used_qty_str)
+                                 except: pass
+
+                             m = Medication(
+                                 flock_id=flock_id_param,
+                                 drug_name=d_name,
+                                 inventory_item_id=i_id,
+                                 dosage=dosage,
+                                 amount_used=amount_used,
+                                 amount_used_qty=qty,
+                                 start_date=s_date,
+                                 end_date=e_date,
+                                 remarks=remark
                              )
-                             db.session.add(t)
+                             db.session.add(m)
 
-                         safe_commit()
-                         flash('Medication added.', 'success')
+                             if i_id and qty > 0 and item:
+                                 item.current_stock -= qty
+                                 t = InventoryTransaction(
+                                     inventory_item_id=i_id,
+                                     transaction_type='Usage',
+                                     quantity=qty,
+                                     transaction_date=s_date,
+                                     notes=f'Used in Health Log'
+                                 )
+                                 db.session.add(t)
+
+                             added_count += 1
+
+                         if added_count > 0:
+                             safe_commit()
+                             flash(f'{added_count} Medication(s) added.', 'success')
+                         else:
+                             db.session.rollback()
                      except Exception as e:
+                         db.session.rollback()
                          flash(f'Error adding medication: {str(e)}', 'danger')
 
             updated_count = 0
