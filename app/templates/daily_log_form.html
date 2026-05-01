@@ -784,12 +784,12 @@
         }
 
         let feedFWarning = '';
-        if ((yesterdayFeedF - inFeedF) > 3) {
+        if (inFeedF > 0 && (yesterdayFeedF - inFeedF) > 3) {
              feedFWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 3g</span>';
         }
 
         let feedMWarning = '';
-        if ((yesterdayFeedM - inFeedM) > 3) {
+        if (inFeedM > 0 && (yesterdayFeedM - inFeedM) > 3) {
              feedMWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 3g</span>';
         }
 
