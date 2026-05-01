@@ -1502,6 +1502,18 @@ def register_production_routes(app):
             try:
                 safe_commit()
                 recalculate_flock_inventory(flock.id)
+
+                # Send push alert to admins
+                from app.utils import send_push_alert
+                admins = User.query.filter_by(role='Admin').all()
+                for admin in admins:
+                    send_push_alert(
+                        admin.id,
+                        "Daily Log Updated",
+                        f"House {flock.house.name} has been updated for {date_str}.",
+                        url=url_for('admin_daily_reports_review')
+                    )
+
                 if request.headers.get('Accept') == 'application/json':
                     house_status = check_daily_log_completion(flock.farm_id, log_date)
                     return jsonify({

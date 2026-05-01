@@ -356,6 +356,11 @@
                             <span class="nav-link-title">Admin Panel</span>
                         </a>
                     </li>
+                    <li class="nav-item role-restricted" data-allowed-roles="Admin">
+                        <a class="nav-link text-warning" href="{{ url_for('admin_daily_reports_review') }}">
+                            <span class="nav-link-title">Daily Reports Review</span>
+                        </a>
+                    </li>
                     <li class="nav-item dropdown role-restricted" data-allowed-roles="Admin">
                         <a class="nav-link dropdown-toggle text-warning" href="#" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" >
                             <span class="nav-link-title">Audit Logs</span>
