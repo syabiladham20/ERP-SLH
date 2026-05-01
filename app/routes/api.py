@@ -225,13 +225,16 @@ def register_api_routes(app):
         # Fetch Standards
         all_standards = Standard.query.all()
         std_map_by_week = {s.week: s for s in all_standards}
+        prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
 
         # Attach Standards
         for d in enriched:
-            week = d['week']
-            std = std_map_by_week.get(week)
-            d['std_egg_prod'] = std.std_egg_prod if std and std.std_egg_prod is not None else 0.0
-            d['std_hatching_egg_pct'] = std.std_hatching_egg_pct if std and std.std_hatching_egg_pct is not None else 0.0
+            prod_std = None
+            if d.get('production_week'):
+                prod_std = prod_std_map.get(d['production_week'])
+
+            d['std_egg_prod'] = prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0
+            d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0
             d['std_mortality'] = std_mort
 
         trend_data = []
@@ -1100,6 +1103,15 @@ def register_api_routes(app):
 
         daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
 
+        # Attach Standards
+        all_standards = Standard.query.all()
+        prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+        for d in daily_stats:
+            prod_std = None
+            if d.get('production_week'):
+                prod_std = prod_std_map.get(d['production_week'])
+            d['std_egg_prod'] = prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0
+
         filtered_daily = []
         for d in daily_stats:
             if start_date_str and d['date'] < datetime.strptime(start_date_str, '%Y-%m-%d').date(): continue
@@ -1140,6 +1152,7 @@ def register_api_routes(app):
                 data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
                 data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
                 data['metrics']['egg_prod_pct'].append(round(d['egg_prod_pct'], 2))
+                data['metrics'].setdefault('std_egg_prod', []).append(round(d.get('std_egg_prod', 0.0), 2))
                 data['metrics']['hatch_egg_pct'].append(round(d['hatch_egg_pct'], 2))
                 data['metrics']['bw_f'].append(d['body_weight_female'])
                 data['metrics']['bw_m'].append(d['body_weight_male'])
@@ -1228,6 +1241,7 @@ def register_api_routes(app):
                 data['metrics']['mortality_f_pct'].append(round(mort_f, 2))
                 data['metrics']['mortality_m_pct'].append(round(mort_m, 2))
                 data['metrics']['egg_prod_pct'].append(round(a['egg_prod_pct'], 2))
+                data['metrics'].setdefault('std_egg_prod', []).append(round(a.get('std_egg_prod', 0.0), 2))
                 data['metrics']['hatch_egg_pct'].append(round(a['hatch_egg_pct'], 2))
                 data['metrics']['bw_f'].append(round(a['body_weight_female'], 0))
                 data['metrics']['bw_m'].append(round(a['body_weight_male'], 0))
