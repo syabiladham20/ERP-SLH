@@ -997,7 +997,7 @@ def process_import(file, commit=True, preview=False):
             if has_bw:
                 log.is_weighing_day = True
                 days_diff = (log.date - intake_date).days
-                week_num = 0 if days_diff == 0 else ((days_diff - 1) // 7) + 1 if days_diff > 0 else (days_diff // 7)
+                week_num = calculate_bio_week(intake_date, log.date)
                 if week_num in standard_bw_map:
                     log.standard_bw_male = round_to_whole(standard_bw_map[week_num][0])
                     log.standard_bw_female = round_to_whole(standard_bw_map[week_num][1])
@@ -1592,7 +1592,7 @@ def verify_import_data(flock, logs=None):
     agg = {}
     for log in logs:
         delta = (log.date - flock.intake_date).days
-        week = 0 if delta == 0 else ((delta - 1) // 7) + 1 if delta > 0 else (delta // 7)
+        week = calculate_bio_week(flock.intake_date, log.date)
         if week not in agg:
             agg[week] = {'mort_f': 0, 'eggs': 0}
 

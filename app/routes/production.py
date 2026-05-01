@@ -1,5 +1,5 @@
 from analytics import analyze_health_events, calculate_feed_cleanup_duration
-from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY, get_std_hatch_map
+from metrics import calculate_bio_week, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY, get_std_hatch_map
 from flask import render_template, request, redirect, flash, url_for, session, jsonify
 from flask_login import login_required, current_user
 from app.database import db
@@ -544,9 +544,9 @@ def register_production_routes(app):
 
             # Age
             days_age = (today - f.intake_date).days
-            f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+            f.age_weeks = calculate_bio_week(f.intake_date, today) if days_age > 0 else 0
             f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
-            f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+            f.current_week = f.age_weeks
 
             # Stats
             if daily_stats:

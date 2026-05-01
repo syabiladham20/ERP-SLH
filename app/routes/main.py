@@ -1,5 +1,5 @@
 from app.handlers import APP_VERSION
-from metrics import calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
+from metrics import calculate_bio_week, calculate_metrics, enrich_flock_data, aggregate_weekly_metrics, aggregate_monthly_metrics, METRICS_REGISTRY
 from flask import render_template, request, redirect, flash, url_for, session, send_from_directory
 from flask_login import login_required, current_user
 from app.database import db
@@ -45,9 +45,9 @@ def register_main_routes(app):
 
             # Age
             days_age = (today - f.intake_date).days
-            f.age_weeks = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+            f.age_weeks = calculate_bio_week(f.intake_date, today) if days_age > 0 else 0
             f.age_days = ((days_age - 1) % 7) + 1 if days_age > 0 else 0
-            f.current_week = 0 if days_age == 0 else ((days_age - 1) // 7) + 1 if days_age > 0 else 0
+            f.current_week = f.age_weeks
 
             # Stats
             if daily_stats:

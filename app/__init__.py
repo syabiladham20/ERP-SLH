@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from metrics import calculate_bio_week
 from config import Config
 from app.database import db
 from app.extensions import login_manager, migrate, csrf, limiter, cache
@@ -69,5 +70,11 @@ def create_app(config_class=Config):
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
     app.logger.info('ERP SLH startup')
+
+
+    with app.app_context():
+        @app.context_processor
+        def utility_processor():
+            return dict(calculate_bio_week=calculate_bio_week)
 
     return app
