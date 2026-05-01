@@ -731,6 +731,7 @@ def register_api_routes(app):
         yesterday_mortality_f = yesterday_log.mortality_female if yesterday_log else 0
         yesterday_eggs = yesterday_log.eggs_collected if yesterday_log else 0
         yesterday_water = yesterday_log.water_intake_calculated if yesterday_log else 0
+        yesterday_water_r1 = yesterday_log.water_reading_1 if yesterday_log else 0
 
         # Calculate yesterday's stock for accurate percentage
         y_cum_mort_m = sum((l.mortality_male or 0) + (l.culls_male or 0) for l in all_prev_logs if l.date < (log_date - timedelta(days=1)))
@@ -756,6 +757,7 @@ def register_api_routes(app):
             'yesterday_eggs': yesterday_eggs,
             'yesterday_egg_pct': yesterday_egg_pct,
             'yesterday_water': yesterday_water,
+            'yesterday_water_r1': yesterday_water_r1,
             'flock_age_weeks': flock_age_weeks,
             'yesterday_mortality_m': yesterday_mortality_m,
             'yesterday_mortality_f': yesterday_mortality_f,

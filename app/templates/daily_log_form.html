@@ -387,7 +387,7 @@
                   </div>
 
                   <div id="smartSummaryContainer" class="mt-3">
-                     <!-- Smart Summary content will be injected here via JS -->
+                     <!-- Summary Details content will be injected here via JS -->
                   </div>
 
               </div>
@@ -530,8 +530,11 @@
                 yesterdayMortPctF = data.yesterday_mort_f_pct || 0;
                 yesterdayMortPctM = data.yesterday_mort_m_pct || 0;
                 yesterdayWater = data.yesterday_water || 0;
+                yesterdayWaterR1 = data.yesterday_water_r1 || 0;
                 flockAgeWeeks = data.flock_age_weeks || 0;
                 calculateLiveFeed();
+
+                {% if not log %}
                 if (data.feed_program) document.querySelector('[name="feed_program"]').value = data.feed_program;
                 if (data.feed_code_male_id) document.querySelector('[name="feed_code_male_id"]').value = data.feed_code_male_id;
                 if (data.feed_code_female_id) document.querySelector('[name="feed_code_female_id"]').value = data.feed_code_female_id;
@@ -553,6 +556,7 @@
 
                 let lightOffInput = document.querySelector('[name="light_off_time"]');
                 if (data.light_off_time && lightOffInput.value === '') lightOffInput.value = data.light_off_time;
+                {% endif %}
             })
             .catch(error => console.log(error));
     }
@@ -620,8 +624,8 @@
 
     // Initialize
     window.onload = function() {
+        prefillPreviousData(); // Always call to get global validation state
         {% if not log %}
-        prefillPreviousData();
         fetchLatestLogDate();
         {% endif %}
     };
@@ -634,11 +638,12 @@
     let dayMinus2FeedM = 0;
     let dayMinus2FeedF = 0;
 
-    // Smart Summary Globals
+    // Summary Details Globals
     let yesterdayEggPct = 0;
     let yesterdayMortPctF = 0;
     let yesterdayMortPctM = 0;
     let yesterdayWater = 0;
+    let yesterdayWaterR1 = 0;
     let flockAgeWeeks = 0;
 
 
@@ -724,7 +729,7 @@
             document.getElementById('override_validation').value = 'false';
         }
 
-        // --- SMART SUMMARY LOGIC ---
+        // --- SUMMARY DETAILS LOGIC ---
         let smartSummaryContainer = document.getElementById('smartSummaryContainer');
 
         let elemMortM = document.getElementById('mortality_male');
@@ -748,6 +753,12 @@
         // Water is calculated on the fly, grab it from UI element
         let elemWater = document.getElementById('water_12h');
         let waterVal = elemWater ? elemWater.innerText : '0';
+
+        // Calculate 24h water
+        let r1 = parseFloat(document.getElementsByName('water_reading_1')[0].value) || 0;
+        let r1_real = r1 / 100;
+        let yesterdayR1_real = yesterdayWaterR1 / 100;
+        let water24h = (r1_real - yesterdayR1_real) * 1000;
 
         // Calculations
         let mortPctF = currentStockF > 0 ? (totalMortF / currentStockF) * 100 : 0;
@@ -793,11 +804,16 @@
              feedMWarning = '<span class="badge bg-warning text-dark ms-2">Warning: Drop > 3g</span>';
         }
 
+        let waterWarning = '';
+        if (water24h === 0) {
+            waterWarning = '<span class="badge bg-danger ms-2">CRITICAL: 0 L Consumption</span>';
+        }
+
         // Build HTML
         let html = `
             <div class="card border-0 shadow-none text-start">
                 <div class="card-header bg-light py-2">
-                    <h5 class="card-title mb-0 text-muted">Smart Summary</h5>
+                    <h5 class="card-title mb-0 text-muted">Summary Details</h5>
                 </div>
                 <ul class="list-group list-group-flush small">
                     <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
@@ -831,14 +847,20 @@
                         <div>${eggWarning}</div>
                     </li>
                     <li class="list-group-item px-3 py-2">
-                        <span class="fw-bold">Water Consumption:</span> ${waterVal} L (12h)
+                        <span class="fw-bold">Water Consumption (12h):</span> ${waterVal} L
+                    </li>
+                    <li class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold">Water Consumption (24h):</span> ${water24h.toFixed(2)} L
+                        </div>
+                        <div>${waterWarning}</div>
                     </li>
                 </ul>
             </div>
         `;
 
         smartSummaryContainer.innerHTML = html;
-        // --- END SMART SUMMARY LOGIC ---
+        // --- END SUMMARY DETAILS LOGIC ---
 
         let myModal = new bootstrap.Modal(document.getElementById('updateConfirmModal'));
         myModal.show();
