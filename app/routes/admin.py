@@ -427,6 +427,85 @@ def register_admin_routes(app):
 
         return render_template('standards.html', standards=standards, global_std=global_std)
 
+
+    @app.route('/admin/daily_reports_review', methods=['GET'])
+    @login_required
+    def admin_daily_reports_review():
+        if not current_user.role == 'Admin':
+            flash("Access Denied: Admin View Only.", "danger")
+            return redirect(url_for('index'))
+
+        from sqlalchemy.orm import joinedload
+        from app.metrics import enrich_flock_data, get_std_hatch_map
+        from app.utils import natural_sort_key
+
+        filter_type = request.args.get('filter', 'today')
+
+        today = date.today()
+        if filter_type == '7days':
+            start_date = today - timedelta(days=7)
+        else:
+            start_date = today
+
+        # Get all logs for active flocks to correctly calculate metrics
+        active_flocks = Flock.query.filter_by(status='Active').all()
+        flock_ids = [f.id for f in active_flocks]
+
+        # Fetch all logs for these flocks to ensure correct running totals
+        all_logs = DailyLog.query.options(
+            joinedload(DailyLog.flock).joinedload(Flock.house),
+            joinedload(DailyLog.partition_weights),
+            joinedload(DailyLog.clinical_notes_list)
+        ).filter(DailyLog.flock_id.in_(flock_ids)).order_by(DailyLog.date.asc()).all()
+
+        flock_logs = {}
+        for log in all_logs:
+            if log.flock_id not in flock_logs:
+                flock_logs[log.flock_id] = []
+            flock_logs[log.flock_id].append(log)
+
+        enriched_logs_map = {}
+        for flock_id, logs_for_flock in flock_logs.items():
+            flock = logs_for_flock[0].flock
+            hatch_records = Hatchability.query.filter_by(flock_id=flock_id).order_by(Hatchability.setting_date.desc()).all()
+            enriched_data = enrich_flock_data(flock, logs_for_flock, hatch_records)
+            for ed in enriched_data:
+                enriched_logs_map[ed['log'].id] = ed
+
+        # Map standard data for global standards and standards
+        all_standards = Standard.query.all()
+        prod_std_map = {getattr(s, 'production_week'): s for s in all_standards if hasattr(s, 'production_week') and getattr(s, 'production_week')}
+        std_hatch_map = get_std_hatch_map(all_standards)
+
+        # Filter logs for the target date range and enrich them
+        final_enriched_logs = []
+
+        # Select logs that fall in range
+        logs_in_range = [log for log in all_logs if start_date <= log.date <= today]
+
+        # Sort logs by date descending, then house name ascending
+        logs_in_range.sort(key=lambda log: natural_sort_key(log.flock.house.name if log.flock and log.flock.house else ''))
+        logs_in_range.sort(key=lambda log: log.date, reverse=True)
+
+        for log in logs_in_range:
+            ed = enriched_logs_map.get(log.id)
+            if ed:
+                # Add extra fields to mirror what the template expects
+                prod_std = None
+                if ed.get('production_week'):
+                    prod_std = prod_std_map.get(ed['production_week'])
+                ed['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+                ed['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+                final_enriched_logs.append(ed)
+
+        gs = GlobalStandard.query.first()
+
+        return render_template('admin/daily_reports_review.html',
+                               logs=final_enriched_logs,
+                               filter_type=filter_type,
+                               std_hatch_map=std_hatch_map,
+                               global_std=gs)
+
     @app.route('/admin/project_report')
     @login_required
     def admin_project_report():
