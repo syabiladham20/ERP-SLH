@@ -37,24 +37,9 @@ def register_error_handlers(app):
 
     @app.errorhandler(429)
     def ratelimit_handler(e):
-        # Calculate seconds left
-        seconds_left = 60
-        try:
-            if hasattr(e, 'retry_after') and e.retry_after is not None:
-                seconds_left = int(e.retry_after)
-            elif 'LIMITER_RESET' in request.environ:
-                reset_epoch = float(request.environ['LIMITER_RESET'])
-                seconds_left = max(1, int(reset_epoch - time.time()))
-        except Exception:
-            pass
-
-        # We must carefully check accept headers since browsers send */* or text/html
-        best = request.accept_mimetypes.best_match(['application/json', 'text/html'])
-        if request.path.startswith('/api/') or best == 'application/json' or request.is_json:
-            return jsonify({'error': 'Too Many Requests', 'message': f'Please wait {seconds_left} seconds before trying again.'}), 429
-
-        flash(f"Too many attempts. Please wait {seconds_left} seconds before trying again.", 'warning')
-        return redirect(request.referrer or url_for('auth.login'))
+        if request.path.startswith('/api/'):
+            return jsonify({"error": "Too Many Requests", "message": "Please wait a moment."}), 429
+        return render_template('errors/429.html'), 429
 
 def register_template_filters(app):
     @app.template_filter('basename')
