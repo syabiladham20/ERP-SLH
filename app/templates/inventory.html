@@ -56,9 +56,9 @@
                                         <td>{{ item.min_stock_level }}</td>
                                         <td>
                                             {% if item.current_stock < item.min_stock_level %}
-                                                <span class="badge bg-danger">Low Stock</span>
+                                                <span class="badge bg-danger text-white">Low Stock</span>
                                             {% else %}
-                                                <span class="badge bg-success">OK</span>
+                                                <span class="badge bg-success text-white">OK</span>
                                             {% endif %}
                                         </td>
                                         <td>

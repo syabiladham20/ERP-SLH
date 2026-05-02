@@ -217,7 +217,7 @@
                 {% if item.medications %}
                     <div class="d-flex flex-column gap-1 align-items-start">
                     {% for med in item.medications.split(',') %}
-                        <span class="badge bg-info text-dark text-wrap text-start" style="line-height: 1.2;">{{ med.strip() }}</span>
+                        <span class="badge bg-info text-white text-wrap text-start" style="line-height: 1.2;">{{ med.strip() }}</span>
                     {% endfor %}
                     </div>
                 {% else %}
@@ -820,7 +820,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Health Analytics & Disease Prediction</h3>
         <div>
-            <span class="badge bg-secondary">Experimental Feature</span>
+            <span class="badge bg-secondary text-white">Experimental Feature</span>
         </div>
     </div>
 
@@ -855,7 +855,7 @@
 
                         {% if event.predicted_diseases %}
                             {% for disease in event.predicted_diseases %}
-                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                <span class="badge {{ 'bg-danger text-white' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
                                     {{ disease.name }}
                                 </span>
                             {% endfor %}

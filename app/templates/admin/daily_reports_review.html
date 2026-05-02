@@ -95,11 +95,11 @@
 
                             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                                 {% if item.medications %}
-                                    <div class="d-flex flex-column gap-1 align-items-start">
-                                    {% for med in item.medications.split(',') %}
-                                        <span class="badge bg-info text-dark text-wrap text-start" style="line-height: 1.2;">{{ med.strip() }}</span>
-                                    {% endfor %}
-                                    </div>
+                                  <div class="d-flex flex-column gap-1 align-items-start">
+                                  {% for med in item.medications.split(',') %}
+                                      <span class="badge bg-info text-white text-wrap text-start" style="line-height: 1.2;">{{ med.strip() }}</span>
+                                  {% endfor %}
+                                  </div>
                                 {% else %}
                                     -
                                 {% endif %}

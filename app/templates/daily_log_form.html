@@ -337,7 +337,7 @@
                             <td>
                                 <input type="hidden" name="vaccine_present_ids" value="{{ v.id }}">
                                 {% if v.actual_date %}
-                                    <span class="badge bg-success">Done</span>
+                                    <span class="badge bg-success text-white">Done</span>
                                 {% else %}
                                     <span class="badge bg-warning text-dark">Pending</span>
                                 {% endif %}
@@ -769,7 +769,7 @@
         // Validations
         let mortFWarning = '';
         if (mortPctF > 1.0) {
-            mortFWarning = '<span class="badge bg-danger ms-2">CRITICAL: Abnormal data (possible wrong input)</span>';
+            mortFWarning = '<span class="badge bg-danger text-white ms-2">CRITICAL: Abnormal data (possible wrong input)</span>';
         } else if (mortPctF > 0.05) {
             mortFWarning = '<span class="badge bg-warning text-dark ms-2">Warning: High mortality</span>';
         }
@@ -778,7 +778,7 @@
         // Assuming we apply the same for males? Requirement only mentioned Female explicitly,
         // but we'll add basic check for > 1.0%
         if (mortPctM > 1.0) {
-             mortMWarning = '<span class="badge bg-danger ms-2">CRITICAL: Abnormal data</span>';
+             mortMWarning = '<span class="badge bg-danger text-white ms-2">CRITICAL: Abnormal data</span>';
         }
 
         let eggWarning = '';
@@ -806,7 +806,7 @@
 
         let waterWarning = '';
         if (water24h === 0) {
-            waterWarning = '<span class="badge bg-danger ms-2">CRITICAL: 0 L Consumption</span>';
+            waterWarning = '<span class="badge bg-danger text-white ms-2">CRITICAL: 0 L Consumption</span>';
         }
 
         // Build HTML

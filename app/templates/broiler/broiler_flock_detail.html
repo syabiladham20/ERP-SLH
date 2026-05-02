@@ -22,9 +22,9 @@
                 Intake Date: {{ flock.intake_date.strftime('%Y-%m-%d') if flock.intake_date else 'N/A' }}
                 &bull; Status:
                 {% if flock.is_active %}
-                    <span class="badge bg-success">Active</span>
+                    <span class="badge bg-success text-white">Active</span>
                 {% else %}
-                    <span class="badge bg-secondary">Historical</span>
+                    <span class="badge bg-secondary text-white">Historical</span>
                 {% endif %}
             </div>
         </div>
