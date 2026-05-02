@@ -74,7 +74,10 @@ def register_production_routes(app):
                 prod_std = prod_std_map.get(d['production_week'])
 
             d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+            if d.get('has_cull_eggs'):
+                d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+            else:
+                d['std_hatching_egg_pct'] = None
 
         weekly_stats = aggregate_weekly_metrics(daily_stats)
 
@@ -90,6 +93,7 @@ def register_production_routes(app):
                 prod_std = prod_std_map.get(ws['production_week'])
 
             ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
+
             ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
 
         medications = Medication.query.filter_by(flock_id=id).all()
@@ -1686,7 +1690,10 @@ def register_production_routes(app):
                 prod_std = prod_std_map.get(d['production_week'])
 
             d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+            if d.get('has_cull_eggs'):
+                d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
+            else:
+                d['std_hatching_egg_pct'] = None
             # Add other production standards if needed by template
 
         weekly_stats = aggregate_weekly_metrics(daily_stats)

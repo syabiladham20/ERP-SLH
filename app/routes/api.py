@@ -234,7 +234,12 @@ def register_api_routes(app):
                 prod_std = prod_std_map.get(d['production_week'])
 
             d['std_egg_prod'] = prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0
-            d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0
+
+            if d.get('has_cull_eggs'):
+                d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0
+            else:
+                d['std_hatching_egg_pct'] = None
+
             d['std_mortality'] = std_mort
 
         trend_data = []
