@@ -55,10 +55,10 @@ def upgrade():
                existing_server_default=sa.text('1'))
         batch_op.create_index(batch_op.f('ix_daily_log_feed_code_female_id'), ['feed_code_female_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_daily_log_feed_code_male_id'), ['feed_code_male_id'], unique=False)
-        batch_op.drop_constraint(None, type_='foreignkey')
-        batch_op.drop_column('feed_male')
-        batch_op.drop_column('feed_female')
-        batch_op.drop_column('feed_code_id')
+        # batch_op.drop_constraint(None, type_='foreignkey')
+        # batch_op.drop_column('feed_male')
+        # batch_op.drop_column('feed_female')
+        # batch_op.drop_column('feed_code_id')
 
     with op.batch_alter_table('daily_log_photo', schema=None) as batch_op:
         batch_op.alter_column('version',
