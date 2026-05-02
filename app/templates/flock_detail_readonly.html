@@ -2659,6 +2659,103 @@
 
 
 
+// --- Floating Notes Logic ---
+let activeAddNoteChart = null;
+let allFloatingNotes = [];
+
+function toggleAddNoteMode(chartId) {
+    if (activeAddNoteChart === chartId) {
+        activeAddNoteChart = null;
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-outline-secondary');
+        });
+    } else {
+        if (activeAddNoteChart) {
+            document.querySelectorAll(`button[onclick="toggleAddNoteMode('${activeAddNoteChart}')"]`).forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-secondary');
+            });
+        }
+        activeAddNoteChart = chartId;
+        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-primary');
+        });
+    }
+}
+
+const floatingNotePlugin = {
+    id: 'floatingNoteInteraction',
+    afterEvent(chart, args) {
+        if (args.event.type === 'click') {
+            const chartId = chart.canvas.id;
+
+            if (activeAddNoteChart === chartId) {
+                const xVal = chart.scales.x.getValueForPixel(args.event.x);
+                const yVal = chart.scales.y.getValueForPixel(args.event.y);
+
+                let xLabel = xVal;
+                if (chart.data.labels && chart.data.labels[xVal] !== undefined) {
+                    xLabel = chart.data.labels[xVal];
+                }
+
+                toggleAddNoteMode(chartId); // turn off mode
+
+                const noteText = prompt("Enter note text:");
+                if (noteText && noteText.trim() !== '') {
+                    const payload = {
+                        flock_id: {{ flock.id }},
+                        chart_id: chartId,
+                        x_value: String(xLabel),
+                        y_value: yVal,
+                        content: noteText.trim()
+                    };
+
+                    fetch('{{ url_for("create_floating_note") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            payload.id = res.id;
+                            allFloatingNotes.push(payload);
+                            updateChartAnnotations(chart);
+                        } else {
+                            alert("Failed to save note: " + res.error);
+                        }
+                    });
+                }
+            }
+        }
+    }
+};
+
+Chart.register(floatingNotePlugin);
+
+function updateChartAnnotations(chart) {
+    if (!chart) return;
+    const chartId = chart.canvas.id;
+    const chartNotes = allFloatingNotes.filter(n => n.chart_id === chartId);
+
+    if (!chart.options.plugins) chart.options.plugins = {};
+    if (!chart.options.plugins.annotation) chart.options.plugins.annotation = {};
+    if (!chart.options.plugins.annotation.annotations) chart.options.plugins.annotation.annotations = {};
+
+    const currentAnns = chart.options.plugins.annotation.annotations;
+    const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
+
+    for (const key of Object.keys(newAnnotations)) {
+        if (key.startsWith('note_')) {
+            delete newAnnotations[key];
+        }
+    }
+
+
 });
 
 </script>
