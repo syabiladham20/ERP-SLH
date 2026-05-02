@@ -1,96 +1,91 @@
 from flask import Blueprint, jsonify, request
-from flask_login import login_required, current_user
+from flask_login import login_required
 from app.database import db
-from app.models.models import ChartNote
+from app.models.models import StudioAnnotation
 from app.utils import dept_required
 import logging
 
-presentation_bp = Blueprint('presentation', __name__, url_prefix='/api/notes')
+presentation_bp = Blueprint('presentation', __name__, url_prefix='/api/presentation_studio')
 
 @presentation_bp.route('/<int:flock_id>/<string:chart_identifier>', methods=['GET'])
 @login_required
-def get_notes(flock_id, chart_identifier):
+def get_annotations(flock_id, chart_identifier):
     try:
-        notes = ChartNote.query.filter_by(flock_id=flock_id, chart_identifier=chart_identifier).all()
+        annotations = StudioAnnotation.query.filter_by(
+            flock_id=flock_id,
+            chart_identifier=chart_identifier
+        ).all()
         return jsonify([
             {
-                'id': note.id,
-                'flock_id': note.flock_id,
-                'chart_identifier': note.chart_identifier,
-                'content': note.content,
-                'pos_x': note.pos_x,
-                'pos_y': note.pos_y,
-                'width': note.width,
-                'height': note.height,
-                'created_at': note.created_at.isoformat() if note.created_at else None
-            } for note in notes
+                'id': ann.id,
+                'flock_id': ann.flock_id,
+                'chart_identifier': ann.chart_identifier,
+                'anchor_data_x': ann.anchor_data_x,
+                'anchor_data_y': ann.anchor_data_y,
+                'fabric_json': ann.fabric_json,
+                'created_at': ann.created_at.isoformat() if ann.created_at else None
+            } for ann in annotations
         ])
     except Exception as e:
-        logging.error(f"Error fetching chart notes: {e}")
-        return jsonify({"error": "Failed to fetch notes"}), 500
+        logging.error(f"Error fetching studio annotations: {e}")
+        return jsonify({"error": "Failed to fetch annotations"}), 500
 
 @presentation_bp.route('/create', methods=['POST'])
 @login_required
-@dept_required('Admin')
-def create_note():
+@dept_required(['Admin', 'Farm', 'Management'])
+def create_annotation():
     data = request.get_json()
-    if not data or 'flock_id' not in data or 'chart_identifier' not in data or 'content' not in data:
+    if not data or 'flock_id' not in data or 'chart_identifier' not in data or 'anchor_data_x' not in data or 'anchor_data_y' not in data or 'fabric_json' not in data:
         return jsonify({"error": "Missing required fields"}), 400
     try:
-        new_note = ChartNote(
+        new_annotation = StudioAnnotation(
             flock_id=data['flock_id'],
             chart_identifier=data['chart_identifier'],
-            content=data['content'],
-            pos_x=data.get('pos_x', 0.0),
-            pos_y=data.get('pos_y', 0.0),
-            width=data.get('width', 100.0),
-            height=data.get('height', 100.0)
+            anchor_data_x=str(data['anchor_data_x']),
+            anchor_data_y=float(data['anchor_data_y']),
+            fabric_json=data['fabric_json']
         )
-        db.session.add(new_note)
+        db.session.add(new_annotation)
         db.session.commit()
-        return jsonify({"message": "Note created successfully", "id": new_note.id}), 201
+        return jsonify({"message": "Annotation created successfully", "id": new_annotation.id}), 201
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error creating chart note: {e}")
-        return jsonify({"error": "Failed to create note"}), 500
+        logging.error(f"Error creating studio annotation: {e}")
+        return jsonify({"error": "Failed to create annotation"}), 500
 
-@presentation_bp.route('/update/<int:note_id>', methods=['PUT'])
+@presentation_bp.route('/update/<int:annotation_id>', methods=['PUT'])
 @login_required
-@dept_required('Admin')
-def update_note(note_id):
+@dept_required(['Admin', 'Farm', 'Management'])
+def update_annotation(annotation_id):
     data = request.get_json()
     if not data:
         return jsonify({"error": "Missing request body"}), 400
     try:
-        note = ChartNote.query.get_or_404(note_id)
-        if 'content' in data:
-            note.content = data['content']
-        if 'pos_x' in data:
-            note.pos_x = data['pos_x']
-        if 'pos_y' in data:
-            note.pos_y = data['pos_y']
-        if 'width' in data:
-            note.width = data['width']
-        if 'height' in data:
-            note.height = data['height']
+        annotation = StudioAnnotation.query.get_or_404(annotation_id)
+        if 'anchor_data_x' in data:
+            annotation.anchor_data_x = str(data['anchor_data_x'])
+        if 'anchor_data_y' in data:
+            annotation.anchor_data_y = float(data['anchor_data_y'])
+        if 'fabric_json' in data:
+            annotation.fabric_json = data['fabric_json']
 
         db.session.commit()
-        return jsonify({"message": "Note updated successfully"})
+        return jsonify({"message": "Annotation updated successfully"})
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error updating chart note: {e}")
-        return jsonify({"error": "Failed to update note"}), 500
+        logging.error(f"Error updating studio annotation: {e}")
+        return jsonify({"error": "Failed to update annotation"}), 500
 
-@presentation_bp.route('/delete/<int:note_id>', methods=['DELETE'])
+@presentation_bp.route('/delete/<int:annotation_id>', methods=['DELETE'])
 @login_required
-@dept_required('Admin')
-def delete_note(note_id):
+@dept_required(['Admin', 'Farm', 'Management'])
+def delete_annotation(annotation_id):
     try:
-        note = ChartNote.query.get_or_404(note_id)
-        db.session.delete(note)
+        annotation = StudioAnnotation.query.get_or_404(annotation_id)
+        db.session.delete(annotation)
         db.session.commit()
-        return jsonify({"message": "Note deleted successfully"})
+        return jsonify({"message": "Annotation deleted successfully"})
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error deleting chart note: {e}")
-        return jsonify({"error": "Failed to delete note"}), 500
+        logging.error(f"Error deleting studio annotation: {e}")
+        return jsonify({"error": "Failed to delete annotation"}), 500

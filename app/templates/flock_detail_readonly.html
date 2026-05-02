@@ -2755,73 +2755,7 @@ function updateChartAnnotations(chart) {
         }
     }
 
-    chartNotes.forEach(note => {
-        newAnnotations['note_' + note.id] = {
-            type: 'label',
-            xValue: note.x_value,
-            yValue: note.y_value,
-            content: note.content,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            color: 'black',
-            borderWidth: 0,
-            borderRadius: 4,
-            padding: 4,
-            font: { size: 12 },
-            callout: { display: false },
-            click: function(ctx) {
-                if (activeAddNoteChart) return;
-                if (confirm('Delete this note: "' + note.content + '"?')) {
-                    fetch('{{ url_for("delete_floating_note", note_id=0) }}'.replace('0', note.id), { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success) {
-                            allFloatingNotes = allFloatingNotes.filter(n => n.id !== note.id);
-                            updateChartAnnotations(chart);
-                        } else {
-                            alert("Failed to delete note.");
-                        }
-                    });
-                }
-            }
-        };
-    });
 
-    chart.options.plugins.annotation.annotations = newAnnotations;
-    chart.update();
-}
-
-function fetchAndApplyFloatingNotes() {
-    fetch('{{ url_for("get_floating_notes", flock_id=flock.id) }}')
-    .then(r => {
-        if (!r.ok || r.redirected) {
-            console.error("Failed to fetch floating notes");
-            return [];
-        }
-        return r.json().catch(() => {
-            console.error("Failed to fetch floating notes");
-            return [];
-        });
-    })    .then(data => {
-        allFloatingNotes = data;
-        const chartsToUpdate = [];
-        if (typeof generalChartInstance !== 'undefined') chartsToUpdate.push(generalChartInstance);
-        if (typeof waterChartInstance !== 'undefined') chartsToUpdate.push(waterChartInstance);
-        if (typeof feedChartInstance !== 'undefined') chartsToUpdate.push(feedChartInstance);
-        if (typeof maleChartInstance !== 'undefined') chartsToUpdate.push(maleChartInstance);
-        if (typeof femaleChartInstance !== 'undefined') chartsToUpdate.push(femaleChartInstance);
-        if (typeof weeklyPerformanceChartInstance !== 'undefined') chartsToUpdate.push(weeklyPerformanceChartInstance);
-        if (typeof hatchingEggChartInstance !== 'undefined') chartsToUpdate.push(hatchingEggChartInstance);
-        if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
-        if (typeof hatchChartInstance !== 'undefined') chartsToUpdate.push(hatchChartInstance);
-
-        chartsToUpdate.forEach(c => {
-            if (c) updateChartAnnotations(c);
-        });
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(fetchAndApplyFloatingNotes, 1500);
 });
 
 </script>

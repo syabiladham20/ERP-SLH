@@ -1,0 +1,391 @@
+{% extends 'base_tabler.html' %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <div class="page-pretitle">Presentation Studio</div>
+                <h2 class="page-title">
+                    {{ flock.flock_id }} - {{ flock.house.name }}
+                </h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <div class="btn-list">
+                    <a href="{{ url_for('view_flock', id=flock.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i> Back to Flock
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Studio Toolbar</h3>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" id="addTextBtn"><i class="fas fa-font"></i> Add Text</button>
+                    <button class="btn btn-sm btn-outline-primary" id="addArrowBtn"><i class="fas fa-long-arrow-alt-right"></i> Add Arrow</button>
+                    <button class="btn btn-sm btn-outline-primary" id="addRectBtn"><i class="fas fa-square"></i> Add Rect</button>
+                    <button class="btn btn-sm btn-danger d-none" id="deleteSelectedBtn"><i class="fas fa-trash"></i> Delete Selected</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="text-muted small">Select a shape to drag, resize, rotate, or delete it. Saving happens automatically. Double click text to edit.</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">General Performance Chart</h3>
+            </div>
+            <div class="card-body">
+                <div id="chartContainer" style="position: relative; width: 100%; height: 500px;">
+                    <canvas id="generalChart" style="position: absolute; top: 0; left: 0; z-index: 1;"></canvas>
+                    <canvas id="fabricCanvas" style="position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script>
+    const FLOCK_ID = {{ flock.id }};
+    const CHART_IDENTIFIER = 'generalChart';
+
+    let chartInstance = null;
+    let canvas = null;
+    let annotationsMap = new Map(); // Map annotation DB ID -> fabric object
+    let objectToDbIdMap = new Map(); // Map fabric object -> DB ID
+
+    // UI Elements
+    const addTextBtn = document.getElementById('addTextBtn');
+    const addArrowBtn = document.getElementById('addArrowBtn');
+    const addRectBtn = document.getElementById('addRectBtn');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+    // Fetch CSRF Token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Chart.js init mock data since we need actual data
+    document.addEventListener('DOMContentLoaded', () => {
+        initChartJs();
+    });
+
+    function initChartJs() {
+        // Fetch real chart data from the same endpoint used in dashboard
+        fetch(`/api/chart_data/${FLOCK_ID}?mode=daily`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('generalChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.dates,
+                        datasets: [
+                            {
+                                label: 'Egg Production %',
+                                data: data.metrics.egg_prod_pct,
+                                borderColor: 'blue',
+                                yAxisID: 'y',
+                            },
+                            {
+                                label: 'Mortality %',
+                                data: data.metrics.mortality_m,
+                                borderColor: 'red',
+                                type: 'bar',
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            onComplete: () => {
+                                // Once chart is rendered, initialize/sync FabricJS
+                                if (!canvas) {
+                                    initFabricJs();
+                                } else {
+                                    syncDataToPixels();
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error("Error fetching chart data:", error));
+    }
+
+    function initFabricJs() {
+        const chartCanvas = document.getElementById('generalChart');
+        const fabricCanvasEl = document.getElementById('fabricCanvas');
+
+        // Match fabric canvas size to chart canvas
+        fabricCanvasEl.width = chartCanvas.width;
+        fabricCanvasEl.height = chartCanvas.height;
+
+        canvas = new fabric.Canvas('fabricCanvas');
+        // Let fabric handle pointer events when objects are present
+        fabricCanvasEl.style.pointerEvents = 'auto';
+
+        // Load existing annotations from server
+        loadAnnotations();
+
+        // Handle window resize to re-sync coordinates
+        window.addEventListener('resize', () => {
+            if (chartInstance && canvas) {
+                setTimeout(() => {
+                    canvas.setWidth(chartCanvas.width);
+                    canvas.setHeight(chartCanvas.height);
+                    syncDataToPixels();
+                }, 300); // Wait for chart resize
+            }
+        });
+
+        setupToolbar();
+        setupCanvasEvents();
+    }
+
+    function loadAnnotations() {
+        fetch(`/api/presentation_studio/${FLOCK_ID}/${CHART_IDENTIFIER}`)
+            .then(response => response.json())
+            .then(annotations => {
+                annotations.forEach(ann => {
+                    fabric.util.enlivenObjects([JSON.parse(ann.fabric_json)], function(objects) {
+                        const obj = objects[0];
+                        obj.set({
+                            hasControls: true,
+                            hasBorders: true
+                        });
+
+                        // Store the DB anchor data on the object itself for reference
+                        obj.anchor_data_x = ann.anchor_data_x;
+                        obj.anchor_data_y = ann.anchor_data_y;
+
+                        annotationsMap.set(ann.id, obj);
+                        objectToDbIdMap.set(obj, ann.id);
+
+                        canvas.add(obj);
+                        syncObjectPosition(obj);
+                    });
+                });
+                canvas.renderAll();
+            })
+            .catch(error => console.error("Error loading annotations:", error));
+    }
+
+    function syncDataToPixels() {
+        if (!chartInstance || !canvas) return;
+
+        // Iterate over all fabric objects and update their position based on their anchor data
+        canvas.getObjects().forEach(obj => {
+            syncObjectPosition(obj);
+        });
+        canvas.renderAll();
+    }
+
+    function syncObjectPosition(obj) {
+        if (!obj.anchor_data_x || obj.anchor_data_y === undefined) return;
+
+        const xScale = chartInstance.scales.x;
+        const yScale = chartInstance.scales.y; // Use main Y axis for syncing height
+
+        const pxX = xScale.getPixelForValue(obj.anchor_data_x);
+        const pxY = yScale.getPixelForValue(obj.anchor_data_y);
+
+        if (pxX !== undefined && pxY !== undefined) {
+            obj.set({
+                left: pxX,
+                top: pxY
+            });
+            obj.setCoords();
+        }
+    }
+
+    function saveOrUpdateObject(obj) {
+        if (!chartInstance) return;
+
+        const xScale = chartInstance.scales.x;
+        const yScale = chartInstance.scales.y;
+
+        // Get the value corresponding to the current pixel center
+        const dataX = xScale.getValueForPixel(obj.left);
+        const dataY = yScale.getValueForPixel(obj.top);
+
+        // Update anchor info on the object
+        obj.anchor_data_x = dataX;
+        obj.anchor_data_y = dataY;
+
+        const payload = {
+            flock_id: FLOCK_ID,
+            chart_identifier: CHART_IDENTIFIER,
+            anchor_data_x: dataX,
+            anchor_data_y: dataY,
+            fabric_json: JSON.stringify(obj.toJSON())
+        };
+
+        const dbId = objectToDbIdMap.get(obj);
+
+        if (dbId) {
+            // Update
+            fetch(`/api/presentation_studio/update/${dbId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(payload)
+            }).catch(e => console.error("Update failed", e));
+        } else {
+            // Create
+            fetch('/api/presentation_studio/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.id) {
+                    objectToDbIdMap.set(obj, res.id);
+                    annotationsMap.set(res.id, obj);
+                }
+            })
+            .catch(e => console.error("Create failed", e));
+        }
+    }
+
+    function setupCanvasEvents() {
+        canvas.on('object:modified', function(e) {
+            if (e.target) {
+                saveOrUpdateObject(e.target);
+            }
+        });
+
+        canvas.on('selection:created', toggleDeleteBtn);
+        canvas.on('selection:updated', toggleDeleteBtn);
+        canvas.on('selection:cleared', toggleDeleteBtn);
+
+        // Double click to edit text
+        canvas.on('mouse:dblclick', function(e) {
+            if (e.target && e.target.type === 'i-text') {
+                e.target.enterEditing();
+                e.target.selectAll();
+            }
+        });
+    }
+
+    function toggleDeleteBtn() {
+        const activeObj = canvas.getActiveObject();
+        if (activeObj) {
+            deleteSelectedBtn.classList.remove('d-none');
+        } else {
+            deleteSelectedBtn.classList.add('d-none');
+        }
+    }
+
+    function setupToolbar() {
+        addTextBtn.addEventListener('click', () => {
+            const text = new fabric.IText('New Text', {
+                left: chartInstance.chartArea ? chartInstance.chartArea.left + 50 : 100,
+                top: chartInstance.chartArea ? chartInstance.chartArea.top + 50 : 100,
+                fontFamily: 'Arial',
+                fill: '#000',
+                fontSize: 20
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            saveOrUpdateObject(text);
+        });
+
+        addArrowBtn.addEventListener('click', () => {
+            // Create a simple arrow using a line and a triangle
+            const line = new fabric.Line([0, 0, 100, 0], {
+                stroke: 'red',
+                strokeWidth: 3
+            });
+            const triangle = new fabric.Triangle({
+                width: 15,
+                height: 15,
+                fill: 'red',
+                left: 100,
+                top: 0,
+                originX: 'center',
+                originY: 'center',
+                angle: 90
+            });
+
+            const group = new fabric.Group([line, triangle], {
+                left: chartInstance.chartArea ? chartInstance.chartArea.left + 50 : 100,
+                top: chartInstance.chartArea ? chartInstance.chartArea.top + 50 : 100,
+            });
+
+            canvas.add(group);
+            canvas.setActiveObject(group);
+            saveOrUpdateObject(group);
+        });
+
+        addRectBtn.addEventListener('click', () => {
+            const rect = new fabric.Rect({
+                left: chartInstance.chartArea ? chartInstance.chartArea.left + 50 : 100,
+                top: chartInstance.chartArea ? chartInstance.chartArea.top + 50 : 100,
+                fill: 'rgba(0,0,255,0.3)',
+                width: 100,
+                height: 50,
+                stroke: 'blue',
+                strokeWidth: 2
+            });
+            canvas.add(rect);
+            canvas.setActiveObject(rect);
+            saveOrUpdateObject(rect);
+        });
+
+        deleteSelectedBtn.addEventListener('click', () => {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                const dbId = objectToDbIdMap.get(activeObj);
+                if (dbId) {
+                    fetch(`/api/presentation_studio/delete/${dbId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    }).then(() => {
+                        objectToDbIdMap.delete(activeObj);
+                        annotationsMap.delete(dbId);
+                        canvas.remove(activeObj);
+                    }).catch(e => console.error("Delete failed", e));
+                } else {
+                    canvas.remove(activeObj);
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
