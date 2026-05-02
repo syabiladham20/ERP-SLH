@@ -368,3 +368,141 @@ def register_hatchery_routes(app):
         avg_hatch_pct = (total_hatched / total_set * 100) if total_set > 0 else 0.0
 
         return render_template('hatchery_dashboard.html', active_flocks=active_flocks, avg_hatch_pct=avg_hatch_pct, current_month=today.strftime('%B %Y'))
+
+    @app.route('/hatchery/inventory')
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory():
+        # Masterlist
+        items = InventoryItem.query.filter_by(location='Hatchery').order_by(InventoryItem.name).all()
+
+        # Movement Logs
+        transactions = InventoryTransaction.query.join(InventoryItem).filter(
+            InventoryTransaction.location == 'Hatchery'
+        ).order_by(InventoryTransaction.transaction_date.desc(), InventoryTransaction.id.desc()).limit(100).all()
+
+        # Usage Summary
+        today = date.today()
+        start_of_month = date(today.year, today.month, 1)
+
+        month_str = request.args.get('month', str(today.month))
+        year_str = request.args.get('year', str(today.year))
+
+        try:
+            filter_month = int(month_str)
+            filter_year = int(year_str)
+            start_date = date(filter_year, filter_month, 1)
+            if filter_month == 12:
+                end_date = date(filter_year + 1, 1, 1)
+            else:
+                end_date = date(filter_year, filter_month + 1, 1)
+        except ValueError:
+            filter_month = today.month
+            filter_year = today.year
+            start_date = date(today.year, today.month, 1)
+            if today.month == 12:
+                end_date = date(today.year + 1, 1, 1)
+            else:
+                end_date = date(today.year, today.month + 1, 1)
+
+        month_txs = InventoryTransaction.query.join(InventoryItem).filter(
+            InventoryTransaction.location == 'Hatchery',
+            InventoryTransaction.transaction_date >= start_date,
+            InventoryTransaction.transaction_date < end_date
+        ).all()
+
+        summary_map = {}
+        for t in month_txs:
+            if t.inventory_item_id not in summary_map:
+                summary_map[t.inventory_item_id] = {'purchase': 0, 'usage': 0, 'waste': 0}
+
+            type_key = t.classification.lower() if t.classification else t.transaction_type.lower()
+            if type_key in summary_map[t.inventory_item_id]:
+                summary_map[t.inventory_item_id][type_key] += t.quantity
+
+        summary_list = []
+        for item in items:
+            if item.id in summary_map:
+                summary_list.append({
+                    'item': item,
+                    'purchase': summary_map[item.id]['purchase'],
+                    'usage': summary_map[item.id]['usage'],
+                    'waste': summary_map[item.id]['waste']
+                })
+
+        months = [(i, calendar.month_name[i]) for i in range(1, 13)]
+        years = range(today.year - 5, today.year + 1)
+
+        return render_template(
+            'hatchery_inventory.html',
+            items=items,
+            transactions=transactions,
+            summary=summary_list,
+            current_month=start_date.strftime('%B %Y'),
+            today=today,
+            filter_month=filter_month,
+            filter_year=filter_year,
+            months=months,
+            years=years
+        )
+
+    @app.route('/hatchery/api/inventory/<int:item_id>/balance')
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_balance(item_id):
+        item = InventoryItem.query.filter_by(id=item_id, location='Hatchery').first_or_404()
+
+        transactions = InventoryTransaction.query.filter_by(inventory_item_id=item_id, location='Hatchery').all()
+
+        balance = 0.0
+        for t in transactions:
+            if t.transaction_type == 'In':
+                balance += t.quantity
+            elif t.transaction_type == 'Out':
+                balance -= t.quantity
+
+        return jsonify({'balance': balance, 'unit': item.unit_of_measurement or item.unit})
+
+    @app.route('/hatchery/inventory/item/add', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_item_add():
+        name = request.form.get('name')
+        category = request.form.get('category')
+        unit = request.form.get('unit')
+        batch_number = request.form.get('batch_number')
+        expiry_date_str = request.form.get('expiry_date')
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date() if expiry_date_str else None
+
+        if not name or not unit:
+            flash('Name and Unit are required.', 'danger')
+            return redirect(url_for('hatchery_inventory'))
+
+        item = InventoryItem(name=name, category=category, unit=unit, unit_of_measurement=unit, batch_number=batch_number, expiry_date=expiry_date, location='Hatchery', type='Vaccine')
+        db.session.add(item)
+        safe_commit()
+        flash(f'Added {name} to Hatchery Masterlist.', 'success')
+        return redirect(url_for('hatchery_inventory'))
+
+    @app.route('/hatchery/inventory/transaction/add', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_transaction_add():
+        item_id = request.form.get('inventory_item_id')
+        date_str = request.form.get('transaction_date')
+        movement_type = request.form.get('movement_type') # 'In' or 'Out'
+        classification = request.form.get('classification')
+        quantity = float(request.form.get('quantity') or 0.0)
+        remarks = request.form.get('remarks')
+
+        tx_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date.today()
+
+        if quantity <= 0:
+            flash('Quantity must be positive.', 'danger')
+            return redirect(url_for('hatchery_inventory'))
+
+        tx = InventoryTransaction(inventory_item_id=item_id, transaction_type=movement_type, classification=classification, quantity=quantity, transaction_date=tx_date, notes=remarks, location='Hatchery')
+        db.session.add(tx)
+        safe_commit()
+        flash('Movement recorded.', 'success')
+        return redirect(url_for('hatchery_inventory'))
