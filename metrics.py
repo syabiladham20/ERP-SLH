@@ -148,6 +148,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
     sorted_logs = sorted(logs, key=lambda x: x.date)
 
     current_phase = 'Brooding'
+    has_cull_eggs = False
 
     for log in sorted_logs:
         # --- A. Phase Switch Logic ---
@@ -217,6 +218,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         total_cull_eggs = jumbo + small + crack + abnormal
         hatch_eggs = eggs - total_cull_eggs
 
+        if total_cull_eggs > 0:
+            has_cull_eggs = True
+
         # Cumulatives (Add today's loss)
         cum_mort_m += mort_m
         cum_mort_f += mort_f
@@ -226,10 +230,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         bio_week = calculate_bio_week(flock.intake_date, log.date)
         prod_week = None
         if flock.start_of_lay_date:
-            start_days = (flock.start_of_lay_date - flock.intake_date).days
-            start_bio_week = calculate_bio_week(flock.intake_date, flock.start_of_lay_date)
-            if bio_week >= start_bio_week:
-                prod_week = bio_week - start_bio_week + 1
+            if log.date >= flock.start_of_lay_date:
+                prod_days = (log.date - flock.start_of_lay_date).days
+                prod_week = (prod_days // 7) + 1
 
         # Metrics Dict
         d = {
@@ -271,6 +274,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'cull_eggs_crack': crack,
             'cull_eggs_abnormal': abnormal,
             'cull_eggs_total': total_cull_eggs,
+            'has_cull_eggs': has_cull_eggs,
 
             # Submission Status
             'is_daily_entry_submitted': log.is_daily_entry_submitted,
