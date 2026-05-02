@@ -1,3 +1,4 @@
+from metrics import calculate_bio_week
 from flask import render_template, request, redirect, flash, url_for, session, jsonify
 from flask_login import login_required, current_user
 from app.database import db
@@ -20,7 +21,6 @@ def register_health_routes(app):
         EMPTY_NOTE_VALUES,
     )
     from app.utils import safe_commit, send_push_alert, dept_required, natural_sort_key, round_to_whole
-    from metrics import calculate_bio_week
     from app.services.data_service import get_flock_stock_history, get_flock_stock_history_bulk, calculate_grading_stats
     from app.services.seed_service import initialize_vaccine_schedule
 
@@ -99,7 +99,7 @@ def register_health_routes(app):
                 house_name = log.flock.house.name if log.flock and log.flock.house else "Unknown House"
                 age_week = 0
                 if log.flock and log.flock.intake_date:
-                    age_week = (log.date - log.flock.intake_date).days // 7
+                    age_week = calculate_bio_week(log.flock.intake_date, log.date)
 
                 title = "SLH-OP: Weight Entry"
                 body = f"{house_name}: Week {age_week} Bodyweight updated."
@@ -705,7 +705,7 @@ def register_health_routes(app):
         active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
         for f in active_flocks:
             days = (today - f.intake_date).days
-            f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+            f.current_week = calculate_bio_week(f.intake_date, today) if days >= 0 else 0
 
         flock_tasks = {}
         target_flocks = [f for f in active_flocks if str(f.id) == selected_flock_id] if selected_flock_id else active_flocks
@@ -781,7 +781,7 @@ def register_health_routes(app):
                 elif date_changed:
                     s.scheduled_date = new_date
                     diff = (new_date - s.flock.intake_date).days
-                    s.age_week = 0 if diff == 0 else ((diff - 1) // 7) + 1 if diff > 0 else (diff // 7)
+                    s.age_week = calculate_bio_week(s.flock.intake_date, s.scheduled_date)
                     updated_count += 1
 
                 actual_str = request.form.get(f's_actual_date_{sid}')
@@ -828,7 +828,7 @@ def register_health_routes(app):
         active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
         for f in active_flocks:
             days = (today - f.intake_date).days
-            f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+            f.current_week = calculate_bio_week(f.intake_date, today) if days >= 0 else 0
         flock_ids = [f.id for f in active_flocks]
 
         sampling_events_by_date = {}
@@ -991,7 +991,7 @@ def register_health_routes(app):
         active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
         for f in active_flocks:
             days = (today - f.intake_date).days
-            f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+            f.current_week = calculate_bio_week(f.intake_date, today) if days >= 0 else 0
         flock_ids = [f.id for f in active_flocks]
 
         vaccine_events_by_date = {}
@@ -1000,7 +1000,7 @@ def register_health_routes(app):
             d = v.est_date
             if d not in vaccine_events_by_date: vaccine_events_by_date[d] = []
             age_days = (d - v.flock.intake_date).days
-            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            age_week = calculate_bio_week(v.flock.intake_date, d)
             vaccine_events_by_date[d].append({'type': 'Vaccine', 'obj': v, 'flock': v.flock, 'age': age_week})
 
         flock_tasks = {}

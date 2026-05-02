@@ -13,6 +13,7 @@ def register_hatchery_routes(app):
     from app.constants import (
         FARM_HATCHERY_ADMIN_MGMT_DEPTS, FARM_HATCHERY_ADMIN_DEPTS,
     )
+    from metrics import calculate_bio_week
     from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key
     from app.services.data_service import calculate_male_ratio, process_hatchability_import
 
@@ -184,7 +185,7 @@ def register_hatchery_routes(app):
 
         for r in records:
             age_days = (r.setting_date - flock.intake_date).days
-            week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            week = calculate_bio_week(flock.intake_date, r.setting_date)
 
             if week not in weekly_agg:
                 weekly_agg[week] = {
@@ -352,7 +353,7 @@ def register_hatchery_routes(app):
         today = date.today()
         for f in active_flocks:
             days = (today - f.intake_date).days
-            f.current_week = 0 if days == 0 else ((days - 1) // 7) + 1 if days > 0 else 0
+            f.current_week = calculate_bio_week(f.intake_date, today) if days >= 0 else 0
 
         # Analytics: Current Month Hatchability (based on Hatch Date)
         start_month = date(today.year, today.month, 1)

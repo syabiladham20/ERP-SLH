@@ -427,7 +427,7 @@
             <tr>
                 <td>{{ r.setting_date | date_fmt }}</td>
                 <td>{{ r.hatching_date | date_fmt }}</td>
-                <td>{{ ((r.setting_date - flock.intake_date).days // 7) + 1 }}</td>
+                <td>{{ calculate_bio_week(flock.intake_date, r.setting_date) }}</td>
                 <td>{{ "{:,}".format(r.egg_set) }}</td>
                 <td>{{ "{:,}".format(r.hatched_chicks) }}</td>
                 <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>

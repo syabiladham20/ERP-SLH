@@ -264,14 +264,13 @@ class DailyLog(VersionedMixin, db.Model):
     @property
     def age_week_day(self):
         delta = (self.date - self.flock.intake_date).days
-        if delta == 0:
+        if delta <= 0:
             return "0.0"
-        elif delta > 0:
-            weeks = ((delta - 1) // 7) + 1
-            days = ((delta - 1) % 7) + 1
-            return f"{weeks}.{days}"
-        else:
-            return "0.0"
+        from metrics import calculate_bio_week
+        weeks = calculate_bio_week(self.flock.intake_date, self.date)
+        days = ((delta - 1) % 7) + 1
+        return f"{weeks}.{days}"
+
 
 class ChartNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)

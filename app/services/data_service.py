@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 from app.database import db
 from app.models.models import Flock, DailyLog, Standard, Hatchability, ClinicalNote, UserActivityLog, User, House, ImportedWeeklyBenchmark, PartitionWeight, NotificationRule, GlobalStandard, Hatchability, DailyLogPhoto
 from app.utils import round_to_whole, safe_commit, natural_sort_key, log_user_activity, save_note_photos, send_push_alert
-from metrics import enrich_flock_data
+from metrics import enrich_flock_data, calculate_bio_week
 
 def get_flock_stock_history(flock_id):
     """
@@ -354,7 +354,7 @@ def calculate_flock_summary(flock, daily_stats):
 
 def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week):
     spreadsheet_data = []
-    from metrics import enrich_flock_data
+    from metrics import enrich_flock_data, calculate_bio_week
     from app.models.models import FeedCode
     flock_logs = [l for l in logs]
     enriched = enrich_flock_data(flock, flock_logs)
@@ -997,7 +997,7 @@ def process_import(file, commit=True, preview=False):
             if has_bw:
                 log.is_weighing_day = True
                 days_diff = (log.date - intake_date).days
-                week_num = 0 if days_diff == 0 else ((days_diff - 1) // 7) + 1 if days_diff > 0 else (days_diff // 7)
+                week_num = calculate_bio_week(intake_date, log.date)
                 if week_num in standard_bw_map:
                     log.standard_bw_male = round_to_whole(standard_bw_map[week_num][0])
                     log.standard_bw_female = round_to_whole(standard_bw_map[week_num][1])
@@ -1592,7 +1592,7 @@ def verify_import_data(flock, logs=None):
     agg = {}
     for log in logs:
         delta = (log.date - flock.intake_date).days
-        week = 0 if delta == 0 else ((delta - 1) // 7) + 1 if delta > 0 else (delta // 7)
+        week = calculate_bio_week(flock.intake_date, log.date)
         if week not in agg:
             agg[week] = {'mort_f': 0, 'eggs': 0}
 
@@ -1793,8 +1793,7 @@ def get_weekly_data_aggregated(flocks):
             if not flock: continue
 
             # Age Calculation (at end of week)
-            age_days = (w_data['end_date'] - flock.intake_date).days
-            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            age_week = calculate_bio_week(flock.intake_date, w_data['end_date'])
             if age_week < 0: age_week = 0
 
             # Standards
@@ -1803,11 +1802,10 @@ def get_weekly_data_aggregated(flocks):
             # Production Standard Lookup
             std_prod = None
             if flock.start_of_lay_date:
-                start_days = (flock.start_of_lay_date - flock.intake_date).days
-                start_bio_week = 0 if start_days == 0 else ((start_days - 1) // 7) + 1 if start_days > 0 else (start_days // 7)
+                start_bio_week = calculate_bio_week(flock.intake_date, flock.start_of_lay_date)
                 if age_week >= start_bio_week:
                     current_prod_week = age_week - start_bio_week + 1
-                    std_prod = prod_std_map.get(current_prod_week)
+                    std_prod = prod_std_map.get(int(current_prod_week))
 
             # Stock Calculation
             # Use stock at start of week
@@ -2387,8 +2385,7 @@ def get_hatchery_analytics():
 
         total_forecast = 0
         for r in next_records:
-            age_days = (next_hatch_date_query - r.flock.intake_date).days
-            age_week = 0 if age_days == 0 else ((age_days - 1) // 7) + 1 if age_days > 0 else (age_days // 7)
+            age_week = calculate_bio_week(r.flock.intake_date, next_hatch_date_query)
             std_hatch = std_map.get(age_week)
             if std_hatch is None: std_hatch = 0.0
             forecast = r.egg_set * (std_hatch / 100.0)
