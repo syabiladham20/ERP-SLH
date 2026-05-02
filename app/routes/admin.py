@@ -436,7 +436,7 @@ def register_admin_routes(app):
             return redirect(url_for('index'))
 
         from sqlalchemy.orm import joinedload
-        from app.metrics import enrich_flock_data, get_std_hatch_map
+        from metrics import enrich_flock_data, get_std_hatch_map
         from app.utils import natural_sort_key
 
         filter_type = request.args.get('filter', 'today')

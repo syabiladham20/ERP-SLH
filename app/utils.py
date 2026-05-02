@@ -160,10 +160,11 @@ def send_push_alert(user_id, title, body, url=None, transient=False):
             success_count += 1
         except WebPushException as ex:
             # If subscription is no longer valid, remove it
-            if hasattr(ex, 'response') and ex.response and ex.response.status_code in [403, 404, 410]:
-                app.logger.debug(f"Cleaning up invalid push subscription (Status {ex.response.status_code})")
+            ex_str = str(ex)
+            if '403' in ex_str or '404' in ex_str or '410' in ex_str:
+                app.logger.debug(f"Cleaning up invalid push subscription. Exception: {ex_str}")
                 db.session.delete(sub)
-                safe_commit()
+                db.session.commit()
             elif hasattr(ex, 'response') and ex.response and ex.response.status_code >= 500:
                 app.logger.error(f"WebPush Critical Error: {repr(ex)}")
             else:
