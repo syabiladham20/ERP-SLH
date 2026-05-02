@@ -2134,7 +2134,7 @@
       rotten_egg_pct: {{ r.rotten_egg_pct if r.rotten_egg_pct is not none else 'null' }},
       hatchability_pct: {{ r.hatchability_pct if r.hatchability_pct is not none else 'null' }},
       male_ratio_pct: {{ r.male_ratio_pct if r.male_ratio_pct is not none else 'null' }}
-    }{{ "," if not loop.last else "" }}
+    }{% if not loop.last %},{% endif %}
     {% endfor %}
   ];
   const stdHatchMap = {{ std_hatch_map | default({}) | tojson }};
@@ -2644,11 +2644,6 @@
   document.addEventListener("webkitfullscreenchange", onFullScreenChange);
   document.addEventListener("mozfullscreenchange", onFullScreenChange);
   document.addEventListener("msfullscreenchange", onFullScreenChange);
-
-
-
-
-});
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
