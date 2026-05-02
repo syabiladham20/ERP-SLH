@@ -203,14 +203,14 @@ def register_production_routes(app):
             'mortality_cum_female': [round(d['mortality_cum_female_pct'], 2) for d in daily_stats],
             'mortality_daily_male': [round(d['mortality_male_pct'], 2) for d in daily_stats],
             'mortality_daily_female': [round(d['mortality_female_pct'], 2) for d in daily_stats],
-            'std_mortality_male': [round(d['std_mortality_male'], 3) for d in daily_stats],
-            'std_mortality_female': [round(d['std_mortality_female'], 3) for d in daily_stats],
+            'std_mortality_male': [round(d['std_mortality_male'], 3) if d.get('std_mortality_male') is not None else None for d in daily_stats],
+            'std_mortality_female': [round(d['std_mortality_female'], 3) if d.get('std_mortality_female') is not None else None for d in daily_stats],
             'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
             'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
             'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
-            'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
+            'std_egg_prod': [round(d['std_egg_prod'], 2) if d.get('std_egg_prod') is not None else None for d in daily_stats],
             'hatch_egg_pct': [round(d['hatch_egg_pct'], 2) for d in daily_stats],
-            'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) for d in daily_stats],
+            'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) if d.get('std_hatching_egg_pct') is not None else None for d in daily_stats],
             'cull_eggs_jumbo_pct': [round(d['cull_eggs_jumbo_pct'], 2) for d in daily_stats],
             'cull_eggs_small_pct': [round(d['cull_eggs_small_pct'], 2) for d in daily_stats],
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
@@ -323,13 +323,13 @@ def register_production_routes(app):
             chart_data_weekly['avg_egg_weight'] = chart_data_weekly.get('avg_egg_weight', [])
             chart_data_weekly['avg_egg_weight'].append(round(ws.get('avg_egg_weight', 0.0), 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
-            chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+            chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2) if ws.get('std_egg_prod') is not None else None)
 
             chart_data_weekly['hatch_egg_pct'] = chart_data_weekly.get('hatch_egg_pct', [])
             chart_data_weekly['hatch_egg_pct'].append(round(ws['hatch_egg_pct'], 2))
 
             chart_data_weekly['std_hatching_egg_pct'] = chart_data_weekly.get('std_hatching_egg_pct', [])
-            chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2))
+            chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2) if ws.get('std_hatching_egg_pct') is not None else None)
 
             chart_data_weekly['cull_eggs_jumbo_pct'] = chart_data_weekly.get('cull_eggs_jumbo_pct', [])
             chart_data_weekly['cull_eggs_jumbo_pct'].append(round(ws['cull_eggs_jumbo_pct'], 2))
@@ -1833,9 +1833,9 @@ def register_production_routes(app):
             'culls_daily_male': [round(d['culls_male_pct'], 2) for d in daily_stats],
             'culls_daily_female': [round(d['culls_female_pct'], 2) for d in daily_stats],
             'egg_prod': [round(d['egg_prod_pct'], 2) for d in daily_stats],
-            'std_egg_prod': [round(d['std_egg_prod'], 2) for d in daily_stats],
+            'std_egg_prod': [round(d['std_egg_prod'], 2) if d.get('std_egg_prod') is not None else None for d in daily_stats],
             'hatch_egg_pct': [round(d['hatch_egg_pct'], 2) for d in daily_stats],
-            'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) for d in daily_stats],
+            'std_hatching_egg_pct': [round(d['std_hatching_egg_pct'], 2) if d.get('std_hatching_egg_pct') is not None else None for d in daily_stats],
             'cull_eggs_jumbo_pct': [round(d['cull_eggs_jumbo_pct'], 2) for d in daily_stats],
             'cull_eggs_small_pct': [round(d['cull_eggs_small_pct'], 2) for d in daily_stats],
             'cull_eggs_crack_pct': [round(d['cull_eggs_crack_pct'], 2) for d in daily_stats],
@@ -2011,13 +2011,13 @@ def register_production_routes(app):
             chart_data_weekly['avg_egg_weight'] = chart_data_weekly.get('avg_egg_weight', [])
             chart_data_weekly['avg_egg_weight'].append(round(ws.get('avg_egg_weight', 0.0), 2))
             chart_data_weekly['std_egg_prod'] = chart_data_weekly.get('std_egg_prod', [])
-            chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2))
+            chart_data_weekly['std_egg_prod'].append(round(ws['std_egg_prod'], 2) if ws.get('std_egg_prod') is not None else None)
 
             chart_data_weekly['hatch_egg_pct'] = chart_data_weekly.get('hatch_egg_pct', [])
             chart_data_weekly['hatch_egg_pct'].append(round(ws['hatch_egg_pct'], 2))
 
             chart_data_weekly['std_hatching_egg_pct'] = chart_data_weekly.get('std_hatching_egg_pct', [])
-            chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2))
+            chart_data_weekly['std_hatching_egg_pct'].append(round(ws['std_hatching_egg_pct'], 2) if ws.get('std_hatching_egg_pct') is not None else None)
 
             chart_data_weekly['cull_eggs_jumbo_pct'] = chart_data_weekly.get('cull_eggs_jumbo_pct', [])
             chart_data_weekly['cull_eggs_jumbo_pct'].append(round(ws['cull_eggs_jumbo_pct'], 2))
