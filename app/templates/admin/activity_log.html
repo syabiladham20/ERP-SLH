@@ -49,16 +49,16 @@
                             <td>{{ log.user.username if log.user else 'Unknown' }}</td>
                             <td>
                                 {% if log.action == 'Add' %}
-                                    <span class="badge bg-success">Add</span>
+                                    <span class="badge bg-success text-white">Add</span>
                                 {% elif log.action == 'Edit' %}
                                     <span class="badge bg-warning text-dark">Edit</span>
                                 {% elif log.action == 'Delete' %}
-                                    <span class="badge bg-danger">Delete</span>
+                                    <span class="badge bg-danger text-white">Delete</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">{{ log.action }}</span>
+                                    <span class="badge bg-secondary text-white">{{ log.action }}</span>
                                 {% endif %}
                             </td>
-                            <td><span class="badge bg-info">{{ log.resource_type }}</span></td>
+                            <td><span class="badge bg-info text-white">{{ log.resource_type }}</span></td>
                             <td>{{ log.resource_id or '-' }}</td>
                             <td class="text-muted small">
                                 {% if log.details %}

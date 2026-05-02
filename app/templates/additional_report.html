@@ -16,7 +16,7 @@
                 <small class="text-uppercase text-muted fw-bold">Top House (Prod %)</small>
                 <div class="d-flex justify-content-between align-items-end mt-2">
                     <h3 class="mb-0 text-primary">{{ leaderboard.top_house or 'N/A' }}</h3>
-                    <span class="badge bg-success">{{ leaderboard.best_prod | round(1) if leaderboard.best_prod > 0 else 0 }}%</span>
+                    <span class="badge bg-success text-white">{{ leaderboard.best_prod | round(1) if leaderboard.best_prod > 0 else 0 }}%</span>
                 </div>
             </div>
         </div>
@@ -27,7 +27,7 @@
                 <small class="text-uppercase text-muted fw-bold">Top Batch (Hatch %)</small>
                 <div class="d-flex justify-content-between align-items-end mt-2">
                     <h3 class="mb-0 text-success">{{ leaderboard.top_hatch_batch or 'N/A' }}</h3>
-                    <span class="badge bg-success">{{ leaderboard.best_hatch | round(1) if leaderboard.best_hatch > 0 else 0 }}%</span>
+                    <span class="badge bg-success text-white">{{ leaderboard.best_hatch | round(1) if leaderboard.best_hatch > 0 else 0 }}%</span>
                 </div>
             </div>
         </div>

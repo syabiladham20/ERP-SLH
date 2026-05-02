@@ -93,9 +93,9 @@
                             <td class="small">{{ v.calculated_dose_count }}</td>
                             <td>
                                 {% if v.actual_date %}
-                                    <span class="badge bg-success">Done</span>
+                                    <span class="badge bg-success text-white">Done</span>
                                 {% else %}
-                                    <span class="badge bg-secondary">Pending</span>
+                                    <span class="badge bg-secondary text-white">Pending</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -137,7 +137,7 @@
                                 <input type="text" name="s_test_{{ s.id }}" value="{{ s.test_type }}" class="form-control form-control-sm">
                             </td>
                             <td>
-                                <span class="badge {% if s.actual_date or s.result_file or s.status == 'Completed' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                <span class="badge {% if s.actual_date or s.result_file or s.status == 'Completed' %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
                                     {% if s.actual_date or s.result_file %}Completed{% else %}Pending{% endif %}
                                 </span>
                             </td>

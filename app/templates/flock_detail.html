@@ -215,7 +215,7 @@
 
             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                 {% if item.medications %}
-                    <span class="badge bg-info text-dark">{{ item.medications }}</span>
+                    <span class="badge bg-info text-white">{{ item.medications }}</span>
                 {% else %}
                     -
                 {% endif %}
@@ -816,7 +816,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Health Analytics & Disease Prediction</h3>
         <div>
-            <span class="badge bg-secondary">Experimental Feature</span>
+            <span class="badge bg-secondary text-white">Experimental Feature</span>
         </div>
     </div>
 
@@ -851,7 +851,7 @@
 
                         {% if event.predicted_diseases %}
                             {% for disease in event.predicted_diseases %}
-                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                <span class="badge {{ 'bg-danger text-white' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
                                     {{ disease.name }}
                                 </span>
                             {% endfor %}

@@ -89,7 +89,7 @@
       </div>
       <div class="col-md-3 border-end">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Phase</span><br>
-          <span class="badge {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} mt-1">{{ flock.calculated_phase }}</span>
+          <span class="badge text-white {% if flock.calculated_phase == 'Brooding' %}bg-primary{% elif flock.calculated_phase == 'Growing' %}bg-info{% elif flock.calculated_phase == 'Pre-lay' %}bg-warning{% else %}bg-success{% endif %} mt-1">{{ flock.calculated_phase }}</span>
       </div>
       <div class="col-md-3">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Intake Date</span><br>
@@ -266,7 +266,7 @@
 
             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                 {% if item.medications %}
-                    <span class="badge bg-info text-dark">{{ item.medications }}</span>
+                    <span class="badge bg-info text-white">{{ item.medications }}</span>
                 {% else %}
                     -
                 {% endif %}
@@ -900,7 +900,7 @@
 
                         {% if event.predicted_diseases %}
                             {% for disease in event.predicted_diseases %}
-                                <span class="badge {{ 'bg-danger' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
+                                <span class="badge {{ 'bg-danger text-white' if disease.severity == 'High' else 'bg-warning text-dark' }} mb-1">
                                     {{ disease.name }}
                                 </span>
                             {% endfor %}

@@ -30,7 +30,7 @@
                         {% for log in logs %}
                         <tr>
                             <td class="text-nowrap">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                            <td><span class="badge bg-secondary">{{ log.module }}</span></td>
+                            <td><span class="badge bg-secondary text-white">{{ log.module }}</span></td>
                             <td>{{ log.action }}</td>
                             <td>
                                 {% if log.performance_impact %}
