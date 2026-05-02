@@ -279,10 +279,6 @@ def register_api_routes(app):
 
         # Prepare weekly BW data
         weekly_trend = []
-        # Fix N+1 Query: Extract weeks and bulk fetch Standards
-        target_weeks = [w.get('week', 0) for w in weekly_stats[-10:]]
-        standards = Standard.query.filter(Standard.week.in_(target_weeks)).all()
-        std_map = {s.week: s for s in standards}
 
         for w in weekly_stats[-10:]: # Get up to the last 10 weeks
             week_num = w.get('week', 0)
@@ -299,7 +295,7 @@ def register_api_routes(app):
                 'spiking': any(e['log'].spiking for e in enriched if e.get('week') == week_num)
             }
             # Add std using map
-            std_w = std_map.get(week_num)
+            std_w = std_map_by_week.get(week_num)
             if std_w:
                 w_item['std_bw_male'] = std_w.std_bw_male or None
                 w_item['std_bw_female'] = std_w.std_bw_female or None
@@ -334,7 +330,7 @@ def register_api_routes(app):
         total_feed_kg = end_day_log.get('feed_total_kg', 0.0)
 
         # Get proper standard egg weight for the current week
-        std_obj = Standard.query.filter_by(week=end_day_log.get('week', 0)).first()
+        std_obj = std_map_by_week.get(end_day_log.get('week', 0))
         std_egg_weight = std_obj.std_egg_weight if std_obj and std_obj.std_egg_weight else 0.0
 
         # Calculate Lighting and Feed Cleanup manually as they are view-specific in other parts of app.py
