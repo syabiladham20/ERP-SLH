@@ -451,7 +451,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%; background-color: white;">
+            <div id="generalChartContainer" class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: max(100%, 800px); background-color: white;">
             <canvas id="generalChart"></canvas>
             </div>
         </div>
@@ -488,7 +488,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="hatchingEggChart"></canvas>
             </div>
         </div>
@@ -514,7 +514,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 500px; max-height: 60vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="hatchChart"></canvas>
             </div>
         </div>
@@ -540,7 +540,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="waterChart"></canvas>
             </div>
         </div>
@@ -566,7 +566,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="feedChart"></canvas>
             </div>
         </div>
@@ -593,7 +593,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="maleChart"></canvas>
             </div>
         </div>
@@ -620,7 +620,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="femaleChart"></canvas>
             </div>
         </div>
@@ -646,7 +646,7 @@
             </div>
         </div>
         <div class="card-body" style="overflow-x: auto;">
-            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: 100%;">
+            <div class="chart-container-inner" style="position: relative; height: 400px; max-height: 50vh; width: 100%; min-width: max(100%, 800px);">
             <canvas id="weeklyPerformanceChart"></canvas>
             </div>
         </div>
@@ -1891,51 +1891,6 @@
       const baselineData = new Array((generalData.dates || []).length).fill(stdVal);
 
       let labels = mode === 'daily' ? generateDailyLabels(generalData) : generalData.dates || [];
-      const notesPoints = [];
-
-      // Single loop to ensure absolute index alignment
-      (generalData.dates || []).forEach((date, i) => {
-          let labelString = labels[i] || date;
-
-          // 2. Create the Point if a note exists
-          const n = generalData.notes ? generalData.notes[i] : null;
-          if (n) {
-              let yVal = 0;
-              if (generalData[mortFKey] && generalData[mortFKey][i] !== undefined && generalData[mortFKey][i] !== null) {
-                  yVal = generalData[mortFKey][i];
-              }
-              yVal += 0.05; // Visual offset
-
-              notesPoints.push({
-                  x: labelString, // Matches the axis perfectly
-                  y: yVal,
-                  date: date, // Keep raw date for the modal
-                  note: n.note, photos: n.photos, photo: n.photo, // Legacy
-                  main_note: n.main_note, main_photos: n.main_photos, extra_notes: n.extra_notes, // New
-                  originalIndex: i // Backup safety
-              });
-          } else {
-              // IMPORTANT: Push null to keep the array lengths identical
-              notesPoints.push(null);
-          }
-      });
-
-      const notesDataset = {
-          label: 'Clinical Notes',
-          data: notesPoints,
-          type: 'line',
-          showLine: false,
-          yAxisID: 'y1',
-          pointStyle: 'rectRot',
-          pointRadius: 6,
-          pointHoverRadius: 8,
-          pointHitRadius: 20,
-          backgroundColor: 'purple',
-          borderColor: 'purple',
-          hidden: false,
-          clip: true
-      };
-
       const genEggScales = getScaleOptions([generalData.egg_prod, generalData.std_egg_prod], true);
       const genMortScales = getScaleOptions([
         generalData[mortMKey], generalData[mortFKey],
@@ -1992,7 +1947,7 @@
                       if (!context.raw || context.raw.originalIndex === undefined) return '';
                       const origIdx = context.raw.originalIndex;
                       if (!generalData.medication_names || !generalData.medication_names[origIdx]) return '';
-                      return generalData.medication_names[origIdx].split(',').map(s => s.trim());
+                      return generalData.medication_names[origIdx].split(/[,/]+/).map(s => s.trim());
                   },
                   align: 'bottom',
                   anchor: 'end', // Place text at the top of the highlight bar (which is at y=1)
@@ -2002,7 +1957,14 @@
                       size: 11
                   },
                   padding: 10,
-                  offset: 0
+                  offset: 0,
+                  clip: false,
+                  clip: false,
+                  clip: false,
+                  clip: false,
+                  clip: false,
+                  clip: false,
+                  clip: false
               }
           });
       }
@@ -2045,7 +2007,7 @@
               yAxisID: 'y1',
               clip: true,
               order: -1
-          },            notesDataset
+          }
       );
 
       const generalScales = {
@@ -2054,7 +2016,7 @@
               grid: { drawOnChartArea: false }, ...genMortScales
             },
             yMed: {
-              type: 'linear', display: false, position: 'right', min: 0, max: 1,
+              type: 'linear', display: false, position: 'right', min: 0, max: 1.1,
               grid: { drawOnChartArea: false }
             }
       };
@@ -2077,18 +2039,6 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          onClick: (e, elements) => {
-              if (elements.length) {
-                  const clinicalNotesDatasetIndex = generalChartInstance.data.datasets.findIndex(ds => ds.label === 'Clinical Notes');
-                  const notePoint = elements.find(p => p.datasetIndex === clinicalNotesDatasetIndex);
-                  if (notePoint) {
-                      const rawData = generalChartInstance.data.datasets[notePoint.datasetIndex].data[notePoint.index];
-                      if (rawData && (rawData.note || rawData.main_note)) {
-                          showNoteModal(rawData);
-                      }
-                  }
-              }
-          },
           interaction: { mode: 'index', intersect: false },
           scales: generalScales,
           plugins: {
@@ -2670,260 +2620,8 @@
   document.addEventListener("msfullscreenchange", onFullScreenChange);
 
 
-  function showNoteModal(pt) {
-      // Support legacy signature or object
-      let date, text, photos, main_photos, extra_notes;
-      if (typeof pt === 'string') {
-          // Legacy call protection (if any)
-          date = arguments[0];
-          text = arguments[1];
-          photos = arguments[2];
-      } else {
-          date = pt.date;
-          text = pt.main_note || pt.note; // Fallback
-          main_photos = pt.main_photos || pt.photos || [];
-          if(!Array.isArray(main_photos) && main_photos) main_photos = [{url: main_photos, name:'Photo'}];
-          extra_notes = pt.extra_notes || [];
-      }
 
-      document.getElementById('noteModalTitle').innerText = 'Clinical Note: ' + date;
-      // We will hide the static text/date elements and move everything into carousel slides
-      document.getElementById('noteModalText').style.display = 'none';
-      document.getElementById('noteModalDate').style.display = 'none';
 
-      const carousel = document.getElementById('photoCarousel');
-      const inner = document.getElementById('photoCarouselInner');
-      inner.innerHTML = '';
-      carousel.style.display = 'block';
-
-      let slides = [];
-
-      // 1. Main Slide
-      if (text || (main_photos && main_photos.length > 0)) {
-          slides.push({
-              title: "Main Clinical Note",
-              caption: text || "No text.",
-              photos: main_photos || []
-          });
-      }
-
-      // 2. Extra Slides
-      if (extra_notes) {
-          extra_notes.forEach((note, idx) => {
-              slides.push({
-                  title: `Detailed Note ${idx + 1}`,
-                  caption: note.caption || "No caption.",
-                  photos: note.photos || []
-              });
-          });
-      }
-
-      if (slides.length === 0) {
-          // Fallback if empty
-          slides.push({title: "Info", caption: "No data.", photos: []});
-      }
-
-      slides.forEach((slide, index) => {
-          const div = document.createElement('div');
-          div.className = 'carousel-item' + (index === 0 ? ' active' : '');
-
-          let photosHtml = '';
-          if (slide.photos.length > 0) {
-              photosHtml = `<div class="d-flex flex-wrap justify-content-center gap-2 mb-3" style="max-height: 400px; overflow-y: auto;">`;
-              slide.photos.forEach(p => {
-                  photosHtml += `
-                    <div class="text-center">
-                        <a href="${p.url}" target="_blank">
-                            <img src="${p.url}" class="img-thumbnail" style="max-height: 180px; object-fit: contain;" alt="${p.name}">
-                        </a>
-                        <div class="small text-muted mt-1" style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.name}</div>
-                    </div>
-                  `;
-              });
-              photosHtml += `</div>`;
-          } else {
-              photosHtml = `<div class="d-flex align-items-center justify-content-center text-muted" style="height: 100px;">No Photos</div>`;
-          }
-
-          div.innerHTML = `
-            <div class="p-4 bg-white">
-                <h5 class="text-primary border-bottom pb-2">${slide.title}</h5>
-                ${photosHtml}
-                <div class="alert alert-light border mt-3">
-                    <strong>Note:</strong> ${slide.caption}
-                </div>
-            </div>
-          `;
-          inner.appendChild(div);
-      });
-
-      const modal = new bootstrap.Modal(document.getElementById('noteModal'));
-      modal.show();
-  }
-
-// --- Floating Notes Logic ---
-let activeAddNoteChart = null;
-let allFloatingNotes = [];
-
-function toggleAddNoteMode(chartId) {
-    if (activeAddNoteChart === chartId) {
-        activeAddNoteChart = null;
-        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
-            btn.classList.remove('btn-primary');
-            btn.classList.add('btn-outline-secondary');
-        });
-    } else {
-        if (activeAddNoteChart) {
-            document.querySelectorAll(`button[onclick="toggleAddNoteMode('${activeAddNoteChart}')"]`).forEach(btn => {
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-outline-secondary');
-            });
-        }
-        activeAddNoteChart = chartId;
-        document.querySelectorAll(`button[onclick="toggleAddNoteMode('${chartId}')"]`).forEach(btn => {
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-primary');
-        });
-    }
-}
-
-const floatingNotePlugin = {
-    id: 'floatingNoteInteraction',
-    afterEvent(chart, args) {
-        if (args.event.type === 'click') {
-            const chartId = chart.canvas.id;
-
-            if (activeAddNoteChart === chartId) {
-                const xVal = chart.scales.x.getValueForPixel(args.event.x);
-                const yVal = chart.scales.y.getValueForPixel(args.event.y);
-
-                let xLabel = xVal;
-                if (chart.data.labels && chart.data.labels[xVal] !== undefined) {
-                    xLabel = chart.data.labels[xVal];
-                }
-
-                toggleAddNoteMode(chartId); // turn off mode
-
-                const noteText = prompt("Enter note text:");
-                if (noteText && noteText.trim() !== '') {
-                    const payload = {
-                        flock_id: {{ flock.id }},
-                        chart_id: chartId,
-                        x_value: String(xLabel),
-                        y_value: yVal,
-                        content: noteText.trim()
-                    };
-
-                    fetch('{{ url_for("create_floating_note") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payload)
-                    })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success) {
-                            payload.id = res.id;
-                            allFloatingNotes.push(payload);
-                            updateChartAnnotations(chart);
-                        } else {
-                            alert("Failed to save note: " + res.error);
-                        }
-                    });
-                }
-            }
-        }
-    }
-};
-
-Chart.register(floatingNotePlugin);
-
-function updateChartAnnotations(chart) {
-    if (!chart) return;
-    const chartId = chart.canvas.id;
-    const chartNotes = allFloatingNotes.filter(n => n.chart_id === chartId);
-
-    if (!chart.options.plugins) chart.options.plugins = {};
-    if (!chart.options.plugins.annotation) chart.options.plugins.annotation = {};
-    if (!chart.options.plugins.annotation.annotations) chart.options.plugins.annotation.annotations = {};
-
-    const currentAnns = chart.options.plugins.annotation.annotations;
-    const newAnnotations = Array.isArray(currentAnns) ? {} : { ...currentAnns };
-
-    for (const key of Object.keys(newAnnotations)) {
-        if (key.startsWith('note_')) {
-            delete newAnnotations[key];
-        }
-    }
-
-    chartNotes.forEach(note => {
-        newAnnotations['note_' + note.id] = {
-            type: 'label',
-            xValue: note.x_value,
-            yValue: note.y_value,
-            content: note.content,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            color: 'black',
-            borderWidth: 0,
-            borderRadius: 4,
-            padding: 4,
-            font: { size: 12 },
-            callout: { display: false },
-            click: function(ctx) {
-                if (activeAddNoteChart) return;
-                if (confirm('Delete this note: "' + note.content + '"?')) {
-                    fetch('{{ url_for("delete_floating_note", note_id=0) }}'.replace('0', note.id), { method: 'DELETE' })
-                    .then(r => r.json())
-                    .then(res => {
-                        if (res.success) {
-                            allFloatingNotes = allFloatingNotes.filter(n => n.id !== note.id);
-                            updateChartAnnotations(chart);
-                        } else {
-                            alert("Failed to delete note.");
-                        }
-                    });
-                }
-            }
-        };
-    });
-
-    chart.options.plugins.annotation.annotations = newAnnotations;
-    chart.update();
-}
-
-function fetchAndApplyFloatingNotes() {
-    fetch('{{ url_for("get_floating_notes", flock_id=flock.id) }}')
-    .then(r => {
-        if (!r.ok || r.redirected) {
-            console.error("Failed to fetch floating notes");
-            return [];
-        }
-        return r.json().catch(() => {
-            console.error("Failed to fetch floating notes");
-            return [];
-        });
-    })    .then(data => {
-        allFloatingNotes = data;
-        const chartsToUpdate = [];
-        if (typeof generalChartInstance !== 'undefined') chartsToUpdate.push(generalChartInstance);
-        if (typeof waterChartInstance !== 'undefined') chartsToUpdate.push(waterChartInstance);
-        if (typeof feedChartInstance !== 'undefined') chartsToUpdate.push(feedChartInstance);
-        if (typeof maleChartInstance !== 'undefined') chartsToUpdate.push(maleChartInstance);
-        if (typeof femaleChartInstance !== 'undefined') chartsToUpdate.push(femaleChartInstance);
-        if (typeof weeklyPerformanceChartInstance !== 'undefined') chartsToUpdate.push(weeklyPerformanceChartInstance);
-        if (typeof hatchingEggChartInstance !== 'undefined') chartsToUpdate.push(hatchingEggChartInstance);
-        if (typeof targetChart !== 'undefined') chartsToUpdate.push(targetChart);
-        if (typeof hatchChartInstance !== 'undefined') chartsToUpdate.push(hatchChartInstance);
-
-        chartsToUpdate.forEach(c => {
-            if (c) updateChartAnnotations(c);
-        });
-    });
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(fetchAndApplyFloatingNotes, 1500);
 });
 
 </script>
@@ -2935,35 +2633,6 @@ document.addEventListener('DOMContentLoaded', () => {
 {% endblock %}
 
 {% block modals %}
-<!-- Note Modal -->
-        <div class="modal fade" id="noteModal" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-lg">            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="noteModalTitle">Clinical Note</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body">
-                <!-- Carousel -->
-                <div id="photoCarousel" class="carousel slide mb-3 bg-light rounded" data-bs-ride="false" style="display:none; min-height: 200px;">
-                  <div class="carousel-inner" id="photoCarouselInner">
-                    <!-- Items injected by JS -->
-                  </div>
-                  <button class="carousel-control-prev" type="button" data-bs-target="#photoCarousel" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon bg-dark rounded-circle" aria-hidden="true"></span>
-                    <span class="visually-hidden">Previous</span>
-                  </button>
-                  <button class="carousel-control-next" type="button" data-bs-target="#photoCarousel" data-bs-slide="next">
-                    <span class="carousel-control-next-icon bg-dark rounded-circle" aria-hidden="true"></span>
-                    <span class="visually-hidden">Next</span>
-                  </button>
-                </div>
 
-                <div class="text-center">
-                    <p id="noteModalText" class="lead"></p>
-                    <p id="noteModalDate" class="text-muted small"></p>
-                </div>
-              </div>
-            </div>
-          </div>
 
 {% endblock %}

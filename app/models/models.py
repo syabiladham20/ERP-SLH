@@ -272,26 +272,14 @@ class DailyLog(VersionedMixin, db.Model):
         return f"{weeks}.{days}"
 
 
-class ChartNote(VersionedMixin, db.Model):
+class StudioAnnotation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
     chart_identifier = db.Column(db.String(50), nullable=False, index=True)
-    content = db.Column(db.Text, nullable=False)
-    pos_x = db.Column(db.Float, nullable=False)
-    pos_y = db.Column(db.Float, nullable=False)
-    width = db.Column(db.Float, nullable=False)
-    height = db.Column(db.Float, nullable=False)
+    anchor_data_x = db.Column(db.String(50), nullable=False)
+    anchor_data_y = db.Column(db.Float, nullable=False)
+    fabric_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class FloatingNote(VersionedMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
-    chart_id = db.Column(db.String(50), nullable=False) # e.g. 'generalChart', 'waterChart'
-    x_value = db.Column(db.String(50), nullable=False, index=True) # X-axis date string or value
-    y_value = db.Column(db.Float, nullable=False) # Y-axis value
-    content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-
 
 class ClinicalNote(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
