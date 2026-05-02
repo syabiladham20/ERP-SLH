@@ -184,12 +184,16 @@
                     {% else %}
                     <!-- Filters and Controls -->
                     <div class="row mb-3 align-items-center">
-                        <div class="col-md-6 mb-2 mb-md-0">
-                            <label class="form-label me-2 d-inline-block">Filter by House:</label>
-                            <select id="houseFilter" class="form-select d-inline-block w-auto">
+                        <div class="col-md-6 mb-2 mb-md-0 d-flex align-items-center">
+                            <label class="form-label me-2 mb-0 text-nowrap">Filter by House:</label>
+                            <select id="houseFilter" class="form-select">
                                 <option value="all">All Houses</option>
+                                {% set seen_houses = [] %}
                                 {% for f in active_flocks %}
-                                    <option value="{{ f.house.name }}">{{ f.house.name }}</option>
+                                    {% if f.house.name not in seen_houses %}
+                                        <option value="{{ f.house.name }}">{{ f.house.name }}</option>
+                                        {% set _ = seen_houses.append(f.house.name) %}
+                                    {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
@@ -212,28 +216,28 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
-                                        <div class="chart-inner-container" style="position: relative; height: 350px; min-width: 800px;">
-                                            <div id="chart-bw-male" style="min-height: 300px;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
-                                        <div class="chart-inner-container" style="position: relative; height: 350px; min-width: 800px;">
-                                            <div id="chart-bw-female" style="min-height: 300px;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row w-100 mt-3">
+                            <div class="row w-100 mb-3">
                                 <div class="col-12 d-flex justify-content-center">
                                     <label class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="togglePartitions">
                                         <span class="form-check-label small">Show Partitions</span>
                                     </label>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12 mb-4">
+                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
+                                        <div class="chart-inner-container" style="position: relative; height: 500px; min-width: 800px;">
+                                            <canvas id="chart-bw-male"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="table-responsive" style="overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;">
+                                        <div class="chart-inner-container" style="position: relative; height: 500px; min-width: 800px;">
+                                            <canvas id="chart-bw-female"></canvas>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -710,8 +714,11 @@
 </script>
 
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script>
+    Chart.register(ChartDataLabels);
+
     // Toggle all accordions
     function toggleAllAccordions(expand) {
         const accordionBodies = document.querySelectorAll('#accordionBodyweightLog .accordion-collapse');
@@ -922,7 +929,7 @@
                 }
             }
 
-            // Calculate Max for Left Y-Axis to keep BW below Uniformity
+            // Dual Y-axis setup
             let maleMaxBw = allMaleBw.length > 0 ? Math.max(...allMaleBw) : 1000;
             let femaleMaxBw = allFemaleBw.length > 0 ? Math.max(...allFemaleBw) : 1000;
             let maleMinBw = allMaleBw.length > 0 ? Math.min(...allMaleBw) : 0;
@@ -933,187 +940,176 @@
             let maleMinUni = allMaleUni.length > 0 ? Math.min(...allMaleUni) : 0;
             let femaleMinUni = allFemaleUni.length > 0 ? Math.min(...allFemaleUni) : 0;
 
-            // Split-Pane Math
-            // Bodyweight Axis
             let maleYMin = Math.max(0, maleMinBw - 500);
             let maleYMax = Math.ceil(maleMaxBw * 2.2);
             let femaleYMin = Math.max(0, femaleMinBw - 500);
             let femaleYMax = Math.ceil(femaleMaxBw * 2.2);
 
-            // Uniformity Axis
             let maleUMin = Math.floor(maleMinUni - 50);
             let maleUMax = Math.min(100, maleMaxUni + 10);
             let femaleUMin = Math.floor(femaleMinUni - 50);
             let femaleUMax = Math.min(100, femaleMaxUni + 10);
 
-            // Common Options
-            const getChartOptions = (series, title, bwMin, bwMax, uMin, uMax) => {
-                let colors = [];
-                let strokeOptions = {
-                    curve: [],
-                    width: [],
-                    dashArray: []
-                };
+            const partitionColors = ['#008FFB', '#00E396', '#FEB019', '#FF4560', '#775DD0', '#3F51B5', '#546E7A', '#D4526E'];
 
-                // Color palette for partitions
-                const partitionColors = ['#008FFB', '#00E396', '#FEB019', '#FF4560', '#775DD0', '#3F51B5', '#546E7A', '#D4526E'];
+            function buildChartJsConfig(seriesData, titleText, bwMin, bwMax, uMin, uMax) {
+                let datasets = [];
                 let pIndex = 0;
 
-                let yaxisConfig = [];
-                let firstBwSet = false;
+                seriesData.forEach((s) => {
+                    let color = '#008FFB';
+                    let dash = [];
+                    let yAxisID = 'y'; // default BW axis
+                    let borderWidth = 2;
+                    let fill = false;
+                    let tension = 0; // straight lines
 
-                series.forEach((s) => {
-                    strokeOptions.curve.push('straight');
                     if (s.name === 'Standard BW') {
-                        strokeOptions.dashArray.push(0);
-                        colors.push('#000000'); // Black
-                        strokeOptions.width.push(2);
+                        color = '#000000';
                     } else if (s.name === 'Average Uniformity') {
-                        strokeOptions.dashArray.push(5);
-                        colors.push('#FFA500'); // Orange
-                        strokeOptions.width.push(2);
+                        color = '#FFA500';
+                        dash = [5, 5];
+                        yAxisID = 'y-uni';
                     } else if (s.name === 'Average BW') {
-                        strokeOptions.dashArray.push(0);
-                        colors.push('#008FFB'); // Primary blue
-                        strokeOptions.width.push(2);
+                        color = '#008FFB';
                     } else { // Partitions
-                        strokeOptions.dashArray.push(0);
-                        colors.push(partitionColors[pIndex % partitionColors.length]);
-                        strokeOptions.width.push(2);
+                        color = partitionColors[pIndex % partitionColors.length];
                         pIndex++;
                     }
 
-                    // Define axes
-                    if (s.name === 'Average Uniformity') {
-                        yaxisConfig.push({
-                            seriesName: s.name,
-                            opposite: true,
-                            title: { text: 'Uniformity (%)' },
-                            max: uMax,
-                            min: uMin,
-                            labels: { formatter: function (val) { return Math.round(val) + '%'; } }
-                        });
-                    } else {
-                        if (!firstBwSet) {
-                             yaxisConfig.push({
-                                seriesName: s.name,
-                                show: true,
-                                title: { text: 'Grams' },
-                                max: bwMax,
-                                min: bwMin,
-                                labels: { formatter: function (val) { return Math.round(val); } }
-                            });
-                            firstBwSet = true;
-                        } else {
-                             yaxisConfig.push({
-                                seriesName: s.name,
-                                show: false,
-                                max: bwMax,
-                                min: bwMin
-                            });
+                    datasets.push({
+                        label: s.name,
+                        data: s.data,
+                        borderColor: color,
+                        backgroundColor: color,
+                        borderWidth: borderWidth,
+                        borderDash: dash,
+                        yAxisID: yAxisID,
+                        tension: tension,
+                        fill: fill,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        datalabels: {
+                            display: true,
+                            color: '#fff',
+                            backgroundColor: color,
+                            borderRadius: 4,
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            padding: 4,
+                            anchor: s.name === 'Standard BW' ? 'start' : 'end',
+                            align: s.name === 'Standard BW' ? 'bottom' : 'top',
+                            offset: 4,
+                            formatter: function(value, context) {
+                                if (value === null || value === undefined) return '';
+                                if (s.name === 'Standard BW') return Math.round(value);
+                                if (s.name === 'Average Uniformity') return value.toFixed(1) + '%';
+
+                                const valFixed = Math.round(value);
+                                if (context.dataIndex === 0) return valFixed;
+
+                                const prevVal = context.dataset.data[context.dataIndex - 1];
+                                if (prevVal && value) {
+                                    const diff = Math.round(value - prevVal);
+                                    const sign = diff >= 0 ? '+' : '';
+                                    return `${valFixed} (${sign}${diff})`;
+                                }
+                                return valFixed;
+                            }
                         }
-                    }
+                    });
                 });
 
-
                 return {
-                    series: series,
-                    chart: {
-                        type: 'line',
-                        height: 350,
-                        toolbar: { show: true }
+                    type: 'line',
+                    data: {
+                        labels: categories,
+                        datasets: datasets
                     },
-                    colors: colors,
-                    stroke: strokeOptions,
-                    dataLabels: {
-                        enabled: true,
-                        background: { enabled: false },
-                        style: {
-                            fontSize: '11px',
-                            fontWeight: 'bold'
-                        },
-                        dropShadow: {
-                            enabled: true,
-                            top: 0, left: 0, blur: 2,
-                            color: '#ffffff', opacity: 1
-                        },
-                        enabledOnSeries: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], // Show on all except standard/target which are usually at the end
-                        offsetY: function(opts) {
-                            let seriesName = opts.w.globals.seriesNames[opts.seriesIndex];
-                            if (seriesName === 'Standard BW') {
-                                return 10;
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 30, // Make room for datalabels
+                                right: 20
                             }
-                            return -10;
                         },
-                        formatter: function (val, opts) {
-                            if (val === null || val === undefined) return '';
-                            let seriesName = opts.w.globals.seriesNames[opts.seriesIndex];
-
-                            if (seriesName === 'Standard BW') {
-                                return val.toFixed(0);
-                            } else if (seriesName === 'Average Uniformity') {
-                                return val.toFixed(1) + "%";
-                            }
-
-                            const valFixed = val.toFixed(0);
-
-                            if (opts.dataPointIndex === 0) return valFixed;
-                            const prevVal = opts.w.globals.series[opts.seriesIndex][opts.dataPointIndex - 1];
-                            if (prevVal && val) {
-                                const diff = val - prevVal;
-                                const sign = diff >= 0 ? '+' : '';
-                                return `${valFixed} (${sign}${diff.toFixed(0)})`;
-                            }
-                            return valFixed;
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
                         },
-                        style: {
-                            fontSize: '10px'
-                        },
-                        background: {
-                            enabled: true,
-                            foreColor: '#fff',
-                            borderRadius: 2,
-                            padding: 4,
-                            opacity: 0.9,
-                            borderWidth: 1,
-                            borderColor: '#fff'
-                        }
-                    },
-                    title: { text: title, align: 'left' },
-                    xaxis: { categories: categories },
-                    yaxis: yaxisConfig,
-                    markers: { size: 4 },
-                    legend: { show: true },
-                    tooltip: {
-                        shared: true,
-                        intersect: false,
-                        y: {
-                            formatter: function (val, opts) {
-                                if (val === null || val === undefined) return val;
-                                let seriesName = opts.seriesName;
-                                if (seriesName === 'Average Uniformity') {
-                                    return val.toFixed(1) + "%";
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: titleText,
+                                align: 'start'
+                            },
+                            legend: {
+                                position: 'bottom'
+                            },
+                            tooltip: {
+                                enabled: false // User requested to disable tooltips
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: { enabled: false },
+                                    pinch: { enabled: false },
+                                    drag: { enabled: false }
                                 }
-                                return val.toFixed(0) + "g";
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                min: bwMin,
+                                max: bwMax,
+                                title: {
+                                    display: true,
+                                    text: 'Grams'
+                                }
+                            },
+                            'y-uni': {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                min: uMin,
+                                max: uMax,
+                                title: {
+                                    display: true,
+                                    text: 'Uniformity (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false, // only want the grid lines for one axis to show up
+                                }
                             }
                         }
                     }
                 };
-            };
+            }
 
             // Male Chart
             if (maleChart) {
                 maleChart.destroy();
             }
-            maleChart = new ApexCharts(document.querySelector("#chart-bw-male"), getChartOptions(maleSeries, 'Male Bodyweight', maleYMin, maleYMax, maleUMin, maleUMax));
-            maleChart.render();
+            const ctxMale = document.getElementById('chart-bw-male').getContext('2d');
+            maleChart = new Chart(ctxMale, buildChartJsConfig(maleSeries, 'Male Bodyweight', maleYMin, maleYMax, maleUMin, maleUMax));
 
             // Female Chart
             if (femaleChart) {
                 femaleChart.destroy();
             }
-            femaleChart = new ApexCharts(document.querySelector("#chart-bw-female"), getChartOptions(femaleSeries, 'Female Bodyweight', femaleYMin, femaleYMax, femaleUMin, femaleUMax));
-            femaleChart.render();
+            const ctxFemale = document.getElementById('chart-bw-female').getContext('2d');
+            femaleChart = new Chart(ctxFemale, buildChartJsConfig(femaleSeries, 'Female Bodyweight', femaleYMin, femaleYMax, femaleUMin, femaleUMax));
         }
 
         // Filtering Logic
