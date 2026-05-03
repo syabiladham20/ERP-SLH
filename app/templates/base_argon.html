@@ -211,7 +211,7 @@
                         </a>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="{{ url_for('hatchery_dashboard') }}">Dashboard</a>
-                            <a class="dropdown-item" href="{{ url_for('hatchery_inventory') }}">Inventory (Vaccines)</a>
+                            <a class="dropdown-item" href="{{ url_for('hatchery_inventory') }}">Inventory</a>
                         </div>
                     </li>
 
@@ -246,7 +246,7 @@
 
                 {% elif user_dept == 'Hatchery' %}
                     <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('hatchery_dashboard') }}"><span class="nav-link-title">Dashboard</span></a></li>
-                    <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('hatchery_inventory') }}"><span class="nav-link-title">Inventory (Vaccines)</span></a></li>
+                    <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('hatchery_inventory') }}"><span class="nav-link-title">Inventory</span></a></li>
                 {% elif user_dept == 'Management' %}
                     <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('executive_dashboard') }}"><span class="nav-link-title">Executive Dashboard</span></a></li>
                 {% endif %}

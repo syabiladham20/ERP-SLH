@@ -1,0 +1,17 @@
+-- SQLite commands to apply schema changes manually:
+
+-- 1. Add new columns to inventory_transaction
+ALTER TABLE inventory_transaction ADD COLUMN batch_number VARCHAR(50);
+ALTER TABLE inventory_transaction ADD COLUMN expiry_date DATE;
+
+-- 2. Drop columns from inventory_item (requires SQLite >= 3.35.0)
+ALTER TABLE inventory_item DROP COLUMN batch_number;
+ALTER TABLE inventory_item DROP COLUMN expiry_date;
+
+-- 3. To make 'unit' nullable, SQLite requires recreating the table or
+-- (if supported by your DB UI/tool) modifying the schema definition directly.
+-- If manual table recreation is needed:
+-- CREATE TABLE inventory_item_new (...);
+-- INSERT INTO inventory_item_new SELECT ... FROM inventory_item;
+-- DROP TABLE inventory_item;
+-- ALTER TABLE inventory_item_new RENAME TO inventory_item;

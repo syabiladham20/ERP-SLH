@@ -16,64 +16,23 @@
 <!-- Tabs -->
 <ul class="nav nav-tabs" id="inventoryTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance" type="button" role="tab" aria-controls="balance" aria-selected="true">Current Balance</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements" type="button" role="tab" aria-controls="movements" aria-selected="false">Movement Logs</button>
+        <button class="nav-link active" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements" type="button" role="tab" aria-controls="movements" aria-selected="true">Movement Logs</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button" role="tab" aria-controls="summary" aria-selected="false">Usage Summary</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance" type="button" role="tab" aria-controls="balance" aria-selected="false">Current Balance</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="masterlist-tab" data-bs-toggle="tab" data-bs-target="#masterlist" type="button" role="tab" aria-controls="masterlist" aria-selected="false">Master List</button>
     </li>
 </ul>
 
 <div class="tab-content pt-4" id="inventoryTabsContent">
 
-    <!-- Balance Tab -->
-    <div class="tab-pane fade show active" id="balance" role="tabpanel" aria-labelledby="balance-tab">
-        <div class="card">
-            <div class="card-body">
-                <div class="table-responsive table-responsive-sticky">
-                    <table class="table table-striped table-hover">
-                        <thead class="sticky-table-header">
-                            <tr>
-                                <th>Item Name</th>
-                                <th>Category</th>
-                                <th>Batch Number</th>
-                                <th>Expiry Date</th>
-                                <th>Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for item in items %}
-                            <tr>
-                                <td>{{ item.name }}</td>
-                                <td>{{ item.category or '' }}</td>
-                                <td>{{ item.batch_number or '' }}</td>
-                                <td>{{ item.expiry_date | date_fmt if item.expiry_date else '' }}</td>
-                                <!-- We need to calculate balance inside python or Jinja.
-                                     But we can also calculate it here if we pass a balance property,
-                                     or use the JS fetching for display. Better yet, we can pass it precalculated from the route.
-                                     Wait, I didn't precalculate the current balance per item in the route for the masterlist.
-                                     I'll use JS to fetch it or update the route to pass it.
-                                     Let me use a data attribute and a simple script. -->
-                                <td>
-                                    <span class="item-balance-display" data-item-id="{{ item.id }}">Loading...</span> {{ item.unit_of_measurement or item.unit }}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center">No inventory items found.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Movements Tab -->
-    <div class="tab-pane fade" id="movements" role="tabpanel" aria-labelledby="movements-tab">
+    <div class="tab-pane fade show active" id="movements" role="tabpanel" aria-labelledby="movements-tab">
         <div class="card">
             <div class="card-body">
                 <div class="table-responsive table-responsive-sticky">
@@ -84,8 +43,10 @@
                                 <th>Item</th>
                                 <th>Type</th>
                                 <th>Classification</th>
+                                <th>Batch/Expiry</th>
                                 <th>Quantity</th>
                                 <th>Remarks</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,12 +62,143 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ tx.classification or '' }}</td>
+                                <td>
+                                    {% if tx.batch_number %}{{ tx.batch_number }}{% endif %}
+                                    {% if tx.expiry_date %}<br><small class="text-muted">{{ tx.expiry_date | date_fmt }}</small>{% endif %}
+                                </td>
                                 <td>{{ tx.quantity }} {{ tx.item.unit_of_measurement or tx.item.unit }}</td>
                                 <td>{{ tx.notes or '' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTxModal{{ tx.id }}">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTxModal{{ tx.id }}">Delete</button>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Tx Modal -->
+                            <div class="modal modal-blur fade" id="editTxModal{{ tx.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                              <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title">Edit Movement</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <form action="{{ url_for('hatchery_inventory_transaction_edit', tx_id=tx.id) }}" method="POST">
+                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                  <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label required">Date</label>
+                                            <input type="date" class="form-control" name="transaction_date" value="{{ tx.transaction_date }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label required">Classification</label>
+                                            <select class="form-select" name="classification" required>
+                                                {% if tx.transaction_type == 'In' %}
+                                                    <option value="Purchase" {% if tx.classification == 'Purchase' %}selected{% endif %}>Purchase</option>
+                                                    <option value="Transfer" {% if tx.classification == 'Transfer' %}selected{% endif %}>Transfer</option>
+                                                    <option value="Stock Count" {% if tx.classification == 'Stock Count' %}selected{% endif %}>Stock Count</option>
+                                                {% else %}
+                                                    <option value="Usage" {% if tx.classification == 'Usage' %}selected{% endif %}>Usage</option>
+                                                    <option value="Transfer" {% if tx.classification == 'Transfer' %}selected{% endif %}>Transfer</option>
+                                                    <option value="Dispose" {% if tx.classification == 'Dispose' %}selected{% endif %}>Dispose</option>
+                                                    <option value="Stock Count" {% if tx.classification == 'Stock Count' %}selected{% endif %}>Stock Count</option>
+                                                {% endif %}
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Batch Number</label>
+                                            <input type="text" class="form-control" name="batch_number" value="{{ tx.batch_number or '' }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Expiry Date</label>
+                                            <input type="date" class="form-control" name="expiry_date" value="{{ tx.expiry_date or '' }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label required">Quantity</label>
+                                            <input type="number" step="any" class="form-control" name="quantity" value="{{ tx.quantity }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Remarks</label>
+                                            <input type="text" class="form-control" name="remarks" value="{{ tx.notes or '' }}">
+                                        </div>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                  </div>
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Delete Tx Modal -->
+                            <div class="modal modal-blur fade" id="deleteTxModal{{ tx.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                              <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  <div class="modal-status bg-danger"></div>
+                                  <div class="modal-body text-center py-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+                                    <h3>Are you sure?</h3>
+                                    <div class="text-muted">Do you really want to delete this movement log? This action cannot be undone.</div>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <div class="w-100">
+                                      <div class="row">
+                                        <div class="col"><button class="btn w-100" data-bs-dismiss="modal">Cancel</button></div>
+                                        <div class="col">
+                                          <form action="{{ url_for('hatchery_inventory_transaction_delete', tx_id=tx.id) }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-danger w-100">Delete</button>
+                                          </form>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center">No movement logs found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Tab -->
+    <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive table-responsive-sticky">
+                    <table class="table table-striped table-hover">
+                        <thead class="sticky-table-header">
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.category or '' }}</td>
+                                <td>
+                                    <span class="item-balance-display" data-item-id="{{ item.id }}">Loading...</span>
+                                    {% if item.unit_of_measurement or item.unit %}
+                                        {{ item.unit_of_measurement or item.unit }}
+                                    {% else %}
+                                        units
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="6" class="text-center">No movement logs found.</td>
+                                <td colspan="3" class="text-center">No inventory items found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -170,7 +262,125 @@
         </div>
     </div>
 
+    <!-- Master List Tab -->
+    <div class="tab-pane fade" id="masterlist" role="tabpanel" aria-labelledby="masterlist-tab">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive table-responsive-sticky">
+                    <table class="table table-striped table-hover">
+                        <thead class="sticky-table-header">
+                            <tr>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Unit of Measurement</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in items %}
+                            <tr>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.category or '' }}</td>
+                                <td>{{ item.unit_of_measurement or item.unit or '' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editItemModal{{ item.id }}">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteItemModal{{ item.id }}">Delete</button>
+                                </td>
+                            </tr>
+
+                            <!-- Edit Modal -->
+                            <div class="modal modal-blur fade" id="editItemModal{{ item.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                              <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title">Edit {{ item.name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <form action="{{ url_for('hatchery_inventory_item_edit', item_id=item.id) }}" method="POST">
+                                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                  <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label required">Item Name</label>
+                                            <input type="text" class="form-control" name="name" value="{{ item.name }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Category</label>
+                                            <input type="text" list="categoriesList" class="form-control" name="category" value="{{ item.category or '' }}">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Unit of Measurement</label>
+                                            <input type="text" class="form-control" name="unit" value="{{ item.unit_of_measurement or item.unit or '' }}">
+                                        </div>
+                                  </div>
+                                  <div class="modal-footer">
+                                    <button type="button" class="btn me-auto" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                  </div>
+                                  </form>
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Delete Modal -->
+                            <div class="modal modal-blur fade" id="deleteItemModal{{ item.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                              <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  <div class="modal-status bg-danger"></div>
+                                  <div class="modal-body text-center py-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg>
+
+                                    {% if item.transactions|length > 0 %}
+                                        <h3>Cannot Delete</h3>
+                                        <div class="text-muted">You cannot delete <strong>{{ item.name }}</strong> because it has existing movement logs. Please reverse or delete the transactions first.</div>
+                                    {% else %}
+                                        <h3>Are you sure?</h3>
+                                        <div class="text-muted">Do you really want to delete <strong>{{ item.name }}</strong>? This action cannot be undone.</div>
+                                    {% endif %}
+                                  </div>
+                                  <div class="modal-footer">
+                                    <div class="w-100">
+                                      <div class="row">
+                                        <div class="col"><button class="btn w-100" data-bs-dismiss="modal">{% if item.transactions|length > 0 %}Close{% else %}Cancel{% endif %}</button></div>
+                                        {% if item.transactions|length == 0 %}
+                                        <div class="col">
+                                          <form action="{{ url_for('hatchery_inventory_item_delete', item_id=item.id) }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-danger w-100">Delete</button>
+                                          </form>
+                                        </div>
+                                        {% endif %}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No inventory items found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<datalist id="categoriesList">
+    {% set categories = [] %}
+    {% for i in items %}
+        {% if i.category and i.category not in categories %}
+            <option value="{{ i.category }}">
+            {% set _ = categories.append(i.category) %}
+        {% endif %}
+    {% endfor %}
+</datalist>
+
 
 <!-- Add Item Modal -->
 <div class="modal modal-blur fade" id="addItemModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -189,19 +399,11 @@
             </div>
             <div class="mb-3">
                 <label class="form-label">Category</label>
-                <input type="text" class="form-control" name="category">
+                <input type="text" list="categoriesList" class="form-control" name="category">
             </div>
             <div class="mb-3">
-                <label class="form-label required">Unit of Measurement</label>
-                <input type="text" class="form-control" name="unit" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Batch Number</label>
-                <input type="text" class="form-control" name="batch_number">
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Expiry Date</label>
-                <input type="date" class="form-control" name="expiry_date">
+                <label class="form-label">Unit of Measurement</label>
+                <input type="text" class="form-control" name="unit">
             </div>
       </div>
       <div class="modal-footer">
@@ -250,6 +452,15 @@
                 <select class="form-select" name="classification" id="classificationSelect" required>
                     <!-- Options populated by JS -->
                 </select>
+            </div>
+            <div class="mb-3" id="batchContainer">
+                <label class="form-label">Batch Number</label>
+                <input type="text" list="batchesList" class="form-control" name="batch_number" id="batchInput">
+                <datalist id="batchesList"></datalist>
+            </div>
+            <div class="mb-3" id="expiryContainer">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" class="form-control" name="expiry_date" id="expiryInput">
             </div>
             <div class="mb-3">
                 <label class="form-label required">Quantity</label>
@@ -325,11 +536,55 @@ document.addEventListener('DOMContentLoaded', function() {
     movementTypeSelect.addEventListener('change', updateClassificationOptions);
     updateClassificationOptions(); // Initial call
 
+    const batchInput = document.getElementById('batchInput');
+    const expiryInput = document.getElementById('expiryInput');
+    const batchesList = document.getElementById('batchesList');
+
+    const updateBatchesDatalist = () => {
+        const itemId = movementItemSelect.value;
+        const type = movementTypeSelect.value;
+
+        batchesList.innerHTML = '';
+        batchInput.value = '';
+        expiryInput.value = '';
+
+        if (itemId && type === 'Out') {
+            fetch(`/hatchery/api/inventory/${itemId}/batches`)
+                .then(res => res.ok ? res.json() : Promise.reject())
+                .then(data => {
+                    data.batches.forEach(b => {
+                        let opt = document.createElement('option');
+                        opt.value = b.batch_number;
+                        let expText = b.expiry_date ? ` (${b.expiry_date})` : '';
+                        opt.innerText = b.batch_number + expText;
+                        opt.setAttribute('data-expiry', b.expiry_date || '');
+                        batchesList.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error('Error fetching batches', err));
+        }
+    };
+
+    movementTypeSelect.addEventListener('change', updateBatchesDatalist);
+
+    // Auto-fill expiry when a batch is selected from datalist
+    batchInput.addEventListener('input', function() {
+        const val = this.value;
+        const options = batchesList.options;
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].value === val) {
+                expiryInput.value = options[i].getAttribute('data-expiry');
+                break;
+            }
+        }
+    });
+
     // Form logic for balance fetching on select
     const movementItemSelect = document.getElementById('movementItemSelect');
     const balanceDisplay = document.getElementById('balanceDisplay');
 
     movementItemSelect.addEventListener('change', function() {
+        updateBatchesDatalist();
         const itemId = this.value;
         if (!itemId) {
             balanceDisplay.textContent = '';
