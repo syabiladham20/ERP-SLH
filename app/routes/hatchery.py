@@ -469,20 +469,116 @@ def register_hatchery_routes(app):
     def hatchery_inventory_item_add():
         name = request.form.get('name')
         category = request.form.get('category')
-        unit = request.form.get('unit')
-        batch_number = request.form.get('batch_number')
-        expiry_date_str = request.form.get('expiry_date')
-        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date() if expiry_date_str else None
+        unit = request.form.get('unit') or None
 
-        if not name or not unit:
-            flash('Name and Unit are required.', 'danger')
-            return redirect(url_for('hatchery_inventory'))
+        if not name:
+            flash('Name is required.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#masterlist')
 
-        item = InventoryItem(name=name, category=category, unit=unit, unit_of_measurement=unit, batch_number=batch_number, expiry_date=expiry_date, location='Hatchery', type='Vaccine')
+        item = InventoryItem(name=name, category=category, unit=unit, unit_of_measurement=unit, location='Hatchery', type='Inventory')
         db.session.add(item)
         safe_commit()
         flash(f'Added {name} to Hatchery Masterlist.', 'success')
         return redirect(url_for('hatchery_inventory'))
+
+
+    @app.route('/hatchery/inventory/item/edit/<int:item_id>', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_item_edit(item_id):
+        item = InventoryItem.query.get_or_404(item_id)
+        if item.location != 'Hatchery':
+            flash('Invalid item.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#masterlist')
+
+        item.name = request.form.get('name')
+        item.category = request.form.get('category')
+        item.unit_of_measurement = request.form.get('unit') or None
+        # item.unit is also kept in sync if needed, but unit_of_measurement is the new column
+        item.unit = request.form.get('unit') or None
+
+        safe_commit()
+        flash(f'Updated {item.name}.', 'success')
+        return redirect(url_for('hatchery_inventory') + '#masterlist')
+
+    @app.route('/hatchery/inventory/item/delete/<int:item_id>', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_item_delete(item_id):
+        item = InventoryItem.query.get_or_404(item_id)
+        if item.location != 'Hatchery':
+            flash('Invalid item.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#masterlist')
+
+        transactions = InventoryTransaction.query.filter_by(inventory_item_id=item_id).first()
+        if transactions:
+            flash(f'Cannot delete {item.name}. It has existing movement logs.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#masterlist')
+
+        db.session.delete(item)
+        safe_commit()
+        flash(f'Deleted {item.name}.', 'success')
+        return redirect(url_for('hatchery_inventory') + '#masterlist')
+
+
+    @app.route('/hatchery/api/inventory/<int:item_id>/batches', methods=['GET'])
+    @login_required
+    def hatchery_inventory_item_batches(item_id):
+        # Find all 'In' transactions for this item that have a batch number
+        txs = InventoryTransaction.query.filter_by(inventory_item_id=item_id, transaction_type='In').filter(InventoryTransaction.batch_number.isnot(None)).all()
+        batches = []
+        seen = set()
+        for t in txs:
+            if t.batch_number not in seen:
+                seen.add(t.batch_number)
+                batches.append({
+                    'batch_number': t.batch_number,
+                    'expiry_date': t.expiry_date.strftime('%Y-%m-%d') if t.expiry_date else None
+                })
+        return jsonify({'batches': batches})
+
+
+    @app.route('/hatchery/inventory/transaction/edit/<int:tx_id>', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_transaction_edit(tx_id):
+        tx = InventoryTransaction.query.get_or_404(tx_id)
+        if tx.location != 'Hatchery':
+            flash('Invalid transaction.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#movements')
+
+        date_str = request.form.get('transaction_date')
+        if date_str:
+            tx.transaction_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+        tx.classification = request.form.get('classification')
+        tx.quantity = float(request.form.get('quantity') or tx.quantity)
+        tx.notes = request.form.get('remarks')
+        tx.batch_number = request.form.get('batch_number') or None
+
+        expiry_date_str = request.form.get('expiry_date')
+        if expiry_date_str:
+            tx.expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+        else:
+            tx.expiry_date = None
+
+        safe_commit()
+        flash('Transaction updated.', 'success')
+        return redirect(url_for('hatchery_inventory') + '#movements')
+
+    @app.route('/hatchery/inventory/transaction/delete/<int:tx_id>', methods=['POST'])
+    @login_required
+    @dept_required('Hatchery')
+    def hatchery_inventory_transaction_delete(tx_id):
+        tx = InventoryTransaction.query.get_or_404(tx_id)
+        if tx.location != 'Hatchery':
+            flash('Invalid transaction.', 'danger')
+            return redirect(url_for('hatchery_inventory') + '#movements')
+
+        db.session.delete(tx)
+        safe_commit()
+        flash('Transaction deleted.', 'success')
+        return redirect(url_for('hatchery_inventory') + '#movements')
 
     @app.route('/hatchery/inventory/transaction/add', methods=['POST'])
     @login_required
@@ -494,6 +590,9 @@ def register_hatchery_routes(app):
         classification = request.form.get('classification')
         quantity = float(request.form.get('quantity') or 0.0)
         remarks = request.form.get('remarks')
+        batch_number = request.form.get('batch_number') or None
+        expiry_date_str = request.form.get('expiry_date')
+        expiry_date = datetime.strptime(expiry_date_str, '%Y-%m-%d').date() if expiry_date_str else None
 
         tx_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else date.today()
 
@@ -501,7 +600,7 @@ def register_hatchery_routes(app):
             flash('Quantity must be positive.', 'danger')
             return redirect(url_for('hatchery_inventory'))
 
-        tx = InventoryTransaction(inventory_item_id=item_id, transaction_type=movement_type, classification=classification, quantity=quantity, transaction_date=tx_date, notes=remarks, location='Hatchery')
+        tx = InventoryTransaction(inventory_item_id=item_id, transaction_type=movement_type, classification=classification, quantity=quantity, transaction_date=tx_date, notes=remarks, location='Hatchery', batch_number=batch_number, expiry_date=expiry_date)
         db.session.add(tx)
         safe_commit()
         flash('Movement recorded.', 'success')

@@ -1,0 +1,38 @@
+-- Since there is no data to preserve, you can simply drop and recreate the tables.
+-- Execute the following commands in your SQLite shell:
+
+DROP TABLE IF EXISTS inventory_transaction;
+DROP TABLE IF EXISTS inventory_item;
+
+CREATE TABLE inventory_item (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    unit VARCHAR(20),
+    current_stock FLOAT DEFAULT 0.0,
+    min_stock_level FLOAT DEFAULT 0.0,
+    doses_per_unit INTEGER,
+    cost_per_unit FLOAT DEFAULT 0.0,
+    category VARCHAR(50),
+    unit_of_measurement VARCHAR(50),
+    location VARCHAR(50) DEFAULT 'Farm',
+    version INTEGER DEFAULT 1 NOT NULL
+);
+
+CREATE TABLE inventory_transaction (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    inventory_item_id INTEGER NOT NULL,
+    transaction_type VARCHAR(20) NOT NULL,
+    quantity FLOAT NOT NULL,
+    transaction_date DATE NOT NULL,
+    notes VARCHAR(255),
+    location VARCHAR(50) DEFAULT 'Farm',
+    classification VARCHAR(50),
+    batch_number VARCHAR(50),
+    expiry_date DATE,
+    version INTEGER DEFAULT 1 NOT NULL,
+    CONSTRAINT fk_inventory_transaction_inventory_item_id_inventory_item FOREIGN KEY(inventory_item_id) REFERENCES inventory_item (id)
+);
+
+CREATE INDEX ix_inventory_transaction_inventory_item_id ON inventory_transaction (inventory_item_id);
+CREATE INDEX ix_inventory_transaction_transaction_date ON inventory_transaction (transaction_date);

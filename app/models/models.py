@@ -83,12 +83,10 @@ class InventoryItem(VersionedMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False) # 'Vaccine', 'Medication'
-    unit = db.Column(db.String(20), nullable=False) # 'Bottle', 'Kg', 'Packet', 'Liter'
+    unit = db.Column(db.String(20), nullable=True) # 'Bottle', 'Kg', 'Packet', 'Liter'
     current_stock = db.Column(db.Float, default=0.0)
     min_stock_level = db.Column(db.Float, default=0.0)
     doses_per_unit = db.Column(db.Integer, nullable=True) # For vaccines
-    batch_number = db.Column(db.String(50), nullable=True)
-    expiry_date = db.Column(db.Date, nullable=True)
     cost_per_unit = db.Column(db.Float, default=0.0)
     category = db.Column(db.String(50), nullable=True)
     unit_of_measurement = db.Column(db.String(50), nullable=True)
@@ -107,6 +105,8 @@ class InventoryTransaction(VersionedMixin, db.Model):
     notes = db.Column(db.String(255), nullable=True)
     location = db.Column(db.String(50), default='Farm')
     classification = db.Column(db.String(50), nullable=True)
+    batch_number = db.Column(db.String(50), nullable=True)
+    expiry_date = db.Column(db.Date, nullable=True)
 
 class Flock(db.Model):
     id = db.Column(db.Integer, primary_key=True)

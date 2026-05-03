@@ -17,8 +17,8 @@ import re
 def register_production_routes(app):
 
     from app.constants import (
-        REARING_PHASES, INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL,
-    )
+        REARING_PHASES, INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL
+        )
     from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, round_to_whole
     from app.services.data_service import get_projected_start_of_lay, get_weekly_data_aggregated, get_hatchery_analytics, calculate_flock_summary, generate_spreadsheet_data, recalculate_flock_inventory, update_log_from_request, check_daily_log_completion
     from app.services.seed_service import initialize_sampling_schedule, initialize_vaccine_schedule
@@ -990,8 +990,8 @@ def register_production_routes(app):
             'unit': item.unit,
             'min_stock_level': item.min_stock_level,
             'doses_per_unit': item.doses_per_unit,
-            'batch_number': item.batch_number,
-            'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+            'batch_number': '',
+            'expiry_date': ''
         }
 
         item.name = request.form.get('name')
@@ -1002,13 +1002,9 @@ def register_production_routes(app):
         doses = request.form.get('doses_per_unit')
         item.doses_per_unit = int(doses) if doses else None
 
-        item.batch_number = request.form.get('batch_number')
 
-        exp = request.form.get('expiry_date')
-        if exp:
-            item.expiry_date = datetime.strptime(exp, '%Y-%m-%d').date()
-        else:
-            item.expiry_date = None
+
+
 
         new_data = {
             'name': item.name,
@@ -1016,8 +1012,8 @@ def register_production_routes(app):
             'unit': item.unit,
             'min_stock_level': item.min_stock_level,
             'doses_per_unit': item.doses_per_unit,
-            'batch_number': item.batch_number,
-            'expiry_date': item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else None
+            'batch_number': '',
+            'expiry_date': ''
         }
 
         changes = {k: {'old': old_data[k], 'new': new_data[k]} for k in old_data if old_data[k] != new_data[k]}
@@ -1082,14 +1078,13 @@ def register_production_routes(app):
         stock = float(request.form.get('current_stock') or 0)
         min_stock = float(request.form.get('min_stock_level') or 0)
         doses = int(request.form.get('doses_per_unit') or 0) if type_ == 'Vaccine' else None
-        batch = request.form.get('batch_number')
+
         exp_str = request.form.get('expiry_date')
         exp_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
 
         item = InventoryItem(
             name=name, type=type_, unit=unit, current_stock=stock,
-            min_stock_level=min_stock, doses_per_unit=doses,
-            batch_number=batch, expiry_date=exp_date
+            min_stock_level=min_stock, doses_per_unit=doses
         )
         db.session.add(item)
         db.session.flush()
