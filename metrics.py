@@ -221,6 +221,22 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         if total_cull_eggs > 0:
             has_cull_eggs = True
 
+        # Feed Cleanup Hours Calculation
+        feed_cleanup_hours = None
+
+        # Check condition for 0 hours
+        if log.feed_program in ['Skip-a-day', '2/1'] and (log.feed_male_gp_bird or 0) == 0 and (log.feed_female_gp_bird or 0) == 0:
+            feed_cleanup_hours = 0.0
+        else:
+            if log.feed_cleanup_start and log.feed_cleanup_end:
+                try:
+                    from analytics import calculate_feed_cleanup_duration
+                    mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
+                    if mins is not None:
+                        feed_cleanup_hours = round(mins / 60.0, 1)
+                except:
+                    pass
+
         # Cumulatives (Add today's loss)
         cum_mort_m += mort_m
         cum_mort_f += mort_f
@@ -253,6 +269,8 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'phase_start_female': start_f,
             'male_ratio_stock': safe_div(curr_m_prod, curr_f_prod),
 
+            # Feed Cleanup Hours (SSOT Calculation)
+            'feed_cleanup_hours': feed_cleanup_hours,
             # Raw
             'mortality_male': mort_m,
             'mortality_female': mort_f,

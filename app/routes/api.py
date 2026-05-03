@@ -349,13 +349,7 @@ def register_api_routes(app):
                 lighting_hours = round(diff, 1)
             except: pass
 
-        feed_cleanup_hours = 0.0
-        if log.feed_cleanup_start and log.feed_cleanup_end:
-            try:
-                from analytics import calculate_feed_cleanup_duration
-                duration = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
-                if duration: feed_cleanup_hours = round(duration / 60.0, 1)
-            except: pass
+        feed_cleanup_hours = end_day_log.get('feed_cleanup_hours') or 0.0
 
         notes_str = ", ".join(notes) if notes else "None"
         remarks_str = log.remarks if log.remarks else "None"
