@@ -368,7 +368,7 @@
                 <th>Egg Set</th>
                 <th>Hatched</th>
                 <th>Hatch %</th>
-                <th>Hatchable<br>(Fertile)</th>
+                <th>Hatching<br>(Fertile)</th>
                 <th>Fertility %</th>
                 <th>Clear %</th>
                 <th>Rotten %</th>
@@ -384,7 +384,7 @@
                 <td>{{ "{:,}".format(r.egg_set) }}</td>
                 <td>{{ "{:,}".format(r.hatched_chicks) }}</td>
                 <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
-                <td>{{ "{:,}".format(r.hatchable_eggs) }}</td>
+                <td>{{ "{:,}".format(r.hatching_eggs) }}</td>
                 <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
                 <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
                 <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
@@ -2068,8 +2068,8 @@
                   { label: 'Small %', data: smallData, backgroundColor: '#4472c4', yAxisID: 'y', clip: true },
                   { label: 'Abnormal %', data: abnormalData, backgroundColor: '#002060', yAxisID: 'y', clip: true },
                   { label: 'Crack %', data: crackData, backgroundColor: '#ffc000', yAxisID: 'y', clip: true },
-                  { label: 'Hatchable Egg %', data: heData, type: 'line', borderColor: '#0d6efd', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
-                  { label: 'Std Hatchable Egg %', data: heStdData, type: 'line', borderColor: '#dc3545', borderDash: [], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }              ]
+                  { label: 'Hatching Egg %', data: heData, type: 'line', borderColor: '#0d6efd', borderWidth: 2, pointRadius: 3, yAxisID: 'y1', clip: true },
+                  { label: 'Std Hatching Egg %', data: heStdData, type: 'line', borderColor: '#dc3545', borderDash: [], borderWidth: 2, pointRadius: 0, yAxisID: 'y1', clip: true }              ]
           },
           options: {
               responsive: true,
@@ -2077,7 +2077,7 @@
               interaction: { mode: 'index', intersect: false },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Eggs %' }, min: 0, ...barMaxCalc },
-                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatchable Egg %' }, min: 0, max: 110, grid: { drawOnChartArea: false } }
+                  y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatching Egg %' }, min: 0, max: 110, grid: { drawOnChartArea: false } }
               },
               plugins: {
                   ...commonOptions.plugins
