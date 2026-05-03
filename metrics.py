@@ -229,9 +229,9 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         bio_days = (log.date - flock.intake_date).days
         bio_week = calculate_bio_week(flock.intake_date, log.date)
         prod_week = None
-        if flock.start_of_lay_date:
-            if log.date >= flock.start_of_lay_date:
-                prod_days = (log.date - flock.start_of_lay_date).days
+        if flock.production_start_date:
+            if log.date >= flock.production_start_date:
+                prod_days = (log.date - flock.production_start_date).days
                 prod_week = (prod_days // 7) + 1
 
         # Metrics Dict

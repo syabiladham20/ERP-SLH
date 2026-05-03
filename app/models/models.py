@@ -142,7 +142,13 @@ class Flock(db.Model):
                     return log.date
         return None
 
-    start_of_lay_date = db.Column(db.Date, nullable=True) # Date of First Egg (Biological Start)
+    @property
+    def start_of_lay_date(self):
+        # The user requested that the standard production line triggers when
+        # egg production reaches 5%. This aligns perfectly with the
+        # production_start_date calculation. So we'll alias it to ensure
+        # all standard metrics rely on the 5% date.
+        return self.production_start_date
 
     # Production Start Counts (New Baseline)
     prod_start_male = db.Column(db.Integer, default=0, nullable=False, server_default='0')
