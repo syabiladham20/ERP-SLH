@@ -129,14 +129,7 @@ def register_production_routes(app):
                         active_meds.append(m.drug_name)
             meds_str = ", ".join(active_meds)
 
-            cleanup_duration_mins = None
-            if log.feed_cleanup_start and log.feed_cleanup_end:
-                try:
-                    from analytics import calculate_feed_cleanup_duration
-                    cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
-                except Exception:
-                    pass
-            feed_cleanup_hours = round(cleanup_duration_mins / 60.0, 1) if cleanup_duration_mins else None
+            feed_cleanup_hours = d.get('feed_cleanup_hours')
 
             enriched_logs.append({
                 'log': log,
@@ -1731,13 +1724,7 @@ def register_production_routes(app):
                         active_meds.append(m.drug_name)
             meds_str = ", ".join(active_meds)
 
-            cleanup_duration_mins = None
-            if log.feed_cleanup_start and log.feed_cleanup_end:
-                try:
-                    cleanup_duration_mins = calculate_feed_cleanup_duration(log.feed_cleanup_start, log.feed_cleanup_end)
-                except Exception:
-                    pass
-            feed_cleanup_hours = round(cleanup_duration_mins / 60.0, 1) if cleanup_duration_mins else None
+            feed_cleanup_hours = d.get('feed_cleanup_hours')
 
             enriched_logs.append({
                 'log': log,
