@@ -33,15 +33,9 @@
       </div>
 
       <div class="mb-3">
-        <label for="production_start_date" class="form-label">Production Start Date</label>
-        <input type="date" class="form-control" id="production_start_date" name="production_start_date" value="{{ flock.production_start_date or '' }}">
-        <div class="form-text">Clear to revert to Rearing logic (unless manual Phase is set).</div>
-      </div>
-
-      <div class="mb-3">
-        <label for="start_of_lay_date" class="form-label">Start of Lay Date (First Egg)</label>
-        <input type="date" class="form-control" id="start_of_lay_date" name="start_of_lay_date" value="{{ flock.start_of_lay_date or '' }}">
-        <div class="form-text">Set manually if not auto-detected. Required for Production Summary.</div>
+        <label for="start_of_lay_date" class="form-label">Start of Lay Date (5% Production)</label>
+        <input type="date" class="form-control" id="start_of_lay_date" name="start_of_lay_date" value="{{ flock.start_of_lay_date or '' }}" readonly disabled>
+        <div class="form-text">Automatically calculated when production hits 5%. Required for Production Summary.</div>
       </div>
 
       <div class="row">

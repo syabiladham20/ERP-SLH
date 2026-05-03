@@ -7,7 +7,7 @@ import math
 import warnings
 import pandas as pd
 from datetime import datetime, date, timedelta
-from sqlalchemy import func, case, and_, or_
+from sqlalchemy import func, case, and_, or_, text
 from sqlalchemy.orm import joinedload
 from flask import current_app as app, flash, url_for
 from flask_login import current_user
@@ -1964,6 +1964,18 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
         month_fmt = "to_char(l.date, 'YYYY-MM')"
         year_fmt = "to_char(l.date, 'YYYY')"
 
+# Fetch dynamic start_of_lay_dates
+    flocks_data = Flock.query.filter(Flock.id.in_(flock_ids)).all()
+    start_date_cases = []
+    for f in flocks_data:
+        prod_start = f.start_of_lay_date
+        if prod_start:
+            start_date_cases.append(f"WHEN l.flock_id = {f.id} THEN '{prod_start.strftime('%Y-%m-%d')}'")
+
+    start_date_sql = "NULL"
+    if start_date_cases:
+        start_date_sql = f"CASE {' '.join(start_date_cases)} ELSE NULL END"
+
     cte_sql = f"""
     WITH DailyStock AS (
         SELECT
@@ -1978,7 +1990,7 @@ def get_iso_aggregated_data_sql(flock_ids, target_year):
             0 as total_feed,
             f.intake_female + f.intake_male as intake_total,
             f.intake_female,
-            f.start_of_lay_date,
+            {start_date_sql} as start_of_lay_date,
             SUM(l.mortality_male + l.mortality_female + l.culls_male + l.culls_female)
                 OVER (PARTITION BY l.flock_id ORDER BY l.date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as cum_loss,
             SUM(l.mortality_female + l.culls_female)

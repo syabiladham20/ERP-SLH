@@ -1262,11 +1262,6 @@ def register_production_routes(app):
                 flash(str(e), 'danger')
                 return redirect(url_for('edit_daily_log', id=id))
 
-            # Automatic Production Trigger
-            if log.eggs_collected > 0 and not log.flock.start_of_lay_date:
-                log.flock.start_of_lay_date = log.date
-                flash(f"First egg detected! Production tracking started for {log.flock.flock_id} from {log.date}.", "info")
-
             try:
                 safe_commit()
                 recalculate_flock_inventory(log.flock_id)
@@ -1395,11 +1390,6 @@ def register_production_routes(app):
                     return jsonify({'success': False, 'error': str(e)}), 400
                 flash(str(e), 'danger')
                 return redirect(url_for('daily_log', house_id=house_id, date=date_str))
-
-            # Automatic Production Trigger
-            if log.eggs_collected > 0 and not flock.start_of_lay_date:
-                flock.start_of_lay_date = log.date
-                flash(f"First egg detected! Production tracking started for {flock.flock_id} from {log.date}.", "info")
 
             # Handle Vaccines (Mark as Completed)
             vaccine_present_ids = request.form.getlist('vaccine_present_ids')
@@ -2452,12 +2442,6 @@ def register_production_routes(app):
                 flock.intake_date = datetime.strptime(intake_date_str, '%Y-%m-%d').date()
 
             # production_start_date is now dynamic based on egg_prod_pct >= 5.0, so no direct assignment
-
-            lay_date_str = request.form.get('start_of_lay_date')
-            if lay_date_str:
-                 flock.start_of_lay_date = datetime.strptime(lay_date_str, '%Y-%m-%d').date()
-            else:
-                 flock.start_of_lay_date = None
 
             flock.intake_male = int(request.form.get('intake_male') or 0)
             flock.intake_female = int(request.form.get('intake_female') or 0)
