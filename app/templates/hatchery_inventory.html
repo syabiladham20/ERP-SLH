@@ -66,7 +66,7 @@
                                     {% if tx.batch_number %}{{ tx.batch_number }}{% endif %}
                                     {% if tx.expiry_date %}<br><small class="text-muted">{{ tx.expiry_date | date_fmt }}</small>{% endif %}
                                 </td>
-                                <td>{{ tx.quantity }} {{ tx.item.unit_of_measurement or tx.item.unit }}</td>
+                                <td>{{ tx.quantity }} {{ tx.item.unit_of_measurement or tx.item.unit or 'units' }}</td>
                                 <td>{{ tx.notes or '' }}</td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editTxModal{{ tx.id }}">Edit</button>
@@ -247,8 +247,8 @@
                             {% for s in summary %}
                             <tr>
                                 <td>{{ s.item.name }}</td>
-                                <td>{{ s.purchase }} {{ s.item.unit_of_measurement or s.item.unit }}</td>
-                                <td>{{ s.usage + s.waste }} {{ s.item.unit_of_measurement or s.item.unit }}</td>
+                                <td>{{ s.purchase }} {{ s.item.unit_of_measurement or s.item.unit or 'units' }}</td>
+                                <td>{{ s.usage + s.waste }} {{ s.item.unit_of_measurement or s.item.unit or 'units' }}</td>
                             </tr>
                             {% else %}
                             <tr>
@@ -431,7 +431,7 @@
                 <select class="form-select" name="inventory_item_id" id="movementItemSelect" required>
                     <option value="" disabled selected>Select an item...</option>
                     {% for item in items %}
-                        <option value="{{ item.id }}" data-unit="{{ item.unit_of_measurement or item.unit or '' }}">{{ item.name }}</option>
+                        <option value="{{ item.id }}" data-unit="{{ item.unit_of_measurement or item.unit or 'units' }}">{{ item.name }}</option>
                     {% endfor %}
                 </select>
                 <small class="form-hint text-primary fw-bold" id="balanceDisplay"></small>
