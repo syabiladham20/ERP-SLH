@@ -60,7 +60,7 @@ METRICS_REGISTRY = {
 
     # --- Hatchability ---
     'hatchability_pct': {'label': 'Hatchability (Hatch of Set) %', 'unit': '%', 'type': 'derived'},
-    'fertile_egg_pct': {'label': 'Fertility % (Hatchable)', 'unit': '%', 'type': 'derived'},
+    'fertile_egg_pct': {'label': 'Fertility % (Hatching)', 'unit': '%', 'type': 'derived'},
     'clear_egg_pct': {'label': 'Clear Egg %', 'unit': '%', 'type': 'derived'},
     'rotten_egg_pct': {'label': 'Rotten Egg %', 'unit': '%', 'type': 'derived'},
     'egg_set': {'label': 'Egg Set', 'unit': '', 'type': 'raw'},
@@ -299,7 +299,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'mortality_cum_female_pct': safe_div(cum_mort_f, start_f),
 
             'egg_prod_pct': safe_div(eggs, stock_f_start),
-            'hatch_egg_pct': safe_div(hatch_eggs, eggs),
+            'hatch_egg_pct': safe_div(hatch_eggs, eggs) if has_cull_eggs else None,
 
             'cull_eggs_pct': safe_div(total_cull_eggs, eggs),
             'cull_eggs_jumbo_pct': safe_div(jumbo, eggs),
@@ -427,6 +427,7 @@ def aggregate_weekly_metrics(daily_stats):
 
                 # Hatchery (Sum)
                 'egg_set': 0, 'hatched_chicks': 0,
+                'has_cull_eggs': False,
 
                 # Notes
                 'notes': [],
@@ -434,6 +435,8 @@ def aggregate_weekly_metrics(daily_stats):
             }
 
         ws = weekly_stats[w]
+        if d.get('has_cull_eggs'):
+            ws['has_cull_eggs'] = True
         ws['count'] += 1
         ws['mortality_male'] += d['mortality_male']
         ws['mortality_female'] += d['mortality_female']
@@ -512,7 +515,7 @@ def aggregate_weekly_metrics(daily_stats):
         ws['cull_eggs_total'] = ws['cull_eggs_jumbo'] + ws['cull_eggs_small'] + ws['cull_eggs_crack'] + ws['cull_eggs_abnormal']
         ws['cull_eggs_pct'] = safe_div(ws['cull_eggs_total'], ws['eggs_collected'])
 
-        ws['hatch_egg_pct'] = safe_div(ws['hatch_eggs'], ws['eggs_collected'])
+        ws['hatch_egg_pct'] = safe_div(ws['hatch_eggs'], ws['eggs_collected']) if ws['has_cull_eggs'] else None
         ws['cull_eggs_jumbo_pct'] = safe_div(ws['cull_eggs_jumbo'], ws['eggs_collected'])
         ws['cull_eggs_small_pct'] = safe_div(ws['cull_eggs_small'], ws['eggs_collected'])
         ws['cull_eggs_crack_pct'] = safe_div(ws['cull_eggs_crack'], ws['eggs_collected'])
@@ -601,12 +604,15 @@ def aggregate_monthly_metrics(daily_stats):
 
                 # Hatchery (Sum)
                 'egg_set': 0, 'hatched_chicks': 0,
+                'has_cull_eggs': False,
 
                 'notes': [],
                 'photos': []
             }
 
         ms = monthly_stats[m_key]
+        if d.get('has_cull_eggs'):
+            ms['has_cull_eggs'] = True
         ms['count'] += 1
         ms['date_end'] = d['date']
         ms['mortality_male'] += d['mortality_male']
@@ -669,7 +675,7 @@ def aggregate_monthly_metrics(daily_stats):
         avg_hen = ms['stock_female_start'] - ((ms['mortality_female'] + ms['culls_female']) / 2)
         ms['egg_prod_pct'] = safe_div(ms['eggs_collected'], avg_hen * ms['count'])
 
-        ms['hatch_egg_pct'] = safe_div(ms['hatch_eggs'], ms['eggs_collected'])
+        ms['hatch_egg_pct'] = safe_div(ms['hatch_eggs'], ms['eggs_collected']) if ms['has_cull_eggs'] else None
         ms['hatchability_pct'] = safe_div(ms['hatched_chicks'], ms['egg_set'])
 
         ms['body_weight_male'] = ms['bw_male_sum'] / ms['bw_male_count'] if ms['bw_male_count'] > 0 else 0
