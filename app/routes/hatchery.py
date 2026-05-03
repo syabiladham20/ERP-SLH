@@ -461,7 +461,7 @@ def register_hatchery_routes(app):
             elif t.transaction_type == 'Out':
                 balance -= t.quantity
 
-        return jsonify({'balance': balance, 'unit': item.unit_of_measurement or item.unit})
+        return jsonify({'balance': balance, 'unit': item.unit_of_measurement or item.unit or 'units'})
 
     @app.route('/hatchery/inventory/item/add', methods=['POST'])
     @login_required
@@ -524,17 +524,31 @@ def register_hatchery_routes(app):
     @app.route('/hatchery/api/inventory/<int:item_id>/batches', methods=['GET'])
     @login_required
     def hatchery_inventory_item_batches(item_id):
-        # Find all 'In' transactions for this item that have a batch number
-        txs = InventoryTransaction.query.filter_by(inventory_item_id=item_id, transaction_type='In').filter(InventoryTransaction.batch_number.isnot(None)).all()
+        # Get all transactions for this item to compute batch balances
+        all_txs = InventoryTransaction.query.filter_by(inventory_item_id=item_id).filter(InventoryTransaction.batch_number.isnot(None)).all()
+
+        batch_balances = {}
+        batch_expiries = {}
+
+        for t in all_txs:
+            b_num = t.batch_number
+            if b_num not in batch_balances:
+                batch_balances[b_num] = 0.0
+                batch_expiries[b_num] = t.expiry_date.strftime('%Y-%m-%d') if t.expiry_date else None
+
+            if t.transaction_type == 'In':
+                batch_balances[b_num] += t.quantity
+            elif t.transaction_type == 'Out':
+                batch_balances[b_num] -= t.quantity
+
         batches = []
-        seen = set()
-        for t in txs:
-            if t.batch_number not in seen:
-                seen.add(t.batch_number)
-                batches.append({
-                    'batch_number': t.batch_number,
-                    'expiry_date': t.expiry_date.strftime('%Y-%m-%d') if t.expiry_date else None
-                })
+        for b_num, bal in batch_balances.items():
+            batches.append({
+                'batch_number': b_num,
+                'balance': bal,
+                'expiry_date': batch_expiries[b_num]
+            })
+
         return jsonify({'batches': batches})
 
 

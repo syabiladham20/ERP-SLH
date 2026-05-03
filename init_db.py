@@ -1,4 +1,6 @@
-from app import create_app, init_ui_elements, initialize_users
+from app import create_app
+from app.services.seed_service import initialize_users
+from app.services.seed_service import init_ui_elements
 app = create_app()
 from app.database import db
 from app.models.models import House

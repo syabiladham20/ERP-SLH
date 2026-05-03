@@ -463,10 +463,10 @@
             </div>
             <div id="batchSelectContainer" class="mb-3 d-none">
                 <label class="form-label">Select Batch</label>
-                <select class="form-select" id="batchSelect" onchange="syncBatchSelect()">
+                <select class="form-select" id="batchSelect">
                     <option value="">Select a batch...</option>
                 </select>
-                <!-- This helps keep form submission unified without needing backend changes -->
+                <!-- This native select is assigned the name="batch_number" dynamically to fix form submissions -->
             </div>
             <div class="mb-3">
                 <label class="form-label required">Quantity</label>
@@ -570,17 +570,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const hiddenBatchInput = document.getElementById('hiddenBatchInput');
     const hiddenExpiryInput = document.getElementById('hiddenExpiryInput');
 
-    window.syncBatchSelect = function() {
-        const sel = batchSelect.options[batchSelect.selectedIndex];
-        if (sel && sel.value) {
-            batchInput.value = sel.value;
-            expiryInput.value = sel.getAttribute('data-expiry') || '';
-        } else {
-            batchInput.value = '';
-            expiryInput.value = '';
-        }
-    };
-
     const updateBatchesUI = () => {
         const itemId = movementItemSelect.value;
         const type = movementTypeSelect.value;
@@ -591,8 +580,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (type === 'Out') {
             batchInputContainer.classList.add('d-none');
-            expiryInputContainer.classList.add('d-none');
+            expiryInputContainer.classList.add('d-none'); // Hide the expiry input for Out transactions, we'll populate it via a hidden input soon
             batchSelectContainer.classList.remove('d-none');
+
+            // Re-assign name attributes so the form submitted natively
+            batchInput.removeAttribute('name');
+            batchSelect.setAttribute('name', 'batch_number');
 
             if (itemId) {
                 fetch(`/hatchery/api/inventory/${itemId}/batches`)
@@ -601,8 +594,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         const optElement = movementItemSelect.options[movementItemSelect.selectedIndex];
                         const unit = optElement.getAttribute('data-unit') || '';
 
+                        let hasBatches = false;
                         data.batches.forEach(b => {
                             if (b.balance > 0) {
+                                hasBatches = true;
                                 let opt = document.createElement('option');
                                 opt.value = b.batch_number;
                                 let expText = b.expiry_date ? `${b.expiry_date}` : 'No expiry';
@@ -611,6 +606,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 batchSelect.appendChild(opt);
                             }
                         });
+                        if (!hasBatches) {
+                            batchSelect.innerHTML = '<option value="">No batches available with balance</option>';
+                        }
                     })
                     .catch(err => console.error('Error fetching batches', err));
             }
@@ -618,10 +616,23 @@ document.addEventListener('DOMContentLoaded', function() {
             batchInputContainer.classList.remove('d-none');
             expiryInputContainer.classList.remove('d-none');
             batchSelectContainer.classList.add('d-none');
+
+            batchSelect.removeAttribute('name');
+            batchInput.setAttribute('name', 'batch_number');
         }
 
         updateOverallBalance(); // also refresh the balance when movement type or item changes
     };
+
+    batchSelect.addEventListener('change', function() {
+        // Find the selected option's data-expiry and store it in the hidden expiryInput
+        const sel = this.options[this.selectedIndex];
+        if (sel && sel.value) {
+            expiryInput.value = sel.getAttribute('data-expiry') || '';
+        } else {
+            expiryInput.value = '';
+        }
+    });
 
     movementTypeSelect.addEventListener('change', updateBatchesUI);
     movementItemSelect.addEventListener('change', updateBatchesUI);
@@ -630,28 +641,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // movementItemSelect.addEventListener already has updateBatchesUI and updateOverallBalance bounded.
     // So we don't need another event listener here.
 
-    movementItemSelect.addEventListener('change', function() {
-        const itemId = this.value;
-        if (!itemId) {
-            balanceDisplay.textContent = '';
-            return;
-        }
-
-        balanceDisplay.textContent = 'Fetching balance...';
-
-        fetch(`/hatchery/api/inventory/${itemId}/balance`)
-            .then(response => {
-                if (response.ok) return response.json();
-                throw new Error('Network response was not ok.');
-            })
-            .then(data => {
-                balanceDisplay.innerHTML = `<strong>Remaining Stock:</strong> ${data.balance} ${data.unit}`;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                balanceDisplay.textContent = 'Failed to load balance.';
-            });
-    });
 });
 </script>
 {% endblock %}
