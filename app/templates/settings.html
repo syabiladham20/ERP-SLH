@@ -83,11 +83,14 @@
               <h4 class="mb-3">Change Password (Optional)</h4>
               <div class="mb-3">
                 <label class="form-label">New Password</label>
-                <input type="password" class="form-control" name="new_password" placeholder="Leave blank to keep current password">
+                <input type="password" class="form-control new-password-input" name="new_password" id="new_password_settings" placeholder="Leave blank to keep current password">
               </div>
               <div class="mb-3">
                 <label class="form-label">Confirm New Password</label>
-                <input type="password" class="form-control" name="confirm_password" placeholder="Confirm your new password">
+                <input type="password" class="form-control confirm-password-input" name="confirm_password" id="confirm_password_settings" placeholder="Confirm your new password">
+                <div class="invalid-feedback">
+                  Passwords do not match.
+                </div>
               </div>
               <hr>
               <div class="mb-3">
@@ -155,6 +158,32 @@
 
 {% block extra_scripts %}
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const newPasswordInput = document.getElementById('new_password_settings');
+        const confirmPasswordInput = document.getElementById('confirm_password_settings');
+
+        function validatePasswordMatch() {
+            if (confirmPasswordInput.value === '') {
+                confirmPasswordInput.classList.remove('is-invalid');
+                confirmPasswordInput.setCustomValidity('');
+                return;
+            }
+
+            if (newPasswordInput.value !== confirmPasswordInput.value) {
+                confirmPasswordInput.classList.add('is-invalid');
+                confirmPasswordInput.setCustomValidity('Passwords do not match');
+            } else {
+                confirmPasswordInput.classList.remove('is-invalid');
+                confirmPasswordInput.setCustomValidity('');
+            }
+        }
+
+        if (newPasswordInput && confirmPasswordInput) {
+            newPasswordInput.addEventListener('input', validatePasswordMatch);
+            confirmPasswordInput.addEventListener('input', validatePasswordMatch);
+        }
+    });
+
     const vapidPublicKey = "{{ vapid_public_key }}".trim();
 
     function urlBase64ToUint8Array(base64String) {
