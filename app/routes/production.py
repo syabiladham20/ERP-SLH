@@ -56,7 +56,7 @@ def register_production_routes(app):
         hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
         # --- Metrics Engine ---
-        daily_stats = enrich_flock_data(flock, logs, hatch_records)
+        daily_stats = enrich_flock_data(flock, logs, hatch_records, all_standards=all_standards)
 
         # --- Calculate Summary Tab Data ---
         summary_dashboard, summary_table = calculate_flock_summary(flock, daily_stats)
@@ -68,17 +68,6 @@ def register_production_routes(app):
             d['std_mortality_male'] = (std_bio.std_mortality_male if std_bio and std_bio.std_mortality_male is not None else 0.0)
             d['std_mortality_female'] = (std_bio.std_mortality_female if std_bio and std_bio.std_mortality_female is not None else 0.0)
 
-            # Production Standards (Egg Prod)
-            prod_std = None
-            if d.get('production_week'):
-                prod_std = prod_std_map.get(d['production_week'])
-
-            d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            if d.get('has_cull_eggs'):
-                d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-            else:
-                d['std_hatching_egg_pct'] = None
-
         weekly_stats = aggregate_weekly_metrics(daily_stats)
 
         for ws in weekly_stats:
@@ -86,18 +75,6 @@ def register_production_routes(app):
             std_bio = std_map.get(ws['week'])
             ws['std_mortality_male'] = (std_bio.std_mortality_male if std_bio and std_bio.std_mortality_male is not None else 0.0)
             ws['std_mortality_female'] = (std_bio.std_mortality_female if std_bio and std_bio.std_mortality_female is not None else 0.0)
-
-            # Production Standards
-            prod_std = None
-            if ws.get('production_week'):
-                prod_std = prod_std_map.get(ws['production_week'])
-
-            ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-
-            if ws.get('has_cull_eggs'):
-                ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-            else:
-                ws['std_hatching_egg_pct'] = None
 
         medications = Medication.query.filter_by(flock_id=id).all()
         vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
@@ -1658,37 +1635,12 @@ def register_production_routes(app):
         hatch_records = Hatchability.query.filter_by(flock_id=id).order_by(Hatchability.setting_date.desc()).all()
 
         # --- Metrics Engine ---
-        daily_stats = enrich_flock_data(flock, logs, hatch_records)
+        daily_stats = enrich_flock_data(flock, logs, hatch_records, all_standards=all_standards)
 
         # --- Calculate Summary Tab Data ---
         summary_dashboard, summary_table = calculate_flock_summary(flock, daily_stats)
 
-        # Inject Standards
-        for d in daily_stats:
-            # Production Metrics (Egg Prod, Weight, Hatch) -> Use Production Week
-            prod_std = None
-            if d.get('production_week'):
-                prod_std = prod_std_map.get(d['production_week'])
-
-            d['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            if d.get('has_cull_eggs'):
-                d['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-            else:
-                d['std_hatching_egg_pct'] = None
-            # Add other production standards if needed by template
-
         weekly_stats = aggregate_weekly_metrics(daily_stats)
-
-        for ws in weekly_stats:
-            prod_std = None
-            if ws.get('production_week'):
-                prod_std = prod_std_map.get(ws['production_week'])
-
-            ws['std_egg_prod'] = (prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0)
-            if ws.get('has_cull_eggs'):
-                ws['std_hatching_egg_pct'] = (prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0)
-            else:
-                ws['std_hatching_egg_pct'] = None
 
         medications = Medication.query.filter_by(flock_id=id).all()
         vacs = Vaccine.query.filter_by(flock_id=id).filter(Vaccine.actual_date != None).all()
