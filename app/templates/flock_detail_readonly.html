@@ -108,7 +108,7 @@
       <div class="col-md-3 border-end">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Current Prod</span><br>
           <span class="text-dark font-weight-bold">{{ current_stats.male_prod }} M / {{ current_stats.female_prod }} F</span><br>
-          <span class="text-xs text-info">Ratio: {{ "%.2f"|format(current_stats.male_ratio) }}%</span>
+          <span class="text-xs text-info">Ratio: {{ "%.2f"|format(current_stats.male_ratio if current_stats.male_ratio is not none else 0.0) }}%</span>
       </div>
       <div class="col-md-3">
           <span class="text-xs text-muted font-weight-bold text-uppercase">Current Hosp</span><br>
@@ -252,7 +252,7 @@
             </td>
 
             <td class="fw-bold">
-                {{ "%.1f"|format(item.total_feed) }}
+                {{ "%.1f"|format(item.total_feed if item.total_feed is not none else 0.0) }}
                 {% if item.feed_cleanup_hours is not none %}
                 <small class="text-muted fw-normal d-block" style="font-size: 0.7rem;">({{ item.feed_cleanup_hours }}h)</small>
                 {% endif %}
@@ -262,7 +262,7 @@
 
             {% set total_birds = item.stock_male + item.stock_female %}
             {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
-            <td>{{ "%.0f"|format(water_per_bird) }}</td>
+            <td>{{ "%.0f"|format(water_per_bird if water_per_bird is not none else 0.0) }}</td>
 
             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                 {% if item.medications %}
@@ -277,33 +277,33 @@
             </td>
 
             <td class="{{ 'bg-success text-white fw-bold' if item.egg_prod_pct >= 85 else '' }}">
-                <span class="text-muted">{{ item.log.eggs_collected }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_prod_pct) }}%)</span>
+                <span class="text-muted">{{ item.log.eggs_collected }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_prod_pct if item.egg_prod_pct is not none else 0.0) }}%)</span>
             </td>
             <td>{{ item.log.egg_weight }}</td>
 
             <!-- Cull Details -->
             <td class="small">
-                <span class="text-muted">{{ item.egg_data.jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.jumbo_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.jumbo_pct if item.egg_data.jumbo_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="small">
-                <span class="text-muted">{{ item.egg_data.small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.small_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.small_pct if item.egg_data.small_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="small">
-                <span class="text-muted">{{ item.egg_data.crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.crack_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.crack_pct if item.egg_data.crack_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="small">
-                <span class="text-muted">{{ item.egg_data.abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.abnormal_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.abnormal_pct if item.egg_data.abnormal_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="fw-bold text-primary">
-                <span class="text-muted">{{ item.egg_data.hatching }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.hatching_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.hatching }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.hatching_pct if item.egg_data.hatching_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="fw-bold text-danger">
-                <span class="text-muted">{{ item.egg_data.total_culls }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.total_culls_pct) }}%)</span>
+                <span class="text-muted">{{ item.egg_data.total_culls }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_data.total_culls_pct if item.egg_data.total_culls_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td>{{ item.lighting_hours }} hour</td>
@@ -354,41 +354,41 @@
           <tr>
             <td>{{ w.week }}</td>
             <td class="{{ 'text-danger fw-bold' if w.mort_pct_m >= global_std.std_mortality_daily * 7 * 100 else '' }}">
-                <span class="text-muted">{{ w.mortality_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.mort_pct_m) }}%)</span>
+                <span class="text-muted">{{ w.mortality_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.mort_pct_m if w.mort_pct_m is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-danger fw-bold' if w.mort_pct_f >= global_std.std_mortality_daily * 7 * 100 else '' }}">
-                <span class="text-muted">{{ w.mortality_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.mort_pct_f) }}%)</span>
+                <span class="text-muted">{{ w.mortality_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.mort_pct_f if w.mort_pct_f is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-danger fw-bold' if w.cull_pct_m >= global_std.std_mortality_daily * 7 * 100 else '' }}">
-                <span class="text-muted">{{ w.culls_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_pct_m) }}%)</span>
+                <span class="text-muted">{{ w.culls_male }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_pct_m if w.cull_pct_m is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-danger fw-bold' if w.cull_pct_f >= global_std.std_mortality_daily * 7 * 100 else '' }}">
-                <span class="text-muted">{{ w.culls_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_pct_f) }}%)</span>
+                <span class="text-muted">{{ w.culls_female }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_pct_f if w.cull_pct_f is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-success fw-bold' if w.egg_prod_pct >= 85 else '' }}">
-                <span class="text-muted">{{ w.eggs }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.egg_prod_pct) }}%)</span>
+                <span class="text-muted">{{ w.eggs }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.egg_prod_pct if w.egg_prod_pct is not none else 0.0) }}%)</span>
             </td>
-            <td>{{ "%.1f"|format(w.avg_egg_weight) }}</td>
+            <td>{{ "%.1f"|format(w.avg_egg_weight if w.avg_egg_weight is not none else 0.0) }}</td>
 <td class="{{ 'text-warning fw-bold' if w.cull_eggs_jumbo_pct >= 5 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_jumbo_pct) }}%)</span>
+                <span class="text-muted">{{ w.cull_eggs_jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_jumbo_pct if w.cull_eggs_jumbo_pct is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-warning fw-bold' if w.cull_eggs_small_pct >= 5 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_small_pct) }}%)</span>
+                <span class="text-muted">{{ w.cull_eggs_small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_small_pct if w.cull_eggs_small_pct is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-warning fw-bold' if w.cull_eggs_abnormal_pct >= 5 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_abnormal_pct) }}%)</span>
+                <span class="text-muted">{{ w.cull_eggs_abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_abnormal_pct if w.cull_eggs_abnormal_pct is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-warning fw-bold' if w.cull_eggs_crack_pct >= 5 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_crack_pct) }}%)</span>
+                <span class="text-muted">{{ w.cull_eggs_crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_crack_pct if w.cull_eggs_crack_pct is not none else 0.0) }}%)</span>
             </td>
             <td class="{{ 'text-success fw-bold' if w.hatching_egg_pct >= 95 else '' }}">
-                <span class="text-muted">{{ w.hatch_eggs_sum }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.hatching_egg_pct) }}%)</span>
+                <span class="text-muted">{{ w.hatch_eggs_sum }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.hatching_egg_pct if w.hatching_egg_pct is not none else 0.0) }}%)</span>
             </td>
 
             <td class="{{ 'text-danger fw-bold' if w.cull_eggs_total > 0 else '' }}">
-                <span class="text-muted">{{ w.cull_eggs_total }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_pct) }}%)</span>
+                <span class="text-muted">{{ w.cull_eggs_total }}</span><br><span class="fw-bold small">({{ "%.2f"|format(w.cull_eggs_pct if w.cull_eggs_pct is not none else 0.0) }}%)</span>
             </td>
-            <td>{{ "%.1f"|format(w.avg_bw_male) }} / {{ "%.1f"|format(w.avg_bw_female) }}</td>
+            <td>{{ "%.1f"|format(w.avg_bw_male if w.avg_bw_male is not none else 0.0) }} / {{ "%.1f"|format(w.avg_bw_female if w.avg_bw_female is not none else 0.0) }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -428,13 +428,13 @@
                 <td>{{ r.setting_date | date_fmt }}</td>
                 <td>{{ r.hatching_date | date_fmt }}</td>
                 <td>{{ calculate_bio_week(flock.intake_date, r.setting_date) }}</td>
-                <td>{{ "{:,}".format(r.egg_set) }}</td>
-                <td>{{ "{:,}".format(r.hatched_chicks) }}</td>
-                <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
+                <td>{{ "{:,}".format(r.egg_set if r.egg_set is not none else 0) }}</td>
+                <td>{{ "{:,}".format(r.hatched_chicks if r.hatched_chicks is not none else 0) }}</td>
+                <td>{{ "%.2f"|format(r.hatchability_pct if r.hatchability_pct is not none else 0.0) }}%</td>
                 <td>{{ "{:,}".format(r.hatching_eggs if r.hatching_eggs is not none else 0) }}</td>
-                <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
-                <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
-                <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.fertile_egg_pct if r.fertile_egg_pct is not none else 0.0) }}%</td>
+                <td>{{ "%.2f"|format(r.clear_egg_pct if r.clear_egg_pct is not none else 0.0) }}%</td>
+                <td>{{ "%.2f"|format(r.rotten_egg_pct if r.rotten_egg_pct is not none else 0.0) }}%</td>
                 <td>{{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else '-' }}%</td>
             </tr>
             {% else %}
@@ -711,7 +711,7 @@
                     </div>
                     {% set diff_eggs = summary_dashboard.hha_total - summary_dashboard.hha_total_std %}
                     <small class="{{ 'text-success fw-bold' if diff_eggs >= 0 else 'text-danger fw-bold' }}">
-                        {{ "%+.1f"|format(diff_eggs) }} vs Target
+                        {{ "%+.1f"|format(diff_eggs if diff_eggs is not none else 0.0) }} vs Target
                     </small>
                 </div>
             </div>
@@ -727,7 +727,7 @@
                     </div>
                     {% set diff_hatch = summary_dashboard.hha_hatch - summary_dashboard.hha_hatch_std %}
                     <small class="{{ 'text-success fw-bold' if diff_hatch >= 0 else 'text-danger fw-bold' }}">
-                        {{ "%+.1f"|format(diff_hatch) }} vs Target
+                        {{ "%+.1f"|format(diff_hatch if diff_hatch is not none else 0.0) }} vs Target
                     </small>
                 </div>
             </div>
@@ -743,7 +743,7 @@
                     </div>
                     {% set diff_chicks = summary_dashboard.hha_chicks - summary_dashboard.hha_chicks_std %}
                     <small class="{{ 'text-success fw-bold' if diff_chicks >= 0 else 'text-danger fw-bold' }}">
-                        {{ "%+.1f"|format(diff_chicks) }} vs Target
+                        {{ "%+.1f"|format(diff_chicks if diff_chicks is not none else 0.0) }} vs Target
                     </small>
                 </div>
             </div>

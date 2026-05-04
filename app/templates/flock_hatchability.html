@@ -83,11 +83,11 @@
                 <td>{{ calculate_bio_week(flock.intake_date, r.setting_date) }}</td>
                 <td>{{ r.egg_set }}</td>
                 <td>{{ r.hatched_chicks }}</td>
-                <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.hatchability_pct if r.hatchability_pct is not none else 0.0) }}%</td>
                 <td>{{ r.hatching_eggs if r.hatching_eggs is not none else 0 }}</td>
-                <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
-                <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
-                <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
+                <td>{{ "%.2f"|format(r.fertile_egg_pct if r.fertile_egg_pct is not none else 0.0) }}%</td>
+                <td>{{ "%.2f"|format(r.clear_egg_pct if r.clear_egg_pct is not none else 0.0) }}%</td>
+                <td>{{ "%.2f"|format(r.rotten_egg_pct if r.rotten_egg_pct is not none else 0.0) }}%</td>
                 <td>{{ "%.2f"|format(r.male_ratio_pct) if r.male_ratio_pct is not none else '-' }}%</td>
                 <td>
                     <a href="{{ url_for('hatchability_diagnosis', id=flock.id, date_str=r.setting_date) }}" class="btn btn-sm btn-info text-white" title="Diagnose Farm Data">
