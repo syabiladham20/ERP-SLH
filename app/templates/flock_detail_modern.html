@@ -390,7 +390,7 @@
             <td class="{{ 'text-warning fw-bold' if w.cull_eggs_crack_pct >= 5 else '' }}">
                 <span class="text-muted">{{ w.cull_eggs_crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(((w.cull_eggs_crack_pct or 0) | float)) }}%)</span>
             </td>
-            <td class="{{ 'text-success fw-bold' if w.hatching_egg_pct >= 95 else '' }}">
+            <td class="{{ 'text-success fw-bold' if (w.hatching_egg_pct or 0) >= 95 else '' }}">
                 <span class="text-muted">{{ w.hatch_eggs_sum }}</span><br><span class="fw-bold small">({{ "%.2f"|format(((w.hatching_egg_pct or 0) | float)) }}%)</span>
             </td>
 
