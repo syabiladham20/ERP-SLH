@@ -263,11 +263,11 @@
                                             <div class="text-muted small">
                                                 Male:
                                                 <span class="{% if log.avg_m_var > 0 %}text-success{% elif log.avg_m_var < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                                    {{ "%.1f"|format(log.avg_m_var) }}%
+                                                    {{ "%.1f"|format(log.avg_m_var if log.avg_m_var is not none else 0.0) }}%
                                                 </span>
                                                 | Female:
                                                 <span class="{% if log.avg_f_var > 0 %}text-success{% elif log.avg_f_var < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                                    {{ "%.1f"|format(log.avg_f_var) }}%
+                                                    {{ "%.1f"|format(log.avg_f_var if log.avg_f_var is not none else 0.0) }}%
                                                 </span>
                                             </div>
                                         </div>
@@ -307,13 +307,13 @@
                                                             <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
                                                                 {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
                                                                 {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
-                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
+                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct if p.var_pct is not none else 0.0) }}%</span>
                                                             </span>
                                                         {% endfor %}
                                                     {% else %}
                                                         <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
                                                             Avg: {{ log.avg_m }}g <span class="text-muted">({{ log.avg_m_diff }})</span>
-                                                            {{ "%.1f"|format(log.uni_m) }}%
+                                                            {{ "%.1f"|format(log.uni_m if log.uni_m is not none else 0.0) }}%
                                                         </span>
                                                     {% endif %}
                                                 </div>
@@ -328,13 +328,13 @@
                                                             <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
                                                                 {{ p.name }}: {{ p.bw }}g <span class="text-muted">({{ p.diff_g }})</span>
                                                                 {{ "%.1f"|format(p.unif) }}% <span class="text-muted">({{ p.diff_u }})</span>
-                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct) }}%</span>
+                                                                | Var: <span class="{% if p.var_pct > 0 %}text-success{% elif p.var_pct < 0 %}text-danger{% else %}text-muted{% endif %}">{{ "%.1f"|format(p.var_pct if p.var_pct is not none else 0.0) }}%</span>
                                                             </span>
                                                         {% endfor %}
                                                     {% else %}
                                                         <span class="badge bg-light text-dark mb-1 d-inline-block px-2 py-1 me-2 border">
                                                             Avg: {{ log.avg_f }}g <span class="text-muted">({{ log.avg_f_diff }})</span>
-                                                            {{ "%.1f"|format(log.uni_f) }}%
+                                                            {{ "%.1f"|format(log.uni_f if log.uni_f is not none else 0.0) }}%
                                                         </span>
                                                     {% endif %}
                                                 </div>

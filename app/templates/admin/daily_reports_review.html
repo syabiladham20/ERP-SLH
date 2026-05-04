@@ -81,7 +81,7 @@
                             </td>
 
                             <td class="fw-bold">
-                                {{ "%.1f"|format(item.feed_total_kg) }}
+                                {{ "%.1f"|format(item.feed_total_kg if item.feed_total_kg is not none else 0.0) }}
                                 {% if item.log.feed_cleanup_hours is not none %}
                                 <small class="text-muted fw-normal d-block" style="font-size: 0.7rem;">({{ item.log.feed_cleanup_hours }}h)</small>
                                 {% endif %}
@@ -91,7 +91,7 @@
 
                             {% set total_birds = item.stock_male_start + item.stock_female_start %}
                             {% set water_per_bird = (item.log.water_intake_calculated * 1000) / total_birds if total_birds > 0 else 0 %}
-                            <td>{{ "%.0f"|format(water_per_bird) }}</td>
+                            <td>{{ "%.0f"|format(water_per_bird if water_per_bird is not none else 0.0) }}</td>
 
                             <td class="text-start small" style="max-width: 120px; white-space: normal; line-height: 1.1;">
                                 {% if item.log.medications %}
@@ -106,38 +106,38 @@
                             </td>
 
                             <td class="{{ 'bg-success text-white fw-bold' if item.egg_prod_pct >= 85 else '' }}">
-                                <span class="text-muted">{{ item.log.eggs_collected }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_prod_pct) }}%)</span>
+                                <span class="text-muted">{{ item.log.eggs_collected }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.egg_prod_pct if item.egg_prod_pct is not none else 0.0) }}%)</span>
                             </td>
                             <td>{{ item.log.egg_weight }}</td>
 
                             <!-- Cull Details -->
                             <td class="small">
-                                <span class="text-muted">{{ item.cull_eggs_jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_jumbo_pct) }}%)</span>
+                                <span class="text-muted">{{ item.cull_eggs_jumbo }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_jumbo_pct if item.cull_eggs_jumbo_pct is not none else 0.0) }}%)</span>
                             </td>
 
                             <td class="small">
-                                <span class="text-muted">{{ item.cull_eggs_small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_small_pct) }}%)</span>
+                                <span class="text-muted">{{ item.cull_eggs_small }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_small_pct if item.cull_eggs_small_pct is not none else 0.0) }}%)</span>
                             </td>
 
                             <td class="small">
-                                <span class="text-muted">{{ item.cull_eggs_crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_crack_pct) }}%)</span>
+                                <span class="text-muted">{{ item.cull_eggs_crack }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_crack_pct if item.cull_eggs_crack_pct is not none else 0.0) }}%)</span>
                             </td>
 
                             <td class="small">
-                                <span class="text-muted">{{ item.cull_eggs_abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_abnormal_pct) }}%)</span>
+                                <span class="text-muted">{{ item.cull_eggs_abnormal }}</span><br><span class="fw-bold small">({{ "%.2f"|format(item.cull_eggs_abnormal_pct if item.cull_eggs_abnormal_pct is not none else 0.0) }}%)</span>
                             </td>
 
                             <!-- Hatching / Cull Eggs -->
                             <td class="bg-primary bg-opacity-10 fw-bold">
                                 <span class="text-dark">{{ item.hatch_eggs }}</span><br>
                                 <span class="small {{ 'text-success' if item.hatch_egg_pct >= 95 else 'text-danger' }}">
-                                    ({{ "%.2f"|format(item.hatch_egg_pct) }}%)
+                                    ({{ "%.2f"|format(item.hatch_egg_pct if item.hatch_egg_pct is not none else 0.0) }}%)
                                 </span>
                             </td>
 
                             <td class="bg-secondary bg-opacity-10 text-muted small">
                                 <span>{{ item.cull_eggs_total }}</span><br>
-                                <span>({{ "%.2f"|format(item.cull_eggs_pct) }}%)</span>
+                                <span>({{ "%.2f"|format(item.cull_eggs_pct if item.cull_eggs_pct is not none else 0.0) }}%)</span>
                             </td>
 
                             <td>{{ item.log.light_hours }}</td>

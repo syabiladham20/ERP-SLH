@@ -50,8 +50,8 @@
                       <h6 class="text-muted">Previous Hatch</h6>
                       {% if last_hatch %}
                           <h3 class="text-success">{{ last_hatch.date | date_fmt }}</h3>
-                          <p class="mb-0 fs-5"><strong>{{ "{:,}".format(last_hatch.total_hatched) }}</strong> chicks</p>
-                          <p class="text-muted small mb-0">({{ "%.2f"|format(last_hatch.hatch_pct) }}%)</p>
+                          <p class="mb-0 fs-5"><strong>{{ "{:,}".format(last_hatch.total_hatched if last_hatch.total_hatched is not none else 0) }}</strong> chicks</p>
+                          <p class="text-muted small mb-0">({{ "%.2f"|format(last_hatch.hatch_pct if last_hatch.hatch_pct is not none else 0.0) }}%)</p>
                       {% else %}
                           <p class="text-muted py-2">No recent data</p>
                       {% endif %}
@@ -60,7 +60,7 @@
                       <h6 class="text-muted">Next Hatch Forecast</h6>
                       {% if next_hatch %}
                           <h3 class="text-primary">{{ next_hatch.date | date_fmt }}</h3>
-                          <p class="mb-0 fs-5"><strong>{{ "{:,}".format(next_hatch.forecast) }}</strong> chicks</p>
+                          <p class="mb-0 fs-5"><strong>{{ "{:,}".format(next_hatch.forecast if next_hatch.forecast is not none else 0) }}</strong> chicks</p>
                           <p class="text-muted small mb-0">(Forecast at Standard %)</p>
                       {% else %}
                           <p class="text-muted py-2">No upcoming hatch</p>
@@ -106,8 +106,8 @@
                         {% if flock.calculated_phase in ['Brooding', 'Growing', 'Pre-lay'] %}
                         <div class="col-6 border-end">
                             <small class="text-muted">Rearing Mort %</small><br>
-                            <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct) }}%</strong><br>
-                            <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct) }}%</strong>
+                            <strong>M: {{ "%.2f"|format(flock.rearing_mort_m_pct if flock.rearing_mort_m_pct is not none else 0.0) }}%</strong><br>
+                            <strong>F: {{ "%.2f"|format(flock.rearing_mort_f_pct if flock.rearing_mort_f_pct is not none else 0.0) }}%</strong>
                         </div>
                         <div class="col-6">
                             <small class="text-muted">Daily Mort %</small>
@@ -116,23 +116,23 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%)
-                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
+                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct if flock.daily_stats.mort_m_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% endif %}
                                 <br>
-                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%)
-                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% endif %}
+                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct if flock.daily_stats.mort_f_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                             <br>
                             <small class="text-muted">Male Ratio</small><br>
-                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct if flock.male_ratio_pct is not none else 0.0) }}%</strong>
                         </div>
                         {% else %}
                         <div class="col-4 border-end">
                             <small class="text-muted">Prod Mort %</small><br>
-                            <strong>M: {{ "%.2f"|format(flock.prod_mort_m_pct) }}%</strong><br>
-                            <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct) }}%</strong>
+                            <strong>M: {{ "%.2f"|format(flock.prod_mort_m_pct if flock.prod_mort_m_pct is not none else 0.0) }}%</strong><br>
+                            <strong>F: {{ "%.2f"|format(flock.prod_mort_f_pct if flock.prod_mort_f_pct is not none else 0.0) }}%</strong>
                         </div>
                         <div class="col-4 border-end">
                             <small class="text-muted">Daily Mort %</small>
@@ -141,17 +141,17 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%)
-                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
+                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct if flock.daily_stats.mort_m_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% endif %}
                                 <br>
-                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%)
-                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% endif %}
+                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct if flock.daily_stats.mort_f_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                             <br>
                             <small class="text-muted">Male Ratio</small><br>
-                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct if flock.male_ratio_pct is not none else 0.0) }}%</strong>
                         </div>
                         <div class="col-4">
                                 <small class="text-muted">Egg Prod.</small>
@@ -160,8 +160,8 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                    <strong>{{ flock.daily_stats.eggs }} ({{ "%.2f"|format(flock.daily_stats.egg_pct) }}%)</strong>
-                                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.egg_diff) }}%)</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.egg_diff) }}%)</span>{% endif %}
+                                    <strong>{{ flock.daily_stats.eggs }} ({{ "%.2f"|format(flock.daily_stats.egg_pct if flock.daily_stats.egg_pct is not none else 0.0) }}%)</strong>
+                                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.egg_diff if flock.daily_stats.egg_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.egg_diff if flock.daily_stats.egg_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
@@ -173,11 +173,11 @@
                     <div class="row text-center mt-2">
                         <div class="col-6 border-end">
                             <small class="text-muted">Latest Hatch</small><br>
-                            <strong>{{ "%.2f"|format(flock.latest_hatch_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.latest_hatch_pct if flock.latest_hatch_pct is not none else 0.0) }}%</strong>
                         </div>
                         <div class="col-6">
                             <small class="text-muted">Cum. Hatch</small><br>
-                            <strong>{{ "%.2f"|format(flock.cum_hatch_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.cum_hatch_pct if flock.cum_hatch_pct is not none else 0.0) }}%</strong>
                         </div>
                     </div>
                     {% endif %}
@@ -263,12 +263,12 @@
                           {% for row in iso_data.weekly %}
                           <tr>
                               <td>{{ row.period }}</td>
-                              <td>{{ "{:,}".format(row.avg_female_stock) }}</td>
-                              <td>{{ "{:,}".format(row.total_eggs) }}</td>
-                              <td>{{ "{:,}".format(row.total_chicks) }}</td>
-                              <td>{{ "%.2f"|format(row.mortality_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.hatchability_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.egg_production_pct) }}%</td>
+                              <td>{{ "{:,}".format(row.avg_female_stock if row.avg_female_stock is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_eggs if row.total_eggs is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_chicks if row.total_chicks is not none else 0) }}</td>
+                              <td>{{ "%.2f"|format(row.mortality_pct if row.mortality_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.hatchability_pct if row.hatchability_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.egg_production_pct if row.egg_production_pct is not none else 0.0) }}%</td>
                           </tr>
                           {% else %}
                           <tr><td colspan="7">No data available.</td></tr>
@@ -304,12 +304,12 @@
                           {% for row in iso_data.monthly %}
                           <tr>
                               <td>{{ row.period }}</td>
-                              <td>{{ "{:,}".format(row.avg_female_stock) }}</td>
-                              <td>{{ "{:,}".format(row.total_eggs) }}</td>
-                              <td>{{ "{:,}".format(row.total_chicks) }}</td>
-                              <td>{{ "%.2f"|format(row.mortality_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.hatchability_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.egg_production_pct) }}%</td>
+                              <td>{{ "{:,}".format(row.avg_female_stock if row.avg_female_stock is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_eggs if row.total_eggs is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_chicks if row.total_chicks is not none else 0) }}</td>
+                              <td>{{ "%.2f"|format(row.mortality_pct if row.mortality_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.hatchability_pct if row.hatchability_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.egg_production_pct if row.egg_production_pct is not none else 0.0) }}%</td>
                           </tr>
                           {% else %}
                           <tr><td colspan="7">No data available.</td></tr>
@@ -345,12 +345,12 @@
                           {% for row in iso_data.yearly %}
                           <tr>
                               <td>{{ row.period }}</td>
-                              <td>{{ "{:,}".format(row.avg_female_stock) }}</td>
-                              <td>{{ "{:,}".format(row.total_eggs) }}</td>
-                              <td>{{ "{:,}".format(row.total_chicks) }}</td>
-                              <td>{{ "%.2f"|format(row.mortality_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.hatchability_pct) }}%</td>
-                              <td>{{ "%.2f"|format(row.egg_production_pct) }}%</td>
+                              <td>{{ "{:,}".format(row.avg_female_stock if row.avg_female_stock is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_eggs if row.total_eggs is not none else 0) }}</td>
+                              <td>{{ "{:,}".format(row.total_chicks if row.total_chicks is not none else 0) }}</td>
+                              <td>{{ "%.2f"|format(row.mortality_pct if row.mortality_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.hatchability_pct if row.hatchability_pct is not none else 0.0) }}%</td>
+                              <td>{{ "%.2f"|format(row.egg_production_pct if row.egg_production_pct is not none else 0.0) }}%</td>
                           </tr>
                           {% else %}
                           <tr><td colspan="7">No data available.</td></tr>

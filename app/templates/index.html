@@ -61,17 +61,17 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%)
-                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
+                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct if flock.daily_stats.mort_m_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% endif %}
                                 <br>
-                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%)
-                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% endif %}
+                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct if flock.daily_stats.mort_f_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                             <br>
                             <small class="text-muted">Male Ratio</small><br>
-                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct if flock.male_ratio_pct is not none else 0.0) }}%</strong>
                         </div>
                         {% else %}
 
@@ -82,17 +82,17 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct) }}%)
-                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff) }}%)</span>{% endif %}
+                                M: {{ flock.daily_stats.mort_m }} ({{ "%.2f"|format(flock.daily_stats.mort_m_pct if flock.daily_stats.mort_m_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_m_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_m_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_m_diff if flock.daily_stats.mort_m_diff is not none else 0.0) }}%)</span>{% endif %}
                                 <br>
-                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct) }}%)
-                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff) }}%)</span>{% endif %}
+                                F: {{ flock.daily_stats.mort_f }} ({{ "%.2f"|format(flock.daily_stats.mort_f_pct if flock.daily_stats.mort_f_pct is not none else 0.0) }}%)
+                                {% if flock.daily_stats.mort_f_trend == 'up' %}<span class="text-danger fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.mort_f_trend == 'down' %}<span class="text-success fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.mort_f_diff if flock.daily_stats.mort_f_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                             <br>
                             <small class="text-muted">Male Ratio</small><br>
-                            <strong>{{ "%.2f"|format(flock.male_ratio_pct) }}%</strong>
+                            <strong>{{ "%.2f"|format(flock.male_ratio_pct if flock.male_ratio_pct is not none else 0.0) }}%</strong>
                         </div>
                         <div class="col-6">
                                 <small class="text-muted">Egg Prod.</small>
@@ -101,8 +101,8 @@
                             {% endif %}
                             <br>
                             {% if flock.daily_stats.show_data %}
-                                    <strong>{{ flock.daily_stats.eggs }} ({{ "%.2f"|format(flock.daily_stats.egg_pct) }}%)</strong>
-                                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.egg_diff) }}%)</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.egg_diff) }}%)</span>{% endif %}
+                                    <strong>{{ flock.daily_stats.eggs }} ({{ "%.2f"|format(flock.daily_stats.egg_pct if flock.daily_stats.egg_pct is not none else 0.0) }}%)</strong>
+                                {% if flock.daily_stats.egg_trend == 'up' %}<span class="text-success fw-bold">↑ ({{ "+%.2f"|format(flock.daily_stats.egg_diff if flock.daily_stats.egg_diff is not none else 0.0) }}%)</span>{% elif flock.daily_stats.egg_trend == 'down' %}<span class="text-danger fw-bold">↓ ({{ "%.2f"|format(flock.daily_stats.egg_diff if flock.daily_stats.egg_diff is not none else 0.0) }}%)</span>{% endif %}
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
