@@ -84,7 +84,7 @@
                 <td>{{ r.egg_set }}</td>
                 <td>{{ r.hatched_chicks }}</td>
                 <td>{{ "%.2f"|format(r.hatchability_pct) }}%</td>
-                <td>{{ r.hatching_eggs }}</td>
+                <td>{{ r.hatching_eggs if r.hatching_eggs is not none else 0 }}</td>
                 <td>{{ "%.2f"|format(r.fertile_egg_pct) }}%</td>
                 <td>{{ "%.2f"|format(r.clear_egg_pct) }}%</td>
                 <td>{{ "%.2f"|format(r.rotten_egg_pct) }}%</td>
