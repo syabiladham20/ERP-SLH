@@ -508,7 +508,7 @@ class Hatchability(VersionedMixin, db.Model):
     flock = db.relationship('Flock', backref=db.backref('hatchability_data', lazy=True, cascade="all, delete-orphan"))
 
     @property
-    def hatchable_eggs(self):
+    def hatching_eggs(self):
         return self.egg_set - self.clear_eggs - self.rotten_eggs
 
     @property
@@ -519,7 +519,7 @@ class Hatchability(VersionedMixin, db.Model):
     @property
     def fertile_egg_pct(self):
         # Hatchable / Egg Set (or Fertility %)
-        return (self.hatchable_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
+        return (self.hatching_eggs / self.egg_set * 100) if self.egg_set > 0 else 0.0
 
     @property
     def clear_egg_pct(self):
