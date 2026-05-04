@@ -81,12 +81,12 @@
                                     <td>{{ m.day_number }}</td>
                                     <td>{{ m.death_count }}</td>
                                     <td>{{ m.balance }}</td>
-                                    <td>{{ '%.2f'|format(m.feed_daily_use_kg) }}</td>
-                                    <td>{{ '%.2f'|format(m.gram_per_bird) }}</td>
-                                    <td>{{ '%.2f'|format(m.body_weight_g) }}</td>
-                                    <td>{{ '%.2f'|format(m.weight_gain) }}</td>
-                                    <td>{{ '%.3f'|format(m.cumulative_fcr) }}</td>
-                                    <td>{{ '%.3f'|format(m.standard_fcr) if m.standard_fcr else '-' }}</td>
+                                    <td>{{ '%.2f'|format(((m.feed_daily_use_kg or 0) | float)) }}</td>
+                                    <td>{{ '%.2f'|format(((m.gram_per_bird or 0) | float)) }}</td>
+                                    <td>{{ '%.2f'|format(((m.body_weight_g or 0) | float)) }}</td>
+                                    <td>{{ '%.2f'|format(((m.weight_gain or 0) | float)) }}</td>
+                                    <td>{{ '%.3f'|format(((m.cumulative_fcr or 0) | float)) }}</td>
+                                    <td>{{ '%.3f'|format(((m.standard_fcr or 0) | float)) if m.standard_fcr else '-' }}</td>
                                     <td>{{ m.remarks or '' }}</td>
                                     {% if real_is_admin %}
                                     <td>

@@ -106,12 +106,12 @@
                         <td>{{ m.day_number }}</td>
                         <td>{{ m.death_count }}</td>
                         <td>{{ m.balance }}</td>
-                        <td>{{ "%.2f"|format(m.death_percentage if m.death_percentage is not none else 0.0) }}%</td>
+                        <td>{{ "%.2f"|format(((m.death_percentage or 0) | float)) }}%</td>
                         <td>{{ m.feed_daily_use_kg }}</td>
-                        <td>{{ "%.1f"|format(m.gram_per_bird if m.gram_per_bird is not none else 0.0) }}</td>
-                        <td>{{ "%.1f"|format(m.body_weight_g if m.body_weight_g is not none else 0.0) }}</td>
-                        <td class="{{ 'text-success' if m.weight_gain > 0 else ('text-danger' if m.weight_gain < 0 else '') }}">{{ "%.1f"|format(m.weight_gain if m.weight_gain is not none else 0.0) }}</td>
-                        <td>{{ "%.3f"|format(m.cumulative_fcr if m.cumulative_fcr is not none else 0.0) }}</td>
+                        <td>{{ "%.1f"|format(((m.gram_per_bird or 0) | float)) }}</td>
+                        <td>{{ "%.1f"|format(((m.body_weight_g or 0) | float)) }}</td>
+                        <td class="{{ 'text-success' if m.weight_gain > 0 else ('text-danger' if m.weight_gain < 0 else '') }}">{{ "%.1f"|format(((m.weight_gain or 0) | float)) }}</td>
+                        <td>{{ "%.3f"|format(((m.cumulative_fcr or 0) | float)) }}</td>
                         <td class="text-muted small">{{ m.remarks or '' }}</td>
                     </tr>
                     {% else %}
