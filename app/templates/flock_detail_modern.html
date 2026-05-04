@@ -181,6 +181,11 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link px-4 py-2 border rounded shadow-sm bg-white" id="health-analytics-tab" data-bs-toggle="tab" data-bs-target="#health-analytics" type="button" role="tab" aria-controls="health-analytics" aria-selected="false">Health Analytics</button>
   </li>
+  {% if current_user.dept == 'Farm' %}
+  <li class="nav-item" role="presentation">
+    <a href="{{ url_for('presentation_views.presentation_studio', flock_id=flock.id) }}" class="nav-link px-4 py-2 border rounded shadow-sm bg-white" style="text-decoration: none; color: inherit;">Presentation Studio</a>
+  </li>
+  {% endif %}
 </ul>
 
 <!-- Tab Content -->
