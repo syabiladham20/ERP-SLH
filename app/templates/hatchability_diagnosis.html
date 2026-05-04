@@ -66,13 +66,13 @@
                 <p><strong>Total Hatched:</strong> {{ stats['hatched'] }}</p>
                 <hr>
                 <h3 class="text-center {% if stats['hatch_pct'] < 80 %}text-danger{% else %}text-success{% endif %}">
-                    {{ "%.2f"|format(stats['hatch_pct'] if stats['hatch_pct'] is not none else 0.0) }}%
+                    {{ "%.2f"|format(((stats['hatch_pct'] or 0) | float)) }}%
                 </h3>
                 <p class="text-center text-muted">Hatchability</p>
 
                 <div class="d-flex justify-content-between mt-3">
-                    <span class="text-warning">Clear: {{ "%.2f"|format(stats['clear_pct'] if stats['clear_pct'] is not none else 0.0) }}%</span>
-                    <span class="text-danger">Rotten: {{ "%.2f"|format(stats['rotten_pct'] if stats['rotten_pct'] is not none else 0.0) }}%</span>
+                    <span class="text-warning">Clear: {{ "%.2f"|format(((stats['clear_pct'] or 0) | float)) }}%</span>
+                    <span class="text-danger">Rotten: {{ "%.2f"|format(((stats['rotten_pct'] or 0) | float)) }}%</span>
                 </div>
             </div>
         </div>
