@@ -211,12 +211,9 @@ def register_api_routes(app):
             DailyLog.date <= end_date
         ).order_by(DailyLog.date.asc()).all()
 
-        # Fetch Standards
-        all_standards = Standard.query.all()
-
         gs = GlobalStandard.query.first()
         std_mort = gs.std_mortality_daily if gs and gs.std_mortality_daily is not None else 0.05
-        enriched = enrich_flock_data(flock, logs, all_standards=all_standards)
+        enriched = enrich_flock_data(flock, logs)
 
         cum_mort_m_pct = 0
         cum_mort_f_pct = 0
@@ -225,8 +222,24 @@ def register_api_routes(app):
             cum_mort_m_pct = enriched[-1].get('mortality_cum_male_pct', 0)
             cum_mort_f_pct = enriched[-1].get('mortality_cum_female_pct', 0)
 
+        # Fetch Standards
+        all_standards = Standard.query.all()
+        std_map_by_week = {s.week: s for s in all_standards}
+        prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+
         # Attach Standards
         for d in enriched:
+            prod_std = None
+            if d.get('production_week'):
+                prod_std = prod_std_map.get(d['production_week'])
+
+            d['std_egg_prod'] = prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0
+
+            if d.get('has_cull_eggs'):
+                d['std_hatching_egg_pct'] = prod_std.std_hatching_egg_pct if prod_std and prod_std.std_hatching_egg_pct is not None else 0.0
+            else:
+                d['std_hatching_egg_pct'] = None
+
             d['std_mortality'] = std_mort
 
         trend_data = []
@@ -1034,8 +1047,16 @@ def register_api_routes(app):
         meds = Medication.query.filter_by(flock_id=flock_id).all()
         vacs = Vaccine.query.filter_by(flock_id=flock_id).filter(Vaccine.actual_date != None).all()
 
+        daily_stats = enrich_flock_data(flock, all_logs, hatch_records)
+
+        # Attach Standards
         all_standards = Standard.query.all()
-        daily_stats = enrich_flock_data(flock, all_logs, hatch_records, all_standards=all_standards)
+        prod_std_map = {s.production_week: s for s in all_standards if s.production_week}
+        for d in daily_stats:
+            prod_std = None
+            if d.get('production_week'):
+                prod_std = prod_std_map.get(d['production_week'])
+            d['std_egg_prod'] = prod_std.std_egg_prod if prod_std and prod_std.std_egg_prod is not None else 0.0
 
         filtered_daily = []
         for d in daily_stats:

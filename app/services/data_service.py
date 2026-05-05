@@ -355,10 +355,9 @@ def calculate_flock_summary(flock, daily_stats):
 def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_week):
     spreadsheet_data = []
     from metrics import enrich_flock_data, calculate_bio_week
-    from app.models.models import FeedCode, Standard
+    from app.models.models import FeedCode
     flock_logs = [l for l in logs]
-    all_standards = Standard.query.all()
-    enriched = enrich_flock_data(flock, flock_logs, all_standards=all_standards)
+    enriched = enrich_flock_data(flock, flock_logs)
 
     # Pre-fetch FeedCodes to avoid N+1 inside the loop
     feed_codes = FeedCode.query.all()
@@ -370,6 +369,7 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
         prod_week = item['production_week']
 
         bio_std = standards_by_week.get(week)
+        prod_std = standards_by_prod_week.get(prod_week)
 
         notes_parts = []
         if log.clinical_notes:
@@ -444,9 +444,9 @@ def generate_spreadsheet_data(flock, logs, standards_by_week, standards_by_prod_
             log.light_on_time,
             log.light_off_time,
             bio_std.std_mortality_female if bio_std else 0, # Benchmark Female Mort
-            item.get('std_egg_prod', 0.0),                  # Benchmark Egg Prod
-            bio_std.std_bw_male if bio_std else 0,          # Benchmark
-            bio_std.std_bw_female if bio_std else 0         # Benchmark
+            prod_std.std_egg_prod if prod_std else 0,       # Benchmark Egg Prod
+            bio_std.std_bw_male if bio_std else 0,        # Benchmark
+            bio_std.std_bw_female if bio_std else 0       # Benchmark
         ])
 
         spreadsheet_data.append(row_data)

@@ -73,38 +73,7 @@ def safe_div(num, den, multiplier=100.0):
         return (num / den) * multiplier
     return 0.0
 
-def generate_daily_curve(weekly_standards):
-    """
-    Takes a dictionary of weekly targets and returns a list of daily targets.
-    Example input: {1: 5.0, 2: 20.0, 3: 45.0} (Keys are weeks, values are percentages)
-    """
-    daily_standards = []
-    weeks = sorted(weekly_standards.keys())
-
-    if not weeks:
-        return []
-
-    for i in range(len(weeks) - 1):
-        current_week = weeks[i]
-        next_week = weeks[i + 1]
-
-        start_val = weekly_standards[current_week]
-        end_val = weekly_standards[next_week]
-
-        # Calculate how much to add each day
-        daily_increment = (end_val - start_val) / 7
-
-        # Generate the 7 days leading up to the next week's standard
-        for day in range(7):
-            daily_val = start_val + (day * daily_increment)
-            daily_standards.append(round(daily_val, 2))
-
-    # Append the final week's standard at the very end
-    daily_standards.append(weekly_standards[weeks[-1]])
-
-    return daily_standards
-
-def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=None, all_standards=None):
+def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=None):
     """
     Core function to process a flock's logs and return a list of enriched daily data points.
     Handles Phase Switching, Stock Tracking, and Derived Metrics.
@@ -172,21 +141,6 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
 
     # Global Cumulative (For total flock life) could be tracked if needed,
     # but charts usually respect the "Phase Baseline".
-
-    # Setup Standard Curves
-    std_egg_prod_curve = []
-    std_hatching_egg_pct_curve = []
-
-    if all_standards:
-        egg_prod_dict = {}
-        hatch_egg_dict = {}
-        for s in all_standards:
-            if getattr(s, 'production_week', None):
-                egg_prod_dict[s.production_week] = getattr(s, 'std_egg_prod', 0.0) or 0.0
-                hatch_egg_dict[s.production_week] = getattr(s, 'std_hatching_egg_pct', 0.0) or 0.0
-
-        std_egg_prod_curve = generate_daily_curve(egg_prod_dict)
-        std_hatching_egg_pct_curve = generate_daily_curve(hatch_egg_dict)
 
     daily_stats = []
 
@@ -291,28 +245,10 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         bio_days = (log.date - flock.intake_date).days
         bio_week = calculate_bio_week(flock.intake_date, log.date)
         prod_week = None
-        prod_days = None
         if flock.production_start_date:
             if log.date >= flock.production_start_date:
                 prod_days = (log.date - flock.production_start_date).days
                 prod_week = (prod_days // 7) + 1
-
-        # Daily Standards Injection
-        std_egg_prod_val = 0.0
-        std_hatching_egg_pct_val = None
-
-        if prod_days is not None and prod_days >= 0:
-            if std_egg_prod_curve:
-                if prod_days < len(std_egg_prod_curve):
-                    std_egg_prod_val = std_egg_prod_curve[prod_days]
-                else:
-                    std_egg_prod_val = std_egg_prod_curve[-1]
-
-            if has_cull_eggs and std_hatching_egg_pct_curve:
-                if prod_days < len(std_hatching_egg_pct_curve):
-                    std_hatching_egg_pct_val = std_hatching_egg_pct_curve[prod_days]
-                else:
-                    std_hatching_egg_pct_val = std_hatching_egg_pct_curve[-1]
 
         # Metrics Dict
         d = {
@@ -381,10 +317,7 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
             'mortality_cum_female_pct': safe_div(cum_mort_f, start_f),
 
             'egg_prod_pct': safe_div(eggs, stock_f_start),
-            'std_egg_prod': std_egg_prod_val,
-
             'hatch_egg_pct': safe_div(hatch_eggs, eggs) if has_cull_eggs else None,
-            'std_hatching_egg_pct': std_hatching_egg_pct_val,
 
             'cull_eggs_pct': safe_div(total_cull_eggs, eggs),
             'cull_eggs_jumbo_pct': safe_div(jumbo, eggs),
@@ -536,12 +469,6 @@ def aggregate_weekly_metrics(daily_stats):
         ws['feed_total_kg'] += d['feed_total_kg']
         ws['feed_sum_m_kg'] += d['feed_m_kg']
         ws['feed_sum_f_kg'] += d['feed_f_kg']
-
-        # Keep the latest standard available for the week
-        if d.get('std_egg_prod') is not None:
-            ws['std_egg_prod'] = d['std_egg_prod']
-        if d.get('std_hatching_egg_pct') is not None:
-            ws['std_hatching_egg_pct'] = d['std_hatching_egg_pct']
         if d.get('feed_female_gp_bird') is not None and d.get('feed_female_gp_bird') > 0:
             ws['feed_female_raw_list'].append(d['feed_female_gp_bird'])
         ws['water_total_vol'] += (d['water_total'] or 0)
@@ -715,13 +642,6 @@ def aggregate_monthly_metrics(daily_stats):
         ms['feed_total_kg'] += d['feed_total_kg']
         ms['feed_sum_m_kg'] += d['feed_m_kg']
         ms['feed_sum_f_kg'] += d['feed_f_kg']
-
-        # Keep the latest standard available for the month
-        if d.get('std_egg_prod') is not None:
-            ms['std_egg_prod'] = d['std_egg_prod']
-        if d.get('std_hatching_egg_pct') is not None:
-            ms['std_hatching_egg_pct'] = d['std_hatching_egg_pct']
-
         ms['water_total_vol'] += (d['water_total'] or 0)
         ms['stock_sum_male'] += d['stock_male_start']
         ms['stock_sum_female'] += d['stock_female_start']
