@@ -521,15 +521,10 @@ def register_admin_routes(app):
 
         user = User.query.get_or_404(user_id)
         new_pass = request.form.get('new_password')
-        confirm_pass = request.form.get('confirm_password')
-
         if new_pass:
-            if new_pass != confirm_pass:
-                flash("New passwords do not match.", "danger")
-            else:
-                user.set_password(new_pass)
-                safe_commit()
-                flash(f"Password for {user.username} has been reset.", "success")
+            user.set_password(new_pass)
+            safe_commit()
+            flash(f"Password for {user.username} has been reset.", "success")
         else:
             flash("Password cannot be empty.", "danger")
         return redirect(url_for('admin_users'))
