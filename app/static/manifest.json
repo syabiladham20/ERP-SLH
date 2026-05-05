@@ -1,19 +1,20 @@
 {
-  "name": "SLH-DEV (Staging)",
-  "short_name": "SLH-DEV",
+  "name": "SLH-OP",
+  "short_name": "SLH-OP",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#e65100",
-  "description": "DEVELOPMENT ENVIRONMENT - Syarikat Sin Long Heng",
+  "theme_color": "#005eb8",
+
+  "description": "Syarikat Sin Long Heng Breeder House Dashboard",
   "icons": [
     {
-      "src": "/static/icon-dev-192.png",
+      "src": "/static/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/static/icon-dev-512.png",
+      "src": "/static/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
