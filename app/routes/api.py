@@ -213,6 +213,7 @@ def register_api_routes(app):
 
         # Fetch Standards
         all_standards = Standard.query.all()
+        std_map_by_week = {getattr(s, 'week'): s for s in all_standards if hasattr(s, 'week')}
 
         gs = GlobalStandard.query.first()
         std_mort = gs.std_mortality_daily if gs and gs.std_mortality_daily is not None else 0.05
