@@ -11,7 +11,7 @@ import json
 
 def register_admin_routes(app):
 
-    from app.utils import safe_commit, send_push_alert, dept_required, round_to_whole
+    from app.utils import safe_commit, send_push_alert, dept_required, round_to_whole, get_dashboard_url
     from app.services.data_service import process_import
     from app.services.seed_service import seed_standards_from_file, seed_arbor_acres_standards
 
@@ -47,7 +47,7 @@ def register_admin_routes(app):
                     for err in errors:
                         flash(f"Error: {err}", 'danger')
 
-                return redirect(url_for('index'))
+                return redirect(get_dashboard_url(current_user))
 
             if 'files' not in request.files:
                 flash('No file part', 'danger')
@@ -99,14 +99,14 @@ def register_admin_routes(app):
                 return render_template('import_preview.html', changes=all_changes, warnings=all_warnings, filenames=temp_filenames)
 
             flash("No valid data found to import.", "warning")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         return render_template('import.html')
 
     @app.route('/admin/houses/delete/<int:id>', methods=['POST'])
     @login_required
     def admin_house_delete(id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         house = House.query.get_or_404(id)
         if Flock.query.filter_by(house_id=id).count() > 0:
@@ -121,7 +121,7 @@ def register_admin_routes(app):
     @app.route('/admin/houses/edit/<int:id>', methods=['POST'])
     @login_required
     def admin_house_edit(id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         house = House.query.get_or_404(id)
         new_name = request.form.get('name').strip()
@@ -141,7 +141,7 @@ def register_admin_routes(app):
     @app.route('/admin/houses/add', methods=['POST'])
     @login_required
     def admin_house_add():
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         name = request.form.get('name').strip()
         if not name:
@@ -160,7 +160,7 @@ def register_admin_routes(app):
     def admin_houses():
         if not current_user.role == 'Admin':
             flash("Access Denied: Admin only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         houses = House.query.order_by(House.name).all()
 
@@ -178,7 +178,7 @@ def register_admin_routes(app):
     @login_required
     def admin_performance_report():
         if not current_user.role == 'Admin':
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         return render_template('admin/performance_report.html')
 
@@ -186,7 +186,7 @@ def register_admin_routes(app):
     @login_required
     def toggle_login():
         if not current_user.role == 'Admin':
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         gs = GlobalStandard.query.first()
         if not gs:
@@ -231,14 +231,14 @@ def register_admin_routes(app):
             else:
                 flash("Invalid theme selected.", "danger")
 
-        return redirect(request.referrer or url_for('index'))
+        return redirect(request.referrer or get_dashboard_url(current_user))
 
     @app.route('/admin/control-panel')
     @login_required
     def admin_control_panel():
         if not current_user.role == 'Admin':
             flash("Access Denied: Admin only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         gs = GlobalStandard.query.first()
         login_required = gs.login_required if gs and hasattr(gs, 'login_required') else True
@@ -249,7 +249,7 @@ def register_admin_routes(app):
     @login_required
     def admin_ui_update():
         if not current_user.role == 'Admin':
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         if request.method == 'POST':
             # Process updates
@@ -298,10 +298,10 @@ def register_admin_routes(app):
     def toggle_admin_view():
         if not current_user.role == 'Admin':
             flash("Unauthorized.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         session['hide_admin_view'] = not session.get('hide_admin_view', False)
-        return redirect(request.referrer or url_for('index'))
+        return redirect(request.referrer or get_dashboard_url(current_user))
 
     @app.route('/feed_codes/delete/<int:id>', methods=['POST'])
     @login_required
@@ -433,7 +433,7 @@ def register_admin_routes(app):
     def admin_daily_reports_review():
         if not current_user.role == 'Admin':
             flash("Access Denied: Admin View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         from sqlalchemy.orm import joinedload
         from metrics import enrich_flock_data, get_std_hatch_map
@@ -511,13 +511,13 @@ def register_admin_routes(app):
     def admin_project_report():
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied: Admin or Management View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
         return render_template('admin/project_report.html')
 
     @app.route('/admin/users/reset_password/<int:user_id>', methods=['POST'])
     @login_required
     def admin_user_reset_password(user_id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         user = User.query.get_or_404(user_id)
         new_pass = request.form.get('new_password')
@@ -532,7 +532,7 @@ def register_admin_routes(app):
     @app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
     @login_required
     def admin_user_delete(user_id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         user = User.query.get_or_404(user_id)
         if user.id == current_user.id:
@@ -546,7 +546,7 @@ def register_admin_routes(app):
     @app.route('/admin/users/edit/<int:user_id>', methods=['POST'])
     @login_required
     def admin_user_edit(user_id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         user = User.query.get_or_404(user_id)
         name = request.form.get('name')
@@ -567,7 +567,7 @@ def register_admin_routes(app):
     @app.route('/admin/users/add', methods=['POST'])
     @login_required
     def admin_user_add():
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         username = request.form.get('username')
         name = request.form.get('name')
@@ -594,7 +594,7 @@ def register_admin_routes(app):
     def admin_users():
         if not current_user.role == 'Admin':
             flash("Access Denied.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
         users = User.query.order_by(User.username).all()
         return render_template('admin/users.html', users=users)
 
@@ -602,7 +602,7 @@ def register_admin_routes(app):
     def delete_notification_rule(id):
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         rule = NotificationRule.query.get_or_404(id)
         db.session.delete(rule)
@@ -665,7 +665,7 @@ def register_admin_routes(app):
     def manage_rules():
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         if request.method == 'POST':
             name = request.form.get('name')
@@ -699,7 +699,7 @@ def register_admin_routes(app):
     def admin_activity_log():
         if not current_user.role == 'Admin':
             flash("Access Denied.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         user_id = request.args.get('user_id')
         resource_type = request.args.get('resource_type')
@@ -725,7 +725,7 @@ def register_admin_routes(app):
     def admin_audit_logs():
         if not current_user.role == 'Admin':
             flash("Access Denied.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
         logs = SystemAuditLog.query.order_by(SystemAuditLog.timestamp.desc()).all()
         return render_template('admin/audit_logs.html', logs=logs)
 

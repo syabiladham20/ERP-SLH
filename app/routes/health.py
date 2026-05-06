@@ -20,7 +20,7 @@ def register_health_routes(app):
     from app.constants import (
         EMPTY_NOTE_VALUES,
     )
-    from app.utils import safe_commit, send_push_alert, dept_required, natural_sort_key, round_to_whole
+    from app.utils import safe_commit, send_push_alert, dept_required, natural_sort_key, round_to_whole, get_dashboard_url
     from app.services.data_service import get_flock_stock_history, get_flock_stock_history_bulk, calculate_grading_stats
     from app.services.seed_service import initialize_vaccine_schedule
 

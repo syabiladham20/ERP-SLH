@@ -21,7 +21,7 @@ def register_api_routes(app):
     from app.constants import (
         EMPTY_NOTE_VALUES, ADMIN_FARM_MGMT_ROLES, ALLOWED_EXPORT_ROLES,
     )
-    from app.utils import safe_commit, send_push_alert, log_user_activity, dept_required, round_to_whole, get_gemini_response
+    from app.utils import safe_commit, send_push_alert, log_user_activity, dept_required, round_to_whole, get_gemini_response, get_dashboard_url
     from app.services.data_service import generate_spreadsheet_data, recalculate_flock_inventory
 
     @app.route('/api/offline_snapshot')
@@ -965,12 +965,12 @@ def register_api_routes(app):
         # Both Farm and Executive roles can view flock details, so both should be able to export
         if not current_user.role == 'Admin' and current_user.role not in ALLOWED_EXPORT_ROLES:
             flash('Access Denied.', 'danger')
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         flock = db.session.get(Flock, flock_id)
         if not flock:
             flash('Flock not found', 'danger')
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         # Load all logs for this flock
         logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=flock_id).order_by(DailyLog.date.asc()).all()
@@ -1204,7 +1204,7 @@ def register_api_routes(app):
         user_id = current_user.id
         # Call the push alert function
         try:
-            success = send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=url_for('index'))
+            success = send_push_alert(user_id, "Test Notification", "Your device is successfully linked!", url=get_dashboard_url(current_user))
             if success:
                 return jsonify({'success': True, 'message': 'Notification sent successfully.'}), 200
             else:

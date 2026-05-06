@@ -87,7 +87,7 @@
         <div class="container-fluid py-1 px-3">
           <nav aria-label="breadcrumb">
             <h6 class="font-weight-bolder text-white mb-0">
-                <a href="{{ url_for('index') }}" class="text-white text-decoration-none">
+                <a href="{{ get_dashboard_url(current_user) }}" class="text-white text-decoration-none">
                     SLH-OP <small class="text-white-50 ms-2" style="font-size: 0.65em;">({{ user_dept or 'Guest' }})</small>
                 </a>
             </h6>
@@ -178,7 +178,7 @@
                         <div class="dropdown-menu">
                             {% for item in get_ui_elements('navbar_main') %}
                                 {% if item.key == 'nav_dashboard' %}
-                                    <a class="dropdown-item" href="{{ url_for('index') }}">{{ item.label }}</a>
+                                    <a class="dropdown-item" href="{{ get_dashboard_url(current_user) }}">{{ item.label }}</a>
                                 {% elif item.key == 'nav_daily_entry' %}
                                     <a class="dropdown-item" href="{{ url_for('daily_log') }}">{{ item.label }}</a>
                                 {% elif item.key == 'nav_health_log' %}
@@ -218,7 +218,7 @@
                 {% elif user_dept == 'Farm' %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
-                            <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                            <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ get_dashboard_url(current_user) }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_daily_entry' %}
                             <li class="nav-item"><a class="nav-link text-white font-weight-bold" href="{{ url_for('daily_log') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                         {% elif item.key == 'nav_health_log' %}

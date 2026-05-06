@@ -280,7 +280,7 @@
           </a>
 
           <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-            <a href="{{ url_for('index') }}" class="text-decoration-none text-white d-flex align-items-center">
+            <a href="{{ get_dashboard_url(current_user) }}" class="text-decoration-none text-white d-flex align-items-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -14 128 128" class="me-2 slh-logo" width="24" height="24">
   <circle cx="50" cy="50" r="64" fill="#ffffff" />
   <g fill="none" stroke="#005eb8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0, -6)">
@@ -387,7 +387,7 @@
                         <div class="dropdown-menu">
                             {% for item in get_ui_elements('navbar_main') %}
                                 {% if item.key == 'nav_dashboard' %}
-                                    <a class="dropdown-item" href="{{ url_for('index') }}">{{ item.label }}</a>
+                                    <a class="dropdown-item" href="{{ get_dashboard_url(current_user) }}">{{ item.label }}</a>
                                     <a class="dropdown-item" href="{{ url_for('flock_select') }}">Flock Detail</a>
                                 {% elif item.key == 'nav_daily_entry' %}
                                     <a class="dropdown-item" href="{{ url_for('daily_log') }}">{{ item.label }}</a>
@@ -437,7 +437,7 @@
                 {% elif user_role == 'Farm' or session.get('user_dept') not in ['Admin', 'Management', 'Hatchery'] %}
                     {% for item in get_ui_elements('navbar_main') %}
                         {% if item.key == 'nav_dashboard' %}
-                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('index') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
+                            <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ get_dashboard_url(current_user) }}"><span class="nav-link-title">{{ item.label }}</span></a></li>
                             <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('flock_select') }}"><span class="nav-link-title">Flock Detail</span></a></li>
                         {% elif item.key == 'nav_daily_entry' %}
                             <li class="nav-item role-restricted" data-allowed-roles="Farm"><a class="nav-link" href="{{ url_for('daily_log') }}"><span class="nav-link-title">{{ item.label }}</span></a></li>

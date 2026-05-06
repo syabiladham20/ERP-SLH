@@ -19,7 +19,7 @@ def register_production_routes(app):
     from app.constants import (
         REARING_PHASES, INV_TX_TYPES_USAGE_WASTE, INV_TX_TYPES_ALL
         )
-    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, round_to_whole
+    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, round_to_whole, get_dashboard_url
     from app.services.data_service import get_projected_start_of_lay, get_weekly_data_aggregated, get_hatchery_analytics, calculate_flock_summary, generate_spreadsheet_data, recalculate_flock_inventory, update_log_from_request, check_daily_log_completion
     from app.services.seed_service import initialize_sampling_schedule, initialize_vaccine_schedule
 
@@ -29,7 +29,7 @@ def register_production_routes(app):
         # Role Check: Admin or Management
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied: Executive View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
@@ -439,7 +439,7 @@ def register_production_routes(app):
         # Role Check: Admin or Management
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied: Executive View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         active_flocks = Flock.query.options(joinedload(Flock.house)).filter_by(status='Active').all()
 
@@ -458,7 +458,7 @@ def register_production_routes(app):
         # Role Check: Admin or Management
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied: Executive View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         # --- Farm Data ---
         active_flocks = Flock.query.options(joinedload(Flock.logs).joinedload(DailyLog.partition_weights), joinedload(Flock.logs).joinedload(DailyLog.photos), joinedload(Flock.logs).joinedload(DailyLog.clinical_notes_list), joinedload(Flock.house)).filter_by(status='Active').all()
@@ -757,7 +757,7 @@ def register_production_routes(app):
         # Role Check: Admin or Management
         if not current_user.role == 'Admin' and current_user.role != 'Management':
             flash("Access Denied: Executive View Only.", "danger")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         # Active Flocks
         active_flocks = Flock.query.filter_by(status='Active').options(joinedload(Flock.house)).all()
@@ -852,7 +852,7 @@ def register_production_routes(app):
     @login_required
     @dept_required('Farm')
     def edit_inventory_transaction(id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         t = InventoryTransaction.query.get_or_404(id)
         item = InventoryItem.query.get(t.inventory_item_id)
@@ -921,7 +921,7 @@ def register_production_routes(app):
     @login_required
     @dept_required('Farm')
     def delete_inventory_transaction(id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         t = InventoryTransaction.query.get_or_404(id)
         item = InventoryItem.query.get(t.inventory_item_id)
@@ -1579,7 +1579,7 @@ def register_production_routes(app):
         flock = db.session.get(Flock, id)
         if not flock:
             flash('Flock not found', 'danger')
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         # Load all logs for this flock
         logs = DailyLog.query.options(joinedload(DailyLog.partition_weights), joinedload(DailyLog.photos), joinedload(DailyLog.clinical_notes_list)).filter_by(flock_id=id).order_by(DailyLog.date.asc()).all()
@@ -2150,7 +2150,7 @@ def register_production_routes(app):
             flock.phase = 'Rearing'
             flash(f'Flock {flock.flock_id} switched back to Rearing phase.', 'warning')
         safe_commit()
-        return redirect(url_for('index'))
+        return redirect(get_dashboard_url(current_user))
 
     @app.route('/daily_log/photo/<int:photo_id>/delete', methods=['DELETE'])
     @login_required
@@ -2174,7 +2174,7 @@ def register_production_routes(app):
     @login_required
     @dept_required('Farm')
     def delete_daily_log(id):
-        if not current_user.role == 'Admin': return redirect(url_for('index'))
+        if not current_user.role == 'Admin': return redirect(get_dashboard_url(current_user))
 
         log = DailyLog.query.get_or_404(id)
         flock_id = log.flock_id
@@ -2206,7 +2206,7 @@ def register_production_routes(app):
         flock.end_date = date.today()
         safe_commit()
         flash(f'Flock {flock.flock_id} closed.', 'info')
-        return redirect(url_for('index'))
+        return redirect(get_dashboard_url(current_user))
 
     @app.route('/flocks', methods=['GET', 'POST'])
     @login_required
@@ -2288,7 +2288,7 @@ def register_production_routes(app):
             initialize_vaccine_schedule(new_flock.id)
 
             flash(f'Flock created successfully! Flock ID: {flock_id}', 'success')
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         farms = Farm.query.all()
         houses = House.query.all()
@@ -2336,7 +2336,7 @@ def register_production_routes(app):
 
         if not active_flocks:
             flash("No active flocks found.", "warning")
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         return render_template('flock_select.html', active_flocks=active_flocks)
 
@@ -2419,7 +2419,7 @@ def register_production_routes(app):
 
             safe_commit()
             flash(f'Flock {flock.flock_id} updated.', 'success')
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         farms = Farm.query.all()
         return render_template('flock_edit.html', flock=flock, farms=farms)
