@@ -987,6 +987,7 @@ def register_api_routes(app):
             "Mortality (M)", "Mortality (F)", "Hosp Mort (M)", "Hosp Mort (F)",
             "Culls (M)", "Culls (F)", "Hosp Culls (M)", "Hosp Culls (F)",
             "Moved to Hosp (M)", "Moved to Hosp (F)", "Moved to Prod (M)", "Moved to Prod (F)",
+            "Males In", "Males Out", "Females In", "Females Out",
             "Feed Program", "Feed Code (M)", "Feed Code (F)",
             "Feed (g/bird M)", "Feed (g/bird F)", "Feed Cleanup Start", "Feed Cleanup End",
             "Water 1", "Water 2", "Water 3", "Flushing",
