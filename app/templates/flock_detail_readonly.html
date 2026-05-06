@@ -1242,6 +1242,7 @@
 
   const commonOptions = {
       events: ['click'],
+
       responsive: true,
       maintainAspectRatio: false,
       spanGaps: true,
@@ -1250,8 +1251,7 @@
         intersect: false
       },
       hover: {
-        mode: 'index',
-        intersect: false
+        mode: null
       },
       plugins: {
           legend: {
@@ -1300,7 +1300,7 @@
               font: { weight: 'bold', size: 10 },
               color: '#333'
           },
-          tooltip: { enabled: true }
+          tooltip: { enabled: true, events: ['click'] }
       }
   };
 
@@ -1375,6 +1375,7 @@
               datasets: datasets
           },
           options: {
+          events: ['click'],
               ...commonOptions,
               onClick: null,
               scales: {
@@ -1478,6 +1479,7 @@
               datasets: datasets
           },
           options: {
+          events: ['click'],
               ...commonOptions,
               onClick: null,
               scales: {
@@ -1595,6 +1597,7 @@
           datasets: maleDatasets
         },
         options: {
+          events: ['click'],
             ...commonOptions,
             onClick: null,
               scales: {
@@ -1700,6 +1703,7 @@
               datasets: datasets
           },
           options: {
+          events: ['click'],
               ...commonOptions,
               scales: {
                   x: {
@@ -1824,6 +1828,7 @@
           datasets: femaleDatasets
         },
         options: {
+          events: ['click'],
             ...commonOptions,
             onClick: null,
               scales: {
@@ -1948,7 +1953,7 @@
               categoryPercentage: 1.0,
               grouped: false, // Ensures it overlaps and doesn't push other bars
               clip: false,
-              tooltip: { enabled: true }, // Optionally disable tooltip for background
+              tooltip: { enabled: true, events: ['click'] }, // Optionally disable tooltip for background
               datalabels: {
                   display: function(context) {
                       if (!generalData.medication_names || !context.raw || context.raw.originalIndex === undefined) return false;
@@ -2062,9 +2067,12 @@
         },
         plugins: [dynamicYMaxPlugin],
         options: {
+          events: ['click'],
+
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: 'index', intersect: false },
+          hover: { mode: null },
           scales: generalScales,
           plugins: {
               ...commonOptions.plugins
@@ -2114,10 +2122,13 @@
 }              ]
           },
           options: {
+          events: ['click'],
+
               responsive: true,
               maintainAspectRatio: false,
               onClick: null,
               interaction: { mode: 'index', intersect: false },
+          hover: { mode: null },
               scales: {
                   y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Cull Eggs %' }, min: 0, ...barMaxCalc },
                   y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Hatching Egg %' }, min: 0, max: 110, grid: { drawOnChartArea: false } }
@@ -2295,6 +2306,7 @@
               ]
           },
           options: {
+          events: ['click'],
               ...commonOptions,
               responsive: true,
               maintainAspectRatio: false,

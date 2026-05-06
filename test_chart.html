@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<canvas id="myChart" width="400" height="400"></canvas>
+<script>
+const ctx = document.getElementById('myChart');
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+        datasets: [{
+            label: '# of Votes',
+            data: [12, 19, 3, 5, 2, 3]
+        }]
+    },
+    options: {
+        events: ['click'],
+        hover: { mode: null },
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            tooltip: {
+                enabled: true,
+                events: ['click']
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>
