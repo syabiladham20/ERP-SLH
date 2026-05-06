@@ -1245,6 +1245,7 @@
   }
 
   const commonOptions = {
+      events: ['click'],
       responsive: true,
       maintainAspectRatio: false,
       spanGaps: true,
@@ -1303,7 +1304,7 @@
               font: { weight: 'bold', size: 10 },
               color: '#333'
           },
-          tooltip: { enabled: false }
+          tooltip: { enabled: true }
       }
   };
 
@@ -1951,7 +1952,7 @@
               categoryPercentage: 1.0,
               grouped: false, // Ensures it overlaps and doesn't push other bars
               clip: false,
-              tooltip: { enabled: false }, // Optionally disable tooltip for background
+              tooltip: { enabled: true }, // Optionally disable tooltip for background
               datalabels: {
                   display: function(context) {
                       if (!generalData.medication_names || !context.raw || context.raw.originalIndex === undefined) return false;
