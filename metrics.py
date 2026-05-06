@@ -76,31 +76,36 @@ def safe_div(num, den, multiplier=100.0):
 def generate_daily_curve(weekly_standards):
     """
     Takes a dictionary of weekly targets and returns a list of daily targets.
+    The weekly target is the target to be achieved on the 7th day of that week.
     Example input: {1: 5.0, 2: 20.0, 3: 45.0} (Keys are weeks, values are percentages)
     """
     daily_standards = []
-    weeks = sorted(weekly_standards.keys())
 
-    if not weeks:
+    # Prepend a Week 0 with a value of 0.0 to handle the first week's interpolation
+    weeks = [0] + sorted(weekly_standards.keys())
+
+    # Create a local copy to modify with Week 0
+    local_standards = {0: 0.0}
+    local_standards.update(weekly_standards)
+
+    if len(weeks) <= 1:
         return []
 
-    for i in range(len(weeks) - 1):
+    for i in range(1, len(weeks)):
         current_week = weeks[i]
-        next_week = weeks[i + 1]
+        previous_week = weeks[i - 1]
 
-        start_val = weekly_standards[current_week]
-        end_val = weekly_standards[next_week]
+        start_val = local_standards[previous_week]
+        end_val = local_standards[current_week]
 
         # Calculate how much to add each day
         daily_increment = (end_val - start_val) / 7
 
-        # Generate the 7 days leading up to the next week's standard
-        for day in range(7):
+        # Generate the 7 days leading up to the current week's standard
+        # Day 1 of the week gets 1 increment, Day 7 gets 7 increments (reaching end_val)
+        for day in range(1, 8):
             daily_val = start_val + (day * daily_increment)
             daily_standards.append(round(daily_val, 2))
-
-    # Append the final week's standard at the very end
-    daily_standards.append(weekly_standards[weeks[-1]])
 
     return daily_standards
 
@@ -209,11 +214,11 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         stock_m_start = curr_m_prod + curr_m_hosp
         stock_f_start = curr_f_prod + curr_f_hosp
 
-        # If we hit 5% egg production, we reset the baseline for cumulative mortality.
+        # When the first egg is produced, we reset the baseline for cumulative mortality.
         eggs = log.eggs_collected or 0
         egg_prod_pct = (eggs / stock_f_start * 100) if stock_f_start > 0 else 0
 
-        if not in_prod and egg_prod_pct >= 5.0:
+        if not in_prod and eggs > 0:
              in_prod = True
 
              # If manual counts are provided, use them to overwrite current running stock
@@ -440,8 +445,8 @@ def enrich_flock_data(flock, logs, hatchability_data=None, custom_start_stock=No
         if curr_m_hosp < 0: curr_m_hosp = 0
         if curr_f_hosp < 0: curr_f_hosp = 0
 
-        # Check egg production % for Production phase switch
-        if current_phase in ['Brooding', 'Growing', 'Pre-lay'] and d.get('egg_prod_pct', 0) >= 5.0:
+        # Check for first egg production for Production phase switch
+        if current_phase in ['Brooding', 'Growing', 'Pre-lay'] and eggs > 0:
             current_phase = 'Production'
 
         d['calculated_phase'] = current_phase
