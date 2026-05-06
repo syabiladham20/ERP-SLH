@@ -128,26 +128,21 @@ class Flock(db.Model):
 
     @property
     def production_start_date(self):
-        # We find the first log where egg production hit 5%
+        # We find the first log where any egg is laid
         # Use self.logs to avoid N+1 queries if already loaded
         logs = sorted(self.logs, key=lambda x: x.date) if self.logs else []
-        alive_females = (self.intake_female or 0) - (self.doa_female or 0)
 
         for log in logs:
-            # Replicate the logic from metrics.py to ensure 100% SSOT match
-            alive_females -= ((log.mortality_female or 0) + (log.culls_female or 0))
-            if alive_females > 0 and (log.eggs_collected or 0) > 0:
-                hdp = ((log.eggs_collected or 0) / alive_females) * 100
-                if hdp >= 5.0:
-                    return log.date
+            if (log.eggs_collected or 0) > 0:
+                return log.date
         return None
 
     @property
     def start_of_lay_date(self):
-        # The user requested that the standard production line triggers when
-        # egg production reaches 5%. This aligns perfectly with the
+        # The standard production line triggers when
+        # the very first egg is laid. This aligns perfectly with the
         # production_start_date calculation. So we'll alias it to ensure
-        # all standard metrics rely on the 5% date.
+        # all standard metrics rely on this first egg date.
         return self.production_start_date
 
     # Production Start Counts (New Baseline)
