@@ -1,0 +1,146 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Hatchery Flock Routing
+                </h2>
+                <div class="text-muted mt-1">Manage active flocks in houses</div>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <div class="btn-list">
+                    <a href="#" class="btn btn-primary d-none d-sm-inline-block" data-bs-toggle="modal" data-bs-target="#modal-assign-flock">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                        Move/Assign New Flock
+                    </a>
+                    <a href="#" class="btn btn-primary d-sm-none btn-icon" data-bs-toggle="modal" data-bs-target="#modal-assign-flock" aria-label="Move/Assign New Flock">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Farm</th>
+                            <th>House</th>
+                            <th>Active Flock Breed/ID</th>
+                            <th>Date Placed (start_date)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mapping in active_mappings %}
+                        <tr>
+                            <td>{{ mapping.farm.name }}</td>
+                            <td>{{ mapping.house.name }}</td>
+                            <td>{{ mapping.flock.flock_id }}</td>
+                            <td>{{ mapping.start_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge bg-success text-white">Active</span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center">No active mappings found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal modal-blur fade" id="modal-assign-flock" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign New Flock</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('hatchery_flock_routing') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="mb-3">
+                        <label class="form-label">Farm</label>
+                        <select class="form-select" name="farm_id" id="farmSelect" required>
+                            <option value="">Select Farm</option>
+                            {% for farm in farms %}
+                            <option value="{{ farm.id }}">{{ farm.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">House</label>
+                        <select class="form-select" name="house_id" id="houseSelect" required>
+                            <option value="">Select Farm first...</option>
+                            <!-- Options populated via JS -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Flock to Assign</label>
+                        <select class="form-select" name="flock_id" required>
+                            <option value="">Select Flock</option>
+                            {% for flock in flocks %}
+                            <option value="{{ flock.id }}">{{ flock.flock_id }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Effective Start Date</label>
+                        <input type="date" class="form-control" name="start_date" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn btn-link link-secondary" data-bs-dismiss="modal">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary ms-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+                        Save Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const farmSelect = document.getElementById('farmSelect');
+    const houseSelect = document.getElementById('houseSelect');
+
+    // Parse the JSON data passed from backend
+    const housesByFarm = {{ houses_by_farm | safe }};
+
+    farmSelect.addEventListener('change', function() {
+        const farmId = this.value;
+        houseSelect.innerHTML = '<option value="">Select House</option>'; // Reset
+
+        if (farmId && housesByFarm[farmId]) {
+            housesByFarm[farmId].forEach(function(house) {
+                const option = document.createElement('option');
+                option.value = house.id;
+                option.textContent = house.name;
+                houseSelect.appendChild(option);
+            });
+        } else {
+            houseSelect.innerHTML = '<option value="">Select Farm first...</option>';
+        }
+    });
+});
+</script>
+{% endblock %}

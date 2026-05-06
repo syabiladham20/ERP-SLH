@@ -17,6 +17,39 @@ def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower()
             for text in _ns_re.split(s)]
 
+def role_required(*allowed_roles):
+    """
+    Decorator to restrict access by role.
+    Admins (either user.role == 'Admin' or user.dept == 'Admin') always have access.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not current_user.is_authenticated:
+                if request.path == url_for('login'):
+                    return f(*args, **kwargs)
+                flash("Please log in to continue.", "info")
+                return redirect(url_for('login'))
+
+            user_role = current_user.role
+            user_dept = current_user.dept
+
+            # Admin rule: Admin always has access to all routes
+            if user_role == 'Admin' or user_dept == 'Admin':
+                return f(*args, **kwargs)
+
+            # Check if user role is in the allowed roles
+            if user_role in allowed_roles:
+                return f(*args, **kwargs)
+
+            # Access denied
+            allowed_str = ', '.join(allowed_roles)
+            flash(f"Access Denied: You must be one of {allowed_str} to view this page.", "danger")
+            return redirect(get_dashboard_url(current_user))
+
+        return decorated_function
+    return decorator
+
 def dept_required(required_dept):
     def decorator(f):
         @wraps(f)

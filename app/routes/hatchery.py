@@ -14,8 +14,101 @@ def register_hatchery_routes(app):
         FARM_HATCHERY_ADMIN_MGMT_DEPTS, FARM_HATCHERY_ADMIN_DEPTS,
     )
     from metrics import calculate_bio_week
-    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, get_dashboard_url
+    from app.utils import safe_commit, log_user_activity, dept_required, role_required, natural_sort_key, get_dashboard_url
     from app.services.data_service import calculate_male_ratio, process_hatchability_import
+
+    @app.route('/hatchery_flock_routing', methods=['GET', 'POST'])
+    @login_required
+    @dept_required('Hatchery')
+    @role_required('Admin', 'Manager')
+    def hatchery_flock_routing():
+        if request.method == 'POST':
+            farm_id = request.form.get('farm_id')
+            house_id = request.form.get('house_id')
+            flock_id = request.form.get('flock_id')
+            start_date_str = request.form.get('start_date')
+
+            if not all([farm_id, house_id, flock_id, start_date_str]):
+                flash("All fields are required.", "danger")
+                return redirect(url_for('hatchery_flock_routing'))
+
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash("Invalid date format.", "danger")
+                return redirect(url_for('hatchery_flock_routing'))
+
+            # Look up currently active mapping for the house
+            current_mapping = HouseFlockMapping.query.filter_by(
+                house_id=house_id
+            ).filter(
+                or_(HouseFlockMapping.end_date == None, HouseFlockMapping.end_date >= start_date)
+            ).order_by(HouseFlockMapping.start_date.desc()).first()
+
+            if current_mapping:
+                # Strict Validation: Check if the new start date is before or equal to the current mapping's start date
+                if start_date <= current_mapping.start_date:
+                    flash(f"Error: The new start date ({start_date}) must be after the current flock's start date ({current_mapping.start_date}). Cannot overlap timelines.", "danger")
+                    return redirect(url_for('hatchery_flock_routing'))
+
+                # Automated Cleanup: Set the end_date to start_date - 1 day
+                current_mapping.end_date = start_date - timedelta(days=1)
+
+            # Create new mapping
+            new_mapping = HouseFlockMapping(
+                farm_id=farm_id,
+                house_id=house_id,
+                flock_id=flock_id,
+                start_date=start_date,
+                end_date=None
+            )
+            db.session.add(new_mapping)
+
+            if safe_commit():
+                log_user_activity(current_user.id, "Assign Flock", "HouseFlockMapping", resource_id=new_mapping.id, details={"farm_id": farm_id, "house_id": house_id, "flock_id": flock_id, "start_date": start_date_str})
+                flash("Flock successfully assigned to house.", "success")
+
+            return redirect(url_for('hatchery_flock_routing'))
+
+        # GET request: Fetch mappings and options for dropdowns
+        # Active flocks have no end date or end date is in the future
+        today = date.today()
+        active_mappings = HouseFlockMapping.query.filter(
+            or_(HouseFlockMapping.end_date == None, HouseFlockMapping.end_date >= today)
+        ).options(
+            joinedload(HouseFlockMapping.farm),
+            joinedload(HouseFlockMapping.house),
+            joinedload(HouseFlockMapping.flock)
+        ).all()
+
+        farms = Farm.query.order_by(Farm.name).all()
+        houses = House.query.order_by(House.name).all()
+        flocks = Flock.query.filter_by(status='Active').order_by(Flock.flock_id).all()
+
+        # Build houses JSON mapped by farm id for the dynamic dropdown.
+        # Since Houses don't have a direct farm_id, we infer relationship from existing active flocks.
+        houses_by_farm = {}
+        for farm in farms:
+            # Get houses associated with this farm via active flocks or mappings
+            farm_houses = db.session.query(House).join(Flock).filter(Flock.farm_id == farm.id).distinct().all()
+            # If no active flocks, maybe check mappings
+            if not farm_houses:
+                 farm_houses = db.session.query(House).join(HouseFlockMapping).filter(HouseFlockMapping.farm_id == farm.id).distinct().all()
+
+            # Fallback: if still none, just include all houses for now to avoid blocking assignment
+            if not farm_houses:
+                farm_houses = houses
+
+            houses_by_farm[farm.id] = [{'id': h.id, 'name': h.name} for h in farm_houses]
+
+        return render_template(
+            'hatchery_flock_routing.html',
+            active_mappings=active_mappings,
+            farms=farms,
+            houses=houses,
+            flocks=flocks,
+            houses_by_farm=json.dumps(houses_by_farm)
+        )
 
     @app.route('/import_hatchability', methods=['POST'])
     @login_required
