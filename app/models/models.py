@@ -71,12 +71,22 @@ class Farm(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     flocks = db.relationship('Flock', backref='farm', lazy=True)
+    house_assignments = db.relationship('HouseFlockMapping', backref='farm', lazy=True, cascade="all, delete-orphan")
 
 class House(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     flocks = db.relationship('Flock', backref='house', lazy=True)
+    flock_history = db.relationship('HouseFlockMapping', backref='house', lazy=True, cascade="all, delete-orphan")
 
+
+class HouseFlockMapping(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=False, index=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=True)
 
 
 class InventoryItem(VersionedMixin, db.Model):
@@ -125,6 +135,8 @@ class Flock(db.Model):
 
     status = db.Column(db.String(20), default='Active', nullable=False, index=True) # 'Active' or 'Inactive'
     phase = db.Column(db.String(20), default='Rearing', nullable=False) # 'Rearing' or 'Production'
+
+    house_assignments = db.relationship('HouseFlockMapping', backref='flock', lazy=True, cascade="all, delete-orphan")
 
     @property
     def production_start_date(self):
