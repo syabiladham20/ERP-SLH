@@ -17,7 +17,7 @@ Whoa there! You are clicking a bit too fast. Please wait a minute and try again.
 {% endblock %}
 
 {% block error_actions %}
-<a href="{{ url_for('index') }}" class="btn btn-primary">
+<a href="{{ get_dashboard_url(current_user) if current_user.is_authenticated else url_for('login') }}" class="btn btn-primary">
   <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
     <path d="M5 12l14 0" />

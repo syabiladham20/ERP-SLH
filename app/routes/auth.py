@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash
 
 def register_auth_routes(app):
 
-    from app.utils import safe_commit
+    from app.utils import safe_commit, get_dashboard_url
 
     @app.route('/change_password', methods=['GET', 'POST'])
     @login_required
@@ -32,7 +32,7 @@ def register_auth_routes(app):
                 user.set_password(new_password)
                 safe_commit()
                 flash("Password updated successfully.", "success")
-                return redirect(url_for('index'))
+                return redirect(get_dashboard_url(current_user))
 
         return render_template('change_password.html')
 
@@ -61,7 +61,7 @@ def register_auth_routes(app):
     @limiter.limit("5 per minute", methods=["POST"])
     def login():
         if current_user.is_authenticated:
-            return redirect(url_for('index'))
+            return redirect(get_dashboard_url(current_user))
 
         if request.method == 'POST':
             username = request.form.get('username')
@@ -85,15 +85,7 @@ def register_auth_routes(app):
                     session.permanent = False
 
                 flash(f"Welcome back, {user.username}!", "success")
-
-                if user.dept == 'Hatchery':
-                    return redirect(url_for('hatchery_dashboard'))
-                elif user.dept == 'Admin':
-                    return redirect(url_for('index'))
-                elif user.dept == 'Management':
-                    return redirect(url_for('executive_dashboard'))
-                else:
-                    return redirect(url_for('index'))
+                return redirect(get_dashboard_url(current_user))
             else:
                 flash("Invalid username or password.", "danger")
 

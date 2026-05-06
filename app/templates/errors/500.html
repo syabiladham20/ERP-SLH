@@ -37,7 +37,7 @@ We encountered an unexpected issue while processing your request. Our team has b
 {% endblock %}
 
 {% block error_actions %}
-<a href="{{ url_for('index') }}" class="btn btn-primary">
+<a href="{{ get_dashboard_url(current_user) if current_user.is_authenticated else url_for('login') }}" class="btn btn-primary">
   Back to Dashboard
 </a>
 <button type="button" class="btn btn-ghost-secondary ms-2" onclick="window.history.back()">

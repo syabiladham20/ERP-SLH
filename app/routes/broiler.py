@@ -67,7 +67,7 @@ def flock_detail(flock_id):
     return render_template('broiler/broiler_flock_detail.html', flock=flock, metrics=metrics, chart_data=chart_data, active_flocks=active_flocks)
 
 
-from app.utils import log_user_activity, dept_required
+from app.utils import log_user_activity, dept_required, get_dashboard_url
 from flask_login import login_required, current_user
 
 

@@ -14,7 +14,7 @@ def register_hatchery_routes(app):
         FARM_HATCHERY_ADMIN_MGMT_DEPTS, FARM_HATCHERY_ADMIN_DEPTS,
     )
     from metrics import calculate_bio_week
-    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key
+    from app.utils import safe_commit, log_user_activity, dept_required, natural_sort_key, get_dashboard_url
     from app.services.data_service import calculate_male_ratio, process_hatchability_import
 
     @app.route('/import_hatchability', methods=['POST'])

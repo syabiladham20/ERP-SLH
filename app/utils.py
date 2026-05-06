@@ -52,14 +52,7 @@ def dept_required(required_dept):
             flash(f"Access Denied: You do not have permission to view the {dept_str} Department", "danger")
 
             # Redirect to their own dashboard
-            if user_dept == 'Hatchery':
-                return redirect(url_for('hatchery_dashboard'))
-            elif user_dept == 'Farm':
-                return redirect(url_for('index'))
-            elif user_dept == 'Management':
-                return redirect(url_for('executive_dashboard'))
-            else:
-                return redirect(url_for('login')) # Fallback
+            return redirect(get_dashboard_url(current_user))
 
         return decorated_function
     return decorator
@@ -227,3 +220,13 @@ def get_gemini_response(user_prompt):
         if hasattr(e, 'response') and e.response is not None:
             app.logger.error(f"Gemini API Response: {e.response.text}")
         return f"AI Connection Error: {str(e)}"
+
+def get_dashboard_url(user):
+    if not getattr(user, 'is_authenticated', False):
+        return url_for('login')
+    if getattr(user, 'dept', None) == 'Hatchery':
+        return url_for('hatchery_dashboard')
+    elif getattr(user, 'dept', None) == 'Management':
+        return url_for('executive_dashboard')
+    else:
+        return url_for('index')
