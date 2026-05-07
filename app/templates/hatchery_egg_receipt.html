@@ -1,0 +1,203 @@
+{% extends "base_tabler.html" %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="container-xl">
+        <div class="row g-2 align-items-center">
+            <div class="col">
+                <h2 class="page-title">
+                    Egg Receiving & Grading
+                </h2>
+                <div class="text-muted mt-1">Record incoming eggs and culls</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="row row-cards">
+            <div class="col-12 col-md-8 offset-md-2">
+                <form action="{{ url_for('hatchery_egg_receiving') }}" method="POST" class="card">
+                    <div class="card-body">
+
+                        <!-- Arrival Block -->
+                        <h3 class="card-title">Arrival Details</h3>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label required">Arrival Date</label>
+                                <input type="date" class="form-control" name="arrival_date" value="{{ today }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Farm</label>
+                                <select class="form-select" id="farmSelect" name="farm_id" required>
+                                    <option value="">Select Farm</option>
+                                    {% for f in farms %}
+                                    <option value="{{ f.id }}">{{ f.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">House</label>
+                                <select class="form-select" id="houseSelect" name="house_id" required>
+                                    <option value="">Select Farm first...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12 mt-3">
+                                <label class="form-label required">Batch / Trip Number</label>
+                                <div class="form-selectgroup">
+                                    <label class="form-selectgroup-item">
+                                        <input type="radio" name="batch_number" value="1" class="form-selectgroup-input" checked>
+                                        <span class="form-selectgroup-label">Trip 1</span>
+                                    </label>
+                                    <label class="form-selectgroup-item">
+                                        <input type="radio" name="batch_number" value="2" class="form-selectgroup-input">
+                                        <span class="form-selectgroup-label">Trip 2</span>
+                                    </label>
+                                    <label class="form-selectgroup-item">
+                                        <input type="radio" name="batch_number" value="3" class="form-selectgroup-input">
+                                        <span class="form-selectgroup-label">Trip 3</span>
+                                    </label>
+                                    <label class="form-selectgroup-item">
+                                        <input type="radio" name="batch_number" value="4" class="form-selectgroup-input">
+                                        <span class="form-selectgroup-label">Trip 4</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Verification Block -->
+                        <h3 class="card-title">Verification</h3>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label required">Farm Declared Qty</label>
+                                <input type="number" min="0" class="form-control" id="farm_declared" name="farm_declared_qty" value="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Actual Received Qty</label>
+                                <input type="number" min="0" class="form-control" id="actual_received" name="actual_received_qty" value="0" required>
+                                <small class="text-warning d-none" id="qtyWarning">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-alert-triangle" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v4" /><path d="M12 16v.01" /><path d="M5.039 18l-2.039 -14h18l-2.039 14z" /></svg>
+                                    Quantities do not match!
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Grading Block -->
+                        <h3 class="card-title">Grading</h3>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Jumbo Cull</label>
+                                <input type="number" min="0" class="form-control cull-input" name="jumbo_cull" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Small Cull</label>
+                                <input type="number" min="0" class="form-control cull-input" name="small_cull" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Abnormal Cull</label>
+                                <input type="number" min="0" class="form-control cull-input" name="abnormal_cull" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Crack Cull</label>
+                                <input type="number" min="0" class="form-control cull-input" name="crack_cull" value="0">
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top">
+                            <label class="form-label" style="font-size: 1.2rem;">Settable Eggs</label>
+                            <input type="text" class="form-control form-control-lg bg-light text-success fw-bold" id="settable_eggs" value="0" readonly>
+                        </div>
+
+                    </div>
+                    <div class="card-footer text-end">
+                        <button type="submit" class="btn btn-primary">Save Receipt</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Dependent Dropdowns (Farm -> House)
+    const farmSelect = document.getElementById('farmSelect');
+    const houseSelect = document.getElementById('houseSelect');
+    const housesByFarm = {{ houses_by_farm | safe }};
+
+    farmSelect.addEventListener('change', function() {
+        const farmId = this.value;
+        houseSelect.innerHTML = '<option value="">Select House</option>';
+        if (farmId && housesByFarm[farmId]) {
+            housesByFarm[farmId].forEach(function(house) {
+                const option = document.createElement('option');
+                option.value = house.id;
+                option.textContent = house.name;
+                houseSelect.appendChild(option);
+            });
+        } else {
+            houseSelect.innerHTML = '<option value="">Select Farm first...</option>';
+        }
+    });
+
+    // 2. Verification Match Warning
+    const farmDeclared = document.getElementById('farm_declared');
+    const actualReceived = document.getElementById('actual_received');
+    const warningText = document.getElementById('qtyWarning');
+
+    function checkMatch() {
+        const farmVal = parseInt(farmDeclared.value) || 0;
+        const actualVal = parseInt(actualReceived.value) || 0;
+
+        if (farmVal !== actualVal && farmVal > 0 && actualVal > 0) {
+            warningText.classList.remove('d-none');
+            actualReceived.classList.add('is-invalid');
+            farmDeclared.classList.add('is-invalid');
+        } else {
+            warningText.classList.add('d-none');
+            actualReceived.classList.remove('is-invalid');
+            farmDeclared.classList.remove('is-invalid');
+        }
+
+        // Also trigger calculation when received qty changes
+        calculateSettable();
+    }
+
+    farmDeclared.addEventListener('input', checkMatch);
+    actualReceived.addEventListener('input', checkMatch);
+
+    // 3. Auto-Calculate Settable Eggs (Modular approach)
+    const cullInputs = document.querySelectorAll('.cull-input');
+    const settableOutput = document.getElementById('settable_eggs');
+
+    function calculateSettable() {
+        const received = parseInt(actualReceived.value) || 0;
+        let totalCulls = 0;
+
+        cullInputs.forEach(function(input) {
+            totalCulls += parseInt(input.value) || 0;
+        });
+
+        const settable = received - totalCulls;
+
+        // Handle negative result visually but don't block
+        if (settable < 0) {
+            settableOutput.classList.remove('text-success');
+            settableOutput.classList.add('text-danger');
+            settableOutput.value = settable + " (Error: Culls exceed received)";
+        } else {
+            settableOutput.classList.remove('text-danger');
+            settableOutput.classList.add('text-success');
+            settableOutput.value = settable;
+        }
+    }
+
+    cullInputs.forEach(function(input) {
+        input.addEventListener('input', calculateSettable);
+    });
+});
+</script>
+{% endblock %}

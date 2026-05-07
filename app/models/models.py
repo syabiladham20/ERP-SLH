@@ -562,6 +562,32 @@ class BroilerDailyLog(db.Model):
     medication_vaccine = db.Column(db.String(200), nullable=True)
     remarks = db.Column(db.Text, nullable=True)
 
+
+class HatcheryEggReceipt(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    farm_id = db.Column(db.Integer, db.ForeignKey('farm.id'), nullable=False, index=True)
+    house_id = db.Column(db.Integer, db.ForeignKey('house.id'), nullable=False, index=True)
+    flock_id = db.Column(db.Integer, db.ForeignKey('flock.id'), nullable=False, index=True)
+
+    arrival_date = db.Column(db.Date, nullable=False, index=True)
+    grading_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    batch_number = db.Column(db.Integer, nullable=False)
+
+    farm_declared_qty = db.Column(db.Integer, nullable=False, default=0)
+    actual_received_qty = db.Column(db.Integer, nullable=False, default=0)
+
+    jumbo_cull = db.Column(db.Integer, nullable=False, default=0)
+    small_cull = db.Column(db.Integer, nullable=False, default=0)
+    abnormal_cull = db.Column(db.Integer, nullable=False, default=0)
+    crack_cull = db.Column(db.Integer, nullable=False, default=0)
+
+    settable_eggs = db.Column(db.Integer, nullable=False, default=0)
+
+    farm = db.relationship('Farm', backref=db.backref('egg_receipts', lazy=True, cascade="all, delete-orphan"))
+    house = db.relationship('House', backref=db.backref('egg_receipts', lazy=True, cascade="all, delete-orphan"))
+    flock = db.relationship('Flock', backref=db.backref('egg_receipts', lazy=True, cascade="all, delete-orphan"))
+
+
 class AnonymousUser:
     is_authenticated = False
     username = ''
