@@ -699,3 +699,103 @@ def register_hatchery_routes(app):
         safe_commit()
         flash('Movement recorded.', 'success')
         return redirect(url_for('hatchery_inventory'))
+
+
+    @app.route('/hatchery/egg_receiving', methods=['GET', 'POST'])
+    @login_required
+    @role_required('Worker', 'Manager', 'Admin')
+    def hatchery_egg_receiving():
+        from flask import request, render_template, flash, redirect, url_for
+        from app.models.models import Farm, House, HouseFlockMapping, HatcheryEggReceipt, Flock
+        from app.utils import safe_commit
+        import json
+        from datetime import datetime
+
+        if request.method == 'POST':
+            arrival_date_str = request.form.get('arrival_date')
+            house_id = request.form.get('house_id')
+            batch_number = request.form.get('batch_number')
+            farm_declared_qty = request.form.get('farm_declared_qty', type=int) or 0
+            actual_received_qty = request.form.get('actual_received_qty', type=int) or 0
+            jumbo_cull = request.form.get('jumbo_cull', type=int) or 0
+            small_cull = request.form.get('small_cull', type=int) or 0
+            abnormal_cull = request.form.get('abnormal_cull', type=int) or 0
+            crack_cull = request.form.get('crack_cull', type=int) or 0
+
+            if not arrival_date_str or not house_id or not batch_number:
+                flash('Missing required fields.', 'danger')
+                return redirect(url_for('hatchery_egg_receiving'))
+
+            arrival_date = datetime.strptime(arrival_date_str, '%Y-%m-%d').date()
+
+            # Basic validation
+            if farm_declared_qty < 0 or actual_received_qty < 0 or jumbo_cull < 0 or small_cull < 0 or abnormal_cull < 0 or crack_cull < 0:
+                flash('Quantities cannot be negative.', 'danger')
+                return redirect(url_for('hatchery_egg_receiving'))
+
+            total_culls = jumbo_cull + small_cull + abnormal_cull + crack_cull
+            if total_culls > actual_received_qty:
+                flash('Total culls cannot exceed actual received quantity.', 'danger')
+                return redirect(url_for('hatchery_egg_receiving'))
+
+            # Find active flock mapping
+            # arrival_date >= start_date AND (arrival_date <= end_date OR end_date IS NULL)
+            from sqlalchemy import or_
+            from app.database import db
+            mapping = HouseFlockMapping.query.filter(
+                HouseFlockMapping.house_id == house_id,
+                HouseFlockMapping.start_date <= arrival_date,
+                or_(HouseFlockMapping.end_date >= arrival_date, HouseFlockMapping.end_date == None)
+            ).first()
+
+            if not mapping:
+                flash('No active flock found in this house for the selected date. Please contact the Manager.', 'danger')
+                return redirect(url_for('hatchery_egg_receiving'))
+
+            settable_eggs = actual_received_qty - total_culls
+
+            receipt = HatcheryEggReceipt(
+                farm_id=mapping.farm_id,
+                house_id=mapping.house_id,
+                flock_id=mapping.flock_id,
+                arrival_date=arrival_date,
+                batch_number=int(batch_number),
+                farm_declared_qty=farm_declared_qty,
+                actual_received_qty=actual_received_qty,
+                jumbo_cull=jumbo_cull,
+                small_cull=small_cull,
+                abnormal_cull=abnormal_cull,
+                crack_cull=crack_cull,
+                settable_eggs=settable_eggs
+            )
+
+            db.session.add(receipt)
+            safe_commit()
+
+            flash('Egg receipt recorded successfully.', 'success')
+            return redirect(url_for('hatchery_egg_receiving'))
+
+        # GET Request logic
+        from app.database import db
+        farms = Farm.query.order_by(Farm.name).all()
+        houses = House.query.order_by(House.name).all()
+
+        houses_by_farm = {}
+        for farm in farms:
+            farm_houses = db.session.query(House).join(Flock).filter(Flock.farm_id == farm.id).distinct().all()
+            if not farm_houses:
+                 farm_houses = db.session.query(House).join(HouseFlockMapping).filter(HouseFlockMapping.farm_id == farm.id).distinct().all()
+            if not farm_houses:
+                farm_houses = houses
+
+            houses_by_farm[farm.id] = [{'id': h.id, 'name': h.name} for h in farm_houses]
+
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        return render_template(
+            'hatchery_egg_receipt.html',
+            farms=farms,
+            houses=houses,
+            houses_by_farm=json.dumps(houses_by_farm),
+            today=today
+        )
