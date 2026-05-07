@@ -10,7 +10,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-flags.min.css?v={{ version }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-payments.min.css?v={{ version }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler-vendors.min.css?v={{ version }}">
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json', v=version) }}">
+    {% if config['ENV'] == 'development' %}
+        <link rel="manifest" href="{{ url_for('static', filename='manifest_dev.json') }}">
+    {% else %}
+        <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    {% endif %}
     <meta name="theme-color" content="#005eb8">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
