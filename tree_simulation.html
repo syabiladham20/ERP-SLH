@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Tree Project: Doers vs. Claimers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        /* Base Retro Style */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #2b2d42;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #000;
+        }
+
+        /* Reusable Gamified Borders */
+        .retro-border {
+            border: 4px solid #000;
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        .retro-border-sm {
+            border: 3px solid #000;
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .retro-card {
+            background-color: #fefae0;
+            border: 4px solid #000;
+            box-shadow: 6px 6px 0px #000;
+        }
+
+        /* App Layout Container */
+        #game-container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #a0c4ff; /* Pastel blue sky */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 8px 8px 0px #000;
+            border: 5px solid #000;
+        }
+
+        /* Header Bar */
+        #header-bar {
+            background-color: #ffb703;
+            border-bottom: 4px solid #000;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 60;
+        }
+
+        .title-text {
+            font-size: 0.85rem;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stage-badge {
+            background-color: #fb8500;
+            color: #fff;
+            padding: 6px 12px;
+            font-size: 0.65rem;
+            border: 2px solid #000;
+        }
+
+        /* Scene & Canvas Setup */
+        #scene {
+            height: 380px;
+            position: relative;
+            background: linear-gradient(to bottom, #a0c4ff 0%, #bdb2ff 70%, #d8bbff 100%);
+            overflow: hidden;
+        }
+
+        /* Weather Effects */
+        .cloud {
+            position: absolute;
+            background: #ffffff;
+            border: 3px solid #000;
+            border-radius: 20px;
+            opacity: 0.9;
+            animation: floatCloud 25s linear infinite;
+        }
+
+        .cloud::before, .cloud::after {
+            content: '';
+            position: absolute;
+            background: #ffffff;
+            border: 3px solid #000;
+            border-radius: 50%;
+        }
+
+        .cloud-1 { top: 20px; left: -100px; width: 80px; height: 25px; animation-duration: 28s; }
+        .cloud-2 { top: 50px; left: -120px; width: 110px; height: 35px; animation-duration: 22s; animation-delay: 5s; }
+
+        @keyframes floatCloud {
+            from { left: -150px; }
+            to { left: 100%; }
+        }
+
+        .sun {
+            position: absolute;
+            top: 25px;
+            right: 35px;
+            width: 45px;
+            height: 45px;
+            background-color: #ffb703;
+            border: 4px solid #000;
+            border-radius: 50%;
+            box-shadow: 0 0 0 6px rgba(255, 183, 3, 0.4);
+            animation: pulseSun 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseSun {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background-color: #caffbf; /* Pastel green ground */
+            border-top: 4px solid #000;
+            z-index: 10;
+        }
+
+        .ground-soil {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 30px;
+            background-color: #9c6644;
+            border-top: 3px solid #000;
+        }
+
+        /* --- CSS Art: Tree Container & Stages --- */
+        #tree-container {
+            position: absolute;
+            bottom: 80px; /* Sits on ground level */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Stage Visuals */
+        .soil-mound {
+            width: 90px;
+            height: 35px;
+            background-color: #7f4f24;
+            border-top-left-radius: 45px;
+            border-top-right-radius: 45px;
+            border: 4px solid #000;
+            position: relative;
+        }
+
+        .soil-mound.tilled::after {
+            content: '🌱';
+            position: absolute;
+            top: -15px;
+            left: 32px;
+            font-size: 1.2rem;
+        }
+
+        .soil-mound.untilled {
+            background-color: #a8896c;
+            height: 25px;
+        }
+
+        .trunk {
+            background-color: #7f4f24;
+            border: 4px solid #000;
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        .trunk-sapling { width: 18px; height: 75px; border-radius: 4px; }
+        .trunk-medium { width: 32px; height: 120px; border-radius: 6px; }
+        .trunk-mature { width: 48px; height: 165px; border-radius: 8px; }
+
+        .trunk-leaning { transform: rotate(14deg); transform-origin: bottom center; }
+        .trunk-dead { background-color: #5c3a21; transform: rotate(-18deg); transform-origin: bottom center; width: 22px; height: 80px; }
+
+        /* Leaves & Foliage */
+        .foliage {
+            border: 4px solid #000;
+            position: absolute;
+            transition: all 0.5s ease;
+        }
+
+        .leaves-sprout {
+            width: 60px; height: 60px;
+            background-color: #52b788;
+            border-radius: 50%;
+            top: -45px; left: -21px;
+        }
+
+        .leaves-wilting {
+            width: 50px; height: 45px;
+            background-color: #e9c46a;
+            border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+            top: -35px; left: -16px;
+        }
+
+        .leaves-medium {
+            width: 110px; height: 100px;
+            background-color: #40916c;
+            border-radius: 50%;
+            top: -75px; left: -39px;
+        }
+
+        .leaves-weedy {
+            width: 90px; height: 80px;
+            background-color: #b5e48c;
+            border-radius: 40% 60% 50% 50%;
+            top: -60px; left: -29px;
+        }
+
+        .leaves-mature {
+            width: 170px; height: 150px;
+            background-color: #2d6a4f;
+            border-radius: 50% 50% 45% 45%;
+            top: -115px; left: -61px;
+            box-shadow: inset -10px -10px 0px rgba(0,0,0,0.15);
+        }
+
+        /* Apples & Fruits */
+        .fruit {
+            width: 22px;
+            height: 22px;
+            background-color: #e63946;
+            border: 3px solid #000;
+            border-radius: 50%;
+            position: absolute;
+            animation: bounceFruit 2s infinite ease-in-out;
+        }
+
+        .fruit::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 7px;
+            width: 3px;
+            height: 6px;
+            background: #000;
+        }
+
+        .f1 { top: 25px; left: 25px; animation-delay: 0s; }
+        .f2 { top: 65px; left: 115px; animation-delay: 0.3s; }
+        .f3 { top: 85px; left: 45px; animation-delay: 0.6s; }
+        .f4 { top: 35px; left: 125px; animation-delay: 0.9s; }
+        .f5 { top: 100px; left: 90px; animation-delay: 0.4s; }
+
+        @keyframes bounceFruit {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* Weeds around tree */
+        .weed-cluster {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            z-index: 25;
+        }
+
+        .weed {
+            width: 12px;
+            height: 20px;
+            background-color: #74c69d;
+            border: 2px solid #000;
+            border-radius: 10px 10px 0 0;
+            transform: rotate(-15deg);
+        }
+
+        /* --- Characters: Doer (Worker) & Claimer (Manager) --- */
+        .character {
+            position: absolute;
+            bottom: 80px;
+            z-index: 35;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: left 0.8s ease-in-out, right 0.8s ease-in-out, transform 0.3s ease;
+        }
+
+        /* DOER WORKER (Left side by default) */
+        #doer-avatar {
+            left: 40px;
+        }
+
+        .doer-head {
+            width: 36px; height: 36px;
+            background-color: #ffcdb2;
+            border: 3px solid #000;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        /* Worker Straw Hat */
+        .doer-hat {
+            position: absolute;
+            top: -12px; left: -8px;
+            width: 52px; height: 14px;
+            background-color: #e9c46a;
+            border: 3px solid #000;
+            border-radius: 6px;
+        }
+
+        .doer-hat::after {
+            content: '';
+            position: absolute;
+            top: -8px; left: 12px;
+            width: 22px; height: 10px;
+            background-color: #e9c46a;
+            border: 3px solid #000;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .doer-eyes {
+            position: absolute;
+            top: 14px; left: 6px;
+            width: 22px; height: 4px;
+            background: #000;
+        }
+
+        .doer-body {
+            width: 32px; height: 42px;
+            background-color: #2a9d8f; /* Teal overalls */
+            border: 3px solid #000;
+            position: relative;
+        }
+
+        /* Overalls straps */
+        .doer-body::before {
+            content: ''; position: absolute;
+            top: 0; left: 4px; width: 6px; height: 18px; background: #e76f51; border-right: 2px solid #000;
+        }
+        .doer-body::after {
+            content: ''; position: absolute;
+            top: 0; right: 4px; width: 6px; height: 18px; background: #e76f51; border-left: 2px solid #000;
+        }
+
+        .doer-legs {
+            display: flex; gap: 4px; margin-top: -2px;
+        }
+        .doer-leg {
+            width: 12px; height: 22px; background-color: #264653; border: 2px solid #000;
+        }
+
+        /* Tool Held in Hand */
+        .held-tool {
+            position: absolute;
+            right: -18px;
+            top: 20px;
+            font-size: 1.4rem;
+            transition: transform 0.3s;
+        }
+
+        /* CLAIMER MANAGER (Right side by default) */
+        #claimer-avatar {
+            right: 40px;
+        }
+
+        .claimer-head {
+            width: 36px; height: 36px;
+            background-color: #ffc8dd;
+            border: 3px solid #000;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        /* Manager Slick Hair */
+        .claimer-hair {
+            position: absolute;
+            top: -8px; left: -2px;
+            width: 40px; height: 12px;
+            background-color: #38b000; /* Distinct colorful hair or cap */
+            background: #4a4e69;
+            border: 3px solid #000;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .claimer-glasses {
+            position: absolute;
+            top: 10px; left: 4px;
+            width: 26px; height: 8px;
+            border: 2px solid #000;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        .claimer-body {
+            width: 32px; height: 42px;
+            background-color: #7209b7; /* Purple manager suit */
+            border: 3px solid #000;
+            position: relative;
+        }
+
+        /* Suit Tie */
+        .claimer-body::after {
+            content: ''; position: absolute;
+            top: 0; left: 13px; width: 6px; height: 22px; background: #f72585; border: 1px solid #000;
+        }
+
+        .claimer-legs {
+            display: flex; gap: 4px; margin-top: -2px;
+        }
+        .claimer-leg {
+            width: 12px; height: 22px; background-color: #03071e; border: 2px solid #000;
+        }
+
+        .claimer-item {
+            position: absolute;
+            left: -20px;
+            top: 15px;
+            font-size: 1.3rem;
+        }
+
+        /* Character Animations */
+        .walking {
+            animation: walkBob 0.3s infinite alternate;
+        }
+
+        @keyframes walkBob {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
+
+        .action-work {
+            animation: workSwing 0.4s infinite alternate;
+        }
+
+        @keyframes workSwing {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-25deg); }
+        }
+
+        .sleeping {
+            position: absolute;
+            top: -30px;
+            right: -10px;
+            font-size: 0.9rem;
+            animation: zzzFloat 1.5s infinite linear;
+        }
+
+        @keyframes zzzFloat {
+            0% { opacity: 0; transform: translateY(0) scale(0.7); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-25px) scale(1.2); }
+        }
+
+        /* Visual Action Effect Particles */
+        .particle-effect {
+            position: absolute;
+            z-index: 50;
+            pointer-events: none;
+            font-size: 1.5rem;
+            animation: particleRise 1s forwards ease-out;
+        }
+
+        @keyframes particleRise {
+            0% { opacity: 1; transform: translateY(0) scale(0.8); }
+            100% { opacity: 0; transform: translateY(-45px) scale(1.3); }
+        }
+
+        /* Flash overlay for selfie */
+        #flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff;
+            opacity: 0;
+            z-index: 70;
+            pointer-events: none;
+            transition: opacity 0.1s;
+        }
+
+        /* Floating Dialogue & Speech Bubbles */
+        .speech-bubble {
+            position: absolute;
+            background: #fff;
+            border: 3px solid #000;
+            padding: 8px 10px;
+            font-size: 0.55rem;
+            line-height: 1.4;
+            max-width: 170px;
+            z-index: 45;
+            box-shadow: 3px 3px 0px #000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .speech-bubble.show {
+            opacity: 1;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            width: 12px; height: 12px;
+            background: #fff;
+            border-bottom: 3px solid #000;
+            border-right: 3px solid #000;
+            transform: rotate(45deg);
+        }
+
+        #doer-speech { top: -65px; left: -20px; }
+        #doer-speech::after { left: 25px; }
+
+        #claimer-speech { top: -65px; right: -20px; }
+        #claimer-speech::after { right: 25px; }
+
+        /* --- Dashboard Meters Section --- */
+        #dashboard {
+            background-color: #212529;
+            border-top: 4px solid #000;
+            border-bottom: 4px solid #000;
+            padding: 12px 16px;
+            color: #fff;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .meter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .meter-label {
+            font-size: 0.55rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .meter-bar-bg {
+            height: 18px;
+            background-color: #495057;
+            border: 2px solid #000;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.6s ease-out;
+        }
+
+        .fill-doer { background-color: #38b000; }
+        .fill-claimer { background-color: #f72585; }
+
+        /* --- Narrative & Action Panel --- */
+        #control-panel {
+            background-color: #fcf6bd;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #narrative-box {
+            background-color: #fff;
+            border: 3px solid #000;
+            padding: 12px;
+            font-size: 0.62rem;
+            line-height: 1.6;
+            min-height: 60px;
+            box-shadow: 3px 3px 0px #000;
+        }
+
+        /* Poultry Reality Card */
+        #reality-card {
+            background-color: #e85d04;
+            color: #fff;
+            border: 3px solid #000;
+            padding: 10px 12px;
+            font-size: 0.58rem;
+            line-height: 1.5;
+            box-shadow: 3px 3px 0px #000;
+            display: none;
+            animation: slideDown 0.4s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .reality-header {
+            font-weight: bold;
+            color: #ffdd00;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Action Buttons */
+        #choices-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .choice-btn {
+            background-color: #fdffb6;
+            border: 4px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            padding: 14px 10px;
+            font-family: inherit;
+            font-size: 0.6rem;
+            line-height: 1.4;
+            cursor: pointer;
+            text-align: center;
+            transition: transform 0.1s, background-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .choice-btn:hover:not(:disabled) {
+            background-color: #ffd6a5;
+        }
+
+        .choice-btn:active:not(:disabled) {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .choice-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-doer {
+            border-color: #1b4332;
+            background-color: #d8f3dc;
+        }
+        .btn-doer:hover:not(:disabled) { background-color: #b7e4c7; }
+
+        .btn-claimer {
+            border-color: #590d22;
+            background-color: #ffccd5;
+        }
+        .btn-claimer:hover:not(:disabled) { background-color: #ffb3c1; }
+
+        .btn-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Final Certificate / Trophy Overlay */
+        #ending-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .certificate-card {
+            background: #fff3b0;
+            border: 6px solid #000;
+            box-shadow: 8px 8px 0px #000;
+            padding: 24px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            animation: popupModal 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popupModal {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .cert-title {
+            font-size: 0.9rem;
+            color: #d90429;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .cert-body {
+            font-size: 0.6rem;
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .cert-badge {
+            font-size: 2.5rem;
+            margin: 10px 0;
+        }
+
+        .restart-btn {
+            background-color: #ffb703;
+            border: 4px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            padding: 12px 20px;
+            font-family: inherit;
+            font-size: 0.65rem;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .restart-btn:hover { background-color: #fb8500; color: #fff; }
+
+        /* Responsive helper */
+        @media (max-width: 640px) {
+            #dashboard { grid-template-columns: 1fr; gap: 8px; }
+            #choices-container { grid-template-columns: 1fr; }
+            .title-text { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+
+        <!-- Flash Overlay for Camera -->
+        <div id="flash-overlay"></div>
+
+        <!-- Header -->
+        <div id="header-bar">
+            <div class="title-text">🌳 The Tree Project: Doer vs Claimer</div>
+            <div class="stage-badge" id="stage-badge">STAGE 1 / 5</div>
+        </div>
+
+        <!-- Scene Area -->
+        <div id="scene">
+            <div class="sun"></div>
+            <div class="cloud cloud-1"></div>
+            <div class="cloud cloud-2"></div>
+
+            <!-- Ground Layer -->
+            <div class="ground">
+                <div class="weed-cluster" id="weed-cluster"></div>
+            </div>
+            <div class="ground-soil"></div>
+
+            <!-- Dynamic Tree Container -->
+            <div id="tree-container">
+                <div class="soil-mound" id="tree-base"></div>
+            </div>
+
+            <!-- Doer (Worker) Character -->
+            <div class="character" id="doer-avatar">
+                <div class="speech-bubble" id="doer-speech">Ready to work!</div>
+                <div class="doer-head">
+                    <div class="doer-hat"></div>
+                    <div class="doer-eyes"></div>
+                </div>
+                <div class="doer-body"></div>
+                <div class="doer-legs">
+                    <div class="doer-leg"></div>
+                    <div class="doer-leg"></div>
+                </div>
+                <div class="held-tool" id="doer-tool">🧑‍🌾</div>
+            </div>
+
+            <!-- Claimer (Manager) Character -->
+            <div class="character" id="claimer-avatar">
+                <div class="speech-bubble" id="claimer-speech">I'm managing!</div>
+                <div class="claimer-head">
+                    <div class="claimer-hair"></div>
+                    <div class="claimer-glasses"></div>
+                </div>
+                <div class="claimer-body"></div>
+                <div class="claimer-legs">
+                    <div class="claimer-leg"></div>
+                    <div class="claimer-leg"></div>
+                </div>
+                <div class="claimer-item" id="claimer-item">📱</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Meters -->
+        <div id="dashboard">
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>🧑‍🌾 DOER WORK IMPACT</span>
+                    <span id="doer-score-text">0%</span>
+                </div>
+                <div class="meter-bar-bg">
+                    <div class="meter-fill fill-doer" id="doer-meter"></div>
+                </div>
+            </div>
+            <div class="meter-container">
+                <div class="meter-label">
+                    <span>👔 MANAGER'S CLAIMED CREDIT</span>
+                    <span id="claimer-score-text">0%</span>
+                </div>
+                <div class="meter-bar-bg">
+                    <div class="meter-fill fill-claimer" id="claimer-meter"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control & Narrative Section -->
+        <div id="control-panel">
+            <div id="narrative-box">
+                Loading game stage...
+            </div>
+
+            <!-- Poultry Farm Reality Translation Card -->
+            <div id="reality-card">
+                <div class="reality-header">⚡ POULTRY FARM REALITY CHECK:</div>
+                <div id="reality-text">...</div>
+            </div>
+
+            <!-- Action Choices -->
+            <div id="choices-container">
+                <button class="choice-btn btn-doer" id="btn-option-a" onclick="handleChoice('A')">
+                    <span class="btn-icon" id="icon-a">🌱</span>
+                    <span id="label-a">Option A</span>
+                </button>
+                <button class="choice-btn btn-claimer" id="btn-option-b" onclick="handleChoice('B')">
+                    <span class="btn-icon" id="icon-b">📸</span>
+                    <span id="label-b">Option B</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ending Certificate Modal -->
+        <div id="ending-modal">
+            <div class="certificate-card">
+                <div class="cert-badge" id="cert-badge">🏆</div>
+                <div class="cert-title" id="cert-title">PROJECT COMPLETED</div>
+                <div class="cert-body" id="cert-body">
+                    Summary of performance...
+                </div>
+                <button class="restart-btn" onclick="restartGame()">🔄 PLAY AGAIN / TRAIN NEW WORKER</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- GAME STATE & DATA ---
+        let currentStageKey = "stage1";
+        let doerScore = 0;      // Actual operational score (0 - 100)
+        let claimerScore = 0;  // Claimed credit score (0 - 100)
+        let choicesHistory = [];
+
+        const STAGES = {
+            "stage1": {
+                badge: "STAGE 1: SOIL & SEED PREP",
+                text: "STAGE 1: A fresh seed lies in the ground. How will you prepare the environment for the project's foundation?",
+                choiceA: {
+                    icon: "🚜",
+                    label: "DOER: Deep Till & Mulch Compost",
+                    tool: "⛏️",
+                    doerSpeech: "Digging deep for strong roots!",
+                    claimerSpeech: "Good, keep working hard down there!",
+                    doerPoints: 20,
+                    claimerPoints: 15,
+                    reality: "In the Broiler Farm: Thoroughly cleaning the house, pre-heating litter to 32°C, and checking drinker lines before chick arrival creates optimal brooding conditions."
+                },
+                choiceB: {
+                    icon: "📸",
+                    label: "CLAIMER: Surface Throw & Selfie",
+                    tool: "📱",
+                    doerSpeech: "Wait, isn't the soil too hard?",
+                    claimerSpeech: "Just took a selfie with the dirt! #ProjectLaunch #Leadership",
+                    doerPoints: 5,
+                    claimerPoints: 25,
+                    reality: "In the Broiler Farm: Quick 2-minute walkthrough without checking floor temperature or drinker height, followed by posting a selfie on the manager's WhatsApp group."
+                }
+            },
+            "stage2": {
+                badge: "STAGE 2: EARLY SPROUT CARE",
+                text: "STAGE 2: A delicate sprout emerges. It needs careful attention and water to establish roots.",
+                choiceA: {
+                    icon: "🚿",
+                    label: "DOER: Targeted Water & Bug Shield",
+                    tool: "💧",
+                    doerSpeech: "Checking moisture & removing bugs daily!",
+                    claimerSpeech: "I scheduled this watering session!",
+                    doerPoints: 20,
+                    claimerPoints: 15,
+                    reality: "In the Broiler Farm: Daily inspection of chick crop fill, adjusting water pressure, measuring light intensity, and removing early weak chicks."
+                },
+                choiceB: {
+                    icon: "🥤",
+                    label: "CLAIMER: Quick Splash & Coffee Break",
+                    tool: "☕",
+                    doerSpeech: "The sprout is wilting under heat...",
+                    claimerSpeech: "I splashed 2 drops. Time for my 2-hour coffee break!",
+                    doerPoints: 5,
+                    claimerPoints: 25,
+                    reality: "In the Broiler Farm: Glancing at the temperature controller screen from the doorway without stepping inside the house or checking bird distribution."
+                }
+            },
+            "stage3": {
+                badge: "STAGE 3: VEGETATIVE GROWTH",
+                text: "STAGE 3: The sapling is expanding rapidly. Weeds are creeping in and nutrient demand is high.",
+                choiceA: {
+                    icon: "🌾",
+                    label: "DOER: Balanced Fertilizer & Weed Pulling",
+                    tool: "✂️",
+                    doerSpeech: "Pulling weeds & feeding custom fertilizer!",
+                    claimerSpeech: "I approved the fertilizer budget! You're welcome!",
+                    doerPoints: 20,
+                    claimerPoints: 15,
+                    reality: "In the Broiler Farm: Daily mortality collection, recording accurate feed intake, adjusting ventilation fans for air quality, and managing litter dryness."
+                },
+                choiceB: {
+                    icon: "📷",
+                    label: "CLAIMER: Photo of Feed Bag & Office Nap",
+                    tool: "💤",
+                    doerSpeech: "Weeds are smothering the sapling!",
+                    claimerSpeech: "Snapped a photo of the fertilizer bag for HQ! *Zzz*",
+                    doerPoints: 5,
+                    claimerPoints: 25,
+                    reality: "In the Broiler Farm: Snapping a photo of incoming feed trucks to send to headquarters, then spending the afternoon sleeping in the air-conditioned office."
+                }
+            },
+            "stage4": {
+                badge: "STAGE 4: MATURATION & PRUNING",
+                text: "STAGE 4: The tree is thick with heavy branches. It requires pruning and structural staking to bear fruit.",
+                choiceA: {
+                    icon: "🪓",
+                    label: "DOER: Prune Dead Wood & Install Support",
+                    tool: "🪵",
+                    doerSpeech: "Cutting dead wood & staking heavy boughs!",
+                    claimerSpeech: "Excellent structural strategy by me!",
+                    doerPoints: 20,
+                    claimerPoints: 15,
+                    reality: "In the Broiler Farm: Strict culling of non-viable birds, checking body weight uniformity, adjusting feeder height to match bird size, and maintaining biosecurity."
+                },
+                choiceB: {
+                    icon: "📢",
+                    label: "CLAIMER: Loud Phone Call to HQ",
+                    tool: "📣",
+                    doerSpeech: "The heavy branches are snapping!",
+                    claimerSpeech: "HELLO BOSS? YES, MY STRATEGY IS PRODUCING A MASSIVE TREE!",
+                    doerPoints: 5,
+                    claimerPoints: 25,
+                    reality: "In the Broiler Farm: Calling top management boasting about flock performance without having performed daily mortality or uniformity checks."
+                }
+            },
+            "stage5": {
+                badge: "STAGE 5: HARVEST & EVALUATION",
+                text: "STAGE 5: Harvest time! The fruits are ripe. It's time to gather the yield and evaluate the project outcome.",
+                choiceA: {
+                    icon: "🧺",
+                    label: "DOER: Careful Fruit Harvesting",
+                    tool: "🧺",
+                    doerSpeech: "Gently picking ripe fruit into baskets!",
+                    claimerSpeech: "SWOOPING IN! Look at WE grown!",
+                    doerPoints: 20,
+                    claimerPoints: 5,
+                    reality: "In the Broiler Farm: Night catching operations with low stress, careful bird handling, minimum bruising, and accurate final harvesting weights."
+                },
+                choiceB: {
+                    icon: "🏆",
+                    label: "CLAIMER: Grab Fruit & Claim Trophy",
+                    tool: "🏆",
+                    doerSpeech: "Hey! You didn't do any of the work!",
+                    claimerSpeech: "I'll take this basket to the CEO's office right now!",
+                    doerPoints: 5,
+                    claimerPoints: 25,
+                    reality: "In the Broiler Farm: Showing up on catching day with clean boots to pose with the biggest bird and claim 100% of the bonus from HQ."
+                }
+            }
+        };
+
+        // DOM Element Refs
+        const stageBadge = document.getElementById('stage-badge');
+        const narrativeBox = document.getElementById('narrative-box');
+        const realityCard = document.getElementById('reality-card');
+        const realityText = document.getElementById('reality-text');
+
+        const btnA = document.getElementById('btn-option-a');
+        const btnB = document.getElementById('btn-option-b');
+        const labelA = document.getElementById('label-a');
+        const labelB = document.getElementById('label-b');
+        const iconA = document.getElementById('icon-a');
+        const iconB = document.getElementById('icon-b');
+
+        const doerMeter = document.getElementById('doer-meter');
+        const claimerMeter = document.getElementById('claimer-meter');
+        const doerScoreText = document.getElementById('doer-score-text');
+        const claimerScoreText = document.getElementById('claimer-score-text');
+
+        const doerAvatar = document.getElementById('doer-avatar');
+        const claimerAvatar = document.getElementById('claimer-avatar');
+        const doerSpeech = document.getElementById('doer-speech');
+        const claimerSpeech = document.getElementById('claimer-speech');
+        const doerTool = document.getElementById('doer-tool');
+        const claimerItem = document.getElementById('claimer-item');
+
+        const treeContainer = document.getElementById('tree-container');
+        const weedCluster = document.getElementById('weed-cluster');
+        const flashOverlay = document.getElementById('flash-overlay');
+
+        const endingModal = document.getElementById('ending-modal');
+        const certBadge = document.getElementById('cert-badge');
+        const certTitle = document.getElementById('cert-title');
+        const certBody = document.getElementById('cert-body');
+
+        // --- GAME CONTROLLER ---
+
+        function initGame() {
+            currentStageKey = "stage1";
+            doerScore = 0;
+            claimerScore = 0;
+            choicesHistory = [];
+            endingModal.style.display = "none";
+
+            // Reset character positions
+            doerAvatar.style.left = "40px";
+            claimerAvatar.style.right = "40px";
+
+            updateMeters();
+            renderStage(currentStageKey);
+        }
+
+        function renderStage(stageKey) {
+            const stage = STAGES[stageKey];
+            stageBadge.innerText = stage.badge;
+            narrativeBox.innerText = stage.text;
+            realityCard.style.display = "none";
+
+            // Set button contents
+            labelA.innerText = stage.choiceA.label;
+            iconA.innerText = stage.choiceA.icon;
+
+            labelB.innerText = stage.choiceB.label;
+            iconB.innerText = stage.choiceB.icon;
+
+            // Enable buttons
+            btnA.disabled = false;
+            btnB.disabled = false;
+
+            // Update Tree Visuals for Stage
+            renderTreeVisuals();
+        }
+
+        function updateMeters() {
+            doerMeter.style.width = doerScore + "%";
+            claimerMeter.style.width = claimerScore + "%";
+            doerScoreText.innerText = doerScore + "%";
+            claimerScoreText.innerText = claimerScore + "%";
+        }
+
+        function spawnParticle(emoji, xPos, yPos) {
+            const p = document.createElement('div');
+            p.className = 'particle-effect';
+            p.innerText = emoji;
+            p.style.left = xPos + 'px';
+            p.style.bottom = yPos + 'px';
+            document.getElementById('scene').appendChild(p);
+            setTimeout(() => p.remove(), 1000);
+        }
+
+        function handleChoice(choiceType) {
+            // Disable buttons during animation
+            btnA.disabled = true;
+            btnB.disabled = true;
+
+            const stage = STAGES[currentStageKey];
+            const choice = (choiceType === 'A') ? stage.choiceA : stage.choiceB;
+            choicesHistory.push({ stage: currentStageKey, type: choiceType, details: choice });
+
+            // Apply points
+            doerScore = Math.min(100, doerScore + choice.doerPoints);
+            claimerScore = Math.min(100, claimerScore + choice.claimerPoints);
+            updateMeters();
+
+            // Set Tools & Speech
+            doerTool.innerText = choice.tool;
+            doerSpeech.innerText = choice.doerSpeech;
+            doerSpeech.classList.add('show');
+
+            claimerSpeech.innerText = choice.claimerSpeech;
+            claimerSpeech.classList.add('show');
+
+            // Trigger Animation based on Doer vs Claimer
+            if (choiceType === 'A') {
+                // DOER ACTION ANIMATION: Walk to tree and perform work
+                doerAvatar.classList.add('walking');
+                doerAvatar.style.left = "38%"; // Move close to tree
+
+                setTimeout(() => {
+                    doerAvatar.classList.remove('walking');
+                    doerAvatar.classList.add('action-work');
+
+                    // Spawn particles
+                    spawnParticle(choice.tool, 250, 120);
+                    spawnParticle("✨", 270, 140);
+
+                    setTimeout(() => {
+                        doerAvatar.classList.remove('action-work');
+                        doerAvatar.classList.add('walking');
+                        doerAvatar.style.left = "40px"; // Return
+                        setTimeout(() => doerAvatar.classList.remove('walking'), 800);
+                    }, 1000);
+                }, 800);
+
+            } else {
+                // CLAIMER ACTION ANIMATION: Flash camera, take photo or nap
+                if (choice.tool === "📱" || choice.tool === "📷") {
+                    flashOverlay.style.opacity = "0.8";
+                    setTimeout(() => flashOverlay.style.opacity = "0", 200);
+                }
+
+                if (choice.tool === "💤") {
+                    const zzz = document.createElement('div');
+                    zzz.className = 'sleeping';
+                    zzz.innerText = '💤 Zzz...';
+                    claimerAvatar.appendChild(zzz);
+                    setTimeout(() => zzz.remove(), 2000);
+                }
+
+                claimerAvatar.classList.add('walking');
+                claimerAvatar.style.right = "42%"; // Manager walks up to inspect/selfie
+
+                setTimeout(() => {
+                    claimerAvatar.classList.remove('walking');
+                    spawnParticle(choice.tool, 450, 120);
+
+                    setTimeout(() => {
+                        claimerAvatar.classList.add('walking');
+                        claimerAvatar.style.right = "40px"; // Return
+                        setTimeout(() => claimerAvatar.classList.remove('walking'), 800);
+                    }, 1000);
+                }, 800);
+            }
+
+            // Show Reality Translation Card
+            setTimeout(() => {
+                realityText.innerText = choice.reality;
+                realityCard.style.display = "block";
+                renderTreeVisuals();
+
+                // Advance to next stage or finish
+                setTimeout(() => {
+                    doerSpeech.classList.remove('show');
+                    claimerSpeech.classList.remove('show');
+
+                    advanceStage();
+                }, 3000);
+            }, 1200);
+        }
+
+        function renderTreeVisuals() {
+            let html = "";
+            let weedHtml = "";
+
+            // Calculate overall tree health based on doer vs claimer choices so far
+            const stageNum = parseInt(currentStageKey.replace('stage', ''));
+
+            if (stageNum === 1) {
+                const hasDoneA = choicesHistory.some(c => c.stage === 'stage1' && c.type === 'A');
+                html = `<div class="soil-mound ${hasDoneA ? 'tilled' : 'untilled'}"></div>`;
+            }
+            else if (stageNum === 2) {
+                const isHealthy = doerScore >= 20;
+                if (isHealthy) {
+                    html = `
+                        <div class="trunk trunk-sapling">
+                            <div class="foliage leaves-sprout"></div>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="trunk trunk-sapling trunk-leaning">
+                            <div class="foliage leaves-wilting"></div>
+                        </div>
+                    `;
+                }
+            }
+            else if (stageNum === 3) {
+                const isThriving = doerScore >= 40;
+                if (isThriving) {
+                    html = `
+                        <div class="trunk trunk-medium">
+                            <div class="foliage leaves-medium"></div>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="trunk trunk-medium trunk-leaning">
+                            <div class="foliage leaves-weedy"></div>
+                        </div>
+                    `;
+                    weedHtml = `<div class="weed"></div><div class="weed"></div><div class="weed"></div>`;
+                }
+            }
+            else if (stageNum === 4) {
+                const isStrong = doerScore >= 60;
+                if (isStrong) {
+                    html = `
+                        <div class="trunk trunk-mature">
+                            <div class="foliage leaves-mature"></div>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="trunk trunk-medium trunk-leaning">
+                            <div class="foliage leaves-weedy"></div>
+                        </div>
+                    `;
+                    weedHtml = `<div class="weed"></div><div class="weed"></div><div class="weed"></div><div class="weed"></div>`;
+                }
+            }
+            else if (stageNum === 5) {
+                if (doerScore >= 70) {
+                    // Total Success Tree!
+                    html = `
+                        <div class="trunk trunk-mature">
+                            <div class="foliage leaves-mature">
+                                <div class="fruit f1"></div>
+                                <div class="fruit f2"></div>
+                                <div class="fruit f3"></div>
+                                <div class="fruit f4"></div>
+                                <div class="fruit f5"></div>
+                            </div>
+                        </div>
+                    `;
+                } else if (doerScore >= 40) {
+                    // Average / Mediocre Tree
+                    html = `
+                        <div class="trunk trunk-medium trunk-leaning">
+                            <div class="foliage leaves-medium">
+                                <div class="fruit f1"></div>
+                                <div class="fruit f3"></div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // Failed / Dead Tree
+                    html = `
+                        <div class="trunk trunk-dead"></div>
+                    `;
+                    weedHtml = `<div class="weed"></div><div class="weed"></div><div class="weed"></div>`;
+                }
+            }
+
+            treeContainer.innerHTML = html;
+            weedCluster.innerHTML = weedHtml;
+        }
+
+        function advanceStage() {
+            if (currentStageKey === "stage1") currentStageKey = "stage2";
+            else if (currentStageKey === "stage2") currentStageKey = "stage3";
+            else if (currentStageKey === "stage3") currentStageKey = "stage4";
+            else if (currentStageKey === "stage4") currentStageKey = "stage5";
+            else {
+                showEnding();
+                return;
+            }
+
+            renderStage(currentStageKey);
+        }
+
+        function showEnding() {
+            endingModal.style.display = "flex";
+
+            // Manager swoops in animation for ending!
+            claimerAvatar.style.right = "45%"; // Manager jumps to front
+            claimerSpeech.innerText = "WE DID IT! (Mainly me!)";
+            claimerSpeech.classList.add('show');
+
+            if (doerScore >= 70) {
+                certBadge.innerText = "🏆";
+                certTitle.innerText = "ENDING 1: BOUNTIFUL HARVEST!";
+                certBody.innerHTML = `
+                    <p style="color:#2d6a4f; font-weight:bold; margin-bottom:10px;">TREE HEALTH: 100% (EXCELLENT)</p>
+                    <p><b>Worker (Doer) Effort:</b> ${doerScore}% - Relentless daily care created a lush, fruit-bearing tree!</p>
+                    <p><b>Manager (Claimer) Credit:</b> ${claimerScore}% - Claimed 100% credit at headquarters, took a selfie with the trophy, and accepted the bonus on behalf of 'the team'!</p>
+                    <hr style="margin:12px 0; border:1px dashed #000;">
+                    <p style="font-size:0.55rem; color:#d90429;"><b>Poultry Farm Lesson:</b> Real results come from ground-level dedication (flock care, temperature checks, drinker maintenance), even when managers claim the spotlight!</p>
+                `;
+            } else if (doerScore >= 40) {
+                certBadge.innerText = "⚠️";
+                certTitle.innerText = "ENDING 2: MEDIOCRE YIELD";
+                certBody.innerHTML = `
+                    <p style="color:#e85d04; font-weight:bold; margin-bottom:10px;">TREE HEALTH: 50% (MEDIOCRE)</p>
+                    <p><b>Worker Effort:</b> ${doerScore}% - The tree survived, but lacked deep pruning and fertilizing.</p>
+                    <p><b>Manager Credit:</b> ${claimerScore}% - 'I stepped in just in time! Without my guidance, it would have failed completely!'</p>
+                    <hr style="margin:12px 0; border:1px dashed #000;">
+                    <p style="font-size:0.55rem;"><b>Poultry Farm Lesson:</b> Cutting corners in daily routines yields subpar flock performance and FCR, while superficial management covers up deficiencies.</p>
+                `;
+            } else {
+                certBadge.innerText = "🥀";
+                certTitle.innerText = "ENDING 3: TOTAL PROJECT FAILURE";
+                certBody.innerHTML = `
+                    <p style="color:#d90429; font-weight:bold; margin-bottom:10px;">TREE HEALTH: 0% (FAILED)</p>
+                    <p><b>Worker Effort:</b> ${doerScore}% - Superficial shortcuts led to complete crop wilting.</p>
+                    <p><b>Manager Reaction:</b> ${claimerScore}% - 'I delegated everything to this worker! It's 100% their fault! I was busy doing high-level strategy!'</p>
+                    <hr style="margin:12px 0; border:1px dashed #000;">
+                    <p style="font-size:0.55rem;"><b>Poultry Farm Lesson:</b> When daily operational work is neglected, the flock fails completely. Claimers deflect blame to ground workers while avoiding responsibility.</p>
+                `;
+            }
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        // Initialize on page load
+        window.onload = () => {
+            initGame();
+        };
+    </script>
+</body>
+</html>
